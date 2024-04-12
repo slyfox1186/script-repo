@@ -17,10 +17,9 @@ NC='\033[0m'
 PROGRAM="binutils"
 VERSION="2.39"
 PREFIX="/usr/local/${PROGRAM}-${VERSION}"
-BUILD_DIR="/tmp/${PROGRAM}_build"
+BUILD_DIR="/tmp/${PROGRAM}-build-script"
 LOG_FILE="/tmp/${PROGRAM}_install.log"
 VERBOSE=0
-LINK=0
 TEMP_DIR="/tmp/${PROGRAM}_temp"
 
 fail() {
@@ -46,7 +45,6 @@ usage() {
     echo -e "${GREEN}Usage:${NC} $0 [OPTIONS]"
     echo " -v    Specify ${PROGRAM} version (default: ${VERSION})"
     echo " -p    Specify installation prefix (default: ${PREFIX})"
-    echo " -l    Link binaries to /usr/local/bin"
     echo " -V    Enable verbose logging"
     echo " -h    Display this help message"
 }
@@ -56,7 +54,6 @@ parse_arguments() {
         case $opt in
             v ) VERSION="$OPTARG" ;;
             p ) PREFIX="/usr/local/${PROGRAM}-${OPTARG}" ;;
-            l ) LINK=1 ;;
             V ) VERBOSE=1 ;;
             h ) usage; exit 0 ;;
             \? ) fail "Invalid option: $OPTARG" ;;
@@ -89,36 +86,24 @@ check_dependencies() {
 }
 
 install_autoconf() {
-    local ac_ver=$(autoconf --version 2>/dev/null | head -n1 | awk '{print $NF}')
-    if [[ "$ac_ver" != "2.69" ]]; then
+    if [[ ! -x "$TEMP_DIR/autoconf-2.69/bin/autoconf" || "$($TEMP_DIR/autoconf-2.69/bin/autoconf --version | head -n1 | awk '{print $NF}')" != "2.69" ]]; then
         log "Installing autoconf 2.69..."
-        wget -nc -qO- "https://ftp.gnu.org/gnu/autoconf/autoconf-2.69.tar.gz" | tar xz -C "$TEMP_DIR"
-        cd "$TEMP_DIR/autoconf-2.69"
-        ./configure --prefix="$TEMP_DIR/autoconf"
-        make "-j$(nproc --all)"
-        make install
-        export PATH="$TEMP_DIR/autoconf/bin:$PATH"
+        mkdir -p "$TEMP_DIR/autoconf-2.69"
+        wget -cqO "$TEMP_DIR/autoconf-2.69/build-autoconf.sh" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-autoconf.sh"
+        cd "$TEMP_DIR/autoconf-2.69" || exit 1
+        bash build-autoconf.sh -v 2.69
         log "Autoconf 2.69 installed."
     else
-        log "Autoconf 2.69 is already installed."
+        log "Autoconf 2.69 is already installed in the temporary directory."
     fi
+    export PATH="$TEMP_DIR/autoconf-2.69/autoconf-2.69/bin:$PATH"
 }
 
 optimize_build() {
-    OS=$(uname -s)
-    ARCH=$(uname -m)
-    debug "Detected OS: $OS, Architecture: $ARCH"
-
-    case "$ARCH" in
-        x86_64)  TARGET="x86_64-elf" ;;
-        aarch64) TARGET="aarch64-elf" ;;
-        *)       fail "Unsupported architecture: $ARCH" ;;
-    esac
-
-    CC="gcc"
-    CXX="g++"
-    CFLAGS="-g -O3 -pipe -fno-plt -march=native"
-    CXXFLAGS="-g -O3 -pipe -fno-plt -march=native"
+    CC="ccache gcc"
+    CXX="ccache g++"
+    CFLAGS="-O2 -pipe -fno-plt -march=native -mtune=native"
+    CXXFLAGS="$CFLAGS"
     export CC CFLAGS CXX CXXFLAGS
 }
 
@@ -133,8 +118,8 @@ cleanup() {
 
 install_binutils() {
     check_dependencies
-    install_autoconf
     optimize_build
+    install_autoconf
 
     mkdir -p "$BUILD_DIR"
     cd "$BUILD_DIR"
@@ -148,9 +133,8 @@ install_binutils() {
     cd "${PROGRAM}-${VERSION}"
 
     log "Configuring ${PROGRAM} for ${TARGET}..."
-    ./configure --target="$TARGET" --prefix="$PREFIX" --with-sysroot --disable-nls --disable-werror \
-        --enable-gold --enable-plugins --enable-lto --enable-threads --enable-64-bit-bfd
-
+    ./configure --prefix="$PREFIX" --disable-werror --with-zstd \
+                --with-system-zlib --enable-lto --enable-year2038 --enable-ld=yes --enable-gold=yes 
     log "Building ${PROGRAM} for ${TARGET}..."
     make "-j$(nproc --all)"
 
@@ -162,16 +146,15 @@ install_binutils() {
 
 link_binutils() {
     log "Linking ${PROGRAM} binaries to /usr/local/bin..."
-    for file in "${PREFIX}/bin/${TARGET}-"*; do
+    for file in "${PREFIX}/bin/"*; do
         local binary="${file##*/}"
-        local trimmed_binary="${binary#"$TARGET"-}"
-        sudo ln -sf "$file" "/usr/local/bin/$trimmed_binary"
+        sudo ln -sf "$file" "/usr/local/bin/$binary"
     done
 }
 
 parse_arguments "$@"
 install_binutils
-[[ $LINK -eq 1 ]] && link_binutils
+link_binutils
 
 log "Installation completed successfully."
 
