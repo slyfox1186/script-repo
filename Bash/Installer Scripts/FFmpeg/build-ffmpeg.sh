@@ -1350,7 +1350,6 @@ if build "libzstd" "$repo_version"; then
     build_done "libzstd" "$repo_version"
 fi
 
-
 find_git_repo "mesonbuild/meson" "1" "T"
 if build "meson" "$repo_version"; then
     download "https://github.com/mesonbuild/meson/archive/refs/tags/$repo_version.tar.gz" "meson-$repo_version.tar.gz"
@@ -2280,6 +2279,16 @@ box_out_banner_video() {
 }
 box_out_banner_video "Installing Video Tools"
 
+find_git_repo "videolan/dav1d" "1" "T"
+if build "dav1d" "$repo_version"; then
+    download "https://github.com/videolan/dav1d/archive/refs/tags/$repo_version.tar.gz" "dav1d-$repo_version.tar.gz"
+    execute meson setup build --prefix="$workspace" --buildtype=release --default-library=static --libdir="$workspace/lib" --strip
+    execute ninja "-j$threads" -C build
+    execute ninja -C build install
+    build_done "dav1d" "$repo_version"
+fi
+CONFIGURE_OPTIONS+=("--enable-libdav1d")
+
 git_caller "https://aomedia.googlesource.com/aom" "av1-git" "av1"
 if build "$repo_name" "${version//\$ /}"; then
     echo "Cloning \"$repo_name\" saving version \"$version\""
@@ -2556,6 +2565,18 @@ if "$NONFREE_AND_GPL"; then
     fi
     CONFIGURE_OPTIONS+=("--enable-libx264")
 fi
+
+find_git_repo "Netflix/vmaf" "1" "T"
+if build "libvmaf" "$repo_version"; then
+    download "https://github.com/Netflix/vmaf/archive/refs/tags/v$repo_version.tar.gz" "libvmaf-$repo_version.tar.gz"
+    cd libvmaf || exit 1
+    extracmds=("-Denable_"{cuda,docs,nvtx,tests}"=false")
+    execute meson setup build --prefix="$workspace" --buildtype=release --default-library=both --strip "${extracmds[@]}" 
+    execute ninja "-j$threads" -C build
+    execute ninja -C build install
+    build_done "libvmaf" "$repo_version"
+fi
+CONFIGURE_OPTIONS+=("--enable-libvmaf")
 
 version="dd1ef69b25ec26cc80be0fc8d9afeeef6563762b"
 version_trim="${version::7}"
@@ -2903,6 +2924,7 @@ if [[ -f "$packages/ffmpeg.done" ]]; then
 
     file_path="$packages/ffmpeg.done"
     ffmpeg_current_version=$(read_file_contents "$file_path")
+    [[ -z "$ffmpeg_current_version" ]] && ffmpeg_current_version=$(ffmpeg -version)
 fi
 
 # Update the compilter flags before building ffmpeg
@@ -2962,8 +2984,8 @@ if build "ffmpeg" "n6.1.1"; then
                  --enable-libtesseract \
                  --enable-version3 \
                  --enable-libzimg \
-                 --extra-cflags="$CFLAGS -flto" \
-                 --extra-cxxflags="$CXXFLAGS -flto" \
+                 --extra-cflags="$CFLAGS -DCL_TARGET_OPENCL_VERSION=300" \
+                 --extra-cxxflags="$CXXFLAGS -DCL_TARGET_OPENCL_VERSION=300" \
                  --extra-libs="$EXTRALIBS" \
                  --pkg-config-flags="--static" \
                  --pkg-config="$workspace/bin/pkg-config" \
