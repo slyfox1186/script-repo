@@ -25,11 +25,12 @@ REQUIRED_PKGS=(cmake gettext hwinfo libarchive-dev libgtkmm-3.0-dev libssl-dev n
 
 # Define compiler flags
 set_compiler_flags() {
-    export CC="ccache gcc"
-    export CXX="ccache g++"
-    export CFLAGS="-O2 -fno-plt -pipe -march=native -mtune=native"
-    export CXXFLAGS="$CFLAGS"
-    export LDFLAGS="-Wl,-rpath=$INSTALL_PREFIX/lib"
+    CC="ccache gcc"
+    CXX="ccache g++"
+    CFLAGS="-O2 -fno-plt -pipe -march=native -mtune=native"
+    CXXFLAGS="$CFLAGS"
+    LDFLAGS="-Wl,-rpath=$INSTALL_PREFIX/lib"
+    export CC CXX CFLAGS CXXFLAGS LDFLAGS
 }
 
 # Check if the script is run with root or sudo
