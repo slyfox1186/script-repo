@@ -32,6 +32,7 @@ packages="$cwd/packages"
 workspace="$cwd/workspace"
 # Set a regex string to match and then exclude any found release candidate versions of a program. Utilize stable releases only.
 git_regex='(Rc|rc|rC|RC|alpha|beta|early|init|next|pending|pre|rc|tentative)+[0-9]*$'
+avx512_support=="false"
 debug=OFF
 
 # Pre-defined color variables
@@ -508,6 +509,15 @@ find_cuda_json_file() {
     echo "$locate_cuda_json_file"
 }
 
+# Function to check for AVX512 support
+check_avx512_support() {
+    if grep -q avx512f /proc/cpuinfo; then
+        avx512_support="true"
+    fi
+}
+
+check_avx512_support
+
 # PRINT THE SCRIPT OPTIONS
 usage() {
     echo
@@ -960,6 +970,15 @@ fix_libstd_libs() {
 
         exec ln -sf "$libstdc_path" "/usr/lib/x86_64-linux-gnu/libstdc++.so"
     fi
+}
+
+fix_libvmaf_libs() {
+    [[ ! -d "/usr/local/include/libvmaf" ]] && mkdir -p "/usr/local/include/libvmaf"
+    cp -f "$workspace/include/libvmaf"/* "/usr/local/include/libvmaf/"
+    cp -f "$workspace/lib/x86_64-linux-gnu/pkgconfig/libvmaf.pc" "/usr/local/lib/x86_64-linux-gnu/pkgconfig/libvmaf.pc"
+    cp -f "$workspace/lib/x86_64-linux-gnu/libvmaf.so.3.0.0" "/usr/local/lib/x86_64-linux-gnu/libvmaf.so.3.0.0"
+    ln -s "/usr/local/lib/x86_64-linux-gnu/libvmaf.so.3.0.0" "/usr/local/lib/x86_64-linux-gnu/libvmaf.so.3"
+    ln -s "/usr/local/lib/x86_64-linux-gnu/libvmaf.so.3" "/usr/local/lib/x86_64-linux-gnu/libvmaf.so"
 }
 
 fix_x265_libs() {
@@ -2522,6 +2541,11 @@ fi
 find_git_repo "24327400" "3" "T"
 if build "svt-av1" "1.8.0"; then
     download "https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/v1.8.0/SVT-AV1-v1.8.0.tar.bz2" "svt-av1-1.8.0.tar.bz2"
+    if [[ "$avx512_support" == "true" ]]; then
+        svt_avx_flag="-DENABLE_AVX512=ON"
+    else
+        svt_avx_flag="-DENABLE_AVX512=OFF"
+    fi
     execute cmake -S . \
                   -B Build/linux \
                   -DCMAKE_INSTALL_PREFIX="$workspace" \
@@ -2531,7 +2555,7 @@ if build "svt-av1" "1.8.0"; then
                   -DBUILD_DEC=ON \
                   -DBUILD_ENC=ON \
                   -DBUILD_TESTING=OFF \
-                  -DENABLE_AVX512=OFF \
+                  "$svt_avx_flag" \
                   -DENABLE_NASM=ON \
                   -DNATIVE=ON \
                   -G Ninja -Wno-dev
@@ -2569,11 +2593,23 @@ fi
 find_git_repo "Netflix/vmaf" "1" "T"
 if build "libvmaf" "$repo_version"; then
     download "https://github.com/Netflix/vmaf/archive/refs/tags/v$repo_version.tar.gz" "libvmaf-$repo_version.tar.gz"
+    if [[ "$avx512_support" == "true" ]]; then
+        set_vmaf_flag="true"
+    else
+        set_vmaf_flag="false"
+    fi
+    if [[ -n "$iscuda" ]]; then
+        vmaf_cuda_flag="true"
+    else
+        vmaf_cuda_flag="false"
+    fi
     cd libvmaf || exit 1
-    extracmds=("-Denable_"{cuda,docs,nvtx,tests}"=false")
-    execute meson setup build --prefix="$workspace" --buildtype=release --default-library=both --strip "${extracmds[@]}" 
+    execute meson setup build --prefix="$workspace" --buildtype=release --default-library=both \
+                              --strip -Denable_docs=false -Denable_tests=false -Denable_nvtx=false \
+                              -Denable_cuda="$vmaf_cuda_flag" -Denable_avx512="$set_vmaf_flag"
     execute ninja "-j$threads" -C build
     execute ninja -C build install
+    fix_libvmaf_libs
     build_done "libvmaf" "$repo_version"
 fi
 CONFIGURE_OPTIONS+=("--enable-libvmaf")
@@ -2942,6 +2978,8 @@ echo
 log_update "Installed FFmpeg version: $ffmpeg_current_version"
 log_update "Latest FFmpeg release version available: $ffmpeg_version"
 
+[[ -n "$iscuda" ]] && nvcc_flag="--enable-cuda-nvcc"
+
 # Build FFmpeg from source using the latest git clone
 # FFmpeg release version 7 does not build as it has too many bugs and is too new.
 # We must stick with the latest version that works
@@ -2974,6 +3012,7 @@ if build "ffmpeg" "n6.1.1"; then
                  --enable-libvo-amrwbenc \
                  --enable-libzvbi \
                  --enable-lto \
+                 "$nvcc_flag" \
                  --enable-opengl \
                  --enable-libopenmpt \
                  --enable-pic \
