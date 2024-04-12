@@ -2,8 +2,8 @@
 # shellcheck disable=SC2068,SC2162,SC2317 source=/dev/null
 
 # GitHub: https://github.com/slyfox1186/ffmpeg-build-script
-# Script version: 3.5.7
-# Updated: 04.03.24
+# Script version: 3.6.0
+# Updated: 04.12.24
 # Purpose: build ffmpeg from source code with addon development libraries
 #          also compiled from source to help ensure the latest functionality
 # Supported Distros: Arch Linux
@@ -18,26 +18,26 @@ if [[ "$EUID" -ne 0 ]]; then
 fi
 
 # Define global variables
-SCRIPT_NAME="${0}"
-SCRIPT_VERSION="3.5.7"
-CWD="$PWD/ffmpeg-build-script"
-mkdir -p "$CWD" && cd "$CWD"
+script_name="${0}"
+script_version="3.6.0"
+cwd="$PWD/ffmpeg-build-script"
+mkdir -p "$cwd" && cd "$cwd" || exit 1
 if [[ "$PWD" =~ ffmpeg-build-script\/ffmpeg-build-script ]]; then
     clear
     cd ../
     sudo rm -fr ffmpeg-build-script
-    CWD="$PWD"
+    cwd="$PWD"
 fi
-packages="$CWD/packages"
-workspace="$CWD/workspace"
+packages="$cwd/packages"
+workspace="$cwd/workspace"
 # Set a regex string to match and then exclude any found release candidate versions of a program. Utilize stable releases only.
-GIT_REGEX='(Rc|rc|rC|RC|alpha|beta|early|init|next|pending|pre|rc|tentative)+[0-9]*$'
-DEBUG=OFF
+git_regex='(Rc|rc|rC|RC|alpha|beta|early|init|next|pending|pre|rc|tentative)+[0-9]*$'
+debug=OFF
 
 # Pre-defined color variables
-RED='\033[0;31m'
+CYAN='\033[0;36m'
 GREEN='\033[0;32m'
-MAGENTA='\033[0;35m'
+RED='\033[0;31m'
 YELLOW='\033[0;33m'
 NC='\033[0m'
 
@@ -45,7 +45,7 @@ NC='\033[0m'
 echo
 box_out_banner() {
     input_char=$(echo "$@" | wc -c)
-    line=$(for i in $(seq 0 $input_char); do printf "-"; done)
+    line=$(for i in $(seq 0 "$input_char"); do printf "-"; done)
     tput bold
     line=$(tput setaf 3)$line
     space="${line//-/ }"
@@ -56,21 +56,20 @@ box_out_banner() {
     echo " $line"
     tput sgr 0
 }
-box_out_banner "FFmpeg Build Script - v$SCRIPT_VERSION"
+box_out_banner "FFmpeg Build Script - v$script_version"
 
 # Create output directories
 mkdir -p "$packages" "$workspace"
 
 # Set the CC/CPP compilers + customized compiler optimization flags
 source_compiler_flags() {
-    CFLAGS="-g -O3 -pipe -fPIC -march=native"
-    CXXFLAGS="-g -O3 -pipe -fPIC -march=native"
-    LDFLAGS="-L$workspace/lib64 -L$workspace/lib"
-    CPPFLAGS="-I$workspace/include -I/usr/x86_64-linux-gnu/include"
+    CFLAGS="-O3 -pipe -fPIC -march=native"
+    CXXFLAGS="$CFLAGS"
+    CPPFLAGS="-I$workspace/include -I/usr/x86_64-linux-gnu/include -D_FORTIFY_SOURCE=2"
+    LDFLAGS="-L$workspace/lib64 -L$workspace/lib -Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now,-rpath,$install_dir/lib"
     EXTRALIBS="-ldl -lpthread -lm -lz"
     export CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
 }
-source_compiler_flags
 
 log() {
     echo -e "${GREEN}[INFO]${NC} $1"
@@ -87,7 +86,7 @@ warn() {
 exit_fn() {
     echo
     echo -e "${GREEN}[INFO]${NC} Make sure to ${YELLOW}star${NC} this repository to show your support!"
-    echo -e "${GREEN}[INFO]${NC} https://github.com/slyfox1186/script-repo"
+    echo -e "${GREEN}[INFO] ${CYAN}https://github.com/slyfox1186/script-repo${NC}"
     echo
     exit 0
 }
@@ -109,7 +108,7 @@ cleanup() {
 
     case "$choice" in
         [yY]*|[yY][eE][sS]*)
-            rm -fr "$CWD"
+            rm -fr "$cwd"
             ;;
         [nN]*|[nN][oO]*)
             ;;
@@ -121,7 +120,7 @@ cleanup() {
 
 display_ffmpeg_versions() {
     local file
-    local files=(ffmpeg ffprobe ffplay)
+    local files=( [0]=ffmpeg [1]=ffprobe [2]=ffplay )
 
     echo
     for file in ${files[@]}; do
@@ -132,26 +131,28 @@ display_ffmpeg_versions() {
     done
 }
 
-prompt_show_versions() {
+show_versions() {
     local choice
 
     echo
     read -p "Display the installed versions? (yes/no): " choice
 
     case "$choice" in
-        [yY]*|[yY][eE][sS]*)
-            display_ffmpeg_versions ;;
+        [yY]*|[yY][eE][sS]*|"")
+            display_ffmpeg_versions
+            ;;
         [nN]*|[nN][oO]*)
             ;;
         *)  unset choice
-            prompt_show_versions
+            show_versions
             ;;
     esac
 }
 
 # Function to ensure no cargo or rustc processes are running
 ensure_no_cargo_or_rustc_processes() {
-    local running_processes=$(pgrep -fl 'cargo|rustc')
+    local running_processes
+    running_processes=$(pgrep -fl 'cargo|rustc')
     if [[ -n "$running_processes" ]]; then
         warn "Waiting for cargo or rustc processes to finish..."
         while pgrep -x cargo &>/dev/null || pgrep -x rustc &>/dev/null; do
@@ -201,37 +202,32 @@ install_windows_hardware_acceleration() {
 }
 
 install_rustc() {
-    get_rustc_ver=$(rustc --version |
-                    grep -Eo '[0-9 \.]+' |
-                    head -n1)
+    get_rustc_ver=$(rustc --version | grep -oP '[0-9.]+' | head -n1)
     if [[ ! "$get_rustc_ver" == "1.76.0" ]]; then
         echo "Installing RustUp"
-        curl -fsS --proto '=https' --tlsv1.2 https://sh.rustup.rs | sh -s -- --default-toolchain stable -y &>/dev/null
+        curl -fsS --proto '=https' --tlsv1.2 'https://sh.rustup.rs' | sh -s -- --default-toolchain stable -y &>/dev/null
         source "$HOME/.cargo/env"
-        if [[ -f "$HOME/.zshrc" ]]; then
-            source "$HOME/.zshrc"
-        else
-            source "$HOME/.bashrc"
-        fi
+        [[ -f "$HOME/.zshrc" ]] && source "$HOME/.zshrc"
+        [[ -f "$HOME/.bashrc" ]] && source "$HOME/.bashrc"
     fi
 }
 
 check_ffmpeg_version() {
-    local ffmpeg_repo="$1"
+    local ffmpeg_repo
+    ffmpeg_repo="$1"
 
     ffmpeg_git_version=$(git ls-remote --tags "$ffmpeg_repo" |
                          awk -F'/' '/n[0-9]+(\.[0-9]+)*(-dev)?$/ {print $3}' |
-                         grep -Ev '\-dev' |
-                         sort -ruV |
-                         head -n1)
+                         grep -Ev '\-dev' | sort -ruV | head -n1)
     echo "$ffmpeg_git_version"
 }
 
 download() {
+    local download_file download_path download_url output_directory target_directory target_file 
     download_path="$packages"
     download_url="$1"
     download_file="${2:-"${1##*/}"}"
-
+    
     if [[ "$download_file" =~ tar. ]]; then
         output_directory="${download_file%.*}"
         output_directory="${3:-"${output_directory%.*}"}"
@@ -247,24 +243,20 @@ download() {
     else
         echo "Downloading \"$download_url\" saving as \"$download_file\""
         if ! curl -LSso "$target_file" "$download_url"; then
-            echo
-            warn "Failed to download \"$download_file\". Second attempt in 10 seconds..."
-            echo
-            sleep 10
-            if ! curl -LSso "$target_file" "$download_url"; then
-                fail "Failed to download \"$download_file\". Exiting... Line: $LINENO"
-            fi
+            warn "Failed to download \"$download_file\". Second attempt in 3 seconds..."
+            sleep 3
+            curl -LSso "$target_file" "$download_url" || fail "Failed to download \"$download_file\". Exiting... Line: $LINENO"
         fi
         echo "Download Completed"
     fi
 
-    rm -fr "$target_directory" 2>/dev/null
+    [[ -d "$target_directory" ]] && rm -fr "$target_directory"
     mkdir -p "$target_directory"
 
     if [[ -n "$3" ]]; then
         if ! tar -xf "$target_file" -C "$target_directory" 2>/dev/null; then
-           rm "$target_file"
-           fail "Failed to extract the tarball \"$download_file\" and was deleted. Re-run the script to try again. Line: $LINENO"
+            rm "$target_file"
+            fail "Failed to extract the tarball \"$download_file\" and was deleted. Re-run the script to try again. Line: $LINENO"
         fi
     else
         if ! tar -xf "$target_file" -C "$target_directory" --strip-components 1 2>/dev/null; then
@@ -282,64 +274,41 @@ git_caller() {
     git_url="$1"
     repo_name="$2"
     third_flag="$3"
-    recurse_flag=""
+    recurse_flag=0
 
-if [[ "$3" == "recurse" ]]; then
-    recurse_flag=1
-fi
+    [[ "$3" == "recurse" ]] && recurse_flag=1
 
-version=$(git_clone "$git_url" "$repo_name" "$third_flag")
-version="${version//Cloning completed: /}"
+    version=$(git_clone "$git_url" "$repo_name" "$third_flag")
+    version="${version//Cloning completed: /}"
 }
 
 git_clone() {
-    local repo_url="$1"
-    local repo_name="${2:-"${1##*/}"}"
-    local repo_name="${repo_name//\./-}"
-    local repo_flag="$3"
-    local target_directory="$packages/$repo_name"
-    local version
+    local repo_flag repo_name repo_url target_directory version
+    repo_url="$1"
+    repo_name="${2:-${1##*/}}"
+    repo_name="${repo_name//\./-}"
+    repo_flag="$3"
+    target_directory="$packages/$repo_name"
 
-    # Try to get the latest tag
-    if [[ "$repo_flag" == "ant" ]]; then
-        version=$(git ls-remote --tags "https://github.com/apache/ant.git" |
-                  awk -F'/' '/\/v?[0-9]+\.[0-9]+(\.[0-9]+)?(\^\{\})?$/ {
-                      tag = $4;
-                      sub(/^v/, "", tag);
-                      if (tag !~ /\^\{\}$/) print tag
-                  }' |
-                  sort -ruV |
-                  head -n1)
-    elif [[ "$repo_flag" == "ffmpeg" ]]; then
-        version=$(git ls-remote --tags "https://git.ffmpeg.org/ffmpeg.git" |
-                  awk -F/ '/\/n?[0-9]+\.[0-9]+(\.[0-9]+)?(\^\{\})?$/ {
-                      tag = $3;
-                      sub(/^[v]/, "", tag);
-                      print tag
-                  }' |
-                  grep -v '\^{}' |
-                  sort -ruV |
-                  head -n1)
-    else
-        version=$(git ls-remote --tags "$repo_url" |
-                  awk -F'/' '/\/v?[0-9]+\.[0-9]+(\.[0-9]+)?(-[0-9]+)?(\^\{\})?$/ {
-                      tag = $3;
-                      sub(/^v/, "", tag);
-                      print tag
-                  }' |
-                  grep -v '\^{}' |
-                  sort -ruV |
-                  head -n1)
-        # If no tags found, use the latest commit hash as the version
-        if [[ -z "$version" ]]; then
-            version=$(git ls-remote "$repo_url" |
-                      grep "HEAD" |
-                      awk '{print substr($1,1,7)}')
-            if [[ -z "$version" ]]; then
-                version="unknown"
-            fi
-        fi
-    fi
+    case "$repo_flag" in
+        ant)
+            version=$(git ls-remote --tags "https://github.com/apache/ant.git" |
+                      awk -F'/' '/\/v?[0-9]+\.[0-9]+(\.[0-9]+)?(\^\{\})?$/ {tag = $4; sub(/^v/, "", tag); if (tag !~ /\^\{\}$/) print tag}' |
+                      sort -ruV | head -n1)
+            ;;
+        ffmpeg)
+            version=$(git ls-remote --tags "https://git.ffmpeg.org/ffmpeg.git" |
+                      awk -F/ '/\/n?[0-9]+\.[0-9]+(\.[0-9]+)?(\^\{\})?$/ {tag = $3; sub(/^[v]/, "", tag); print tag}' |
+                      grep -v '\^{}' | sort -ruV | head -n1)
+            ;;
+        *)
+            version=$(git ls-remote --tags "$repo_url" |
+                      awk -F'/' '/\/v?[0-9]+\.[0-9]+(\.[0-9]+)?(-[0-9]+)?(\^\{\})?$/ {tag = $3; sub(/^v/, "", tag); print tag}' |
+                      grep -v '\^{}' | sort -ruV | head -n1)
+            [[ -z "$version" ]] && version=$(git ls-remote "$repo_url" | awk '/HEAD/ {print substr($1,1,7)}')
+            [[ -z "$version" ]] && version="unknown"
+            ;;
+    esac
 
     [[ -f "$packages/$repo_name.done" ]] && store_prior_version=$(cat "$packages/$repo_name.done")
 
@@ -350,85 +319,56 @@ git_clone() {
             target_directory="$download_path/$3"
         fi
         rm -fr "$target_directory" 2>/dev/null
-        # Clone the repository
         if ! git clone --depth 1 $recurse -q "$repo_url" "$target_directory"; then
-            echo
-            warn "Failed to clone \"$target_directory\". Second attempt in 10 seconds..."
-            echo
+            warn "Failed to clone \"$target_directory\". Second attempt in 3 seconds..."
             sleep 3
-            if ! git clone --depth 1 $recurse -q "$repo_url" "$target_directory"; then
-                fail "Failed to clone \"$target_directory\". Exiting script. Line: $LINENO"
-            fi
+            git clone --depth 1 $recurse -q "$repo_url" "$target_directory" || fail "Failed to clone \"$target_directory\". Exiting script. Line: $LINENO"
         fi
         cd "$target_directory" || fail "Failed to cd into \"$target_directory\". Line: $LINENO"
     fi
 
     echo "Cloning completed: $version"
-    return 0
 }
 
-# Parse each git repoitory to find the latest release version number for each program
 gnu_repo() {
-    local url="$1"
-    version=$(curl -fsS "$url" |
-              grep -oP '[a-z]+-\K(([0-9\.]*[0-9]+)){2,}' |
-              sort -ruV | head -n1)
+    version=$(curl -fsS "$1" | grep -oP '[a-z]+-\K(([0-9.]*[0-9]+)){2,}' | sort -ruV | head -n1)
 }
 
 github_repo() {
-    local repo="$1"
-    local url="$2"
-    local url_flag="$3"
-    local count=1
-    local max_attempts=10
-    repo_version=""
+    local count max_attempts repot url url_flag
+    repo="$1"
+    url="$2"
+    url_flag="$3"
+    count=1
+    max_attempts=10
 
-    if [[ -z "$repo" ]] || [[ -z "$url" ]]; then
-        error "Git repository and URL are required."
-    fi
+    [[ -z "$repo" || -z "$url" ]] && fail "Git repository and URL are required. Line: $LINENO"
 
-    while [ $count -le $max_attempts ]; do
+    while [[ $count -le $max_attempts ]]; do
         if [[ "$url_flag" -eq 1 ]]; then
-            curl_cmd=$(curl -fsSL "https://github.com/xiph/rav1e/tags/" |
-                       grep -Eo 'p[0-9]+\.tar\.gz' | sed s'/\.tar\.gz//g' | head -n1)
-            repo_version="$curl_cmd"
-            if [[ -n "$repo_version" ]]; then
-                return 0
-            else
-                continue
-            fi
+            repo_version=$(curl -fsSL "https://github.com/xiph/rav1e/tags/" |
+                           grep -oP 'p[0-9]+\.tar\.gz' | sed 's/\.tar\.gz//g' | head -n1)
+            [[ -n "$repo_version" ]] && return 0 || continue
         else
             curl_cmd=$(curl -fsSL "https://github.com/$repo/$url" | grep -o 'href="[^"]*\.tar\.gz"')
         fi
 
-        # Extract the specific line
-        line=$(echo "$curl_cmd" | grep -o 'href="[^"]*\.tar\.gz"' | sed -n "${count}p")
-
-        # Check if the line matches the pattern (version without 'RC'/'rc')
-        if echo "$line" | grep -qP '[v]*(\d+[\._]\d+(?:[\._]\d*){0,2})\.tar\.gz'; then
-            # Extract and print the version number
-            repo_version=$(echo "$line" | grep -oP '(\d+[\._]\d+(?:[\._]\d+){0,2})')
+        line=$(echo "$curl_cmd" | grep -oP 'href="[^"]*\.tar\.gz"' | sed -n "${count}p")
+        if echo "$line" | grep -qP 'v*(\d+[._]\d+(?:[._]\d*){0,2})\.tar\.gz'; then
+            repo_version=$(echo "$line" | grep -oP '(\d+[._]\d+(?:[._]\d+){0,2})')
             break
         else
-            # Increment the count if no match is found
             ((count++))
         fi
     done
 
-    # Deny installing a release candidate
-    while [[ "$repo_version" =~ $GIT_REGEX ]]; do
+    while [[ "$repo_version" =~ $git_regex ]]; do
         curl_cmd=$(curl -fsSL "https://github.com/$repo/$url" | grep -o 'href="[^"]*\.tar\.gz"')
-
-        # Extract the specific line
-        line=$(echo "$curl_cmd" | grep -o 'href="[^"]*\.tar\.gz"' | sed -n "${count}p")
-
-        # Check if the line matches the pattern (version without 'RC'/'rc')
-        if echo "$line" | grep -qP '[v]*(\d+[\._]\d+(?:[\._]\d*){0,2})\.tar\.gz'; then
-            # Extract and print the version number
-            repo_version=$(echo "$line" | grep -oP '(\d+[\._]\d+(?:[\._]\d+){0,2})')
+        line=$(echo "$curl_cmd" | grep -oP 'href="[^"]*\.tar\.gz"' | sed -n "${count}p")
+        if echo "$line" | grep -qP 'v*(\d+[._]\d+(?:[._]\d*){0,2})\.tar\.gz'; then
+            repo_version=$(echo "$line" | grep -oP '(\d+[._]\d+(?:[._]\d+){0,2})')
             break
         else
-            # Increment the count if no match is found
             ((count++))
         fi
     done
@@ -443,37 +383,20 @@ fetch_repo_version() {
     local commit_id_jq_filter="$6"
     local count=0
 
-    local api_url="$base_url/$project/$api_path"
+    response=$(curl -fsS "$base_url/$project/$api_path") || fail "Failed to fetch data from $base_url/$project/$api_path in the function \"fetch_repo_version\". Line: $LINENO"
 
-    if ! response=$(curl -fsS "$api_url"); then
-        fail "Failed to fetch data from $api_url in the function \"fetch_repo_version\". Line: $LINENO"
-    fi
+    version=$(echo "$response" | jq -r ".[$count]$version_jq_filter")
+    [[ "$base_url" != 536 ]] && while [[ "$version" =~ $git_regex ]]; do
+        version=$(echo "$response" | jq -r ".[$((++count))]$version_jq_filter")
+        [[ -z "$version" || "$version" == "null" ]] && fail "No suitable release version found in the function \"fetch_repo_version\". Line: $LINENO"
+    done
 
-    local version=""
-    local short_id=""
-    local commit_id=""
-    local version=$(echo "$response" | jq -r ".[$count]$version_jq_filter")
+    short_id=$(echo "$response" | jq -r ".[$count]$short_id_jq_filter")
+    commit_id=$(echo "$response" | jq -r ".[$count]$commit_id_jq_filter")
 
-    if [[ ! "$base_url" == 536 ]]; then
-        # Loop through responses to exclude any release candidates and return the first valid release version
-        while [[ "$version" =~ $GIT_REGEX ]]; do
-            version=$(echo "$response" | jq -r ".[$count]$version_jq_filter")
-            if [[ -z "$version" ]] || [[ "$version" == "null" ]]; then
-                fail "No suitable release version found in the function \"fetch_repo_version\". Line: $LINENO"
-            fi
-            ((count++))
-        done
-    fi
-
-    local short_id=$(echo "$response" | jq -r ".[$count]$short_id_jq_filter")
-    local commit_id=$(echo "$response" | jq -r ".[$count]$commit_id_jq_filter")
-
-    # Remove leading 'v' from version
     repo_version="${version#v}"
     repo_version_1="$commit_id"
     repo_short_version_1="$short_id"
-
-    return 0
 }
 
 find_git_repo() {
@@ -483,12 +406,8 @@ find_git_repo() {
     local url_flag="$4"
 
     case "$url_flag" in
-        enabled)
-            set_url_flag=1
-            ;;
-        *)
-            set_url_flag=0
-            ;;
+        enabled) set_url_flag=1 ;;
+        *) set_url_flag=0 ;;
     esac
 
     case "$url_action" in
@@ -513,7 +432,7 @@ find_git_repo() {
 execute() {
         echo "$ $*"
 
-        if [[ "$DEBUG" == "ON" ]]; then
+        if [[ "$debug" == "ON" ]]; then
             if ! output=$("$@"); then
                 notify-send -t 5000 "Failed to execute $*" 2>/dev/null
                 fail "Failed to execute $*"
@@ -592,7 +511,7 @@ find_cuda_json_file() {
 # PRINT THE SCRIPT OPTIONS
 usage() {
     echo
-    echo "Usage: $SCRIPT_NAME [options]"
+    echo "Usage: $script_name [options]"
     echo
     echo "Options:"
     echo "  -h, --help                       Display usage information"
@@ -604,7 +523,7 @@ usage() {
     echo "  -n, --enable-gpl-and-non-free    Enable GPL and non-free codecs - https://ffmpeg.org/legal.html"
     echo "  -v, --version                    Display the current script version"
     echo
-    echo "Example: bash $SCRIPT_NAME --build --compiler=clang -j 8"
+    echo "Example: bash $script_name --build --compiler=clang -j 8"
     echo
 }
 
@@ -622,7 +541,7 @@ while (("$#" > 0)); do
             ;;
         -v|--version)
             echo
-            log "The script version is: $SCRIPT_VERSION"
+            log "The script version is: $script_version"
             exit 0
             ;;
         -n|--enable-gpl-and-non-free)
@@ -640,7 +559,7 @@ while (("$#" > 0)); do
             LATEST="true"
             ;;
         --compiler=gcc|--compiler=clang)
-            compiler_flag="${1#*=}"
+            COMPILER_FLAG="${1#*=}"
             shift
             ;;
         -j|--jobs)
@@ -700,12 +619,14 @@ if [[ -n "$LDEXEFLAGS" ]]; then
 fi
 
 # Set the path variable
-if find /usr/local/ -maxdepth 1 -type l -name "cuda" >/dev/null | head -n1; then
-    cuda_bin_path=$(find /usr/local/ -maxdepth 1 -type l -name "cuda" >/dev/null | head -n1)
-    cuda_bin_path+="/bin"
-elif find /opt/ -maxdepth 1 -type l -name "cuda" >/dev/null | head -n1; then
-    cuda_bin_path=$(find /opt/ -maxdepth 1 -type l -name "cuda" >/dev/null | head -n1)
-    cuda_bin_path+="/bin"
+cuda_bin_path1=$(find /usr/local/ -maxdepth 1 -type l -name cuda | tee /dev/null | head -n1)
+cuda_bin_path2=$(find /opt/ -maxdepth 1 -type l -name cuda | tee /dev/null | head -n1)
+if [[ -n "$cuda_bin_path1" ]]; then
+    cuda_bin_path1+="/bin"
+    cuda_bin_path="$cuda_bin_path1"
+elif [[ -n "$cuda_bin_path2" ]]; then
+    cuda_bin_path2+="/bin"
+    cuda_bin_path="$cuda_bin_path2"
 else
     warn "Unable to set the variable \$cuda_bin_path. Line: $LINENO"
 fi
@@ -743,13 +664,15 @@ check_amd_gpu() {
 
 check_remote_cuda_version() {
     # Use curl to fetch the HTML content of the page
-    local html=$(curl -fsS "https://docs.nvidia.com/cuda/cuda-toolkit-release-notes/index.html")
+    local base_version cuda_regex html update_version
+
+    html=$(curl -fsS "https://docs.nvidia.com/cuda/cuda-toolkit-release-notes/index.html")
 
     # Parse the version directly from the fetched content
-    local cuda_regex='CUDA\ ([0-9]+\.[0-9]+)(\ Update\ ([0-9]+))?'
+    cuda_regex='CUDA\ ([0-9]+\.[0-9]+)(\ Update\ ([0-9]+))?'
     if [[ "$html" =~ $cuda_regex ]]; then
-        local base_version="${BASH_REMATCH[1]}"
-        local update_version="${BASH_REMATCH[3]}"
+        base_version="${BASH_REMATCH[1]}"
+        update_version="${BASH_REMATCH[3]}"
         remote_cuda_version="$base_version"
 
         # Append the update number if present
@@ -816,7 +739,7 @@ nvidia_architecture() {
 }
 
 cuda_download() {
-    local choice distro installer_path pin_file pkg_ext version
+    local choice distro installer_path pin_file pkg_ext version version_serial
     local cuda_version_number="$remote_cuda_version"
     local cuda_pin_url="https://developer.download.nvidia.com/compute/cuda/repos"
     local cuda_url="https://developer.download.nvidia.com/compute/cuda/$cuda_version_number"
@@ -839,59 +762,20 @@ cuda_download() {
     version_serial="12.4.1-550.54.15-1"
     select choice in "${options[@]}"; do
         case "$choice" in
-            "Debian 10")
-                distro="debian10"
-                version="10-12-4"
-                pkg_ext="deb"
-                installer_path="local_installers/cuda-repo-debian${version}-local_${version_serial}_amd64.deb"
-                ;;
-            "Debian 11")
-                distro="debian11"
-                version="11-12-4"
-                pkg_ext="deb"
-                installer_path="local_installers/cuda-repo-debian${version}-local_${version_serial}_amd64.deb"
-                ;;
-            "Debian 12")
-                distro="debian12"
-                version="12-12-4"
-                pkg_ext="deb"
-                installer_path="local_installers/cuda-repo-debian${version}-local_${version_serial}_amd64.deb"
-                ;;
-            "Ubuntu 20.04")
-                distro="ubuntu2004"
-                version="12-4"
-                pkg_ext="pin"
-                pin_file="$distro/x86_64/cuda-ubuntu2004.pin"
-                installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_serial}_amd64.deb"
-                ;;
-            "Ubuntu 22.04")
-                distro="ubuntu2204"
-                version="12-4"
-                pkg_ext="pin"
-                pin_file="$distro/x86_64/cuda-ubuntu2204.pin"
-                installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_serial}_amd64.deb"
-                ;;
-            "Ubuntu WSL")
-                distro="wsl-ubuntu"
-                version="12-4"
-                version_ext="12.4.1-1"
-                pkg_ext="pin"
-                pin_file="$distro/x86_64/cuda-wsl-ubuntu.pin"
-                installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_ext}_amd64.deb"
-                ;;
+            "Debian 10") distro="debian10"; version="10-12-4"; pkg_ext="deb"; installer_path="local_installers/cuda-repo-debian${version}-local_${version_serial}_amd64.deb" ;;
+            "Debian 11") distro="debian11"; version="11-12-4"; pkg_ext="deb"; installer_path="local_installers/cuda-repo-debian${version}-local_${version_serial}_amd64.deb" ;;
+            "Debian 12") distro="debian12"; version="12-12-4"; pkg_ext="deb"; installer_path="local_installers/cuda-repo-debian${version}-local_${version_serial}_amd64.deb" ;;
+            "Ubuntu 20.04") distro="ubuntu2004"; version="12-4"; pkg_ext="pin"; pin_file="$distro/x86_64/cuda-ubuntu2004.pin"; installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_serial}_amd64.deb" ;;
+            "Ubuntu 22.04") distro="ubuntu2204"; version="12-4"; pkg_ext="pin"; pin_file="$distro/x86_64/cuda-ubuntu2204.pin"; installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_serial}_amd64.deb" ;;
+            "Ubuntu WSL") distro="wsl-ubuntu"; version="12-4"; version_ext="12.4.1-1"; pkg_ext="pin"; pin_file="$distro/x86_64/cuda-wsl-ubuntu.pin"; installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_ext}_amd64.deb" ;;
             "Arch Linux")
                 git clone -q "https://gitlab.archlinux.org/archlinux/packaging/packages/cuda.git" || fail "Failed to clone Arch Linux CUDA repository"
                 cd cuda || fail "Unable to cd into the Arch Linux cuda directory"
                 makepkg -sif -C --needed --noconfirm || fail "The command makepkg failed to execute"
                 return
                 ;;
-            "Exit")
-                return
-                ;;
-            *)
-                echo "Invalid choice. Please try again."
-                continue
-                ;;
+            "Exit") return ;;
+            *) echo "Invalid choice. Please try again."; continue ;;
         esac
         break
     done
@@ -918,114 +802,64 @@ cuda_download() {
         cp -f /var/cuda-repo-${distro}-12-4-local/cuda-*-keyring.gpg "/usr/share/keyrings/"
     fi
 
-    apt-get update
-    apt-get install cuda-toolkit-12-4
+    apt update
+    apt install -y cuda-toolkit-12-4
 }
 
 # Function to detect the environment and check for an NVIDIA GPU
 check_nvidia_gpu() {
-    # Check for NVIDIA GPU in native Linux
+    local path_exists=0 found=0 gpu_info=""
     if ! grep -qi microsoft /proc/version; then
-        if lspci | grep -i nvidia >/dev/null; then
-            is_nvidia_gpu_present="NVIDIA GPU detected"
-        else
-            is_nvidia_gpu_present="NVIDIA GPU not detected"
-        fi
+        lspci | grep -qi nvidia && is_nvidia_gpu_present="NVIDIA GPU detected" || is_nvidia_gpu_present="NVIDIA GPU not detected"
     else
-        # WSL environment: Define base directories
-        local c_drive_paths=("/mnt/c" "/c")
-        local path_exists=0
-        local found=0
-        local gpu_info=""
-
-        for dir in "${c_drive_paths[@]}"; do
-            if [[ -d "$dir/Windows/System32" ]]; then
-                path_exists=1
-                if [[ -f "$dir/Windows/System32/cmd.exe" ]]; then
-                    # Attempt to suppress unnecessary messages by redirecting stderr to null
-                    gpu_info=$("$dir/Windows/System32/cmd.exe" /d /c "wmic path win32_VideoController get name | findstr /i nvidia" 2>/dev/null)
-
-                    if [[ -n "$gpu_info" ]]; then
-                        found=1
-                        is_nvidia_gpu_present="NVIDIA GPU detected"
-                        break
-                    fi
-                fi
-            fi
+        for dir in "/mnt/c" "/c"; do
+            [[ -d "$dir/Windows/System32" ]] && { path_exists=1; [[ -f "$dir/Windows/System32/cmd.exe" ]] && { gpu_info=$("$dir/Windows/System32/cmd.exe" /d /c "wmic path win32_VideoController get name | findstr /i nvidia" 2>/dev/null); [[ -n "$gpu_info" ]] && { found=1; is_nvidia_gpu_present="NVIDIA GPU detected"; break; }; }; }
         done
-
-        if [[ "$path_exists" -eq 0 ]]; then
-            is_nvidia_gpu_present="C drive paths '/mnt/c/' and '/c/' do not exist."
-        elif [[ "$found" -eq 0 ]]; then
-            is_nvidia_gpu_present="NVIDIA GPU not detected"
-        fi
+        [[ "$path_exists" -eq 0 ]] && is_nvidia_gpu_present="C drive paths '/mnt/c/' and '/c/' do not exist." || [[ "$found" -eq 0 ]] && is_nvidia_gpu_present="NVIDIA GPU not detected"
     fi
 }
 
 get_local_cuda_version() {
-    if [[ -f /usr/local/cuda/version.json ]]; then
-        echo "$(cat /usr/local/cuda/version.json | jq -r '.cuda.version')"
-    fi
+    [[ -f /usr/local/cuda/version.json ]] && jq -r '.cuda.version' < /usr/local/cuda/version.json
 }
 
 # Required Geforce CUDA development packages
 install_cuda() {
     local choice
-
     log "Checking GPU Status"
     echo "========================================================"
     amd_gpu_test=$(check_amd_gpu)
     check_nvidia_gpu
 
-    if [[ -n "$amd_gpu_test" ]] && [[ "$is_nvidia_gpu_present" == "NVIDIA GPU not detected" ]]; then
+    if [[ -n "$amd_gpu_test" && "$is_nvidia_gpu_present" == "NVIDIA GPU not detected" ]]; then
         return 0
-    fi
-
-    if [[ "$is_nvidia_gpu_present" == "NVIDIA GPU detected" ]]; then
+    elif [[ "$is_nvidia_gpu_present" == "NVIDIA GPU detected" ]]; then
         log "Nvidia GPU detected"
         log "Determining if CUDA is installed..."
         check_remote_cuda_version
         local_cuda_version=$(get_local_cuda_version)
 
         if [[ -z "$local_cuda_version" ]]; then
-            echo
             echo "The latest CUDA version available is: $remote_cuda_version"
             echo "CUDA is not currently installed."
             echo
             read -p "Do you want to install the latest CUDA version? (yes/no): " choice
-            case "$choice" in
-                [yY]*|[yY][eE][sS]*)
-                    cuda_download
-                    ;;
-                *)  return 0
-                    ;;
-            esac
+            [[ "$choice" =~ ^(yes|y)$ ]] && cuda_download
         elif [[ "$local_cuda_version" == "$remote_cuda_version" ]]; then
             log "CUDA is already installed and up to date."
             return 0
         else
-            echo
             echo "The installed CUDA version is: $local_cuda_version"
             echo "The latest CUDA version available is: $remote_cuda_version"
-            echo
             read -p "Do you want to update/reinstall CUDA to the latest version? (yes/no): " choice
-            case "$choice" in
-                [yY]*|[yY][eE][sS]*)
-                    cuda_download
-                    ;;
-                [nN]*|[nN][oO]*|"")
-                    return 0
-                    ;;
-            esac
+            [[ "$choice" =~ ^(yes|y)$ ]] && cuda_download || return 0
         fi
 
         [[ "$OS" == "Arch" ]] && cuda_path=$(find /opt/cuda/ -type f -name "nvcc")
-
-        export PATH="$PATH:$cuda_path"
+        PATH+="$cuda_path:"
     else
         gpu_flag=1
     fi
-
     return 0
 }
 
@@ -1040,6 +874,7 @@ apt_pkgs() {
     }
 
     # Use the function to find the latest versions of specific packages
+    nvidia_driver=$(find_latest_pkg_version 'nvidia-driver-[0-9]+$' 'nvidia-driver-[0-9]+$')
     nvidia_utils=$(find_latest_pkg_version 'nvidia-utils-[0-9]+$' 'nvidia-utils-[0-9]+$')
     openjdk_pkg=$(find_latest_pkg_version '^openjdk-[0-9]+-jdk$' '^openjdk-[0-9]+-jdk')
     libcpp_pkg=$(find_latest_pkg_version 'libc++*' 'libc\+\+-[0-9\-]+-dev')
@@ -1049,29 +884,26 @@ apt_pkgs() {
 
     # Define an array of apt package names
     pkgs=(
-        $1 $libcppabi_pkg $libcpp_pkg $libunwind_pkg $nvidia_utils $openjdk_pkg $gcc_plugin_pkg ant apt asciidoc autoconf
-        autoconf-archive automake autopoint binutils bison build-essential cargo cargo-c ccache checkinstall clang cmake
-        curl doxygen fcitx-libs-dev flex flite1-dev frei0r-plugins-dev gawk gcc gettext gimp-data git gnome-desktop-testing
+        $1 $libcppabi_pkg $libcpp_pkg $libunwind_pkg $nvidia_driver $nvidia_utils $openjdk_pkg $gcc_plugin_pkg
+        asciidoc autoconf autoconf-archive automake autopoint binutils bison build-essential cargo cargo-c ccache
+        checkinstall curl doxygen fcitx-libs-dev flex flite1-dev gawk gcc gettext gimp-data git gnome-desktop-testing
         gnustep-gui-runtime google-perftools gperf gtk-doc-tools guile-3.0-dev help2man jq junit ladspa-sdk lib32stdc++6
         libamd2 libasound2-dev libass-dev libaudio-dev libavfilter-dev libbabl-0.1-0 libbluray-dev libbpf-dev libbs2b-dev
-        libbz2-dev libc6 libc6-dev libcaca-dev libcairo2-dev libcamd2 libccolamd2 libcdio-dev libcdio-paranoia-dev
-        libcdparanoia-dev libcholmod3 libchromaprint-dev libcjson-dev libcodec2-dev libcolamd2 libcrypto++-dev
-        libcurl4-openssl-dev libdav1d-dev libdbus-1-dev libde265-dev libdevil-dev libdmalloc-dev libdrm-dev libdvbpsi-dev
-        libebml-dev libegl1-mesa-dev libffi-dev libgbm-dev libgdbm-dev libgegl-0.4-0 libgegl-common libgimp2.0 libgl1-mesa-dev
-        libgles2-mesa-dev libglib2.0-dev libgme-dev libgmock-dev libgnutls28-dev libgnutls30 libgoogle-perftools-dev
-        libgoogle-perftools4 libgsm1-dev libgtest-dev libgvc6 libibus-1.0-dev libiconv-hook-dev libintl-perl libjack-dev
-        libjemalloc-dev libjxl-dev libladspa-ocaml-dev libldap2-dev libleptonica-dev liblilv-dev liblz-dev liblzma-dev
-        liblzo2-dev libmathic-dev libmatroska-dev libmbedtls-dev libmetis5 libmfx-dev libmodplug-dev libmp3lame-dev
-        libmusicbrainz5-dev libmysofa-dev libnuma-dev libopencore-amrnb-dev libopencore-amrwb-dev libopencv-dev libopenmpt-dev
-        libopus-dev libpango1.0-dev libperl-dev libplacebo-dev libpocketsphinx-dev libpsl-dev libpstoedit-dev libpulse-dev
-        librabbitmq-dev libraqm-dev libraw-dev librsvg2-dev librtmp-dev librubberband-dev librust-gstreamer-base-sys-dev libserd-dev
-        libshine-dev libsmbclient-dev libsnappy-dev libsndio-dev libsord-dev libsoxr-dev libspeex-dev libsphinxbase-dev
-        libsqlite3-dev libsratom-dev libssh-dev libssl-dev libsuitesparseconfig5 libsystemd-dev libtalloc-dev libtesseract-dev
-        libtheora-dev libticonv-dev libtool libtool-bin libtwolame-dev libudev-dev libumfpack5 libv4l-dev libva-dev libvdpau-dev
-        libvidstab-dev libvlccore-dev libvo-amrwbenc-dev libvpx-dev libx11-dev libxcursor-dev libxext-dev libxfixes-dev
-        libxi-dev libxkbcommon-dev libxrandr-dev libxss-dev libxvidcore-dev libzimg-dev libzmq3-dev libzstd-dev libzvbi-dev
-        libzzip-dev llvm lsb-release lshw lzma-dev m4 mesa-utils meson nasm ninja-build pandoc python3 python3-pip python3-venv
-        ragel re2c scons texi2html texinfo tk-dev unzip valgrind wget xmlto libsctp-dev
+        libbz2-dev libc6 libc6-dev libcaca-dev libcairo2-dev libcdio-dev libcdio-paranoia-dev libcdparanoia-dev libchromaprint-dev
+        libcjson-dev libcodec2-dev libcrypto++-dev libcurl4-openssl-dev libdav1d-dev libdbus-1-dev libde265-dev libdevil-dev
+        libdmalloc-dev libdrm-dev libdvbpsi-dev libebml-dev libegl1-mesa-dev libffi-dev libgbm-dev libgdbm-dev libgegl-0.4-0
+        libgegl-common libgimp2.0 libgl1-mesa-dev libgles2-mesa-dev libglib2.0-dev libgme-dev libgmock-dev libgnutls28-dev
+        libgnutls30 libgoogle-perftools-dev libgoogle-perftools4 libgsm1-dev libgtest-dev libgvc6 libibus-1.0-dev libintl-perl
+        libjxl-dev libladspa-ocaml-dev libldap2-dev libleptonica-dev liblilv-dev liblz-dev liblzma-dev liblzo2-dev libmp3lame-dev
+        libmathic-dev libmatroska-dev libmbedtls-dev libmetis5 libmfx-dev libmodplug-dev libmusicbrainz5-dev libnuma-dev
+        libpango1.0-dev libperl-dev libplacebo-dev libpocketsphinx-dev libportaudio-ocaml-dev libpsl-dev libpstoedit-dev
+        libpulse-dev librabbitmq-dev libraw-dev librsvg2-dev librtmp-dev librubberband-dev librust-gstreamer-base-sys-dev
+        libserd-dev libshine-dev libsmbclient-dev libsnappy-dev libsndfile1-dev libsndio-dev libsoxr-dev libspeex-dev
+        libsphinxbase-dev libsqlite3-dev libsratom-dev libssh-dev libssl-dev libsystemd-dev libtalloc-dev libtesseract-dev
+        libticonv-dev libtool libtwolame-dev libudev-dev libv4l-dev libva-dev libvdpau-dev libvidstab-dev libvlccore-dev
+        libvo-amrwbenc-dev libx11-dev libxcursor-dev libxext-dev libxfixes-dev libxi-dev libxkbcommon-dev libxrandr-dev
+        libxss-dev libxvidcore-dev libzmq3-dev libzvbi-dev libzzip-dev lsb-release lshw lzma-dev m4 mesa-utils pandoc
+        python3 python3-pip python3-venv ragel re2c scons texi2html texinfo tk-dev unzip valgrind wget xmlto libsctp-dev
     )
 
     [[ "$OS" == "Debian" ]] && pkgs+=("nvidia-smi")
@@ -1112,8 +944,9 @@ apt_pkgs() {
         log "Installing available missing packages:"
         printf "       %s\n" "${available_packages[@]}"
         echo
-        apt-get update
-        apt-get install "${available_packages[@]}"
+        apt update
+        apt install "${available_packages[@]}"
+        apt -y autoremove
         echo
     else
         log "No missing packages to install or all missing packages are unavailable."
@@ -1124,8 +957,8 @@ apt_pkgs() {
 fix_libstd_libs() {
     local libstdc_path=$(find /usr/lib/x86_64-linux-gnu/ -type f -name 'libstdc++.so.6.0.*' | sort -ruV | head -n1)
     if [[ ! -f "/usr/lib/x86_64-linux-gnu/libstdc++.so" ]] && [[ -f "$libstdc_path" ]]; then
-        echo "$ ln -sf $libstdc_path /usr/lib/x86_64-linux-gnu/libstdc++.so"
-        ln -sf "$libstdc_path" "/usr/lib/x86_64-linux-gnu/libstdc++.so"
+
+        exec ln -sf "$libstdc_path" "/usr/lib/x86_64-linux-gnu/libstdc++.so"
     fi
 }
 
@@ -1189,7 +1022,7 @@ find_latest_nasm_version() {
                            head -n1)
 
     if [[ -z "$latest_version" ]]; then
-        error "Failed to find the latest NASM version."
+        fail "Failed to find the latest NASM version."
     fi
 
     # Print the version and download link without additional messages
@@ -1314,20 +1147,39 @@ ubuntu_os_version() {
         ubuntu_wsl_pkgs="$3"
     fi
 
-    ubuntu_common_pkgs="cppcheck libamd2 libcamd2 libccolamd2 libcholmod3 libcolamd2 libsuitesparseconfig5 libumfpack5"
+    ubuntu_common_pkgs="cppcheck libamd2"
     focal_pkgs="libcunit1 libcunit1-dev libcunit1-doc libdmalloc5 libhwy-dev libreadline-dev librust-jemalloc-sys-dev librust-malloc-buf-dev"
-    focal_pkgs+=" libsrt-doc libsrt-gnutls-dev libvmmalloc-dev libvmmalloc1 libyuv-dev nvidia-utils-535"
+    focal_pkgs+=" libsrt-doc libsrt-gnutls-dev libvmmalloc-dev libvmmalloc1 libyuv-dev nvidia-utils-535 libcamd2 libccolamd2 libcholmod3"
+    focal_pkgs+=" libcolamd2 libsuitesparseconfig5 libumfpack5"
     jammy_pkgs="libacl1-dev libdecor-0-dev liblz4-dev libmimalloc-dev libpipewire-0.3-dev libpsl-dev libreadline-dev librust-jemalloc-sys-dev"
     jammy_pkgs+=" librust-malloc-buf-dev libsrt-doc libsvtav1-dev libsvtav1dec-dev libsvtav1enc-dev libtbbmalloc2 libwayland-dev libclang1-15"
+    jammy_pkgs+=" libcamd2 libccolamd2 libcholmod3 libcolamd2 libsuitesparseconfig5 libumfpack5"
     lunar_kenetic_pkgs="libhwy-dev libjxl-dev librist-dev libsrt-gnutls-dev libsvtav1-dev libsvtav1dec-dev libsvtav1enc-dev libyuv-dev"
-    mantic_pkgs="libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev libhwy-dev libsrt-gnutls-dev libyuv-dev"
+    lunar_kenetic_pkgs+=" libcamd2 libccolamd2 libcholmod3 libcolamd2 libsuitesparseconfig5 libumfpack5"
+    mantic_pkgs="libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev libhwy-dev libsrt-gnutls-dev libyuv-dev libcamd2 libccolamd2 libcholmod3"
+    mantic_pkgs+=" libsuitesparseconfig5 libumfpack5"
+    noble_pkgs="libcamd3 libccolamd3 libcholmod5 libcolamd3 libsuitesparseconfig7 libumfpack6"
     case "$VER" in
-        msft)        ubuntu_msft ;;
-        23.10)       apt_pkgs "$1 $mantic_pkgs $lunar_kenetic_pkgs $jammy_pkgs $focal_pkgs" ;;
-        23.04|22.10) apt_pkgs "$1 $ubuntu_common_pkgs $lunar_kenetic_pkgs $jammy_pkgs" ;;
-        22.04)       apt_pkgs "$1 $ubuntu_common_pkgs $jammy_pkgs" ;;
-        20.04)       apt_pkgs "$1 $ubuntu_common_pkgs $focal_pkgs" ;;
-        *)           fail "Could not detect the Ubuntu release version. Line: $LINENO" ;;
+        msft)
+            ubuntu_msft
+            ;;
+        24.04)
+        apt_pkgs "$1 $noble_pkgs"
+            ;;
+        23.10)
+            apt_pkgs "$1 $mantic_pkgs $lunar_kenetic_pkgs $jammy_pkgs $focal_pkgs"
+            ;;
+        23.04|22.10)
+            apt_pkgs "$1 $ubuntu_common_pkgs $lunar_kenetic_pkgs $jammy_pkgs"
+            ;;
+        22.04)
+            apt_pkgs "$1 $ubuntu_common_pkgs $jammy_pkgs"
+            ;;
+        20.04)
+            apt_pkgs "$1 $ubuntu_common_pkgs $focal_pkgs"
+            ;;
+        *)  fail "Could not detect the Ubuntu release version. Line: $LINENO"
+            ;;
     esac
 }
 
@@ -1349,11 +1201,11 @@ get_os_version() {
     fi
 
     nvidia_utils_version=$(apt list nvidia-utils-* 2>/dev/null |
-                           grep -Eo '^nvidia-utils-[0-9]{3}' |
+                           grep -oP '^nvidia-utils-[0-9]{3}' |
                            sort -ruV | uniq | head -n1)
 
     nvidia_encode_version=$(apt list libnvidia-encode* 2>&1 |
-                            grep -Eo 'libnvidia-encode-[0-9]{3}' |
+                            grep -oP 'libnvidia-encode-[0-9]{3}' |
                             sort -ruV | head -n1)
 }
 get_os_version
@@ -1392,10 +1244,10 @@ set_java_variables
 # Check if the cuda folder exists to determine installation status
 case "$OS" in
     Arch) iscuda=$(find /opt/cuda/ -type f -name nvcc 2>/dev/null)
-          cuda_path=$(find /opt/cuda/ -type f -name nvcc 2>/dev/null | grep -Eo '^.*/bin?')
+          cuda_path=$(find /opt/cuda/ -type f -name nvcc 2>/dev/null | grep -oP '^.*/bin?')
           ;;
     *)    iscuda=$(find /usr/local/cuda* -type f -name nvcc 2>/dev/null | sort -ruV | head -n1)
-          cuda_path=$(find /usr/local/cuda* -type f -name nvcc 2>/dev/null | sort -ruV | head -n1 | grep -Eo '^.*/bin?')
+          cuda_path=$(find /usr/local/cuda* -type f -name nvcc 2>/dev/null | sort -ruV | head -n1 | grep -oP '^.*/bin?')
           ;;
 esac
 
@@ -1412,7 +1264,7 @@ ldconfig
 echo
 box_out_banner_global() {
     input_char=$(echo "$@" | wc -c)
-    line=$(for i in $(seq 0 $input_char); do printf "-"; done)
+    line=$(for i in $(seq 0 "$input_char"); do printf "-"; done)
     tput bold
     line="$(tput setaf 3)$line"
     space="${line//-/ }"
@@ -1429,6 +1281,9 @@ box_out_banner_global "Installing Global Tools"
 if [[ "$gpu_flag" -eq 1 ]]; then
     printf "\n%s\n" "An AMD GPU was detected without a Nvidia GPU present."
 fi
+
+# Source the compiler flags
+source_compiler_flags
 
 if build "m4" "latest"; then
     download "https://ftp.gnu.org/gnu/m4/m4-latest.tar.xz"
@@ -1484,6 +1339,17 @@ if build "pkg-config" "$version"; then
     execute make install
     build_done "pkg-config" "$version"
 fi
+
+find_git_repo "facebook/zstd" "1" "T"
+if build "libzstd" "$repo_version"; then
+    download "https://github.com/facebook/zstd/archive/refs/tags/v$repo_version.tar.gz" "libzstd-$repo_version.tar.gz"
+    cd build/meson || exit 1
+    execute meson setup build --prefix="$workspace" --buildtype=release --default-library=both --strip -Dbin_tests=false
+    execute ninja "-j$threads" -C build
+    execute ninja -C build install
+    build_done "libzstd" "$repo_version"
+fi
+
 
 find_git_repo "mesonbuild/meson" "1" "T"
 if build "meson" "$repo_version"; then
@@ -1568,6 +1434,15 @@ else
         execute make install
         build_done "gnutls" "$version"
     fi
+fi
+
+find_git_repo "Kitware/CMake" "1" "T"
+if build "cmake" "$repo_version"; then
+    download "https://github.com/Kitware/CMake/archive/refs/tags/v$repo_version.tar.gz" "cmake-$repo_version.tar.gz"
+    execute ./bootstrap --prefix="$workspace" --parallel="$threads" --enable-ccache
+    execute make "-j$threads"
+    execute make install
+    build_done "cmake" "$repo_version"
 fi
 
 find_git_repo "yasm/yasm" "1" "T"
@@ -2083,9 +1958,8 @@ if build "$repo_name" "${version//\$ /}"; then
     execute autoheader -f -W all
     execute automake -a -c -f -W all,no-portability
     execute autoreconf -fi
-    execute ./configure --prefix="$workspace" \
-                        --enable-static \
-                        --with-cpu=x86-64
+    execute ./configure --prefix="$workspace" --with-cpu=x86-64 --with-pic --with-default-audio=pulse \
+                        --with-optimization=3 --with-module-suffix=".so"
     execute make "-j$threads"
     execute make install
     build_done "$repo_name" "$version"
@@ -2133,7 +2007,7 @@ fi
 echo
 box_out_banner_audio() {
     input_char=$(echo "$@" | wc -c)
-    line=$(for i in $(seq 0 $input_char); do printf "-"; done)
+    line=$(for i in $(seq 0 "$input_char"); do printf "-"; done)
     tput bold
     line="$(tput setaf 3)$line"
     space="${line//-/ }"
@@ -2193,6 +2067,15 @@ if build "$repo_name" "${version//\$ /}"; then
     build_done "$repo_name" "$version"
 fi
 CONFIGURE_OPTIONS+=("--enable-libpulse")
+
+if build "libopenmpt" "0.7.3"; then
+    download "https://launchpad.net/ubuntu/+archive/primary/+sourcefiles/libopenmpt/0.7.3-1.1build3/libopenmpt_0.7.3.orig.tar.xz" "libopenmpt-0.7.3.tar.xz"
+    execute autoreconf -fi
+    execute ./configure --prefix="$workspace" --with-pic --with-pulseaudio
+    execute make "-j$threads"
+    execute make install
+    build_done "libopenmpt" "0.7.3"
+fi
 
 find_git_repo "xiph/ogg" "1" "T"
 if build "libogg" "$repo_version"; then
@@ -2384,7 +2267,7 @@ CONFIGURE_OPTIONS+=("--enable-libtheora")
 echo
 box_out_banner_video() {
     input_char=$(echo "$@" | wc -c)
-    line=$(for i in $(seq 0 $input_char); do printf "-"; done)
+    line=$(for i in $(seq 0 "$input_char"); do printf "-"; done)
     tput bold
     line="$(tput setaf 3)$line"
     space="${line//-/ }"
@@ -2438,6 +2321,19 @@ if [[ "$VER" != "18.04" ]] && [[ "$VER" != "11" ]]; then
     fi
     CONFIGURE_OPTIONS+=("--enable-librav1e")
 fi
+
+git_caller "https://github.com/sekrit-twc/zimg.git" "zimg-git"
+if build "$repo_name" "${version//\$ /}"; then
+    echo "Cloning \"$repo_name\" saving version \"$version\""
+    git_clone "$git_url" "zimg-git"
+    execute ./autogen.sh
+    execute git submodule update --init --recursive
+    execute ./configure --prefix="$workspace" --with-pic
+    execute make "-j$threads"
+    execute make install
+    build_done "$repo_name" "$version"
+fi
+CONFIGURE_OPTIONS+=("--enable-libzimg")
 
 find_git_repo "AOMediaCodec/libavif" "1" "T"
 if build "avif" "$repo_version"; then
@@ -2517,8 +2413,8 @@ if [[ ! "$OS" == "Ubuntu" ]]; then
         execute make install
         build_done "libbluray" "$repo_version"
     fi
-    CONFIGURE_OPTIONS+=("--enable-libbluray")
 fi
+CONFIGURE_OPTIONS+=("--enable-libbluray")
 
 find_git_repo "mediaarea/zenLib" "1" "T"
 if build "zenlib" "$repo_version"; then
@@ -2609,7 +2505,7 @@ else
                             --sdl-cfg="$workspace/include/SDL3"
         execute make "-j$threads"
         execute make install
-        execute cp -f bin/gcc/MP4Box /usr/local/
+        execute cp -f bin/gcc/MP4Box /usr/local/bin
         build_done "$repo_name" "$version"
     fi
 fi
@@ -2661,7 +2557,7 @@ if "$NONFREE_AND_GPL"; then
     CONFIGURE_OPTIONS+=("--enable-libx264")
 fi
 
-version="a845f6ee6a609036785806093816da574dd29ad1"
+version="dd1ef69b25ec26cc80be0fc8d9afeeef6563762b"
 version_trim="${version::7}"
 if "$NONFREE_AND_GPL"; then
     if build "x265" "$version_trim"; then
@@ -2886,7 +2782,7 @@ fi
 echo
 box_out_banner_images() {
     input_char=$(echo "$@" | wc -c)
-    line=$(for i in $(seq 0 $input_char); do printf "-"; done)
+    line=$(for i in $(seq 0 "$input_char"); do printf "-"; done)
     tput bold
     line="$(tput setaf 3)$line"
     space="${line//-/ }"
@@ -2968,7 +2864,7 @@ CONFIGURE_OPTIONS+=("--enable-libopenjpeg")
 echo
 box_out_banner_ffmpeg() {
     input_char=$(echo "$@" | wc -c)
-    line=$(for i in $(seq 0 $input_char); do printf "-"; done)
+    line=$(for i in $(seq 0 "$input_char"); do printf "-"; done)
     tput bold
     line="$(tput setaf 3)$line"
     space="${line//-/ }"
@@ -3057,15 +2953,18 @@ if build "ffmpeg" "n6.1.1"; then
                  --enable-libzvbi \
                  --enable-lto \
                  --enable-opengl \
+                 --enable-libopenmpt \
                  --enable-pic \
                  --enable-pthreads \
                  --enable-small \
+                 --enable-libssh \
                  --enable-static \
+                 --enable-libtesseract \
                  --enable-version3 \
-                 --extra-cflags="$CFLAGS" \
-                 --extra-cxxflags="$CXXFLAGS" \
+                 --enable-libzimg \
+                 --extra-cflags="$CFLAGS -flto" \
+                 --extra-cxxflags="$CXXFLAGS -flto" \
                  --extra-libs="$EXTRALIBS" \
-                 --extra-ldflags="-pie" \
                  --pkg-config-flags="--static" \
                  --pkg-config="$workspace/bin/pkg-config" \
                  --pkgconfigdir="$workspace/lib/pkgconfig" \
@@ -3079,7 +2978,7 @@ fi
 ldconfig
 
 # Display the version of each of the programs
-prompt_show_versions
+show_versions
 
 # Prompt the user to clean up the build files
 cleanup
