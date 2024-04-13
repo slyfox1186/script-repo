@@ -27,7 +27,7 @@ log() {
 
 # Install required software using pacman
 log "Installing required packages..." "info"
-PACKAGES="gnome gdm nano lightdm gnome-terminal gnome-text-editor gnome-tweaks gedit gedit-plugins git nvidia pulseaudio pulseaudio-alsa sudo xorg xorg-xinit xorg-server"
+PACKAGES="gdm gedit gedit-plugins git gnome gnome-terminal gnome-text-editor gnome-tweaks nvidia pulseaudio pulseaudio-alsa sudo xorg xorg-server xorg-xinit"
 echo
 echo "The default packages set to be installed: $PACKAGES"
 echo
@@ -70,6 +70,7 @@ enable_nvidia_tweaks() {
     echo "options nvidia_drm modeset=1" | sudo tee "/etc/modprobe.d/nvidia-xorg-enable-drm.conf" >/dev/null
 
     # Enable Nvidia Driver update pacman hook using sudo tee with a here-doc
+    [[ ! -d "/etc/pacman.d/hooks/" ]] && mkdir -p "/etc/pacman.d/hooks/"
     sudo tee "/etc/pacman.d/hooks/nvidia.hook" >/dev/null <<'EOF'
 [Trigger]
 Operation=Install
