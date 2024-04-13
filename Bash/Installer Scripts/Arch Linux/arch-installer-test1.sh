@@ -36,7 +36,7 @@ help() {
     echo "  -r ROOT_PASSWORD  Set the root password"
     echo "  -c COMPUTER_NAME  Set the computer name"
     echo "  -t TIMEZONE       Set the timezone (default: US/Eastern)"
-    echo "  -d DISK           Set the target disk (e.g., /dev/sda or /dev/nvme0n1)"
+    echo "  -d DISK           Set the target disk (e.g., /dev/sdX or /dev/nvmeXn1)"
     echo "  -h                Display this help message"
     echo
     echo "Examples:"
@@ -101,16 +101,16 @@ setup_disk() {
 
     # Set partition 1 as GPT and EFI
     echo "Partition 1 will be set as GPT and EFI."
-    read -p "Enter partition 1 size (e.g., +550M): " PARTITION1_SIZE
+    read -p "Enter partition 1 SIZE (e.g., +550M): " PARTITION1_SIZE
 
-    # Set partition 2 as swap and prompt for size
+    # Set partition 2 as swap and prompt for SIZE
     echo "Partition 2 will be set as swap."
-    read -p "Enter partition 2 size (e.g., +2G): " PARTITION2_SIZE
+    read -p "Enter partition 2 SIZE (e.g., +2G): " PARTITION2_SIZE
 
     # Prompt for sizes and types of remaining partitions
     for ((i=3; i<PARTITION_COUNT; i++)); do
-        read -p "Enter size for partition $i: " size
-        PARTITION_SIZES+=("$size")
+        read -p "Enter SIZE for partition $i: " SIZE
+        PARTITION_SIZES+=("$SIZE")
 
         echo "Available partition types:"
         echo
@@ -176,8 +176,8 @@ setup_disk() {
         
         local start=$(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
         for ((i=0; i<${#PARTITION_SIZES[@]}; i++)); do
-            local size=$(echo "$(echo "${PARTITION_SIZES[i]}" | sed 's/[^0-9]*//g') * 1024" | bc)
-            local end=$((start + size))
+            local SIZE=$(echo "$(echo "${PARTITION_SIZES[i]}" | sed 's/[^0-9]*//g') * 1024" | bc)
+            local end=$((start + SIZE))
             parted -s "$DISK" mkpart primary $start $end
             parted -s "$DISK" set $((i+3)) ${PARTITION_TYPES[i]}
             start=$end
@@ -193,8 +193,8 @@ setup_disk() {
         
         local start=$(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
         for ((i=0; i<${#PARTITION_SIZES[@]}; i++)); do
-            local size=$(echo "$(echo "${PARTITION_SIZES[i]}" | sed 's/[^0-9]*//g') * 1024" | bc)
-            local end=$((start + size))
+            local SIZE=$(echo "$(echo "${PARTITION_SIZES[i]}" | sed 's/[^0-9]*//g') * 1024" | bc)
+            local end=$((start + SIZE))
             parted -s "$DISK" mkpart primary $start $end
             parted -s "$DISK" set $((i+3)) ${PARTITION_TYPES[i]}
             start=$end
@@ -253,7 +253,7 @@ prompt_loadkeys() {
 
 # Package installation
 install_packages() {
-    local PACKAGES="base dhcpcd efibootmgr grub linux linux-headers linux-firmware nano networkmanager nvidia sudo" # Package list
+    local PACKAGES="base efibootmgr grub linux linux-headers linux-firmware nano networkmanager reflector sudo" # Package list
     echo
     log "Installing essential packages..."
     echo "Current package list: $PACKAGES"
@@ -352,6 +352,7 @@ prompt_umount() {
 # Prompt for reboot
 prompt_reboot() {
     local choice
+    echo
     while true; do
         read -p "Installation complete. Do you want to reboot now? (y/n): " choice
         case "$choice" in
