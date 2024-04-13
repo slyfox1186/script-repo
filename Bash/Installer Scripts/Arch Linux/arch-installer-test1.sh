@@ -90,52 +90,30 @@ fi
 
 # Disk setup
 setup_disk() {
-    echo "Setting up disk with GPT partition table..."
-    parted -s "$DISK" mklabel gpt
+    local disk_parts=("$DISK1" "$DISK2" "$DISK3")
+    
+    # Prompt for partition count
+    read -p "Enter the number of partitions (minimum 3): " PARTITION_COUNT
+    while [[ "$PARTITION_COUNT" -lt 3 ]]; do
+        echo "The minimum number of partitions is 3."
+        read -p "Enter the number of partitions (minimum 3): " PARTITION_COUNT
+    done
 
-    # Function to convert GB to MB and strip non-numeric characters
-    convert_size() {
-        local input_size="$1"
-        local numeric_size="${input_size//[!0-9.]/}"
-        if [[ "$input_size" =~ G|g ]]; then
-            numeric_size=$(echo "$numeric_size * 1024" | bc | awk '{print int($1+0.5)}')
-        elif [[ "$input_size" =~ M|m ]]; then
-            numeric_size=$(echo "$numeric_size" | awk '{print int($1+0.5)}')
-        fi
-        echo "$numeric_size"
-    }
+    # Set partition 1 as GPT and EFI
+    echo "Partition 1 will be set as GPT and EFI."
+    read -p "Enter partition 1 SIZE (e.g., +550M): " PARTITION1_SIZE
 
-    local start=1
-    local end=0
-    local size=0
-    local disk_parts=()
+    # Set partition 2 as swap and prompt for SIZE
+    echo "Partition 2 will be set as swap."
+    read -p "Enter partition 2 SIZE (e.g., +2G): " PARTITION2_SIZE
 
-    # Prompt and create EFI System partition
-    local input_size
-    read -p "Enter SIZE for EFI System partition (e.g., 500M or 1G): " input_size
-    size=$(convert_size "$input_size")
-    end=$(($start + size))
-    parted -s "$DISK" mkpart primary fat32 "${start}MiB" "${end}MiB"
-    parted -s "$DISK" set 1 esp on
-    disk_parts+=("${DISK}1")
-    start=$end
-
-    # Prompt and create SWAP partition
-    read -p "Enter SIZE for SWAP partition (e.g., 2G or 2000M): " input_size
-    size=$(convert_size "$input_size")
-    end=$(($start + size))
-    parted -s "$DISK" mkpart primary linux-swap "${start}MiB" "${end}MiB"
-    disk_parts+=("${DISK}2")
-    start=$end
-
-    # Handle additional partitions dynamically based on user input
-    local i=3
-    for (( ; i <= PARTITION_COUNT; i++ )); do
-        read -p "Enter SIZE for partition $i (e.g., 500M or 2G): " input_size
-        size=$(convert_size "$input_size")
-        end=$(($start + size))
+    # Prompt for sizes and types of remaining partitions
+    for ((i=3; i<PARTITION_COUNT; i++)); do
+        read -p "Enter SIZE for partition $i: " SIZE
+        PARTITION_SIZES+=("$SIZE")
 
         echo "Available partition types:"
+        echo
         echo "1 EFI System"
         echo "2 MBR Partition Scheme"
         echo "3 Intel Fast Flash"
@@ -179,41 +157,60 @@ setup_disk() {
         echo "98 Linux Swap"
         echo "99 Linux LVM"
         read -p "Enter the partition type number for partition $i: " type
-        
-        parted -s "$DISK" mkpart primary ext4 "${start}MiB" "${end}MiB"
-        disk_parts+=("${DISK}${i}")
-        start=$end
+        PARTITION_TYPES+=("$type")
     done
 
-    # Creating filesystems
+    # Set the last partition as root (x86-64)
+    echo "The last partition will be set as Linux x86-64 root and use the remaining disk space."
+    PARTITION_TYPES+=("23")
+
+    # Partition the disk
+    echo
+    log "Partitioning disk $DISK..."
+    parted -s "$DISK" mklabel gpt
+
+    if [[ "$DISK" == *"nvme"* ]]; then
+        parted -s "$DISK" mkpart primary fat32 1 $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g')
+        parted -s "$DISK" set 1 esp on
+        parted -s "$DISK" mkpart primary linux-swap $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g') $(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
+        
+        local start=$(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
+        for ((i=0; i<${#PARTITION_SIZES[@]}-1; i++)); do
+            local SIZE=$(echo "$(echo "${PARTITION_SIZES[i]}" | sed 's/[^0-9]*//g') * 1024" | bc)
+            local end=$((start + SIZE))
+            parted -s "$DISK" mkpart primary $start $end
+            parted -s "$DISK" set $((i+3)) ${PARTITION_TYPES[i]}
+            start=$end
+        done
+        
+        # Create the final partition with the remaining space
+        parted -s "$DISK" mkpart primary $start 100%
+        parted -s "$DISK" set $((${#PARTITION_SIZES[@]} + 3)) ${PARTITION_TYPES[-1]}
+    else
+        parted -s "$DISK" mkpart primary fat32 1 $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g')
+        parted -s "$DISK" set 1 esp on
+        parted -s "$DISK" mkpart primary linux-swap $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g') $(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
+        
+        local start=$(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
+        for ((i=0; i<${#PARTITION_SIZES[@]}-1; i++)); do
+            local SIZE=$(echo "$(echo "${PARTITION_SIZES[i]}" | sed 's/[^0-9]*//g') * 1024" | bc)
+            local end=$((start + SIZE))
+            parted -s "$DISK" mkpart primary $start $end
+            parted -s "$DISK" set $((i+3)) ${PARTITION_TYPES[i]}
+            start=$end
+        done
+        
+        # Create the final partition with the remaining space
+        parted -s "$DISK" mkpart primary $start 100%
+        parted -s "$DISK" set $((${#PARTITION_SIZES[@]} + 3)) ${PARTITION_TYPES[-1]}
+    fi
+
+    # Make filesystems
     echo
     log "Creating filesystems..."
-    mkfs.fat -F32 ${disk_parts[0]}   # EFI partition
-    mkswap ${disk_parts[1]}         # SWAP partition
-    mkfs.ext4 ${disk_parts[-1]}     # Last partition, assumed to be Linux root
-
-    echo "Partitions created and formatted successfully."
-}
-
-# Partition mounting
-mount_partitions() {
-    log "Enabling swap and mounting partitions..."
-    swapon "$DISK2"
-    
-    if [[ "$PARTITION_COUNT" -ne 3 ]]; then
-        echo "$PARTITION_COUNT"
-        echo
-        read -p "Press enter to exit."
-        exit
-    fi
-    
-    if [[ "$DISK" == *"nvme"* ]]; then
-        mount "${DISK}p${PARTITION_COUNT}" /mnt
-        mount --mkdir "${DISK}p1" /mnt/boot/efi
-    else
-        mount "${DISK}${PARTITION_COUNT}" /mnt
-        mount --mkdir "${DISK}1" /mnt/boot/efi
-    fi
+    mkfs.fat -F32 ${disk_parts[0]}
+    mkswap ${disk_parts[1]}
+    mkfs.ext4 ${disk_parts[-1]}
 }
 
 # Prompt for loadkeys
