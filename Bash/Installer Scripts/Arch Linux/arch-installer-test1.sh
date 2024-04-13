@@ -212,6 +212,22 @@ setup_disk() {
     mkfs.ext4 ${disk_parts[-1]}
 }
 
+# Partition mounting
+mount_partitions() {
+    log "Enabling swap and mounting partitions..."
+    swapon "$DISK2"
+    
+    if [[ "$DISK" == *"nvme"* ]]; then
+        mount "${DISK}p${PARTITION_COUNT}" /mnt
+        mkdir -p /mnt/boot/efi
+        mount "${DISK}p1" /mnt/boot/efi
+    else
+        mount "${DISK}${PARTITION_COUNT}" /mnt
+        mkdir -p /mnt/boot/efi
+        mount "${DISK}1" /mnt/boot/efi
+    fi
+}
+
 # Prompt for loadkeys
 prompt_loadkeys() {
     local loadkeys_value
