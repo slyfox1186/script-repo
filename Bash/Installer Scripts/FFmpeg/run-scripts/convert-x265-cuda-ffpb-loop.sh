@@ -137,7 +137,9 @@ EOF
             -vsync 0 \
             -hide_banner \
             -hwaccel_output_format cuda \
+            -threads $(nproc --all) \
             -i "$file_in" \
+            -threads $(nproc --all) \
             -c:v hevc_nvenc \
             -preset medium \
             -profile main10 \
