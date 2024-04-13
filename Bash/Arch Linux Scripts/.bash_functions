@@ -1348,6 +1348,10 @@ big_files() {
     ' | head -n"$count"
 }
 
+big_file () {
+    find . -type f -print0 | du -ha --files0-from=- | LC_ALL='C' sort -rh | head -n $1
+}
+
 big_vids() {
     local count
     if [ -n "$1" ]; then
