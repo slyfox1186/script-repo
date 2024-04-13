@@ -107,7 +107,7 @@ setup_disk() {
     echo "Partition 2 will be set as swap."
     read -p "Enter partition 2 SIZE (e.g., +2G): " PARTITION2_SIZE
 
-    # Prompt for sizes and types of remaining partitions
+    # Prompt for sizes and types of remaining partitions (excluding the last one)
     for ((i=3; i<PARTITION_COUNT; i++)); do
         read -p "Enter SIZE for partition $i: " SIZE
         PARTITION_SIZES+=("$SIZE")
@@ -162,7 +162,6 @@ setup_disk() {
 
     # Set the last partition as root (x86-64)
     echo "The last partition will be set as Linux x86-64 root and use the remaining disk space."
-    PARTITION_TYPES+=("23")
 
     # Partition the disk
     echo
@@ -175,7 +174,7 @@ setup_disk() {
         parted -s "$DISK" mkpart primary linux-swap $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g') $(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
         
         local start=$(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
-        for ((i=0; i<${#PARTITION_SIZES[@]}-1; i++)); do
+        for ((i=0; i<${#PARTITION_SIZES[@]}; i++)); do
             local SIZE=$(echo "$(echo "${PARTITION_SIZES[i]}" | sed 's/[^0-9]*//g') * 1024" | bc)
             local end=$((start + SIZE))
             parted -s "$DISK" mkpart primary $start $end
@@ -185,14 +184,14 @@ setup_disk() {
         
         # Create the final partition with the remaining space
         parted -s "$DISK" mkpart primary $start 100%
-        parted -s "$DISK" set $((${#PARTITION_SIZES[@]} + 3)) ${PARTITION_TYPES[-1]}
+        parted -s "$DISK" set $PARTITION_COUNT 23
     else
         parted -s "$DISK" mkpart primary fat32 1 $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g')
         parted -s "$DISK" set 1 esp on
         parted -s "$DISK" mkpart primary linux-swap $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g') $(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
         
         local start=$(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
-        for ((i=0; i<${#PARTITION_SIZES[@]}-1; i++)); do
+        for ((i=0; i<${#PARTITION_SIZES[@]}; i++)); do
             local SIZE=$(echo "$(echo "${PARTITION_SIZES[i]}" | sed 's/[^0-9]*//g') * 1024" | bc)
             local end=$((start + SIZE))
             parted -s "$DISK" mkpart primary $start $end
@@ -202,7 +201,7 @@ setup_disk() {
         
         # Create the final partition with the remaining space
         parted -s "$DISK" mkpart primary $start 100%
-        parted -s "$DISK" set $((${#PARTITION_SIZES[@]} + 3)) ${PARTITION_TYPES[-1]}
+        parted -s "$DISK" set $PARTITION_COUNT 23
     fi
 
     # Make filesystems
