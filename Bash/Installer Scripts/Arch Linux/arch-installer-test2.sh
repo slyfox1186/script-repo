@@ -188,9 +188,9 @@ setup_disk() {
             start=$end
         done
         
-        # Create the final partition with the remaining space
+        # Create the final partition with the remaining space and set the partition type to Linux filesystem
         parted -s "$DISK" mkpart primary $start 100%
-        parted -s "$DISK" set $PARTITION_COUNT lvm on
+        parted -s "$DISK" set $PARTITION_COUNT 20
     else
         parted -s "$DISK" mkpart primary fat32 1 $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g')
         parted -s "$DISK" set 1 esp on
@@ -211,9 +211,9 @@ setup_disk() {
             start=$end
         done
         
-        # Create the final partition with the remaining space
+        # Create the final partition with the remaining space and set the partition type to Linux filesystem
         parted -s "$DISK" mkpart primary $start 100%
-        parted -s "$DISK" set $PARTITION_COUNT lvm on
+        parted -s "$DISK" set $PARTITION_COUNT 23
     fi
 
     # Make filesystems
