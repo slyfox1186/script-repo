@@ -237,12 +237,10 @@ mount_partitions() {
     
     if [[ "$DISK" == *"nvme"* ]]; then
         mount "${DISK}p${PARTITION_COUNT}" /mnt
-        mkdir -p /mnt/boot/efi
-        mount "${DISK}p1" /mnt/boot/efi
+        mount --mkdir "${DISK}p1" /mnt/boot/efi
     else
         mount "${DISK}${PARTITION_COUNT}" /mnt
-        mkdir -p /mnt/boot/efi
-        mount "${DISK}1" /mnt/boot/efi
+        mount --mkdir "${DISK}1" /mnt/boot/efi
     fi
 }
 
