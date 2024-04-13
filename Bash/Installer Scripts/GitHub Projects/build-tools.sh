@@ -306,7 +306,7 @@ if build "cmake" "$version"; then
     execute ./bootstrap --prefix="/usr/local/cmake-$version" --enable-ccache --parallel="$cpu_threads" --qt-gui
     execute make "-j$cpu_threads"
     execute sudo make install
-    execute sudo ln -sf "/usr/local/cmake-$version/bin/cmake" "/usr/local/bin/cmake"
+    execute sudo ln -sf "/usr/local/cmake-$version/bin"/{cmake,cmake-gui} "/usr/local/bin/"
     build_done "cmake" "$version"
 fi
 
