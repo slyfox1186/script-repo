@@ -185,6 +185,10 @@ setup_disk() {
             parted -s "$DISK" set $((i+3)) ${PARTITION_TYPES[i]}
             start=$end
         done
+        
+        # Create the final partition with the remaining space
+        parted -s "$DISK" mkpart primary $start 100%
+        parted -s "$DISK" set $((${#PARTITION_SIZES[@]} + 3)) 23
     else
         parted -s "$DISK" mkpart primary fat32 1 $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g')
         parted -s "$DISK" set 1 esp on
@@ -198,6 +202,10 @@ setup_disk() {
             parted -s "$DISK" set $((i+3)) ${PARTITION_TYPES[i]}
             start=$end
         done
+        
+        # Create the final partition with the remaining space
+        parted -s "$DISK" mkpart primary $start 100%
+        parted -s "$DISK" set $((${#PARTITION_SIZES[@]} + 3)) 23
     fi
 
     # Make filesystems
@@ -210,8 +218,6 @@ setup_disk() {
 
 # Partition mounting
 mount_partitions() {
-    echo "mount ${DISK}${PARTITION_COUNT} /mnt"
-    exit
     log "Enabling swap and mounting partitions..."
     swapon "$DISK2"
     
