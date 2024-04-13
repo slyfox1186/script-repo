@@ -173,28 +173,30 @@ setup_disk() {
     parted -s "$DISK" mklabel gpt
 
     if [[ "$DISK" == *"nvme"* ]]; then
-        parted -s "$DISK" mkpart primary fat32 1 "$PARTITION1_SIZE"
+        parted -s "$DISK" mkpart primary fat32 1 $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g')
         parted -s "$DISK" set 1 esp on
-        parted -s "$DISK" mkpart primary linux-swap "$PARTITION1_SIZE" "$PARTITION2_SIZE"
+        parted -s "$DISK" mkpart primary linux-swap $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g') $(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
         
-        local start="$PARTITION2_SIZE"
+        local start=$(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
         for ((i=0; i<${#PARTITION_SIZES[@]}; i++)); do
-            local end="$(echo "$start + ${PARTITION_SIZES[i]}" | bc)"
-            parted -s "$DISK" mkpart primary "$start" "$end"
+            local size=$(echo "$(echo "${PARTITION_SIZES[i]}" | sed 's/[^0-9]*//g') * 1024" | bc)
+            local end=$((start + size))
+            parted -s "$DISK" mkpart primary $start $end
             parted -s "$DISK" set $((i+3)) ${PARTITION_TYPES[i]}
-            start="$end"
+            start=$end
         done
     else
-        parted -s "$DISK" mkpart primary fat32 1 "$PARTITION1_SIZE"
+        parted -s "$DISK" mkpart primary fat32 1 $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g')
         parted -s "$DISK" set 1 esp on
-        parted -s "$DISK" mkpart primary linux-swap "$PARTITION1_SIZE" "$PARTITION2_SIZE"
+        parted -s "$DISK" mkpart primary linux-swap $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g') $(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
         
-        local start="$PARTITION2_SIZE"
+        local start=$(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
         for ((i=0; i<${#PARTITION_SIZES[@]}; i++)); do
-            local end="$(echo "$start + ${PARTITION_SIZES[i]}" | bc)"
-            parted -s "$DISK" mkpart primary "$start" "$end"
+            local size=$(echo "$(echo "${PARTITION_SIZES[i]}" | sed 's/[^0-9]*//g') * 1024" | bc)
+            local end=$((start + size))
+            parted -s "$DISK" mkpart primary $start $end
             parted -s "$DISK" set $((i+3)) ${PARTITION_TYPES[i]}
-            start="$end"
+            start=$end
         done
     fi
 
