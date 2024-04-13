@@ -88,138 +88,128 @@ else
     DISK3="${DISK}3"
 fi
 
-# Disk setup function
+# Disk setup
 setup_disk() {
-    echo "Initializing disk setup..."
-
-    # Initialize partition types for selection
-    declare -A PARTITION_TYPES=(
-        [1]="EFI System"
-        [2]="MBR Partition Scheme"
-        [3]="Intel Fast Flash"
-        [4]="BIOS Boot"
-        [5]="Sony Boot Partition"
-        [6]="Lenovo Boot Partition"
-        [7]="Microsoft Reserved"
-        [8]="Microsoft Basic Data"
-        [9]="Microsoft LDM Metadata"
-        [10]="Microsoft LDM Data"
-        [11]="Microsoft Recovery"
-        [12]="HP-UX Data"
-        [13]="HP-UX Service"
-        [14]="Linux Filesystem"
-        [15]="Linux Extended"
-        [16]="Linux LVM"
-        [17]="Linux Reserved"
-        [18]="Linux RAID"
-        [19]="Linux Swap"
-        [20]="Linux Filesystem"
-        [21]="Linux Server Data"
-        [22]="Linux Root (x86)"
-        [23]="Linux Root (x86-64)"
-        [24]="Linux Root (ARM)"
-        [25]="Linux Root (ARM-64)"
-        [26]="Linux Root (IA-64)"
-        [27]="Linux Reserved"
-        [82]="Linux Swap"
-        [83]="Linux"
-        [86]="NT FAT16"
-        [87]="NTFS"
-        [88]="Linux Plaintext"
-        [89]="Linux LVM"
-        [90]="Linux RAID"
-        [91]="Linux Extended"
-        [92]="Linux Swap"
-        [93]="Hidden Linux"
-        [94]="Linux Reserved"
-        [95]="Linux RAID Autodetect"
-        [98]="Linux Swap"
-        [99]="Linux LVM"
-    )
-
-    # Prompt for the disk to use
-    read -p "Enter the disk to partition (e.g., /dev/sda): " DISK
-
-    # Prompt for the number of partitions
-    read -p "Enter the total number of partitions: " PARTITION_COUNT
-    while ! [[ "$PARTITION_COUNT" =~ ^[0-9]+$ ]] || [ "$PARTITION_COUNT" -lt 2 ]; do
-        echo "Please enter a valid number of partitions (at least 2)."
-        read -p "Enter the total number of partitions: " PARTITION_COUNT
+    local disk_parts=("$DISK1" "$DISK2" "$DISK3")
+    
+    # Prompt for partition count
+    read -p "Enter the number of partitions (minimum 3): " PARTITION_COUNT
+    while [[ "$PARTITION_COUNT" -lt 3 ]]; do
+        echo "The minimum number of partitions is 3."
+        read -p "Enter the number of partitions (minimum 3): " PARTITION_COUNT
     done
 
-    echo "Setting up disk with GPT partition table..."
+    # Set partition 1 as GPT and EFI
+    echo "Partition 1 will be set as GPT and EFI."
+    read -p "Enter partition 1 SIZE (e.g., +550M): " PARTITION1_SIZE
+
+    # Set partition 2 as swap and prompt for SIZE
+    echo "Partition 2 will be set as swap."
+    read -p "Enter partition 2 SIZE (e.g., +2G): " PARTITION2_SIZE
+
+    # Prompt for sizes and types of remaining partitions
+    for ((i=3; i<=PARTITION_COUNT; i++)); do
+        read -p "Enter SIZE for partition $i: " SIZE
+        PARTITION_SIZES+=("$SIZE")
+
+        echo "Available partition types:"
+        echo
+        echo "1 EFI System"
+        echo "2 MBR Partition Scheme"
+        echo "3 Intel Fast Flash"
+        echo "4 BIOS Boot"
+        echo "5 Sony Boot Partition"
+        echo "6 Lenovo Boot Partition"
+        echo "7 Microsoft Reserved"
+        echo "8 Microsoft Basic Data"
+        echo "9 Microsoft LDM Metadata"
+        echo "10 Microsoft LDM Data"
+        echo "11 Microsoft Recovery"
+        echo "12 HP-UX Data"
+        echo "13 HP-UX Service"
+        echo "14 Linux Filesystem"
+        echo "15 Linux Extended"
+        echo "16 Linux LVM"
+        echo "17 Linux Reserved"
+        echo "18 Linux RAID"
+        echo "19 Linux Swap"
+        echo "20 Linux Filesystem"
+        echo "21 Linux Server Data"
+        echo "22 Linux Root (x86)"
+        echo "23 Linux Root (x86-64)"
+        echo "24 Linux Root (ARM)"
+        echo "25 Linux Root (ARM-64)"
+        echo "26 Linux Root (IA-64)"
+        echo "27-81 Linux Reserved"
+        echo "82 Linux Swap"
+        echo "83 Linux"
+        echo "84-85 Linux Extended"
+        echo "86 NT FAT16"
+        echo "87 NTFS"
+        echo "88 Linux Plaintext"
+        echo "89 Linux LVM"
+        echo "90 Linux RAID"
+        echo "91 Linux Extended"
+        echo "92 Linux Swap"
+        echo "93 Hidden Linux"
+        echo "94 Linux Reserved"
+        echo "95-97 Linux RAID Autodetect"
+        echo "98 Linux Swap"
+        echo "99 Linux LVM"
+        read -p "Enter the partition type number for partition $i: " type
+        PARTITION_TYPES+=("$type")
+    done
+
+    # Set the last partition as root (x86-64)
+    PARTITION_TYPES[-1]="23"
+
+    # Partition the disk
+    echo
+    log "Partitioning disk $DISK..."
     parted -s "$DISK" mklabel gpt
 
-    local start=1
-    local end=0
-    local disk_parts=()
+    if [[ "$DISK" == *"nvme"* ]]; then
+        parted -s "$DISK" mkpart primary fat32 1 $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g')
+        parted -s "$DISK" set 1 esp on
+        parted -s "$DISK" mkpart primary linux-swap $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g') $(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
+        
+        local start=$(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
+        for ((i=0; i<${#PARTITION_SIZES[@]}-1; i++)); do
+            local SIZE=$(echo "$(echo "${PARTITION_SIZES[i]}" | sed 's/[^0-9]*//g') * 1024" | bc)
+            local end=$((start + SIZE))
+            parted -s "$DISK" mkpart primary $start $end
+            parted -s "$DISK" set $((i+3)) ${PARTITION_TYPES[i]}
+            start=$end
+        done
+        
+        # Create the final partition with the remaining space
+        parted -s "$DISK" mkpart primary $start 100%
+        parted -s "$DISK" set $PARTITION_COUNT ${PARTITION_TYPES[-1]}
+    else
+        parted -s "$DISK" mkpart primary fat32 1 $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g')
+        parted -s "$DISK" set 1 esp on
+        parted -s "$DISK" mkpart primary linux-swap $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g') $(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
+        
+        local start=$(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
+        for ((i=0; i<${#PARTITION_SIZES[@]}-1; i++)); do
+            local SIZE=$(echo "$(echo "${PARTITION_SIZES[i]}" | sed 's/[^0-9]*//g') * 1024" | bc)
+            local end=$((start + SIZE))
+            parted -s "$DISK" mkpart primary $start $end
+            parted -s "$DISK" set $((i+3)) ${PARTITION_TYPES[i]}
+            start=$end
+        done
+        
+        # Create the final partition with the remaining space
+        parted -s "$DISK" mkpart primary $start 100%
+        parted -s "$DISK" set $PARTITION_COUNT ${PARTITION_TYPES[-1]}
+    fi
 
-    # Function to convert GB to MB and strip non-numeric characters
-    convert_size() {
-        local input_size="$1"
-        local numeric_size="${input_size//[!0-9.]/}"
-        if [[ "$input_size" =~ G|g ]]; then
-            numeric_size=$(echo "$numeric_size * 1024" | bc | awk '{print int($1+0.5)}')
-        elif [[ "$input_size" =~ M|m ]]; then
-            numeric_size=$(echo "$numeric_size" | awk '{print int($1+0.5)}')
-        fi
-        echo "$numeric_size"
-    }
-
-    # Handle all partitions dynamically based on user input
-    for (( i=1; i <= PARTITION_COUNT; i++ )); do
-        local input_size type label
-        read -p "Enter SIZE for partition $i (e.g., 500M or 2G): " input_size
-        local size=$(convert_size "$input_size")
-        end=$(($start + size))
-
-        if [ "$i" -ne "$PARTITION_COUNT" ]; then  # Last partition uses all remaining space
-            echo "Available partition types:"
-            for key in "${!PARTITION_TYPES[@]}"; do
-                echo "$key ${PARTITION_TYPES[$key]}"
-            done
-            read -p "Enter the partition type number for partition $i: " type
-            label=${PARTITION_TYPES[$type]}
-            parted -s "$DISK" mkpart primary "$label" "${start}MiB" "${end}MiB"
-        else
-            parted -s "$DISK" mkpart primary ext4 "${start}MiB" 100%
-        fi
-
-        disk_parts+=("${DISK}${i}")
-        start=$end
-    done
-
-    # Creating filesystems
+    # Make filesystems
     echo
     log "Creating filesystems..."
-    mkfs.fat -F32 ${disk_parts[0]}   # Assuming the first partition is EFI
-    mkswap ${disk_parts[1]}         # Assuming the second partition is SWAP
-    for (( j=2; j < ${#disk_parts[@]}; j++ )); do
-        mkfs.ext4 ${disk_parts[$j]}  # Assuming the rest are ext4
-    done
-
-    echo "Partitions created and formatted successfully."
-}
-
-# Partition mounting
-mount_partitions() {
-    log "Enabling swap and mounting partitions..."
-    swapon "$DISK2"
-    
-    if [[ "$PARTITION_COUNT" -ne 3 ]]; then
-        echo "$PARTITION_COUNT"
-        echo
-        read -p "Press enter to exit."
-        exit
-    fi
-    
-    if [[ "$DISK" == *"nvme"* ]]; then
-        mount "${DISK}p${PARTITION_COUNT}" /mnt
-        mount --mkdir "${DISK}p1" /mnt/boot/efi
-    else
-        mount "${DISK}${PARTITION_COUNT}" /mnt
-        mount --mkdir "${DISK}1" /mnt/boot/efi
-    fi
+    mkfs.fat -F32 ${disk_parts[0]}
+    mkswap ${disk_parts[1]}
+    mkfs.ext4 ${disk_parts[-1]}
 }
 
 # Prompt for loadkeys
