@@ -2,7 +2,7 @@
 
 Hello, r/archlinux community!
 
-I'm thrilled to share a comprehensive bash script that significantly streamlines the Arch Linux installation process for a Gnome and GDM Environement. This script is meticulously designed to reduce the manual command line work typically involved in installing Arch Linux. It allows for an efficient setup process by automating many steps and incorporating the Gnome desktop environment. Below, I detail the script's functionality, benefits, and how you can use its command line arguments for a tailored installation.
+I'm thrilled to share a comprehensive bash script that significantly streamlines the Arch Linux installation process for a Gnome and GDM Environment. This script is meticulously designed to reduce the manual command line work typically involved in installing Arch Linux. It allows for an efficient setup process by automating many steps and incorporating the Gnome desktop environment. Below, I detail the script's functionality, benefits, and how you can use its command line arguments for a tailored installation.
 
 #### **What the Script Does**:
 
