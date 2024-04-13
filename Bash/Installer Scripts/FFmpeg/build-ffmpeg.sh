@@ -32,7 +32,6 @@ packages="$cwd/packages"
 workspace="$cwd/workspace"
 # Set a regex string to match and then exclude any found release candidate versions of a program. Utilize stable releases only.
 git_regex='(Rc|rc|rC|RC|alpha|beta|early|init|next|pending|pre|rc|tentative)+[0-9]*$'
-avx512_support=="false"
 debug=OFF
 
 # Pre-defined color variables
@@ -509,15 +508,6 @@ find_cuda_json_file() {
     echo "$locate_cuda_json_file"
 }
 
-# Function to check for AVX512 support
-check_avx512_support() {
-    if grep -q avx512f /proc/cpuinfo; then
-        avx512_support="true"
-    fi
-}
-
-check_avx512_support
-
 # PRINT THE SCRIPT OPTIONS
 usage() {
     echo
@@ -972,16 +962,6 @@ fix_libstd_libs() {
     fi
 }
 
-fix_libvmaf_libs() {
-    [[ ! -d "/usr/local/include/libvmaf" ]] && mkdir -p "/usr/local/include/libvmaf"
-    cp -f "$workspace/include/libvmaf"/* "/usr/local/include/libvmaf/"
-    cp -f "$workspace/lib/x86_64-linux-gnu/pkgconfig/libvmaf.pc" "/usr/local/lib/x86_64-linux-gnu/pkgconfig/libvmaf.pc"
-    cp -f "$workspace/bin/vmaf" "/usr/local/bin/vmaf" && chmod 755 "/usr/local/bin/vmaf"
-    cp -f "$workspace/lib/x86_64-linux-gnu/libvmaf.so.3.0.0" "/usr/local/lib/x86_64-linux-gnu/libvmaf.so.3.0.0"
-    ln -s "/usr/local/lib/x86_64-linux-gnu/libvmaf.so.3.0.0" "/usr/local/lib/x86_64-linux-gnu/libvmaf.so.3"
-    ln -s "/usr/local/lib/x86_64-linux-gnu/libvmaf.so.3" "/usr/local/lib/x86_64-linux-gnu/libvmaf.so"
-}
-
 fix_x265_libs() {
     local x265_libs=$(find $workspace/lib/ -type f -name 'libx265.so.*' | sort -rV | head -n1)
     local x265_libs_trim=$(echo "$x265_libs" | sed "s:.*/::" | head -n1)
@@ -1369,6 +1349,7 @@ if build "libzstd" "$repo_version"; then
     execute ninja -C build install
     build_done "libzstd" "$repo_version"
 fi
+
 
 find_git_repo "mesonbuild/meson" "1" "T"
 if build "meson" "$repo_version"; then
@@ -2299,16 +2280,6 @@ box_out_banner_video() {
 }
 box_out_banner_video "Installing Video Tools"
 
-find_git_repo "videolan/dav1d" "1" "T"
-if build "dav1d" "$repo_version"; then
-    download "https://github.com/videolan/dav1d/archive/refs/tags/$repo_version.tar.gz" "dav1d-$repo_version.tar.gz"
-    execute meson setup build --prefix="$workspace" --buildtype=release --default-library=static --libdir="$workspace/lib" --strip
-    execute ninja "-j$threads" -C build
-    execute ninja -C build install
-    build_done "dav1d" "$repo_version"
-fi
-CONFIGURE_OPTIONS+=("--enable-libdav1d")
-
 git_caller "https://aomedia.googlesource.com/aom" "av1-git" "av1"
 if build "$repo_name" "${version//\$ /}"; then
     echo "Cloning \"$repo_name\" saving version \"$version\""
@@ -2542,11 +2513,6 @@ fi
 find_git_repo "24327400" "3" "T"
 if build "svt-av1" "1.8.0"; then
     download "https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/v1.8.0/SVT-AV1-v1.8.0.tar.bz2" "svt-av1-1.8.0.tar.bz2"
-    if [[ "$avx512_support" == "true" ]]; then
-        svt_avx_flag="-DENABLE_AVX512=ON"
-    else
-        svt_avx_flag="-DENABLE_AVX512=OFF"
-    fi
     execute cmake -S . \
                   -B Build/linux \
                   -DCMAKE_INSTALL_PREFIX="$workspace" \
@@ -2556,7 +2522,7 @@ if build "svt-av1" "1.8.0"; then
                   -DBUILD_DEC=ON \
                   -DBUILD_ENC=ON \
                   -DBUILD_TESTING=OFF \
-                  "$svt_avx_flag" \
+                  -DENABLE_AVX512=OFF \
                   -DENABLE_NASM=ON \
                   -DNATIVE=ON \
                   -G Ninja -Wno-dev
@@ -2591,35 +2557,9 @@ if "$NONFREE_AND_GPL"; then
     CONFIGURE_OPTIONS+=("--enable-libx264")
 fi
 
-find_git_repo "Netflix/vmaf" "1" "T"
-if build "libvmaf" "$repo_version"; then
-    download "https://github.com/Netflix/vmaf/archive/refs/tags/v$repo_version.tar.gz" "libvmaf-$repo_version.tar.gz"
-    if [[ "$avx512_support" == "true" ]]; then
-        set_vmaf_flag="true"
-    else
-        set_vmaf_flag="false"
-    fi
-    if [[ -n "$iscuda" ]]; then
-        vmaf_cuda_flag="true"
-    else
-        vmaf_cuda_flag="false"
-    fi
-    cd libvmaf || exit 1
-    execute meson setup build --prefix="$workspace" --buildtype=release --default-library=both \
-                              --strip -Denable_docs=false -Denable_tests=false -Denable_nvtx=false \
-                              -Denable_cuda="$vmaf_cuda_flag" -Denable_avx512="$set_vmaf_flag"
-    execute ninja "-j$threads" -C build
-    execute ninja -C build install
-    fix_libvmaf_libs
-    build_done "libvmaf" "$repo_version"
-fi
-CONFIGURE_OPTIONS+=("--enable-libvmaf")
-
-version="dd1ef69b25ec26cc80be0fc8d9afeeef6563762b"
-version_trim="${version::7}"
 if "$NONFREE_AND_GPL"; then
-    if build "x265" "$version_trim"; then
-        download "https://bitbucket.org/multicoreware/x265_git/get/$version.tar.bz2" "x265-$version_trim.tar.gz"
+    if build "x265" "3.6"; then
+        download "https://bitbucket.org/multicoreware/x265_git/downloads/x265_3.6.tar.gz" "x265-3.6.tar.gz"
         fix_libstd_libs
         cd build/linux || exit 1
         rm -fr {8,10,12}bit 2>/dev/null
@@ -2690,7 +2630,7 @@ EOF
 
         fix_x265_libs # Fix the x265 shared library issue
 
-        build_done "x265" "$version_trim"
+        build_done "x265" "3.6"
     fi
     CONFIGURE_OPTIONS+=("--enable-libx265")
 fi
@@ -2961,7 +2901,6 @@ if [[ -f "$packages/ffmpeg.done" ]]; then
 
     file_path="$packages/ffmpeg.done"
     ffmpeg_current_version=$(read_file_contents "$file_path")
-    [[ -z "$ffmpeg_current_version" ]] && ffmpeg_current_version=$(ffmpeg -version)
 fi
 
 # Update the compilter flags before building ffmpeg
@@ -2978,8 +2917,6 @@ ffmpeg_version_trimmed="${ffmpeg_version//n/}"
 echo
 log_update "Installed FFmpeg version: $ffmpeg_current_version"
 log_update "Latest FFmpeg release version available: $ffmpeg_version"
-
-[[ -n "$iscuda" ]] && nvcc_flag="--enable-cuda-nvcc"
 
 # Build FFmpeg from source using the latest git clone
 # FFmpeg release version 7 does not build as it has too many bugs and is too new.
@@ -3013,7 +2950,6 @@ if build "ffmpeg" "n6.1.1"; then
                  --enable-libvo-amrwbenc \
                  --enable-libzvbi \
                  --enable-lto \
-                 "$nvcc_flag" \
                  --enable-opengl \
                  --enable-libopenmpt \
                  --enable-pic \
@@ -3024,8 +2960,8 @@ if build "ffmpeg" "n6.1.1"; then
                  --enable-libtesseract \
                  --enable-version3 \
                  --enable-libzimg \
-                 --extra-cflags="$CFLAGS -DCL_TARGET_OPENCL_VERSION=300" \
-                 --extra-cxxflags="$CXXFLAGS -DCL_TARGET_OPENCL_VERSION=300" \
+                 --extra-cflags="$CFLAGS -flto" \
+                 --extra-cxxflags="$CXXFLAGS -flto" \
                  --extra-libs="$EXTRALIBS" \
                  --pkg-config-flags="--static" \
                  --pkg-config="$workspace/bin/pkg-config" \
