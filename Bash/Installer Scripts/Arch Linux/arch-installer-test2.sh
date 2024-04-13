@@ -107,8 +107,8 @@ setup_disk() {
     echo "Partition 2 will be set as swap."
     read -p "Enter partition 2 SIZE (e.g., +2G): " PARTITION2_SIZE
 
-    # Prompt for sizes and types of remaining partitions
-    for ((i=3; i<=PARTITION_COUNT; i++)); do
+    # Prompt for sizes and types of remaining partitions (excluding the last one)
+    for ((i=3; i<PARTITION_COUNT; i++)); do
         read -p "Enter SIZE for partition $i: " SIZE
         PARTITION_SIZES+=("$SIZE")
 
@@ -161,7 +161,7 @@ setup_disk() {
     done
 
     # Set the last partition as root (x86-64)
-    PARTITION_TYPES[-1]="23"
+    echo "The last partition will be set as Linux x86-64 root and use the remaining disk space."
 
     # Partition the disk
     echo
@@ -174,7 +174,7 @@ setup_disk() {
         parted -s "$DISK" mkpart primary linux-swap $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g') $(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
         
         local start=$(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
-        for ((i=0; i<${#PARTITION_SIZES[@]}-1; i++)); do
+        for ((i=0; i<${#PARTITION_SIZES[@]}; i++)); do
             local SIZE=$(echo "$(echo "${PARTITION_SIZES[i]}" | sed 's/[^0-9]*//g') * 1024" | bc)
             local end=$((start + SIZE))
             parted -s "$DISK" mkpart primary $start $end
@@ -184,14 +184,14 @@ setup_disk() {
         
         # Create the final partition with the remaining space
         parted -s "$DISK" mkpart primary $start 100%
-        parted -s "$DISK" set $PARTITION_COUNT ${PARTITION_TYPES[-1]}
+        parted -s "$DISK" set $PARTITION_COUNT 23
     else
         parted -s "$DISK" mkpart primary fat32 1 $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g')
         parted -s "$DISK" set 1 esp on
         parted -s "$DISK" mkpart primary linux-swap $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g') $(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
         
         local start=$(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
-        for ((i=0; i<${#PARTITION_SIZES[@]}-1; i++)); do
+        for ((i=0; i<${#PARTITION_SIZES[@]}; i++)); do
             local SIZE=$(echo "$(echo "${PARTITION_SIZES[i]}" | sed 's/[^0-9]*//g') * 1024" | bc)
             local end=$((start + SIZE))
             parted -s "$DISK" mkpart primary $start $end
@@ -201,7 +201,7 @@ setup_disk() {
         
         # Create the final partition with the remaining space
         parted -s "$DISK" mkpart primary $start 100%
-        parted -s "$DISK" set $PARTITION_COUNT ${PARTITION_TYPES[-1]}
+        parted -s "$DISK" set $PARTITION_COUNT 23
     fi
 
     # Make filesystems
@@ -210,6 +210,29 @@ setup_disk() {
     mkfs.fat -F32 ${disk_parts[0]}
     mkswap ${disk_parts[1]}
     mkfs.ext4 ${disk_parts[-1]}
+}
+
+# Partition mounting
+mount_partitions() {
+    log "Enabling swap and mounting partitions..."
+    swapon "$DISK2"
+    
+    if [[ "$DISK" == *"nvme"* ]]; then
+        mount "${DISK}p${PARTITION_COUNT}" /mnt
+        mount --mkdir "${DISK}p1" /mnt/boot/efi
+    else
+        mount "${DISK}${PARTITION_COUNT}" /mnt
+        mount --mkdir "${DISK}1" /mnt/boot/efi
+    fi
+
+    # Mount additional partitions (excluding swap and root)
+    for ((i=3; i<PARTITION_COUNT; i++)); do
+        if [[ "$DISK" == *"nvme"* ]]; then
+            mount "${DISK}p${i}" "/mnt/mnt${i}"
+        else
+            mount "${DISK}${i}" "/mnt/mnt${i}"
+        fi
+    done
 }
 
 # Prompt for loadkeys
