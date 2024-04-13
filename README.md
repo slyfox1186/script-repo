@@ -102,7 +102,7 @@ bash <(curl -fsSL https://rust.optimizethis.net)
 
 ### Install Essential Build Tools: [CMake](https://gitlab.kitware.com/cmake/cmake), [Ninja](https://github.com/ninja-build/ninja), [Meson](https://github.com/mesonbuild/meson), and [Golang](https://go.dev/dl/)
 ```bash
-bash <(curl -LSso https://build-tools.optimizethis.net)
+bash <(curl -sSL https://build-tools.optimizethis.net)
 ```
 
 ### Install [Aria2](https://github.com/aria2/aria2) with Enhanced Configurations
