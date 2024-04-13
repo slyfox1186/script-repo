@@ -23,9 +23,6 @@ PARTITION2_SIZE="+2G"
 PARTITION_SIZES=()
 PARTITION_TYPES=()
 
-# Package list
-PACKAGES="base dhcpcd efibootmgr grub linux linux-headers linux-firmware nano networkmanager nvidia sudo"
-
 # Help function
 help() {
     echo "Arch Linux Installation Script"
@@ -256,19 +253,20 @@ prompt_loadkeys() {
 
 # Package installation
 install_packages() {
+    local PACKAGES="base dhcpcd efibootmgr grub linux linux-headers linux-firmware nano networkmanager nvidia sudo" # Package list
     echo
     log "Installing essential packages..."
     echo "Current package list: $PACKAGES"
     echo
-    read -p "Enter additional packages to install (separated by spaces; you can remove an existing value by entering '-' infront of the value) or press Enter to continue: " additional_packages
-    for package in $additional_packages; do
+    read -p "Enter to continue or, add additional packages to install (spaced separated) with the ability to remove a package by prefixing it with a minus sign '-': " add_pkgs
+    for pkgs in $add_pkgs; do
         if [[ "$package" == -* ]]; then
-            PACKAGES=$(echo "$PACKAGES" | sed "s/${package#-}//g")
+            PACKAGES=$(echo "$PACKAGES" | sed "s/${pkgs#-}//g")
         else
             PACKAGES+=" $package"
         fi
     done
-    pacstrap -K /mnt "$PACKAGES"
+    pacstrap -K /mnt $PACKAGES
 }
 
 # Chroot configuration
@@ -319,6 +317,11 @@ log "GRUB bootloader copied to EFI directory."
 echo 'bcf boot add 1 fs0:\EFI\GRUB\grubx64.efi "Arch Linux Bootloader"' > /boot/efi/startup.sh
 echo 'exit' >> /boot/efi/startup.sh
 log "UEFI startup script created."
+
+systemctl enable NetworkManager.service
+log "NetworkManager service enabled."
+systemctl start NetworkManager.service
+log "NetworkManager service started."
 EOF
 }
 
@@ -382,6 +385,7 @@ main() {
     install_packages
     
     # Generate fstab
+    echo
     log "Generating fstab..."
     genfstab -U /mnt >> /mnt/etc/fstab
 
