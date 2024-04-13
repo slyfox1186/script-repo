@@ -188,8 +188,9 @@ setup_disk() {
             start=$end
         done
         
-        # Create the final partition with the remaining space
-        parted -s "$DISK" mkpart primary ext4 $start 100%
+        # Create the final partition with the remaining space and set the partition type to Linux filesystem
+        parted -s "$DISK" mkpart primary $start 100%
+        parted -s "$DISK" set $PARTITION_COUNT 20
     else
         parted -s "$DISK" mkpart primary fat32 1 $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g')
         parted -s "$DISK" set 1 esp on
@@ -210,16 +211,23 @@ setup_disk() {
             start=$end
         done
         
-        # Create the final partition with the remaining space
-        parted -s "$DISK" mkpart primary ext4 $start 100%
+        # Create the final partition with the remaining space and set the partition type to Linux filesystem
+        parted -s "$DISK" mkpart primary $start 100%
+        parted -s "$DISK" set $PARTITION_COUNT 20
     fi
 
     # Make filesystems
     echo
     log "Creating filesystems..."
-    mkfs.fat -F32 ${disk_parts[0]}
-    mkswap ${disk_parts[1]}
-    mkfs.ext4 ${disk_parts[-1]}
+    if [[ "$DISK" == *"nvme"* ]]; then
+        mkfs.fat -F32 "${DISK}p1"
+        mkswap "${DISK}p2"
+        mkfs.ext4 "${DISK}p${PARTITION_COUNT}"
+    else
+        mkfs.fat -F32 "${DISK}1"
+        mkswap "${DISK}2"
+        mkfs.ext4 "${DISK}${PARTITION_COUNT}"
+    fi
 }
 
 # Partition mounting
