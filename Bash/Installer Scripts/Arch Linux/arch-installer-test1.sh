@@ -178,13 +178,18 @@ setup_disk() {
             local SIZE=$(echo "$(echo "${PARTITION_SIZES[i]}" | sed 's/[^0-9]*//g') * 1024" | bc)
             local end=$((start + SIZE))
             parted -s "$DISK" mkpart primary $start $end
-            parted -s "$DISK" set $((i+3)) ${PARTITION_TYPES[i]}
+            local type=${PARTITION_TYPES[i]}
+            case $type in
+                1) parted -s "$DISK" set $((i+3)) esp on ;;
+                2) parted -s "$DISK" set $((i+3)) bios_grub on ;;
+                4) parted -s "$DISK" set $((i+3)) boot on ;;
+                19) parted -s "$DISK" set $((i+3)) swap on ;;
+            esac
             start=$end
         done
         
         # Create the final partition with the remaining space
-        parted -s "$DISK" mkpart primary $start 100%
-        parted -s "$DISK" set $PARTITION_COUNT 23
+        parted -s "$DISK" mkpart primary ext4 $start 100%
     else
         parted -s "$DISK" mkpart primary fat32 1 $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g')
         parted -s "$DISK" set 1 esp on
@@ -195,13 +200,18 @@ setup_disk() {
             local SIZE=$(echo "$(echo "${PARTITION_SIZES[i]}" | sed 's/[^0-9]*//g') * 1024" | bc)
             local end=$((start + SIZE))
             parted -s "$DISK" mkpart primary $start $end
-            parted -s "$DISK" set $((i+3)) ${PARTITION_TYPES[i]}
+            local type=${PARTITION_TYPES[i]}
+            case $type in
+                1) parted -s "$DISK" set $((i+3)) esp on ;;
+                2) parted -s "$DISK" set $((i+3)) bios_grub on ;;
+                4) parted -s "$DISK" set $((i+3)) boot on ;;
+                19) parted -s "$DISK" set $((i+3)) swap on ;;
+            esac
             start=$end
         done
         
         # Create the final partition with the remaining space
-        parted -s "$DISK" mkpart primary $start 100%
-        parted -s "$DISK" set $PARTITION_COUNT 23
+        parted -s "$DISK" mkpart primary ext4 $start 100%
     fi
 
     # Make filesystems
