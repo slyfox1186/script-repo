@@ -179,7 +179,7 @@ setup_disk() {
         
         local start="$PARTITION2_SIZE"
         for ((i=0; i<${#PARTITION_SIZES[@]}; i++)); do
-            local end="$start + ${PARTITION_SIZES[i]}"
+            local end="$(echo "$start + ${PARTITION_SIZES[i]}" | bc)"
             parted -s "$DISK" mkpart primary "$start" "$end"
             parted -s "$DISK" set $((i+3)) ${PARTITION_TYPES[i]}
             start="$end"
@@ -187,12 +187,12 @@ setup_disk() {
     else
         parted -s "$DISK" mkpart primary fat32 1 "$PARTITION1_SIZE"
         parted -s "$DISK" set 1 esp on
-        parted -s "$DISK" mkpart primary linux-swap $(echo "$PARTITION1_SIZE" | sed 's/M//') "$PARTITION2_SIZE"
+        parted -s "$DISK" mkpart primary linux-swap "$PARTITION1_SIZE" "$PARTITION2_SIZE"
         
-        local start=$(echo "$PARTITION2_SIZE" | sed 's/G//')
+        local start="$PARTITION2_SIZE"
         for ((i=0; i<${#PARTITION_SIZES[@]}; i++)); do
-            local end="$start + $(echo "${PARTITION_SIZES[i]}" | sed 's/G//')"
-            parted -s "$DISK" mkpart primary "$start"G "$end"G
+            local end="$(echo "$start + ${PARTITION_SIZES[i]}" | bc)"
+            parted -s "$DISK" mkpart primary "$start" "$end"
             parted -s "$DISK" set $((i+3)) ${PARTITION_TYPES[i]}
             start="$end"
         done
@@ -208,10 +208,18 @@ setup_disk() {
 
 # Partition mounting
 mount_partitions() {
+    echo "mount ${DISK}${PARTITION_COUNT} /mnt"
+    exit
     log "Enabling swap and mounting partitions..."
     swapon "$DISK2"
-    mount "${DISK}${PARTITION_COUNT}" /mnt
-    mount --mkdir "$DISK1" /mnt/boot/efi
+    
+    if [[ "$DISK" == *"nvme"* ]]; then
+        mount "${DISK}p${PARTITION_COUNT}" /mnt
+        mount --mkdir "${DISK}p1" /mnt/boot/efi
+    else
+        mount "${DISK}${PARTITION_COUNT}" /mnt
+        mount --mkdir "${DISK}1" /mnt/boot/efi
+    fi
 }
 
 # Prompt for loadkeys
@@ -240,8 +248,10 @@ prompt_loadkeys() {
 
 # Package installation
 install_packages() {
+    echo
     log "Installing essential packages..."
     echo "Current package list: $PACKAGES"
+    echo
     read -p "Enter additional packages to install (separated by spaces; you can remove an existing value by entering '-' infront of the value) or press Enter to continue: " additional_packages
     for package in $additional_packages; do
         if [[ "$package" == -* ]]; then
