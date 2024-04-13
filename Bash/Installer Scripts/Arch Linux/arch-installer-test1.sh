@@ -5,7 +5,7 @@ NC='\033[0m'
 
 # Verbose logging function
 log() {
-    echo "${GREEN}[LOG $(date +'%R:%S')]${NC} $1"
+    echo -e "${GREEN}[LOG $(date +'%R:%S')]${NC} $1"
 }
 
 # Variables
@@ -111,7 +111,7 @@ setup_disk() {
     read -p "Enter partition 2 size (e.g., +2G): " PARTITION2_SIZE
 
     # Prompt for sizes and types of remaining partitions
-    for ((i=3; i<=PARTITION_COUNT; i++)); do
+    for ((i=3; i<PARTITION_COUNT; i++)); do
         read -p "Enter size for partition $i: " size
         PARTITION_SIZES+=("$size")
 
@@ -164,31 +164,47 @@ setup_disk() {
     done
 
     # Set the last partition as root (x86-64)
-    echo "The last partition will be set as Linux x86-64 root."
-    PARTITION_TYPES[-1]="23"
+    echo "The last partition will be set as Linux x86-64 root and use the remaining disk space."
+    PARTITION_TYPES+=("23")
 
     # Partition the disk
+    echo
     log "Partitioning disk $DISK..."
     parted -s "$DISK" mklabel gpt
-    parted -s "$DISK" mkpart primary fat32 1 "$PARTITION1_SIZE"
-    parted -s "$DISK" set 1 esp on
-    parted -s "$DISK" mkpart primary linux-swap "$PARTITION1_SIZE" "$PARTITION2_SIZE"
-    
-    local start="$PARTITION2_SIZE"
-    for ((i=0; i<${#PARTITION_SIZES[@]}; i++)); do
-        local end="$start + ${PARTITION_SIZES[i]}"
-        parted -s "$DISK" mkpart primary "$start" "$end"
-        parted -s "$DISK" set $((i+3)) ${PARTITION_TYPES[i]}
-        start="$end"
-    done
+
+    if [[ "$DISK" == *"nvme"* ]]; then
+        parted -s "$DISK" mkpart primary fat32 1 "$PARTITION1_SIZE"
+        parted -s "$DISK" set 1 esp on
+        parted -s "$DISK" mkpart primary linux-swap "$PARTITION1_SIZE" "$PARTITION2_SIZE"
+        
+        local start="$PARTITION2_SIZE"
+        for ((i=0; i<${#PARTITION_SIZES[@]}; i++)); do
+            local end="$start + ${PARTITION_SIZES[i]}"
+            parted -s "$DISK" mkpart primary "$start" "$end"
+            parted -s "$DISK" set $((i+3)) ${PARTITION_TYPES[i]}
+            start="$end"
+        done
+    else
+        parted -s "$DISK" mkpart primary fat32 1 "$PARTITION1_SIZE"
+        parted -s "$DISK" set 1 esp on
+        parted -s "$DISK" mkpart primary linux-swap $(echo "$PARTITION1_SIZE" | sed 's/M//') "$PARTITION2_SIZE"
+        
+        local start=$(echo "$PARTITION2_SIZE" | sed 's/G//')
+        for ((i=0; i<${#PARTITION_SIZES[@]}; i++)); do
+            local end="$start + $(echo "${PARTITION_SIZES[i]}" | sed 's/G//')"
+            parted -s "$DISK" mkpart primary "$start"G "$end"G
+            parted -s "$DISK" set $((i+3)) ${PARTITION_TYPES[i]}
+            start="$end"
+        done
+    fi
 
     # Make filesystems
+    echo
     log "Creating filesystems..."
     mkfs.fat -F32 ${disk_parts[0]}
     mkswap ${disk_parts[1]}
     mkfs.ext4 ${disk_parts[-1]}
 }
-
 
 # Partition mounting
 mount_partitions() {
@@ -203,11 +219,21 @@ prompt_loadkeys() {
     local loadkeys_value
     while [[ -z "$loadkeys_value" ]]; do
         clear
-        read -p "Enter the value for loadkeys (press 'l' to list available options): " loadkeys_value
+        read -p "Enter the value for loadkeys (press 'l' to list available options or Enter to continue): " loadkeys_value
         if [[ "$loadkeys_value" == "l" ]]; then
-            localectl list-keymaps
-        else
+            echo "Available keymaps:"
+            tempfile=$(mktemp)
+            localectl list-keymaps > "$tempfile"
+            more "$tempfile"
+            rm "$tempfile"
+            read -p "Enter the value for loadkeys: " loadkeys_value
+            if [[ -n "$loadkeys_value" ]]; then
+                loadkeys "$loadkeys_value"
+            fi
+        elif [[ -n "$loadkeys_value" ]]; then
             loadkeys "$loadkeys_value"
+        else
+            break
         fi
     done
 }
@@ -254,7 +280,7 @@ log "Root password set."
 
 # Create a new user with user variables
 useradd -m -G wheel -s /bin/bash $USERNAME
-echo $USERNAME:"$USER_PASSWORD" | chpasswd
+echo "$USERNAME:$USER_PASSWORD" | chpasswd
 log "User $USERNAME created."
 
 # Enable sudo for wheel group
@@ -314,6 +340,7 @@ prompt_reboot() {
                 ;;
             [nN]*|[nN][oO]*)
                 break
+                exit
                 ;;
             *)  echo "Invalid choice. Please enter 'y' or 'n'."
                 sleep 4
