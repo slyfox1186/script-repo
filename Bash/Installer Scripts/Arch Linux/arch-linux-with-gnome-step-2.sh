@@ -117,7 +117,7 @@ if [[ "$start_gui" =~ ^[Yy]$ ]]; then
     exit 0
 else
     echo
-    log "GUI not started. Please reboot to complete the setup." "info"
-    read -p "Press Enter to exit..."
+    log "GUI not started. The script will reboot to complete the setup." "info"
+    read -p "Press Enter to continue."
     exit 0
 fi
