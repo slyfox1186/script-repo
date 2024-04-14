@@ -77,15 +77,17 @@ prompt_variable ROOT_PASSWORD "Enter the root password"
 prompt_variable COMPUTER_NAME "Enter the computer name"
 prompt_variable DISK "Enter the target disk (e.g., /dev/sda or /dev/nvme0n1)"
 
-# Determine disk partition naming convention
+# Determine disk partition naming convention and root partition
 if [[ "$DISK" == *"nvme"* ]]; then
     DISK1="${DISK}p1"
     DISK2="${DISK}p2"
     DISK3="${DISK}p3"
+    ROOT_PART="${DISK}p${PARTITION_COUNT}"
 else
     DISK1="${DISK}1"
     DISK2="${DISK}2"
     DISK3="${DISK}3"
+    ROOT_PART="${DISK}${PARTITION_COUNT}"
 fi
 
 # Disk setup
@@ -289,7 +291,7 @@ install_packages() {
 # Chroot configuration
 configure_chroot() {
     log "Entering chroot to configure system..."
-    arch-chroot /mnt /bin/bash <<"EOF"
+    arch-chroot /mnt /bin/bash <<EOF
 # Set timezone and hardware clock
 ln -sf "/usr/share/zoneinfo/$TIMEZONE" /etc/localtime
 hwclock --systohc
@@ -331,6 +333,7 @@ echo "UUID=$(blkid -s UUID -o value ${DISK}1) /boot/efi vfat umask=0077 0 2" >> 
 # Enable and start services
 systemctl enable NetworkManager.service
 EOF
+}
 
 # Prompt for unmounting partitions
 prompt_umount() {
@@ -391,13 +394,8 @@ main() {
     mount_partitions
 
     # Retrieve PARTUUID of the root partition and export it for later use
-    PARTUUID=$(blkid -o value -s PARTUUID ${DISK}${PARTITION_COUNT})
+    PARTUUID=$(blkid -o value -s PARTUUID ${ROOT_PART})
     export PARTUUID
-    echo "Showing the \$PARTUUID variable contents below"
-    echo "$PARTUUID"
-    echo
-    read -p "Press enter to continue."
-    echo
 
     install_packages
 
