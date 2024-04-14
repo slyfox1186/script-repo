@@ -330,7 +330,7 @@ mkdir -p /boot/efi
 mount ${DISK}1 /boot/efi
 
 # Install systemd-boot to the ESP
-bootctl --path=/boot/efi install
+bootctl install
 
 # Setup loader entries
 mkdir -p /boot/efi/loader/entries
@@ -341,7 +341,10 @@ echo "editor no" >> /boot/efi/loader/loader.conf
 echo "title Arch Linux" > /boot/efi/loader/entries/arch.conf
 echo "linux vmlinuz-linux" >> /boot/efi/loader/entries/arch.conf
 echo "initrd initramfs-linux.img" >> /boot/efi/loader/entries/arch.conf
-echo "options root=PARTUUID=$PARTUUID rw" >> /boot/efi/loader/entries/arch.conf
+echo "options root=UUID=$PARTUUID rw" >> /boot/efi/loader/entries/arch.conf
+
+# In case these files are not located in /boot/efi then locate them and move them there
+find / -type f \( -name "vmlinuz-linux" -o -name "initramfs-linux.img" \) -exec mv {} /boot/efi/ \;
 
 bootctl update
 EOF
