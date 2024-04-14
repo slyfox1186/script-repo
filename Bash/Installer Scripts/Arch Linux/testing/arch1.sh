@@ -272,7 +272,7 @@ prompt_loadkeys() {
 
 # Package installation
 install_packages() {
-    local PACKAGES="base linux linux-headers linux-firmware nano networkmanager reflector sudo systemd" # Updated package list
+    local PACKAGES="base linux linux-headers linux-firmware nano networkmanager sudo systemd" # Updated package list
     echo
     log "Installing essential packages..."
     echo "Current package list: $PACKAGES"
@@ -324,16 +324,13 @@ echo "" >> /etc/sudoers
 echo "%wheel ALL=(ALL) ALL" >> /etc/sudoers
 
 # Systemd-boot installation and configuration
-# Ensuring the ESP is mounted correctly
-mkdir -p /boot/efi
-mount ${DISK}1 /boot/efi
 
-# Ensure the ESP is mounted to /boot
+# Ensure the ESP is mounted to /boot/efi
 mkdir -p /boot/efi
 mount ${DISK}1 /boot/efi
 
 # Install systemd-boot to the ESP
-bootctl --path=/boot/efi install
+bootctl install
 
 # Setup loader entries
 mkdir -p /boot/efi/loader/entries
@@ -342,9 +339,9 @@ echo "timeout 4" >> /boot/efi/loader/loader.conf
 echo "console-mode max" >> /boot/efi/loader/loader.conf
 echo "editor no" >> /boot/efi/loader/loader.conf
 echo "title Arch Linux" > /boot/efi/loader/entries/arch.conf
-echo "linux /vmlinuz-linux" >> /boot/efi/loader/entries/arch.conf
-echo "initrd /initramfs-linux.img" >> /boot/efi/loader/entries/arch.conf
-echo "options root=PARTUUID=$PARTUUID rw" >> /boot/efi/loader/entries/arch.conf
+echo "linux vmlinuz-linux" >> /boot/efi/loader/entries/arch.conf
+echo "initrd initramfs-linux.img" >> /boot/efi/loader/entries/arch.conf
+echo "options root=UUID=$PARTUUID rw" >> /boot/efi/loader/entries/arch.conf
 
 bootctl update
 EOF
