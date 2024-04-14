@@ -4,52 +4,28 @@ COLOR 0A
 
 CLS
 
-ECHO Select an option:
+ECHO Select an option: & ECHO=
 ECHO [1] Add "Copy Linux Path" to context menu
-ECHO [2] Remove "Copy Linux Path" from context menu
-ECHO=
-SET /P option=Enter your choice (1 or 2) and press Enter: 
+ECHO [2] Remove "Copy Linux Path" from context menu & ECHO=
 
-IF "%option%"=="1" GOTO addReg
-IF "%option%"=="2" GOTO removeReg
-ECHO Invalid option selected.
-GOTO end
+CHOICE /C 12 /N /M "Your choices are (1 or 2): " & CLS
+
+IF "%ERRORLEVEL%" EQU "1" GOTO addReg
+IF "%ERRORLEVEL%" EQU "2" GOTO removeReg
+
+ECHO Invalid option selected. & ECHO=
+PAUSE
+GOTO :EOF
 
 :addReg
-(
-ECHO Windows Registry Editor Version 5.00
-ECHO=
-ECHO ; Adds context menu entry for directories
-ECHO=
-ECHO [HKEY_CLASSES_ROOT\Directory\shell\CopyLinuxPath]
-ECHO @="Copy Linux Path"
-ECHO "Extended"=""
-ECHO "Icon"="C:\\Program Files\\WSL\\wsl.exe"
-ECHO=
-ECHO [HKEY_CLASSES_ROOT\Directory\shell\CopyLinuxPath\command]
-ECHO @="C:\\Windows\\System32\\cmd.exe /d /c \"wsl.exe wslpath -u '%%V' ^| C:\\Windows\\System32\\clip.exe\""
-ECHO=
-ECHO ; Adds context menu entry for files
-ECHO [HKEY_CLASSES_ROOT\^*\shell\CopyLinuxPath]
-ECHO @="Copy Linux Path"
-ECHO "Extended"=""
-ECHO "Icon"="C:\\Program Files\\WSL\\wsl.exe"
-ECHO=
-ECHO [HKEY_CLASSES_ROOT\^*\shell\CopyLinuxPath\command]
-ECHO @="C:\\Windows\\System32\\cmd.exe /d /c \"wsl.exe wslpath -u '%%1' ^| C:\\Windows\\System32\\clip.exe\""
-)> AddCopyLinuxPath.reg
-ECHO Applying Add script...
-regedit.exe /s "AddCopyLinuxPath.reg"
-DEL /Q "AddCopyLinuxPath.reg"
+REG ADD "HKCR\Directory\shell\CopyLinuxPath" /v "Icon" /d "C:\Program Files\WSL\wsl.exe" /f
+REG ADD "HKCR\Directory\shell\CopyLinuxPath\command" /d "%windir%\System32\cmd.exe /d /c \"wsl.exe wslpath -u '%%V' ^| %windir%\System32\clip.exe\"" /f
+REG ADD "HKCR\*\shell\CopyLinuxPath" /ve /d "Copy Linux Path" /f
+REG ADD "HKCR\*\shell\CopyLinuxPath" /v "Extended" /d "" /f
+REG ADD "HKCR\*\shell\CopyLinuxPath" /v "Icon" /d "C:\Program Files\WSL\wsl.exe" /f
+REG ADD "HKCR\*\shell\CopyLinuxPath\command" /d "%windir%\System32\cmd.exe /d /c \"wsl.exe wslpath -u '%%1' ^| %windir%\System32\clip.exe\"" /f
 GOTO :EOF
 
 :removeReg
-(
-ECHO Windows Registry Editor Version 5.00
-ECHO=
-ECHO [-HKEY_CLASSES_ROOT\^*\shell\CopyLinuxPath]
-ECHO [-HKEY_CLASSES_ROOT\Directory\shell\CopyLinuxPath]
-)> RemoveCopyLinuxPath.reg
-ECHO Applying Remove script...
-regedit.exe /s "RemoveCopyLinuxPath.reg"
-DEL /Q "RemoveCopyLinuxPath.reg"
+REG DELETE "HKCR\*\shell\CopyLinuxPath" /f
+REG DELETE "HKCR\Directory\shell\CopyLinuxPath" /f
