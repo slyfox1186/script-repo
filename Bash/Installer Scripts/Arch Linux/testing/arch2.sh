@@ -294,6 +294,10 @@ if [ ! -d "/sys/firmware/efi/efivars" ]; then
     exit 1
 fi
 
+# Retrieve UUID of the root partition and export it for later use
+UUID=$(blkid -o value -s UUID ${ROOT_PART})
+export UUID
+
 # Chroot configuration
 configure_chroot() {
     log "Entering chroot to configure system..."
@@ -341,12 +345,13 @@ echo "editor no" >> /boot/efi/loader/loader.conf
 echo "title Arch Linux" > /boot/efi/loader/entries/arch.conf
 echo "linux vmlinuz-linux" >> /boot/efi/loader/entries/arch.conf
 echo "initrd initramfs-linux.img" >> /boot/efi/loader/entries/arch.conf
-echo "options root=UUID=$PARTUUID rw" >> /boot/efi/loader/entries/arch.conf
+echo "options root=PARTUUID=$PARTUUID rw" >> /boot/efi/loader/entries/arch.conf
 
 # In case these files are not located in /boot/efi then locate them and move them there
 find / -type f \( -name "vmlinuz-linux" -o -name "initramfs-linux.img" \) -exec mv {} /boot/efi/ \;
 
 bootctl update
+bootctl status
 EOF
 }
 
