@@ -40,13 +40,16 @@ ECHO @="C:\\Windows\\System32\\cmd.exe /d /c \"wsl.exe wslpath -u '%%1' ^| C:\\W
 )> AddCopyLinuxPath.reg
 ECHO Applying Add script...
 regedit.exe /s "AddCopyLinuxPath.reg"
+DEL /Q "AddCopyLinuxPath.reg"
 GOTO :EOF
 
 :removeReg
-(ECHO Windows Registry Editor Version 5.00
+(
+ECHO Windows Registry Editor Version 5.00
 ECHO=
 ECHO [-HKEY_CLASSES_ROOT\^*\shell\CopyLinuxPath]
 ECHO [-HKEY_CLASSES_ROOT\Directory\shell\CopyLinuxPath]
 )> RemoveCopyLinuxPath.reg
 ECHO Applying Remove script...
 regedit.exe /s "RemoveCopyLinuxPath.reg"
+DEL /Q "RemoveCopyLinuxPath.reg"
