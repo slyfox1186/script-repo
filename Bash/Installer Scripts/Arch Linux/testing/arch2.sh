@@ -270,7 +270,7 @@ prompt_loadkeys() {
 
 # Package installation
 install_packages() {
-    local PACKAGES="base linux linux-headers linux-firmware nano networkmanager reflector sudo" # Updated package list
+    local PACKAGES="base linux linux-headers linux-firmware nano networkmanager reflector sudo systemd" # Updated package list
     echo
     log "Installing essential packages..."
     echo "Current package list: $PACKAGES"
@@ -288,54 +288,49 @@ install_packages() {
 
 # Chroot configuration
 configure_chroot() {
+    export PARTUUID
     log "Entering chroot to configure system..."
-    arch-chroot /mnt /bin/bash <<EOF
+    arch-chroot /mnt /bin/bash <<'EOF'
 # Set timezone and hardware clock
 ln -sf "/usr/share/zoneinfo/$TIMEZONE" /etc/localtime
 hwclock --systohc
-log "Timezone set to $TIMEZONE."
 
 # Localization
 echo "en_US.UTF-8 UTF-8" > /etc/locale.gen
 locale-gen
 echo "LANG=en_US.UTF-8" > /etc/locale.conf
-log "Locale set."
 
 # Network configuration
 echo "$COMPUTER_NAME" > /etc/hostname
 mkinitcpio -P
 echo "127.0.1.1 myarch.localdomain $COMPUTER_NAME" >> /etc/hosts
-log "Network configuration complete."
 
 # Set root password
 echo root:"$ROOT_PASSWORD" | chpasswd
-log "Root password set."
 
 # Create a new user with user variables
 useradd -m -G wheel -s /bin/bash $USERNAME
 echo "$USERNAME:$USER_PASSWORD" | chpasswd
-log "User $USERNAME created."
 
 # Enable sudo for wheel group
 echo "" >> /etc/sudoers
 echo "%wheel ALL=(ALL) ALL" >> /etc/sudoers
-log "Sudo privileges granted to the wheel group."
 
 # Systemd-boot installation and configuration
 bootctl --path=/boot/efi install
 mkdir -p /boot/efi/loader/entries
 echo "default arch.conf" > /boot/efi/loader/loader.conf
 echo "timeout 4" >> /boot/efi/loader/loader.conf
-echo "title   Arch Linux" > /boot/efi/loader/entries/arch.conf
-echo "linux   /vmlinuz-linux" >> /boot/efi/loader/entries/arch.conf
-echo "initrd  /initramfs-linux.img" >> /boot/efi/loader/entries/arch.conf
-echo "options root=PARTUUID=$(blkid -s PARTUUID -o value ${DISK}p${PARTITION_COUNT}) rw" >> /boot/efi/loader/entries/arch.conf
-log "Systemd-boot installed and configured."
+echo "title Arch Linux" > /boot/efi/loader/entries/arch.conf
+echo "linux /vmlinuz-linux" >> /boot/efi/loader/entries/arch.conf
+echo "initrd /initramfs-linux.img" >> /boot/efi/loader/entries/arch.conf
+echo "options root=PARTUUID=$PARTUUID rw" >> /boot/efi/loader/entries/arch.conf
 
+# Update fstab for EFI partition with restrictive permissions
+echo 'UUID=$(blkid -s UUID -o value ${DISK}1) /boot/efi vfat umask=0077 0 2' >> /etc/fstab
+
+# Enable and start services
 systemctl enable NetworkManager.service
-log "NetworkManager service enabled."
-systemctl start NetworkManager.service
-log "NetworkManager service started."
 EOF
 }
 
@@ -387,9 +382,8 @@ prompt_reboot() {
     done
 }
 
-# Main script
+# Main function
 main() {
-    # Start installation
     log "Starting installation..."
     prompt_loadkeys
     timedatectl set-ntp true
@@ -397,10 +391,13 @@ main() {
 
     setup_disk
     mount_partitions
+
+    # Retrieve PARTUUID of the root partition
+    PARTUUID=$(blkid -s PARTUUID -o value ${DISK}p${PARTITION_COUNT})
+    export PARTUUID  # Make it available for the chroot environment
+
     install_packages
     
-    # Generate fstab
-    echo
     log "Generating fstab..."
     genfstab -U /mnt >> /mnt/etc/fstab
 
