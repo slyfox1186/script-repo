@@ -77,15 +77,17 @@ prompt_variable ROOT_PASSWORD "Enter the root password"
 prompt_variable COMPUTER_NAME "Enter the computer name"
 prompt_variable DISK "Enter the target disk (e.g., /dev/sda or /dev/nvme0n1)"
 
-# Determine disk partition naming convention
+# Determine disk partition naming convention and root partition
 if [[ "$DISK" == *"nvme"* ]]; then
     DISK1="${DISK}p1"
     DISK2="${DISK}p2"
     DISK3="${DISK}p3"
+    ROOT_PART="${DISK}p${PARTITION_COUNT}"
 else
     DISK1="${DISK}1"
     DISK2="${DISK}2"
     DISK3="${DISK}3"
+    ROOT_PART="${DISK}${PARTITION_COUNT}"
 fi
 
 # Disk setup
@@ -286,10 +288,16 @@ install_packages() {
     pacstrap /mnt $PACKAGES
 }
 
+# Ensure system is in UEFI mode
+if [ ! -d "/sys/firmware/efi/efivars" ]; then
+    echo "System is not booted in UEFI mode. Please ensure the system is booted in UEFI mode to install systemd-boot."
+    exit 1
+fi
+
 # Chroot configuration
 configure_chroot() {
     log "Entering chroot to configure system..."
-    arch-chroot /mnt /bin/bash <<"EOF"
+    arch-chroot /mnt /bin/bash <<EOF
 # Set timezone and hardware clock
 ln -sf "/usr/share/zoneinfo/$TIMEZONE" /etc/localtime
 hwclock --systohc
@@ -316,20 +324,29 @@ echo "" >> /etc/sudoers
 echo "%wheel ALL=(ALL) ALL" >> /etc/sudoers
 
 # Systemd-boot installation and configuration
+# Ensuring the ESP is mounted correctly
+mkdir -p /boot/efi
+mount ${DISK}1 /boot/efi
+
+# Ensure the ESP is mounted to /boot
+mkdir -p /boot/efi
+mount ${DISK}1 /boot/efi
+
+# Install systemd-boot to the ESP
 bootctl --path=/boot/efi install
+
+# Setup loader entries
 mkdir -p /boot/efi/loader/entries
 echo "default arch.conf" > /boot/efi/loader/loader.conf
 echo "timeout 4" >> /boot/efi/loader/loader.conf
+echo "console-mode max" >> /boot/efi/loader/loader.conf
+echo "editor no" >> /boot/efi/loader/loader.conf
 echo "title Arch Linux" > /boot/efi/loader/entries/arch.conf
 echo "linux /vmlinuz-linux" >> /boot/efi/loader/entries/arch.conf
 echo "initrd /initramfs-linux.img" >> /boot/efi/loader/entries/arch.conf
 echo "options root=PARTUUID=$PARTUUID rw" >> /boot/efi/loader/entries/arch.conf
 
-# Update fstab for EFI partition with restrictive permissions
-echo "UUID=$(blkid -s UUID -o value ${DISK}1) /boot/efi vfat umask=0077 0 2" >> /etc/fstab
-
-# Enable and start services
-systemctl enable NetworkManager.service
+bootctl update
 EOF
 }
 
@@ -392,13 +409,8 @@ main() {
     mount_partitions
 
     # Retrieve PARTUUID of the root partition and export it for later use
-    PARTUUID=$(blkid -o value -s PARTUUID ${DISK}${PARTITION_COUNT})
+    PARTUUID=$(blkid -o value -s PARTUUID ${ROOT_PART})
     export PARTUUID
-    echo "Showing the \$PARTUUID variable contents below"
-    echo "$PARTUUID"
-    echo
-    read -p "Press enter to continue."
-    echo
 
     install_packages
 
