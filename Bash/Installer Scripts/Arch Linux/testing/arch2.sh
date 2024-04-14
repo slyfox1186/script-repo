@@ -18,7 +18,7 @@ DISK="" # Disk to install Arch Linux on (e.g., /dev/sda or /dev/nvme0n1)
 
 # Partition variables
 PARTITION_COUNT=3
-PARTITION1_SIZE="550M"
+PARTITION1_SIZE="500M"
 PARTITION2_SIZE="2G"
 PARTITION_SIZES=()
 PARTITION_TYPES=()
@@ -233,51 +233,14 @@ setup_disk() {
 # Partition mounting
 mount_partitions() {
     log "Enabling swap and mounting partitions..."
+    swapon "$DISK2"
     
     if [[ "$DISK" == *"nvme"* ]]; then
-        swapon "${DISK}p2"
         mount "${DISK}p${PARTITION_COUNT}" /mnt
         mount --mkdir "${DISK}p1" /mnt/boot/efi
-        
-        for ((i=3; i<PARTITION_COUNT; i++)); do
-            read -p "Do you want to mount partition ${DISK}p$i? (y/n): " choice
-            case "$choice" in
-                [yY]*|[yY][eE][sS]*)
-                    read -p "Enter the mount path for partition ${DISK}p$i (press Enter to skip): " mount_path
-                    if [[ -n "$mount_path" ]]; then
-                        mount --mkdir "${DISK}p$i" "$mount_path"
-                        log "Partition ${DISK}p$i mounted at $mount_path"
-                    else
-                        log "Skipping mount for partition ${DISK}p$i"
-                    fi
-                    ;;
-                *)
-                    log "Skipping mount for partition ${DISK}p$i"
-                    ;;
-            esac
-        done
     else
-        swapon "${DISK}2"
         mount "${DISK}${PARTITION_COUNT}" /mnt
         mount --mkdir "${DISK}1" /mnt/boot/efi
-        
-        for ((i=3; i<PARTITION_COUNT; i++)); do
-            read -p "Do you want to mount partition ${DISK}$i? (y/n): " choice
-            case "$choice" in
-                [yY]*|[yY][eE][sS]*)
-                    read -p "Enter the mount path for partition ${DISK}$i (press Enter to skip): " mount_path
-                    if [[ -n "$mount_path" ]]; then
-                        mount --mkdir "${DISK}$i" "$mount_path"
-                        log "Partition ${DISK}$i mounted at $mount_path"
-                    else
-                        log "Skipping mount for partition ${DISK}$i"
-                    fi
-                    ;;
-                *)
-                    log "Skipping mount for partition ${DISK}$i"
-                    ;;
-            esac
-        done
     fi
 }
 
@@ -307,20 +270,20 @@ prompt_loadkeys() {
 
 # Package installation
 install_packages() {
-    local PACKAGES="base systemd efibootmgr linux linux-headers linux-firmware nano networkmanager reflector sudo" # Package list
+    local PACKAGES="base linux linux-headers linux-firmware nano networkmanager reflector sudo" # Updated package list
     echo
     log "Installing essential packages..."
     echo "Current package list: $PACKAGES"
     echo
     read -p "Enter to continue or, add additional packages to install (spaced separated) with the ability to remove a package by prefixing it with a minus sign '-': " add_pkgs
-    for pkgs in $add_pkgs; do
+    for package in $add_pkgs; do
         if [[ "$package" == -* ]]; then
-            PACKAGES=$(echo "$PACKAGES" | sed "s/${pkgs#-}//g")
+            PACKAGES=$(echo "$PACKAGES" | sed "s/${package#-}//g")
         else
             PACKAGES+=" $package"
         fi
     done
-    pacstrap -K /mnt $PACKAGES
+    pacstrap /mnt $PACKAGES
 }
 
 # Chroot configuration
@@ -331,77 +294,48 @@ configure_chroot() {
 ln -sf "/usr/share/zoneinfo/$TIMEZONE" /etc/localtime
 hwclock --systohc
 log "Timezone set to $TIMEZONE."
-echo
 
 # Localization
 echo "en_US.UTF-8 UTF-8" > /etc/locale.gen
 locale-gen
 echo "LANG=en_US.UTF-8" > /etc/locale.conf
 log "Locale set."
-echo
 
 # Network configuration
 echo "$COMPUTER_NAME" > /etc/hostname
 mkinitcpio -P
 echo "127.0.1.1 myarch.localdomain $COMPUTER_NAME" >> /etc/hosts
 log "Network configuration complete."
-echo
 
 # Set root password
 echo root:"$ROOT_PASSWORD" | chpasswd
 log "Root password set."
-echo
 
 # Create a new user with user variables
 useradd -m -G wheel -s /bin/bash $USERNAME
 echo "$USERNAME:$USER_PASSWORD" | chpasswd
 log "User $USERNAME created."
-echo
 
 # Enable sudo for wheel group
 echo "" >> /etc/sudoers
-echo "%wheel ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+echo "%wheel ALL=(ALL) ALL" >> /etc/sudoers
 log "Sudo privileges granted to the wheel group."
-echo
 
-# systemd-boot installation and configuration
-bootctl --path=/boot install
-log "systemd-boot installed."
-
-mkdir -p /boot/loader/entries
-
-cat > /boot/loader/loader.conf <<EOL
-default arch.conf
-timeout 20
-console-mode max
-editor 0
-EOL
-log "systemd-boot loader configuration created."
-echo
-
-cat > /boot/loader/entries/arch.conf <<EOL
-title Arch Linux
-linux /vmlinuz-linux
-initrd /initramfs-linux.img
-options root=${DISK}${PARTITION_COUNT} rw
-EOL
-log "Arch Linux boot entry created."
-echo
-
-cat > /boot/loader/entries/arch-fallback.conf <<EOL
-title Arch Linux (fallback initramfs)
-linux /vmlinuz-linux
-initrd /initramfs-linux-fallback.img
-options root=${DISK}${PARTITION_COUNT} rw
-EOL
-log "Arch Linux fallback boot entry created."
-echo
+# Systemd-boot installation and configuration
+bootctl --path=/boot/efi install
+mkdir -p /boot/efi/loader/entries
+echo "default arch.conf" > /boot/efi/loader/loader.conf
+echo "timeout 4" >> /boot/efi/loader/loader.conf
+echo "title   Arch Linux" > /boot/efi/loader/entries/arch.conf
+echo "linux   /vmlinuz-linux" >> /boot/efi/loader/entries/arch.conf
+echo "initrd  /initramfs-linux.img" >> /boot/efi/loader/entries/arch.conf
+echo "options root=PARTUUID=$(blkid -s PARTUUID -o value ${DISK}p${PARTITION_COUNT}) rw" >> /boot/efi/loader/entries/arch.conf
+log "Systemd-boot installed and configured."
 
 systemctl enable NetworkManager.service
 log "NetworkManager service enabled."
 systemctl start NetworkManager.service
 log "NetworkManager service started."
-echo
 EOF
 }
 
