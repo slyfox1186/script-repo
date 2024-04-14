@@ -270,7 +270,7 @@ prompt_loadkeys() {
 
 # Package installation
 install_packages() {
-    local PACKAGES="base linux linux-headers linux-firmware nano networkmanager reflector sudo" # Updated package list
+    local PACKAGES="base linux linux-headers linux-firmware nano networkmanager reflector sudo systemd" # Updated package list
     echo
     log "Installing essential packages..."
     echo "Current package list: $PACKAGES"
@@ -289,7 +289,7 @@ install_packages() {
 # Chroot configuration
 configure_chroot() {
     log "Entering chroot to configure system..."
-    arch-chroot /mnt /bin/bash <<EOF
+    arch-chroot /mnt /bin/bash <<"EOF"
 # Set timezone and hardware clock
 ln -sf "/usr/share/zoneinfo/$TIMEZONE" /etc/localtime
 hwclock --systohc
@@ -323,11 +323,10 @@ echo "timeout 4" >> /boot/efi/loader/loader.conf
 echo "title Arch Linux" > /boot/efi/loader/entries/arch.conf
 echo "linux /vmlinuz-linux" >> /boot/efi/loader/entries/arch.conf
 echo "initrd /initramfs-linux.img" >> /boot/efi/loader/entries/arch.conf
-echo "options root=PARTUUID=$(blkid -s PARTUUID -o value ${DISK}p${PARTITION_COUNT}) rw" >> /boot/efi/loader/entries/arch.conf
+echo "options root=PARTUUID=$PARTUUID rw" >> /boot/efi/loader/entries/arch.conf
 
-# Set file permissions
-chmod 700 /boot/efi
-chmod 600 /boot/efi/loader/*
+# Update fstab for EFI partition with restrictive permissions
+echo 'UUID=$(blkid -s UUID -o value ${DISK}1) /boot/efi vfat umask=0077 0 2' >> /etc/fstab
 
 # Enable and start services
 systemctl enable NetworkManager.service
@@ -382,9 +381,8 @@ prompt_reboot() {
     done
 }
 
-# Main script
+# Main function
 main() {
-    # Start installation
     log "Starting installation..."
     prompt_loadkeys
     timedatectl set-ntp true
@@ -392,14 +390,16 @@ main() {
 
     setup_disk
     mount_partitions
+
+    # Retrieve PARTUUID of the root partition and export it for later use
+    export PARTUUID=$(blkid -o value -s PARTUUID ${DISK}p${PARTITION_COUNT})
+
     install_packages
-    
-    # Generate fstab
-    echo
+
     log "Generating fstab..."
     genfstab -U /mnt >> /mnt/etc/fstab
 
-    configure_chroot
+    configure_chroot  # Call configure_chroot where PARTUUID will be used
     prompt_umount
     prompt_reboot
 }
