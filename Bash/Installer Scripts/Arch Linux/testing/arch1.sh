@@ -326,7 +326,7 @@ echo "initrd /initramfs-linux.img" >> /boot/efi/loader/entries/arch.conf
 echo "options root=PARTUUID=$PARTUUID rw" >> /boot/efi/loader/entries/arch.conf
 
 # Update fstab for EFI partition with restrictive permissions
-echo 'UUID=$(blkid -s UUID -o value ${DISK}1) /boot/efi vfat umask=0077 0 2' >> /etc/fstab
+echo "UUID=$(blkid -s UUID -o value ${DISK}1) /boot/efi vfat umask=0077 0 2" >> /etc/fstab
 
 # Enable and start services
 systemctl enable NetworkManager.service
@@ -392,7 +392,13 @@ main() {
     mount_partitions
 
     # Retrieve PARTUUID of the root partition and export it for later use
-    export PARTUUID=$(blkid -o value -s PARTUUID ${DISK}p${PARTITION_COUNT})
+    PARTUUID=$(blkid -o value -s PARTUUID ${DISK}${PARTITION_COUNT})
+    export PARTUUID
+    echo "Showing the \$PARTUUID variable contents below"
+    echo "$PARTUUID"
+    echo
+    read -p "Press enter to continue."
+    echo
 
     install_packages
 
