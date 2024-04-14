@@ -294,7 +294,11 @@ if [ ! -d "/sys/firmware/efi/efivars" ]; then
     exit 1
 fi
 
-# Chroot configuration
+# Retrieve UUID of the root partition and export it for later use
+UUID=$(blkid -o value -s UUID ${ROOT_PART})
+export UUID
+
+# Systemd-boot installation and configuration
 configure_chroot() {
     log "Entering chroot to configure system..."
     arch-chroot /mnt /bin/bash <<EOF
@@ -324,12 +328,8 @@ echo "" >> /etc/sudoers
 echo "%wheel ALL=(ALL) ALL" >> /etc/sudoers
 
 # Systemd-boot installation and configuration
-
-# Ensure the ESP is mounted to /boot/efi
 mkdir -p /boot/efi
 mount ${DISK}1 /boot/efi
-
-# Install systemd-boot to the ESP
 bootctl install
 
 # Setup loader entries
@@ -341,9 +341,12 @@ echo "editor no" >> /boot/efi/loader/loader.conf
 echo "title Arch Linux" > /boot/efi/loader/entries/arch.conf
 echo "linux vmlinuz-linux" >> /boot/efi/loader/entries/arch.conf
 echo "initrd initramfs-linux.img" >> /boot/efi/loader/entries/arch.conf
-echo "options root=UUID=$PARTUUID rw" >> /boot/efi/loader/entries/arch.conf
+echo "options root=UUID=$UUID rw" >> /boot/efi/loader/entries/arch.conf
+
+find / -type f \( -name "vmlinuz-linux" -o -name "initramfs-linux.img" \) -exec mv {} /boot/efi/ \;
 
 bootctl update
+bootctl status
 EOF
 }
 
