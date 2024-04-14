@@ -101,11 +101,11 @@ setup_disk() {
 
     # Set partition 1 as GPT and EFI
     echo "Partition 1 will be set as GPT and EFI."
-    read -p "Enter partition 1 SIZE (e.g., +550M): " PARTITION1_SIZE
+    read -p "Enter partition 1 SIZE (e.g., 550M): " PARTITION1_SIZE
 
     # Set partition 2 as swap and prompt for SIZE
     echo "Partition 2 will be set as swap."
-    read -p "Enter partition 2 SIZE (e.g., +2G): " PARTITION2_SIZE
+    read -p "Enter partition 2 SIZE (e.g., 2G): " PARTITION2_SIZE
 
     # Prompt for sizes and types of remaining partitions (excluding the last one)
     for ((i=3; i<PARTITION_COUNT; i++)); do
@@ -213,7 +213,7 @@ setup_disk() {
         
         # Create the final partition with the remaining space and set the partition type to Linux filesystem
         parted -s "$DISK" mkpart primary $start 100%
-        parted -s "$DISK" set $PARTITION_COUNT 20
+        parted -s "$DISK" set $PARTITION_COUNT 23
     fi
 
     # Make filesystems
