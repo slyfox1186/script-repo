@@ -27,7 +27,7 @@ log() {
 
 # Install required software using pacman
 log "Installing required packages..." "info"
-PACKAGES="gdm gedit gedit-plugins git gnome gnome-terminal gnome-text-editor gnome-tweaks nvidia pulseaudio pulseaudio-alsa xorg xorg-server xorg-xinit"
+PACKAGES="gdm gedit gedit-plugins git gnome gnome-terminal gnome-text-editor gnome-tweaks nvidia pulseaudio pulseaudio-alsa reflector xorg xorg-server xorg-xinit"
 echo
 echo "The default packages set to be installed: $PACKAGES"
 echo
