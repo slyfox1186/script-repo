@@ -348,9 +348,21 @@ echo "linux /vmlinuz-linux" >> /boot/efi/loader/entries/arch.conf
 echo "initrd /initramfs-linux.img" >> /boot/efi/loader/entries/arch.conf
 echo "options root=PARTUUID=$PARTUUID rw" >> /boot/efi/loader/entries/arch.conf
 
-# Create symbolic links in /boot/efi pointing to /boot
-ln -sf /boot/vmlinuz-linux /boot/efi/vmlinuz-linux
-ln -sf /boot/initramfs-linux.img /boot/efi/initramfs-linux.img
+[[ ! -d /etc/pacman.d/hooks ]] && mkdir -p /etc/pacman.d/hooks
+echo "[Trigger]" > /etc/pacman.d/hooks/99-update-boot-images.hook
+echo "Operation = Install" >> /etc/pacman.d/hooks/99-update-boot-images.hook
+echo "Operation = Upgrade" >> /etc/pacman.d/hooks/99-update-boot-images.hook
+echo "Type = Package" >> /etc/pacman.d/hooks/99-update-boot-images.hook
+echo "Target = linux" >> /etc/pacman.d/hooks/99-update-boot-images.hook
+echo "" >> /etc/pacman.d/hooks/99-update-boot-images.hook
+echo "[Action]" >> /etc/pacman.d/hooks/99-update-boot-images.hook
+echo "Description = Move Kernel and Initramfs to custom boot path" >> /etc/pacman.d/hooks/99-update-boot-images.hook
+echo "When = PostTransaction" >> /etc/pacman.d/hooks/99-update-boot-images.hook
+echo "Exec = /bin/sh -c 'cp -f /boot/vmlinuz-linux /boot/efi/; cp -f /boot/initramfs-linux.img /boot/efi/'" >> /etc/pacman.d/hooks/99-update-boot-images.hook
+
+mkinitcpio -P
+
+find / -type f \( -name "vmlinuz-linux" -o -name "initramfs-linux.img" \) -exec mv {} /boot/efi/ \;
 
 bootctl update
 EOF
