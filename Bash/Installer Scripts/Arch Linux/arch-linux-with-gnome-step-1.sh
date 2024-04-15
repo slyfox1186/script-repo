@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
-clear
+
+GREEN='\033[0;32m'
+NC='\033[0m'
 
 # Verbose logging function
 log() {
-    echo "[LOG $(date +'%m-%d-%Y %H:%M:%S')] $1"
+    echo "${GREEN}[LOG $(date +'%R:%S')]${NC} $1"
 }
 
 # Variables
