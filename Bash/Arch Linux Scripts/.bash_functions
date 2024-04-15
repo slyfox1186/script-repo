@@ -328,20 +328,12 @@ gettime() { clear; date +%r | cut -d " " -f1-2 | grep -E '^.*$'; }
 ##################
 
 sbrc() {
-    clear
-
-    . ~/.bashrc && echo -e "The command was a success!\\n" || echo -e "The command failed!\\n"
-    sleep 1
-
+    source ~/.bashrc
     clear; ls -1AhFv --color --group-directories-first
 }
 
 spro() {
-    clear
-
-    . ~/.profile && echo -e "The command was a success!\\n" || echo -e "The command failed!\\n"
-    sleep 1
-
+    source ~/.profile
     clear; ls -1AhFv --color --group-directories-first
 }
 
@@ -1346,6 +1338,10 @@ big_files() {
             display_size($1, $2, $3)
         }
     ' | head -n"$count"
+}
+
+big_file () {
+    find . -type f -print0 | du -ha --files0-from=- | LC_ALL='C' sort -rh | head -n $1
 }
 
 big_vids() {

@@ -79,7 +79,7 @@ EOF
         log "Converting $video"
         
         if ffpb -y -vsync 0 -hide_banner -hwaccel_output_format cuda \
-                -i "$video" -c:v hevc_nvenc -preset medium -profile main10 \
+                -threads $(nproc --all) -i -threads $(nproc --all) "$video" -c:v hevc_nvenc -preset medium -profile main10 \
                 -pix_fmt p010le -rc:v vbr -tune hq -b:v "${bitrate}k" \
                 -bufsize "${bufsize}k" -maxrate "${maxrate}k" -bf:v 3 -g 250 \
                 -b_ref_mode middle -qmin 0 -temporal-aq 1 -rc-lookahead 20 \
