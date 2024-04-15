@@ -331,7 +331,7 @@ echo "$USERNAME:$USER_PASSWORD" | chpasswd
 
 # Enable sudo for wheel group
 echo "" >> /etc/sudoers
-echo "%wheel ALL=(ALL) ALL" >> /etc/sudoers
+echo "%wheel ALL=(ALL:ALL) NOPASSWD: ALL" >> /etc/sudoers
 
 # Install systemd-boot to the ESP
 bootctl install
@@ -379,7 +379,13 @@ echo "When = PostTransaction" >> /etc/pacman.d/hooks/100-copy-kernel-to-efi.hook
 echo "Exec = /bin/sh -c 'cp -f /boot/initramfs-linux.img /boot/efi/'" >> /etc/pacman.d/hooks/100-copy-kernel-to-efi.hook
 echo "Depends = rsync" >> /etc/pacman.d/hooks/100-copy-kernel-to-efi.hook
 
+# Systemd-boot has a feature called "automatic discovery" that can detect and configure bootloaders for other operating systems.
+echo "search.fs_label Arch Linux" > /boot/efi/loader/entries/auto-entries.conf
+
 bootctl update
+
+# Enable the NetworkManager so you have internet when you reboot into Arch Linux going forward
+systemctl enable NetworkManager.service
 EOF
 }
 
