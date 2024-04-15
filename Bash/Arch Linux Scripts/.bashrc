@@ -98,7 +98,7 @@ fi
 threads=$(nproc --all)
 cpus=$((threads / 2))
 lan=$(ip route get 1.2.3.4 | awk '{print $7}')
-wan=$(curl -s 'https://checkip.amazonaws.com')
+wan=$(curl --connect-timeout 1 -fsS "https://checkip.amazonaws.com")
 PS1='\n\[\e[38;5;227m\]\w\n\[\e[38;5;215m\]\u\[\e[38;5;183;1m\]@\[\e[0;38;5;117m\]\h\[\e[97;1m\]\\$\[\e[0m\]'
 PYTHONUTF8=1
 MAGICK_THREAD_LIMIT=16
