@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-gettext-libiconv
+# GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-gettext-libiconv.sh
 # Purpose: build gnu gettext + libiconv
 # Updated: 08.31.23
 # Script version: 2.0
@@ -22,7 +22,7 @@ install_dir1="/usr/local/libiconv-1.17"
 install_dir2="/usr/local/gettext-0.22.5"
 CC="ccache gcc"
 CXX="ccache g++"
-CFLAGS="-O2 -march=native -mtune=native -D_FORTIFY_SOURCE=2"
+CFLAGS="-O3 -march=native -D_FORTIFY_SOURCE=2"
 CXXFLAGS="$CFLAGS"
 export CC CXX CFLAGS CXXFLAGS
 
