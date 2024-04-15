@@ -14,7 +14,7 @@ YELLOW='\033[0;33m'
 NC='\033[0m'
 
 # Ensure running as root
-if [ "$EUID" -ne 0 ]; then
+if [ "$EUID" -eq 0 ]; then
     echo -e "${RED}This script must be run as root. Exiting.${NC}" >&2
     exit 1
 fi
@@ -60,10 +60,10 @@ check_dependencies() {
 }
 
 source_flags() {
-    CC=gcc
-    CXX=g++
-    CFLAGS="-g -O3 -pipe -fno-plt -march=native"
-    CXXFLAGS="-g -O3 -pipe -fno-plt -march=native"
+    CC="gcc"
+    CXX="g++"
+    CFLAGS="-O3 -pipe -march=native"
+    CXXFLAGS="$CFLAGS"
     export CC CFLAGS CXX CXXFLAGS
 }
 
@@ -74,7 +74,7 @@ build_libmetalink() {
     curl -fsSL "https://github.com/metalink-dev/libmetalink/releases/download/release-0.1.3/libmetalink-0.1.3.tar.xz" | tar -Jxf - --strip-components 1
     ./configure --prefix="$install_dir" || error "Failed to configure libmetalink."
     make "-j$(nproc)" || error "Failed to build libmetalink."
-    make install || error "Failed to install libmetalink."
+    sudo make install || error "Failed to install libmetalink."
     log "libmetalink built successfully."
 }
 
@@ -92,7 +92,7 @@ build_wget() {
                 --without-ipv6 \
                 --disable-nls || error "Failed to configure wget."
                 make "-j$(nproc --all)" || error "Failed to build wget."
-                make install || error "Failed to install wget."
+                sudo make install || error "Failed to install wget."
     log "wget built and installed successfully."
 }
 
@@ -139,12 +139,10 @@ main() {
     build_wget
     fix_libmetalink_libs
     cleanup
-    log "Wget build script completed successfully."
+    ldconfig
 }
 
 main "$@"
 
-# Register all new libraries
-ldconfig
-
-echo "Script complete."
+echo
+log "Wget build script completed successfully."
