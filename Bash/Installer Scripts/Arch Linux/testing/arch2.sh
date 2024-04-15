@@ -92,8 +92,6 @@ fi
 
 # Disk setup
 setup_disk() {
-    local disk_parts=("$DISK1" "$DISK2" "$DISK3")
-    
     # Prompt for partition count
     read -p "Enter the number of partitions (minimum 3): " PARTITION_COUNT
     while [[ "$PARTITION_COUNT" -lt 3 ]]; do
@@ -117,7 +115,6 @@ setup_disk() {
         echo "Available partition types:"
         echo
         echo "1 EFI System"
-        echo "2 MBR Partition Scheme"
         echo "3 Intel Fast Flash"
         echo "4 BIOS Boot"
         echo "5 Sony Boot Partition"
@@ -170,79 +167,89 @@ setup_disk() {
     log "Partitioning disk $DISK..."
     parted -s "$DISK" mklabel gpt
 
-    if [[ "$DISK" == *"nvme"* ]]; then
-        parted -s "$DISK" mkpart primary fat32 1 $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g')
-        parted -s "$DISK" set 1 esp on
-        parted -s "$DISK" mkpart primary linux-swap $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g') $(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
-        
-        local start=$(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
-        for ((i=0; i<${#PARTITION_SIZES[@]}; i++)); do
-            local SIZE=$(echo "$(echo "${PARTITION_SIZES[i]}" | sed 's/[^0-9]*//g') * 1024" | bc)
-            local end=$((start + SIZE))
-            parted -s "$DISK" mkpart primary $start $end
-            local type=${PARTITION_TYPES[i]}
-            case $type in
-                1) parted -s "$DISK" set $((i+3)) esp on ;;
-                2) parted -s "$DISK" set $((i+3)) bios_grub on ;;
-                4) parted -s "$DISK" set $((i+3)) boot on ;;
-                19) parted -s "$DISK" set $((i+3)) swap on ;;
-            esac
-            start=$end
-        done
-        
-        # Create the final partition with the remaining space and set the partition type to Linux filesystem
-        parted -s "$DISK" mkpart primary $start 100%
-        parted -s "$DISK" set $PARTITION_COUNT 20
-    else
-        parted -s "$DISK" mkpart primary fat32 1 $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g')
-        parted -s "$DISK" set 1 esp on
-        parted -s "$DISK" mkpart primary linux-swap $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g') $(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
-        
-        local start=$(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
-        for ((i=0; i<${#PARTITION_SIZES[@]}; i++)); do
-            local SIZE=$(echo "$(echo "${PARTITION_SIZES[i]}" | sed 's/[^0-9]*//g') * 1024" | bc)
-            local end=$((start + SIZE))
-            parted -s "$DISK" mkpart primary $start $end
-            local type=${PARTITION_TYPES[i]}
-            case $type in
-                1) parted -s "$DISK" set $((i+3)) esp on ;;
-                2) parted -s "$DISK" set $((i+3)) bios_grub on ;;
-                4) parted -s "$DISK" set $((i+3)) boot on ;;
-                19) parted -s "$DISK" set $((i+3)) swap on ;;
-            esac
-            start=$end
-        done
-        
-        # Create the final partition with the remaining space and set the partition type to Linux filesystem
-        parted -s "$DISK" mkpart primary $start 100%
-        parted -s "$DISK" set $PARTITION_COUNT 23
-    fi
+    parted -s "$DISK" mkpart primary fat32 1 $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g')
+    parted -s "$DISK" set 1 esp on
+    parted -s "$DISK" mkpart primary linux-swap $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g') $(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
+    
+    local start=$(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
+    for ((i=0; i<${#PARTITION_SIZES[@]}; i++)); do
+        local SIZE=$(echo "$(echo "${PARTITION_SIZES[i]}" | sed 's/[^0-9]*//g') * 1024" | bc)
+        local end=$((start + SIZE))
+        parted -s "$DISK" mkpart primary $start $end
+        local type=${PARTITION_TYPES[i]}
+        case $type in
+            1) parted -s "$DISK" set $((i+3)) esp on ;;
+            4) parted -s "$DISK" set $((i+3)) boot on ;;
+            19) parted -s "$DISK" set $((i+3)) swap on ;;
+        esac
+        start=$end
+    done
+    
+    # Create the final partition with the remaining space and set the partition type to Linux filesystem
+    parted -s "$DISK" mkpart primary $start 100%
+    parted -s "$DISK" set $PARTITION_COUNT 23
 
-    # Make filesystems
+    # Format partitions with ext4 filesystem
     echo
-    log "Creating filesystems..."
-    if [[ "$DISK" == *"nvme"* ]]; then
-        mkfs.fat -F32 "${DISK}p1"
-        mkswap "${DISK}p2"
-        mkfs.ext4 "${DISK}p${PARTITION_COUNT}"
-    else
-        mkfs.fat -F32 "${DISK}1"
-        mkswap "${DISK}2"
-        mkfs.ext4 "${DISK}${PARTITION_COUNT}"
-    fi
+    log "Formatting partitions with ext4 filesystem..."
+    mkfs.fat -F32 "$DISK1"
+    mkswap "$DISK2"
+    for ((i=3; i<=PARTITION_COUNT; i++)); do
+        if [[ $i -ne 2 ]]; then 
+            partition="${DISK}${i}"
+            mkfs.ext4 "$partition"
+        fi
+    done
 }
 
 # Partition mounting
 mount_partitions() {
     log "Enabling swap and mounting partitions..."
-    swapon "$DISK2"
     
     if [[ "$DISK" == *"nvme"* ]]; then
+        swapon "${DISK}p2"
         mount "${DISK}p${PARTITION_COUNT}" /mnt
         mount --mkdir "${DISK}p1" /mnt/boot/efi
+        
+        for ((i=3; i<PARTITION_COUNT; i++)); do
+            read -p "Do you want to mount partition ${DISK}p$i? (y/n): " choice
+            case "$choice" in
+                [yY]*|[yY][eE][sS]*)
+                    read -p "Enter the mount path for partition ${DISK}p$i (press Enter to skip): " mount_path
+                    if [[ -n "$mount_path" ]]; then
+                        mount --mkdir "${DISK}p$i" "$mount_path"
+                        log "Partition ${DISK}p$i mounted at $mount_path"
+                    else
+                        log "Skipping mount for partition ${DISK}p$i"
+                    fi
+                    ;;
+                *)
+                    log "Skipping mount for partition ${DISK}p$i"
+                    ;;
+            esac
+        done
     else
+        swapon "${DISK}2"
         mount "${DISK}${PARTITION_COUNT}" /mnt
         mount --mkdir "${DISK}1" /mnt/boot/efi
+        
+        for ((i=3; i<PARTITION_COUNT; i++)); do
+            read -p "Do you want to mount partition ${DISK}$i? (y/n): " choice
+            case "$choice" in
+                [yY]*|[yY][eE][sS]*)
+                    read -p "Enter the mount path for partition ${DISK}$i (press Enter to skip): " mount_path
+                    if [[ -n "$mount_path" ]]; then
+                        mount --mkdir "${DISK}$i" "$mount_path"
+                        log "Partition ${DISK}$i mounted at $mount_path"
+                    else
+                        log "Skipping mount for partition ${DISK}$i"
+                    fi
+                    ;;
+                *)
+                    log "Skipping mount for partition ${DISK}$i"
+                    ;;
+            esac
+        done
     fi
 }
 
@@ -327,12 +334,6 @@ echo "$USERNAME:$USER_PASSWORD" | chpasswd
 echo "" >> /etc/sudoers
 echo "%wheel ALL=(ALL) ALL" >> /etc/sudoers
 
-# Systemd-boot installation and configuration
-
-# Ensure the ESP is mounted to /boot/efi
-mkdir -p /boot/efi
-mount ${DISK}1 /boot/efi
-
 # Install systemd-boot to the ESP
 bootctl install
 
@@ -343,8 +344,8 @@ echo "timeout 4" >> /boot/efi/loader/loader.conf
 echo "console-mode max" >> /boot/efi/loader/loader.conf
 echo "editor no" >> /boot/efi/loader/loader.conf
 echo "title Arch Linux" > /boot/efi/loader/entries/arch.conf
-echo "linux vmlinuz-linux" >> /boot/efi/loader/entries/arch.conf
-echo "initrd initramfs-linux.img" >> /boot/efi/loader/entries/arch.conf
+echo "linux /vmlinuz-linux" >> /boot/efi/loader/entries/arch.conf
+echo "initrd /initramfs-linux.img" >> /boot/efi/loader/entries/arch.conf
 echo "options root=PARTUUID=$PARTUUID rw" >> /boot/efi/loader/entries/arch.conf
 
 # In case these files are not located in /boot/efi then locate them and move them there
