@@ -54,9 +54,10 @@ warn() {
 }
 
 check_dependencies() {
-    apt-get update
-    apt-get install autoconf automake bzip2 curl gfortran libcurl4-openssl-dev libexpat1-dev \
-                    libgcrypt20-dev libgpgme-dev libssl-dev libunistring-dev pkg-config zlib1g-dev
+    apt update
+    apt install autoconf automake bzip2 curl gfortran libcurl4-openssl-dev \
+                libexpat1-dev libgcrypt20-dev libgpgme-dev libssl-dev \
+                libunistring-dev pkg-config zlib1g-dev
 }
 
 source_flags() {
