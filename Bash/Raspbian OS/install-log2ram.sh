@@ -12,8 +12,8 @@ warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 fail() { echo -e "${RED}[FAIL]${NC} $1"; exit 1; }
 
 # Check for root privileges
-if [[ "$EUID" -ne 0 ]]; then
-    fail "This script must be run as root. Use sudo."
+if [[ "$EUID" -eq 0 ]]; then
+    fail "This script must be run with root or with sudo."
 fi
 
 # Reboot prompt function
@@ -22,7 +22,7 @@ prompt_reboot() {
     read -r choice
     if [[ "$choice" == [Yy]* ]]; then
         log "Rebooting..."
-        reboot
+        sudo reboot
     else
         log "Manual reboot required to complete the installation."
     fi
@@ -34,7 +34,7 @@ check_and_install_pkgs() {
                 autoconf autoconf-archive autogen
                 build-essential libtool mailutils
                 m4 perl ssh python3-cmarkgfm liblz4-dev
-                python3-commonmark libxxhash-dev
+                python3-commonmark libxxhash-dev libzstd-dev
             )
 
     for pkg in "${pkgs[@]}"; do
@@ -44,7 +44,7 @@ check_and_install_pkgs() {
     done
 
     if [[ -n "$missing_pkgs" ]]; then
-        apt-get install $missing_pkgs
+        sudo apt -y install $missing_pkgs
     fi
 }
 
@@ -68,7 +68,7 @@ install_rsync_from_source() {
     make "-j$(nproc --all)" || fail "Failed to compile rsync."
 
     log "Installing rsync..."
-    make install || fail "Failed to install rsync."
+    sudo make install || fail "Failed to install rsync."
 }
 
 # log2ram configuration function
@@ -77,7 +77,7 @@ configure_log2ram() {
     [[ -f "$config_file" ]] || fail "log2ram configuration file not found."
 
     log "Configuring log2ram..."
-    sed -i 's/SIZE=40M/SIZE=1024M/g; s/LOG_DISK_SIZE=256M/LOG_DISK_SIZE=2048M/g' "$config_file" || warn "Failed to update log2ram configuration."
+    sudo sed -i 's/SIZE=40M/SIZE=1024M/g; s/LOG_DISK_SIZE=256M/LOG_DISK_SIZE=2048M/g' "$config_file" || warn "Failed to update log2ram configuration."
 
     log "Configuration updated: SIZE=512M, LOG_DISK_SIZE=1024M"
 }
@@ -85,7 +85,7 @@ configure_log2ram() {
 # Main installation function
 install_log2ram() {
     log "Starting log2ram installation..."
-    apt-get update && apt-get upgrade -y || fail "Failed to update/upgrade system packages."
+    sudo apt update && sudo apt -y full-upgrade || fail "Failed to update/upgrade system packages."
     check_and_install_pkgs
 
     # Download and install log2ram
@@ -98,7 +98,7 @@ install_log2ram() {
 
     log "Running log2ram installation script..."
     cd log2ram
-    ./install.sh || fail "Failed to run log2ram installation script."
+    sudo bash install.sh || fail "Failed to run log2ram installation script."
 
     install_rsync_from_source
 
@@ -108,6 +108,11 @@ install_log2ram() {
     log "log2ram and rsync installations completed."
     prompt_reboot
 }
+
+# Define variables
+cwd="$PWD/log2ram-build-script"
+mkdir -p "$cwd"
+cd "$cwd" || exit 1
 
 # Execute the installation process
 install_log2ram
