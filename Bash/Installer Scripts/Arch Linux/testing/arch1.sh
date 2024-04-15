@@ -209,7 +209,7 @@ mount_partitions() {
     if [[ "$DISK" == *"nvme"* ]]; then
         swapon "${DISK}p2"
         mount "${DISK}p${PARTITION_COUNT}" /mnt
-        mount --mkdir "${DISK}p1" /mnt/boot
+        mount --mkdir "${DISK}p1" /mnt/boot/efi
         
         for ((i=3; i<PARTITION_COUNT; i++)); do
             read -p "Do you want to mount partition ${DISK}p$i? (y/n): " choice
@@ -231,7 +231,7 @@ mount_partitions() {
     else
         swapon "${DISK}2"
         mount "${DISK}${PARTITION_COUNT}" /mnt
-        mount --mkdir "${DISK}1" /mnt/boot
+        mount --mkdir "${DISK}1" /mnt/boot/efi
         
         for ((i=3; i<PARTITION_COUNT; i++)); do
             read -p "Do you want to mount partition ${DISK}$i? (y/n): " choice
@@ -348,11 +348,7 @@ echo "linux /vmlinuz-linux" >> /boot/efi/loader/entries/arch.conf
 echo "initrd /initramfs-linux.img" >> /boot/efi/loader/entries/arch.conf
 echo "options root=PARTUUID=$PARTUUID rw" >> /boot/efi/loader/entries/arch.conf
 
-# In case these files are not located in /boot/efi then locate them and move them there
-find / -type f \( -name "vmlinuz-linux" -o -name "initramfs-linux.img" \) -exec mv {} /boot/efi/ \;
-
 bootctl update
-bootctl status
 EOF
 }
 
