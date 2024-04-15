@@ -209,7 +209,7 @@ mount_partitions() {
     if [[ "$DISK" == *"nvme"* ]]; then
         swapon "${DISK}p2"
         mount "${DISK}p${PARTITION_COUNT}" /mnt
-        mount --mkdir "${DISK}p1" /mnt/boot/efi
+        mount --mkdir "${DISK}p1" /mnt/boot
         
         for ((i=3; i<PARTITION_COUNT; i++)); do
             read -p "Do you want to mount partition ${DISK}p$i? (y/n): " choice
@@ -231,7 +231,7 @@ mount_partitions() {
     else
         swapon "${DISK}2"
         mount "${DISK}${PARTITION_COUNT}" /mnt
-        mount --mkdir "${DISK}1" /mnt/boot/efi
+        mount --mkdir "${DISK}1" /mnt/boot
         
         for ((i=3; i<PARTITION_COUNT; i++)); do
             read -p "Do you want to mount partition ${DISK}$i? (y/n): " choice
@@ -334,12 +334,6 @@ echo "$USERNAME:$USER_PASSWORD" | chpasswd
 echo "" >> /etc/sudoers
 echo "%wheel ALL=(ALL) ALL" >> /etc/sudoers
 
-# Systemd-boot installation and configuration
-
-# Ensure the ESP is mounted to /boot/efi
-mkdir -p /boot/efi
-mount ${DISK}1 /boot/efi
-
 # Install systemd-boot to the ESP
 bootctl install
 
@@ -350,8 +344,8 @@ echo "timeout 4" >> /boot/efi/loader/loader.conf
 echo "console-mode max" >> /boot/efi/loader/loader.conf
 echo "editor no" >> /boot/efi/loader/loader.conf
 echo "title Arch Linux" > /boot/efi/loader/entries/arch.conf
-echo "linux vmlinuz-linux" >> /boot/efi/loader/entries/arch.conf
-echo "initrd initramfs-linux.img" >> /boot/efi/loader/entries/arch.conf
+echo "linux /vmlinuz-linux" >> /boot/efi/loader/entries/arch.conf
+echo "initrd /initramfs-linux.img" >> /boot/efi/loader/entries/arch.conf
 echo "options root=PARTUUID=$PARTUUID rw" >> /boot/efi/loader/entries/arch.conf
 
 # In case these files are not located in /boot/efi then locate them and move them there
@@ -419,7 +413,6 @@ main() {
 
     setup_disk
     mount_partitions
-    install_packages
 
     # Retrieve PARTUUID of the root partition and export it for later use
     PARTUUID=$(blkid -o value -s PARTUUID ${ROOT_PART})
