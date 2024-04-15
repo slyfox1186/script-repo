@@ -348,11 +348,11 @@ echo "linux /vmlinuz-linux" >> /boot/efi/loader/entries/arch.conf
 echo "initrd /initramfs-linux.img" >> /boot/efi/loader/entries/arch.conf
 echo "options root=PARTUUID=$PARTUUID rw" >> /boot/efi/loader/entries/arch.conf
 
-# In case these files are not located in /boot/efi then locate them and move them there
-find / -type f \( -name "vmlinuz-linux" -o -name "initramfs-linux.img" \) -exec mv {} /boot/efi/ \;
+# Create symbolic links in /boot/efi pointing to /boot
+ln -sf /boot/vmlinuz-linux /boot/efi/vmlinuz-linux
+ln -sf /boot/initramfs-linux.img /boot/efi/initramfs-linux.img
 
 bootctl update
-bootctl status
 EOF
 }
 
