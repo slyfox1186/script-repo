@@ -50,7 +50,7 @@ display_info() {
 set_compiler_flags() {
     CC="ccache gcc"
     CXX="ccache g++"
-    CFLAGS="-O2 -pipe -fno-plt -march=native -mtune=native"
+    CFLAGS="-O2 -pipe -march=native"
     CXXFLAGS="$CFLAGS"
     LDFLAGS="-Wl,-rpath,/usr/local/$archive_dir/lib"
     export CC CXX CFLAGS CXXFLAGS LDFLAGS
@@ -63,7 +63,7 @@ install_dependencies() {
     missing_pkgs=""
     for pkg in $pkgs; do
         if ! dpkg -s "$pkg" &> /dev/null; then
-            missing_pkgs+=" $pkg"
+            missing_pkgs+="$pkg "
         fi
     done
     if [[ -n "$missing_pkgs" ]]; then
@@ -140,9 +140,10 @@ main() {
     create_soft_links
     echo
     cleanup
-    echo
-    log "Make sure to star this repository to show your support!"
-    log "https://github.com/slyfox1186/script-repo"
 }
 
 main
+
+echo
+log "Make sure to star this repository to show your support!"
+log "https://github.com/slyfox1186/script-repo"
