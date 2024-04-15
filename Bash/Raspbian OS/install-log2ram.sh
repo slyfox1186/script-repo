@@ -50,11 +50,11 @@ check_and_install_pkgs() {
 
 # Install rsync from source
 install_rsync_from_source() {
-    local rsync_url="https://github.com/WayneD/rsync/archive/refs/tags/v3.2.7.tar.gz"
-    local rsync_dir="rsync-3.2.7"
+    local rsync_url="https://github.com/RsyncProject/rsync/archive/refs/tags/v3.3.0.tar.gz"
+    local rsync_dir="rsync-3.3.0"
 
     log "Downloading rsync from GitHub..."
-    wget -cqO rsync.tar.gz "$rsync_url" || fail "Failed to download rsync."
+    wget --show-progress -cqO rsync.tar.gz "$rsync_url" || fail "Failed to download rsync."
 
     log "Extracting rsync..."
     tar -zxf rsync.tar.gz || fail "Failed to extract rsync."
@@ -90,14 +90,15 @@ install_log2ram() {
 
     # Download and install log2ram
     log "Downloading log2ram from GitHub..."
-    wget -cqO log2ram.tar.gz https://github.com/azlux/log2ram/archive/master.tar.gz || fail "Failed to download log2ram."
+    wget --show-progress -cqO "log2ram.tar.gz" "https://github.com/azlux/log2ram/archive/master.tar.gz" || fail "Failed to download log2ram."
 
     log "Extracting log2ram..."
     mkdir log2ram
     tar -zxf log2ram.tar.gz -C log2ram --strip-components 1 || fail "Failed to extract log2ram."
 
     log "Running log2ram installation script..."
-    (cd log2ram && ./install.sh) || fail "Failed to run log2ram installation script."
+    cd log2ram
+    ./install.sh || fail "Failed to run log2ram installation script."
 
     install_rsync_from_source
 
