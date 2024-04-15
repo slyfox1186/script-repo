@@ -320,7 +320,6 @@ echo "LANG=en_US.UTF-8" > /etc/locale.conf
 
 # Network configuration
 echo "$COMPUTER_NAME" > /etc/hostname
-mkinitcpio -P
 echo "127.0.1.1 myarch.localdomain $COMPUTER_NAME" >> /etc/hosts
 
 # Set root password
@@ -332,13 +331,13 @@ echo "$USERNAME:$USER_PASSWORD" | chpasswd
 
 # Enable sudo for wheel group
 echo "" >> /etc/sudoers
-echo "%wheel ALL=(ALL) ALL" >> /etc/sudoers
+echo "%wheel ALL=(ALL:ALL) NOPASSWD: ALL" >> /etc/sudoers
 
 # Install systemd-boot to the ESP
 bootctl install
 
 # Setup loader entries
-mkdir -p /boot/efi/loader/entries
+[[ ! -d /boot/efi/loader/entries ]] && mkdir -p /boot/efi/loader/entries
 echo "default arch.conf" > /boot/efi/loader/loader.conf
 echo "timeout 4" >> /boot/efi/loader/loader.conf
 echo "console-mode max" >> /boot/efi/loader/loader.conf
@@ -348,6 +347,10 @@ echo "linux /vmlinuz-linux" >> /boot/efi/loader/entries/arch.conf
 echo "initrd /initramfs-linux.img" >> /boot/efi/loader/entries/arch.conf
 echo "options root=PARTUUID=$PARTUUID rw" >> /boot/efi/loader/entries/arch.conf
 
+# Systemd-boot has a feature called "automatic discovery" that can detect and configure bootloaders for other operating systems.
+echo "search.fs_label Arch Linux" > /boot/efi/loader/entries/auto-entries.conf
+
+# Move vmlinuz-linux kernel and initramfs.img to /boot/efi so that that systemd-boot will be able to find them
 [[ ! -d /etc/pacman.d/hooks ]] && mkdir -p /etc/pacman.d/hooks
 echo "[Trigger]" > /etc/pacman.d/hooks/99-update-boot-images.hook
 echo "Operation = Install" >> /etc/pacman.d/hooks/99-update-boot-images.hook
@@ -360,11 +363,88 @@ echo "Description = Move Kernel and Initramfs to custom boot path" >> /etc/pacma
 echo "When = PostTransaction" >> /etc/pacman.d/hooks/99-update-boot-images.hook
 echo "Exec = /bin/sh -c 'cp -f /boot/vmlinuz-linux /boot/efi/; cp -f /boot/initramfs-linux.img /boot/efi/'" >> /etc/pacman.d/hooks/99-update-boot-images.hook
 
+# Move the kernel and initramfs files to the default location in /boot
 mkinitcpio -P
 
-find / -type f \( -name "vmlinuz-linux" -o -name "initramfs-linux.img" \) -exec mv {} /boot/efi/ \;
+# Copy the vmlinuz-linux kernel to /boot/efi so that that systemd-boot will be able to find it
+find / -type f \( -name "vmlinuz-linux" -o -name "initramfs-linux.img" \) -exec cp {} /boot/efi/ \;
+
+# Copy the vmlinuz-linux kernel and initramfs.img to /boot/efi every time there is a kernel upgrade to avoid fatal errors
+echo "[Trigger]" > /etc/pacman.d/hooks/100-copy-kernel-to-efi.hook
+echo "Operation = Install" >> /etc/pacman.d/hooks/100-copy-kernel-to-efi.hook
+echo "Operation = Upgrade" >> /etc/pacman.d/hooks/100-copy-kernel-to-efi.hook
+echo "Type = Package" >> /etc/pacman.d/hooks/100-copy-kernel-to-efi.hook
+echo "Target = linux" >> /etc/pacman.d/hooks/100-copy-kernel-to-efi.hook
+echo "" >> /etc/pacman.d/hooks/100-copy-kernel-to-efi.hook
+echo "[Action]" >> /etc/pacman.d/hooks/100-copy-kernel-to-efi.hook
+echo "Description = Copying kernel and initramfs to EFI partition" >> /etc/pacman.d/hooks/100-copy-kernel-to-efi.hook
+echo "When = PostTransaction" >> /etc/pacman.d/hooks/100-copy-kernel-to-efi.hook
+echo "Exec = /bin/sh -c 'cp -f /boot/initramfs-linux.img /boot/efi/'" >> /etc/pacman.d/hooks/100-copy-kernel-to-efi.hook
+echo "Depends = rsync" >> /etc/pacman.d/hooks/100-copy-kernel-to-efi.hook
 
 bootctl update
+
+# Define the local ESP mount point
+local_esp="/boot/efi"
+local_mount_point="/mnt/other_efi"
+
+# Ensure the local ESP is mounted
+if ! mountpoint -q "$local_esp"; then
+    echo "Local ESP ($local_esp) is not mounted. Exiting."
+    exit 1
+fi
+
+# Make sure the mount directory exists
+mkdir -p $local_mount_point
+
+# Find all partitions with a VFAT filesystem
+efi_partitions=$(blkid -o device -t TYPE=vfat)
+
+# Patterns for identifying the EFI executables
+ubuntu_pattern="*ubuntu*grubx64.efi"
+windows_pattern="*Microsoft*bootmgfw.efi"
+
+# Function to copy EFI files
+copy_efi_file() {
+    src="$1"
+    dest="$2"
+    # Ensure the destination directory exists
+    mkdir -p "$(dirname "$local_esp/$dest")"
+    if [ -f "$src" ]; then
+        echo "Copying $src to $local_esp/$dest..."
+        cp "$src" "$local_esp/$dest"
+        echo "File copied."
+    else
+        echo "EFI file not found at $src."
+    fi
+}
+
+# Loop through each EFI partition
+for part in $efi_partitions; do
+    echo "Checking EFI partition: $part"
+
+    # Mount the partition temporarily
+    mount $part $local_mount_point
+
+    # Search for and copy Ubuntu and Windows EFI files
+    ubuntu_efi_file=$(find $local_mount_point -type f -iname "$ubuntu_pattern")
+    windows_efi_file=$(find $local_mount_point -type f -iname "$windows_pattern")
+
+    if [ -n "$ubuntu_efi_file" ]; then
+        copy_efi_file "$ubuntu_efi_file" "EFI/ubuntu/grubx64.efi"
+    fi
+    if [ -n "$windows_efi_file" ]; then
+        copy_efi_file "$windows_efi_file" "EFI/Microsoft/Boot/bootmgfw.efi"
+    fi
+
+    # Unmount the EFI partition
+    umount $local_mount_point
+done
+
+echo "Script completed."
+
+# Enable the NetworkManager so you have internet when you reboot into Arch Linux going forward
+systemctl enable NetworkManager.service
 EOF
 }
 
