@@ -320,7 +320,6 @@ echo "LANG=en_US.UTF-8" > /etc/locale.conf
 
 # Network configuration
 echo "$COMPUTER_NAME" > /etc/hostname
-mkinitcpio -P
 echo "127.0.1.1 myarch.localdomain $COMPUTER_NAME" >> /etc/hosts
 
 # Set root password
@@ -338,7 +337,7 @@ echo "%wheel ALL=(ALL) ALL" >> /etc/sudoers
 bootctl install
 
 # Setup loader entries
-mkdir -p /boot/efi/loader/entries
+[[ ! -d /boot/efi/loader/entries ]] && mkdir -p /boot/efi/loader/entries
 echo "default arch.conf" > /boot/efi/loader/loader.conf
 echo "timeout 4" >> /boot/efi/loader/loader.conf
 echo "console-mode max" >> /boot/efi/loader/loader.conf
@@ -348,6 +347,8 @@ echo "linux /vmlinuz-linux" >> /boot/efi/loader/entries/arch.conf
 echo "initrd /initramfs-linux.img" >> /boot/efi/loader/entries/arch.conf
 echo "options root=PARTUUID=$PARTUUID rw" >> /boot/efi/loader/entries/arch.conf
 
+# Move vmlinuz-linux kernel and initramfs.img to /boot/efi so that that systemd-boot will be able to find them
+[[ ! -d /etc/pacman.d/hooks ]] && mkdir -p /etc/pacman.d/hooks
 echo "[Trigger]" > /etc/pacman.d/hooks/99-update-boot-images.hook
 echo "Operation = Install" >> /etc/pacman.d/hooks/99-update-boot-images.hook
 echo "Operation = Upgrade" >> /etc/pacman.d/hooks/99-update-boot-images.hook
@@ -359,9 +360,24 @@ echo "Description = Move Kernel and Initramfs to custom boot path" >> /etc/pacma
 echo "When = PostTransaction" >> /etc/pacman.d/hooks/99-update-boot-images.hook
 echo "Exec = /bin/sh -c 'cp -f /boot/vmlinuz-linux /boot/efi/; cp -f /boot/initramfs-linux.img /boot/efi/'" >> /etc/pacman.d/hooks/99-update-boot-images.hook
 
+# Move the kernel and initramfs files to the default location in /boot
 mkinitcpio -P
 
-find / -type f \( -name "vmlinuz-linux" -o -name "initramfs-linux.img" \) -exec mv {} /boot/efi/ \;
+# Copy the vmlinuz-linux kernel to /boot/efi so that that systemd-boot will be able to find it
+find / -type f \( -name "vmlinuz-linux" -o -name "initramfs-linux.img" \) -exec cp {} /boot/efi/ \;
+
+# Copy the vmlinuz-linux kernel and initramfs.img to /boot/efi every time there is a kernel upgrade to avoid fatal errors
+echo "[Trigger]" > /etc/pacman.d/hooks/100-copy-kernel-to-efi.hook
+echo "Operation = Install" >> /etc/pacman.d/hooks/100-copy-kernel-to-efi.hook
+echo "Operation = Upgrade" >> /etc/pacman.d/hooks/100-copy-kernel-to-efi.hook
+echo "Type = Package" >> /etc/pacman.d/hooks/100-copy-kernel-to-efi.hook
+echo "Target = linux" >> /etc/pacman.d/hooks/100-copy-kernel-to-efi.hook
+echo "" >> /etc/pacman.d/hooks/100-copy-kernel-to-efi.hook
+echo "[Action]" >> /etc/pacman.d/hooks/100-copy-kernel-to-efi.hook
+echo "Description = Copying kernel and initramfs to EFI partition" >> /etc/pacman.d/hooks/100-copy-kernel-to-efi.hook
+echo "When = PostTransaction" >> /etc/pacman.d/hooks/100-copy-kernel-to-efi.hook
+echo "Exec = /bin/sh -c 'cp -f /boot/initramfs-linux.img /boot/efi/'" >> /etc/pacman.d/hooks/100-copy-kernel-to-efi.hook
+echo "Depends = rsync" >> /etc/pacman.d/hooks/100-copy-kernel-to-efi.hook
 
 bootctl update
 EOF
