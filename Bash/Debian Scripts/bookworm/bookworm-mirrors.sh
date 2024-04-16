@@ -11,8 +11,8 @@ script_name=$(basename "$script_path")
 fname="/etc/apt/sources.list"
 
 # Make a backup of the file
-if [[ ! -f "${list}.bak" ]]; then
-    cp -f "$list" "${list}.bak"
+if [[ ! -f "${fname}.bak" ]]; then
+    cp -f "$fname" "${fname}.bak"
 fi
 
 cat > "$fname" <<EOF
