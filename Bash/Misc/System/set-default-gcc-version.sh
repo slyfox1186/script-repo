@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+if [[ "$EUID" -ne 0 ]]; then
+    echo "You must run this script as root or with sudo."
+    exit 1
+fi
+
 # Function to print the help menu
 print_help() {
     echo "Usage: $0 [OPTIONS]"
@@ -53,13 +58,13 @@ install_and_configure_gcc() {
     local pkg_manager=$(detect_package_manager)
     case "$pkg_manager" in
         apt)
-            sudo apt install -y "gcc-$version" "g++-$version"
+            apt install -y "gcc-$version" "g++-$version"
             ;;
         yum)
-            sudo yum install -y "gcc-$version" "gcc-c++-$version"
+            yum install -y "gcc-$version" "gcc-c++-$version"
             ;;
         pacman)
-            sudo pacman -Sy --noconfirm "gcc-$version"
+            pacman -Sy --noconfirm "gcc-$version"
             ;;
     esac
     local paths=$(find_gcc_binaries $version)
@@ -70,7 +75,7 @@ install_and_configure_gcc() {
     fi
     # Update ccache symlinks right after installation and configuration of GCC/G++
     if type -P ccache &>/dev/null; then
-        sudo /usr/sbin/update-ccache-symlinks
+        /usr/sbin/update-ccache-symlinks
     fi
 }
 
@@ -79,10 +84,10 @@ configure_alternatives() {
     local gcc_path gpp_path
     read -r gcc_path gpp_path <<< "$1"
     if [[ -n $gcc_path && -n $gpp_path ]]; then
-        sudo update-alternatives --install /usr/bin/gcc gcc $gcc_path 50
-        sudo update-alternatives --install /usr/bin/g++ g++ $gpp_path 50
-        sudo update-alternatives --set gcc $gcc_path
-        sudo update-alternatives --set g++ $gpp_path
+        update-alternatives --install /usr/bin/gcc gcc $gcc_path 50
+        update-alternatives --install /usr/bin/g++ g++ $gpp_path 50
+        update-alternatives --set gcc $gcc_path
+        update-alternatives --set g++ $gpp_path
     else
         if [[ -z $gcc_path ]]; then
             echo "Error: Missing path for GCC binary."
@@ -117,8 +122,8 @@ main() {
     done
 
     # Clear existing gcc and g++ alternatives
-    sudo update-alternatives --remove-all gcc
-    sudo update-alternatives --remove-all g++
+    update-alternatives --remove-all gcc
+    update-alternatives --remove-all g++
 
     if [[ -n "$specific_version" ]]; then
         install_and_configure_gcc "$specific_version"
