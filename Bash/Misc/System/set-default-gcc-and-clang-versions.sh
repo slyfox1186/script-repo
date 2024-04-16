@@ -80,6 +80,87 @@ get_highest_version() {
     echo "$highest_version"
 }
 
+# Function to find the appropriate clang and clang++ binaries, excluding any paths that contain 'ccache'
+find_clang_binaries() {
+    local version=$1
+    local search_paths=("/usr/bin" "/usr/local/bin" "/opt/bin")
+    local clang_path=""
+    local clangpp_path=""
+    
+    for path in "${search_paths[@]}"; do
+        if [[ -f "$path/clang-$version" ]]; then
+            clang_path="$path/clang-$version"
+        fi
+        if [[ -f "$path/clang++-$version" ]]; then
+            clangpp_path="$path/clang++-$version"
+        fi
+    done
+    
+    if [[ -n "$clang_path" && -n "$clangpp_path" ]]; then
+        echo "$clang_path $clangpp_path"
+    else
+        echo ""
+    fi
+}
+
+# Function to find the appropriate gcc and g++ binaries, excluding any paths that contain 'ccache'
+find_gcc_binaries() {
+    local version=$1
+    local search_paths=("/usr/bin" "/usr/local/bin" "/opt/bin")
+    local gcc_path=""
+    local gpp_path=""
+    
+    for path in "${search_paths[@]}"; do
+        if [[ -f "$path/gcc-$version" ]]; then
+            gcc_path="$path/gcc-$version"
+        fi
+        if [[ -f "$path/g++-$version" ]]; then
+            gpp_path="$path/g++-$version"
+        fi
+    done
+    
+    if [[ -n "$gcc_path" && -n "$gpp_path" ]]; then
+        echo "$gcc_path $gpp_path"
+    else
+        echo ""
+    fi
+}
+# Function to configure alternatives for clang
+configure_alternatives_clang() {
+    local clang_path clangpp_path
+    read -r clang_path clangpp_path <<< "$1"
+    if [[ -n $clang_path && -n $clangpp_path ]]; then
+        update-alternatives --install /usr/bin/clang clang $clang_path 50
+        update-alternatives --install /usr/bin/clang++ clang++ $clangpp_path 50
+        update-alternatives --set clang $clang_path
+        update-alternatives --set clang++ $clangpp_path
+    else
+        if [[ -z $clang_path ]]; then
+            echo "Error: Missing path for Clang binary."
+        fi
+        if [[ -z $clangpp_path ]]; then
+            echo "Error: Missing path for Clang++ binary."
+        fi
+    fi
+}
+# Function to configure alternatives for gcc
+configure_alternatives_gcc() {
+    local gcc_path gpp_path
+    read -r gcc_path gpp_path <<< "$1"
+    if [[ -n $gcc_path && -n $gpp_path ]]; then
+        update-alternatives --install /usr/bin/gcc gcc $gcc_path 50
+        update-alternatives --install /usr/bin/g++ g++ $gpp_path 50
+        update-alternatives --set gcc $gcc_path
+        update-alternatives --set g++ $gpp_path
+    else
+        if [[ -z $gcc_path ]]; then
+            echo "Error: Missing path for GCC binary."
+        fi
+        if [[ -z $gpp_path ]]; then
+            echo "Error: Missing path for G++ binary."
+        fi
+    fi
+}
 # Function to install and configure a specific compiler
 install_and_configure_compiler() {
     local compiler="$1"
@@ -107,8 +188,7 @@ install_and_configure_compiler() {
             [[ -n "$gcc_package" ]] && yum install -y "$gcc_package"
             ;;
         pacman)
-            pacman -Sy --noconfirm "$package_name"
-            [[ -n "$gcc_package" ]] && pacman -Sy "$gcc_package"
+            pacman -Sy --noconfirm gcc clang
             ;;
     esac
 
@@ -128,6 +208,13 @@ fi
 # Install and configure GCC if requested
 if [[ "$install_gcc" == true ]]; then
     install_and_configure_compiler "gcc" "$version_gcc"
+fi
+
+if type -P apt-get &>/dev/null; then
+    find_clang_binaries
+    find_gcc_binaries
+    configure_alternatives_clang
+    configure_alternatives_gcc
 fi
 
 echo "Setup completed based on selected options."
