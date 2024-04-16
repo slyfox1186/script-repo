@@ -21,7 +21,7 @@ GOTO :EOF
 REG ADD "HKCR\Directory\shell\CopyLinuxPath" /ve /d "Copy Linux Path" /f
 REG ADD "HKCR\Directory\shell\CopyLinuxPath" /v "Extended" /d "" /f
 REG ADD "HKCR\Directory\shell\CopyLinuxPath" /v "Icon" /d "C:\Program Files\WSL\wsl.exe" /f
-REG ADD "HKCR\Directory\shell\CopyLinuxPath\command" /d "%windir%\System32\cmd.exe /d /c \"wsl.exe wslpath -u '%%1' ^| %windir%\System32\clip.exe\"" /f
+REG ADD "HKCR\Directory\shell\CopyLinuxPath\command" /d "%windir%\System32\cmd.exe /d /c \"wsl.exe wslpath -u '%%V' ^| %windir%\System32\clip.exe\"" /f
 REG ADD "HKCR\*\shell\CopyLinuxPath" /ve /d "Copy Linux Path" /f
 REG ADD "HKCR\*\shell\CopyLinuxPath" /v "Extended" /d "" /f
 REG ADD "HKCR\*\shell\CopyLinuxPath" /v "Icon" /d "C:\Program Files\WSL\wsl.exe" /f
