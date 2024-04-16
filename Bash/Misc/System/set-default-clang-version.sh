@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
-set -x
+
+if [[ "$EUID" -ne 0 ]]; then
+    echo "You must run this script as root or with sudo."
+    exit 1
+fi
 
 # Function to print the help menu
 print_help() {
@@ -54,23 +58,23 @@ install_and_configure_clang() {
     local pkg_manager=$(detect_package_manager)
     case "$pkg_manager" in
         apt)
-            sudo apt install -y "clang-$version"
+            apt install -y "clang-$version"
             if apt-cache search "clang-$version-tools" | grep -q "clang-$version-tools"; then
-                sudo apt install -y "clang-$version-tools"
+                apt install -y "clang-$version-tools"
             elif apt-cache search "clang-tools-$version" | grep -q "clang-tools-$version"; then
-                sudo apt install -y "clang-tools-$version"
+                apt install -y "clang-tools-$version"
             fi
             ;;
         yum)
-            sudo yum install -y "clang-$version"
+            yum install -y "clang-$version"
             if yum search "clang-tools-extra" | grep -q "clang-tools-extra"; then
-                sudo yum install -y "clang-tools-extra"
+                yum install -y "clang-tools-extra"
             fi
             ;;
         pacman)
-            sudo pacman -Sy --noconfirm "clang=$version"
+            pacman -Sy --noconfirm "clang=$version"
             if pacman -Ss "clang-tools-extra" | grep -q "clang-tools-extra"; then
-                sudo pacman -Sy "clang-tools-extra"
+                pacman -Sy "clang-tools-extra"
             fi
             ;;
     esac
@@ -82,7 +86,7 @@ install_and_configure_clang() {
     fi
     # Update ccache symlinks right after installation and configuration of Clang/Clang++
     if type -P ccache &>/dev/null; then
-        sudo /usr/sbin/update-ccache-symlinks
+        /usr/sbin/update-ccache-symlinks
     fi
 }
 
@@ -91,10 +95,10 @@ configure_alternatives() {
     local clang_path clangpp_path
     read -r clang_path clangpp_path <<< "$1"
     if [[ -n $clang_path && -n $clangpp_path ]]; then
-        sudo update-alternatives --install /usr/bin/clang clang $clang_path 50
-        sudo update-alternatives --install /usr/bin/clang++ clang++ $clangpp_path 50
-        sudo update-alternatives --set clang $clang_path
-        sudo update-alternatives --set clang++ $clangpp_path
+        update-alternatives --install /usr/bin/clang clang $clang_path 50
+        update-alternatives --install /usr/bin/clang++ clang++ $clangpp_path 50
+        update-alternatives --set clang $clang_path
+        update-alternatives --set clang++ $clangpp_path
     else
         if [[ -z $clang_path ]]; then
             echo "Error: Missing path for Clang binary."
@@ -129,8 +133,8 @@ main() {
     done
 
     # Handle removal of existing alternatives with care to avoid errors
-    sudo update-alternatives --remove-all clang 2>/dev/null || echo "No alternatives for clang to remove."
-    sudo update-alternatives --remove-all clang++ 2>/dev/null || echo "No alternatives for clang++ to remove."
+    update-alternatives --remove-all clang 2>/dev/null || echo "No alternatives for clang to remove."
+    update-alternatives --remove-all clang++ 2>/dev/null || echo "No alternatives for clang++ to remove."
 
     if [[ -n "$specific_version" ]]; then
         install_and_configure_clang "$specific_version"
