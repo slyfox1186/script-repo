@@ -104,13 +104,14 @@ install_dependencies() {
             case "$DISTRO" in
                 ubuntu|debian|raspbian)
                     sudo apt update
-                    sudo apt install tar wget
+                    sudo apt -y install tar wget xz-utils
                     ;;
                 centos|fedora|rhel)
-                    sudo yum install tar wget
+                    sudo yum install -y tar wget
                     ;;
                 arch|manjaro)
-                    sudo pacman -S --needed tar wget
+                    sudo pacman -Syu
+                    sudo pacman -S --needed tar wget xz
                     ;;
                 opensuse*)
                     sudo zypper install tar wget
