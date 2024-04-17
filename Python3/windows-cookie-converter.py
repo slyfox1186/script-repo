@@ -1,10 +1,12 @@
-# To be run on native Window only using it's python install through cmd.exe or powershell.exe
+#### To be run on native Window only using it's python install through cmd.exe or powershell.exe
+
 # The reason for this is that there is timing involved that is counted since the year 1601 or also called the "Epoch".
 # And it is this timing that has to be considered when using Linux and Windows together such as in a WSL environment.
-# My point is that if you use this script in WSL and then point it to a chrome or firefox installation that is on a native Windows
-# environment the timing in this script was not made for any conversions between the Windows timing and the Linux timing and it
-# MAY LOOK LIKE the script worked but you will find out sooner or later that the information stored in the output file was NOT correct.
-# So, run this with using the WINDOWS version of python3 if for no other reason than to save yourself from yourself.
+# My point is that if you use this script in WSL or native Linux and then point it to a chrome or firefox installation
+# that is lcoated on a native Windows environment the timing in this script was not made for any conversions between the
+# two and it MAY LOOK LIKE the script worked but you will find out sooner or later that the information stored in the
+# output file was NOT correct. So, run this with using the WINDOWS version of python3 if for no other reason than to
+# save yourself from yourself.
 
 import os
 import json
