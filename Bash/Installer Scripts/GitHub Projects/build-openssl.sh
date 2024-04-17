@@ -217,7 +217,6 @@ configure_openssl() {
         "-w"
         "--with-zlib-include=/usr/include"
         "--with-zlib-lib=/usr/lib/x86_64-linux-gnu"
-        "enable-default-thread-pool"
         "enable-ec_nistp_64_gcc_128"
         "enable-egd"
         "enable-pic"
