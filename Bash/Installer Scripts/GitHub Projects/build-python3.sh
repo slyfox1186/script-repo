@@ -9,8 +9,8 @@
 ##  Updated: 01.27.24
 ##  Script version: 2.4 (Optimized and Corrected)
 
-if [[ "$EUID" -ne 0 ]]; then
-    echo "You must run this script with root or sudo."
+if [[ "$EUID" -eq 0 ]]; then
+    echo "You must run this script with without root or sudo."
     exit 1
 fi
 
@@ -48,7 +48,7 @@ cleanup() {
     read -p "Your choices are (1 or 2): " choice
 
     case "$choice" in
-        1) rm -fr "$cwd" ;;
+        1) sudo rm -fr "$cwd" ;;
         2) ;;
         *) unset choice
            cleanup
@@ -59,13 +59,6 @@ cleanup() {
 show_ver_fn() {
     save_ver="$(sudo find $install_dir/ -type f -name "python3.12" | grep -oP '[0-9\.]+$' | xargs -I{} echo python{})"
     printf "\n%s\n" "The newly installed version is: $save_ver"
-}
-
-check_root() {
-    if [[ $(id -u) -ne 0 ]]; then
-        echo "You must run this script as root or with sudo."
-        exit 1
-    fi
 }
 
 prepare_environment() {
@@ -104,7 +97,7 @@ $HOME/.local/bin:\
 set_compiler_flags() {
     CC="gcc"
     CXX="g++"
-    CFLAGS="-O2 -mtune=native"
+    CFLAGS="-O3 -pipe -mtune=native"
     CXXFLAGS="$CFLAGS"
     CPPFLAGS="-D_FORTIFY_SOURCE=2"
     export CC CFLAGS CXX CXXFLAGS CPPFLAGS
@@ -150,7 +143,7 @@ install_required_packages() {
     done
 
     if [[ ${#Missing_packages[@]} -gt 0 ]]; then
-        apt-get install ${missing_packages[@]} || fail "Failed to install required packages. Line: $LINENO"
+        sudo apt install ${missing_packages[@]} || fail "Failed to install required packages. Line: $LINENO"
     else
         echo "All required packages are already installed."
     fi
@@ -163,7 +156,7 @@ create_symlinks() {
     local programs=("python3" "pip3" "idle3" "pydoc3" "python3-config")
 
     for program in ${programs[@]}; do
-        ln -sf "$bin_dir/$program" "/usr/local/bin/$program"
+       sudo ln -sf "$bin_dir/$program" "/usr/local/bin/$program"
     done
 }
 
@@ -191,11 +184,10 @@ build_python() {
                  --with-valgrind || fail "Configuration failed. Line: $LINENO"
 
     make "-j$(nproc --all)" || fail "Failed to execute: make -j$(nproc --all). Line: $LINENO"
-    make install || fail "Failed to execute: make altinstall. Line: $LINENO"
+    sudo make install || fail "Failed to execute: make altinstall. Line: $LINENO"
 }
 
 # Main script execution
-check_root
 prepare_environment
 install_required_packages
 set_compiler_flags
