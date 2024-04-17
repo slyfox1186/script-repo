@@ -2,7 +2,7 @@
 
 ##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-aria2.sh
 ##  Purpose: Build aria2 from source code
-##  Updated: 04.10.24
+##  Updated: 04.17.24
 ##  Script version: 2.2
 
 script_ver="2.2"
@@ -40,9 +40,9 @@ display_help() {
 }
 
 set_compiler_options() {
-    CC="gcc"
-    CXX="g++"
-    CFLAGS="-O2 -pipe -march=native -mtune=native"
+    CC="ccache gcc"
+    CXX="ccache g++"
+    CFLAGS="-O3 -pipe -march=native"
     CXXFLAGS="$CFLAGS"
     export CC CFLAGS CXX CXXFLAGS
 }
@@ -214,7 +214,7 @@ EOT
 
 cleanup() {
     echo "Cleaning up..."
-    rm -fr "$build_dir" "$temp_dir"
+    sudo rm -fr "$build_dir" "$temp_dir"
     
     if [[ "$create_service" = true && "$cleanup" = true ]]; then
         echo "Removing aria2 service..."
@@ -233,20 +233,20 @@ main() {
         exit 1
     fi
     
-    create_service=false
-    cleanup=false
+    create_service="false"
+    cleanup="false"
 
     # Check command line options
     while [[ $# -gt 0 ]]; do
         case "$1" in
             -s|--service)
-                create_service=true
+                create_service="true"
                 ;;
             -d|--debug)
                 set -x
                 ;;
             -c|--cleanup)
-                cleanup=true
+                cleanup="true"
                 ;;
             -h|--help)
                 display_help
