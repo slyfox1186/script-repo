@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+# Build OpenSSL
+# Updated: 04.17.24
+# GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-openssl.sh
+# Script Version: 1.1
+
 # Function to display the usage instructions
 usage() {
     echo "Usage: $0 [OPTIONS]"
@@ -89,7 +94,7 @@ install_required_packages() {
 set_compiler_flags() {
     CC="ccache clang"
     CXX="ccache clang++"
-    CFLAGS="-O2 -pipe -fstack-protector-strong"
+    CFLAGS="-O2 -pipe -fstack-protector-strong -march=native"
     CPPFLAGS="-D_FORTIFY_SOURCE=2"
     CXXFLAGS="$CFLAGS"
     export CC CFLAGS CPPFLAGS CXX CXXFLAGS
