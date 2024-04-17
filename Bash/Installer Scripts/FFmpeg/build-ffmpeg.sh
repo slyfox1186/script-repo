@@ -2,8 +2,8 @@
 # shellcheck disable=SC2068,SC2162,SC2317 source=/dev/null
 
 # GitHub: https://github.com/slyfox1186/ffmpeg-build-script
-# Script version: 3.6.0
-# Updated: 04.12.24
+# Script version: 3.6.1
+# Updated: 04.17.24
 # Purpose: build ffmpeg from source code with addon development libraries
 #          also compiled from source to help ensure the latest functionality
 # Supported Distros: Arch Linux
@@ -344,10 +344,11 @@ github_repo() {
 
     [[ -z "$repo" || -z "$url" ]] && fail "Git repository and URL are required. Line: $LINENO"
 
-    while [[ $count -le $max_attempts ]]; do
+    while [[ "$count" -le "$max_attempts" ]]; do
         if [[ "$url_flag" -eq 1 ]]; then
             repo_version=$(curl -fsSL "https://github.com/xiph/rav1e/tags/" |
-                           grep -oP 'p[0-9]+\.tar\.gz' | sed 's/\.tar\.gz//g' | head -n1)
+                           grep -oP 'p[0-9]+\.tar\.gz' | sed 's/\.tar\.gz//g' |
+                           head -n1)
             [[ -n "$repo_version" ]] && return 0 || continue
         else
             curl_cmd=$(curl -fsSL "https://github.com/$repo/$url" | grep -o 'href="[^"]*\.tar\.gz"')
@@ -619,16 +620,10 @@ if [[ -n "$LDEXEFLAGS" ]]; then
 fi
 
 # Set the path variable
-cuda_bin_path1=$(find /usr/local/ -maxdepth 1 -type l -name cuda | tee /dev/null | head -n1)
-cuda_bin_path2=$(find /opt/ -maxdepth 1 -type l -name cuda | tee /dev/null | head -n1)
-if [[ -n "$cuda_bin_path1" ]]; then
-    cuda_bin_path1+="/bin"
-    cuda_bin_path="$cuda_bin_path1"
-elif [[ -n "$cuda_bin_path2" ]]; then
-    cuda_bin_path2+="/bin"
-    cuda_bin_path="$cuda_bin_path2"
-else
-    warn "Unable to set the variable \$cuda_bin_path. Line: $LINENO"
+if [[ -d "/usr/local/bin" ]]; then
+    cuda_bin_path="/usr/local/bin"
+elif [[ -d  "/opt/cuda/bin" ]]; then
+    cuda_bin_path="/opt/cuda/bin"
 fi
 
 if [[ -d /usr/lib/ccache/bin ]]; then
@@ -809,7 +804,7 @@ cuda_download() {
 # Function to detect the environment and check for an NVIDIA GPU
 check_nvidia_gpu() {
     local path_exists=0 found=0 gpu_info=""
-    if ! grep -qi microsoft /proc/version; then
+    if ! grep -Eiq '(microsoft|slyfox1186)' /proc/version; then
         lspci | grep -qi nvidia && is_nvidia_gpu_present="NVIDIA GPU detected" || is_nvidia_gpu_present="NVIDIA GPU not detected"
     else
         for dir in "/mnt/c" "/c"; do
@@ -898,12 +893,12 @@ apt_pkgs() {
         libmathic-dev libmatroska-dev libmbedtls-dev libmetis5 libmfx-dev libmodplug-dev libmusicbrainz5-dev libnuma-dev
         libpango1.0-dev libperl-dev libplacebo-dev libpocketsphinx-dev libportaudio-ocaml-dev libpsl-dev libpstoedit-dev
         libpulse-dev librabbitmq-dev libraw-dev librsvg2-dev librtmp-dev librubberband-dev librust-gstreamer-base-sys-dev
-        libserd-dev libshine-dev libsmbclient-dev libsnappy-dev libsndfile1-dev libsndio-dev libsoxr-dev libspeex-dev
-        libsphinxbase-dev libsqlite3-dev libsratom-dev libssh-dev libssl-dev libsystemd-dev libtalloc-dev libtesseract-dev
-        libticonv-dev libtool libtwolame-dev libudev-dev libv4l-dev libva-dev libvdpau-dev libvidstab-dev libvlccore-dev
-        libvo-amrwbenc-dev libx11-dev libxcursor-dev libxext-dev libxfixes-dev libxi-dev libxkbcommon-dev libxrandr-dev
-        libxss-dev libxvidcore-dev libzmq3-dev libzvbi-dev libzzip-dev lsb-release lshw lzma-dev m4 mesa-utils pandoc
-        python3 python3-pip python3-venv ragel re2c scons texi2html texinfo tk-dev unzip valgrind wget xmlto libsctp-dev
+        libserd-dev libshine-dev libsmbclient-dev libsnappy-dev libsndio-dev libsoxr-dev libspeex-dev libsphinxbase-dev
+        libsqlite3-dev libsratom-dev libssh-dev libssl-dev libsystemd-dev libtalloc-dev libtesseract-dev libticonv-dev
+        libtool libtwolame-dev libudev-dev libv4l-dev libva-dev libvdpau-dev libvidstab-dev libvlccore-dev libvo-amrwbenc-dev
+        libx11-dev libxcursor-dev libxext-dev libxfixes-dev libxi-dev libxkbcommon-dev libxrandr-dev libxss-dev libxvidcore-dev
+        libzmq3-dev libzvbi-dev libzzip-dev lsb-release lshw lzma-dev m4 mesa-utils pandoc python3 python3-pip python3-venv
+        ragel re2c scons texi2html texinfo tk-dev unzip valgrind wget xmlto libsctp-dev libflac-dev
     )
 
     [[ "$OS" == "Debian" ]] && pkgs+=("nvidia-smi")
@@ -951,6 +946,21 @@ apt_pkgs() {
     else
         log "No missing packages to install or all missing packages are unavailable."
         echo
+    fi
+}
+
+check_avx512() {
+    # Checking if /proc/cpuinfo exists on the system
+    if [[ ! -f /proc/cpuinfo ]]; then
+        echo "Error: /proc/cpuinfo does not exist on this system." >&2
+        return 2
+    fi
+
+    # Search for AVX512 flag in cpuinfo
+    if grep -qo 'avx512' /proc/cpuinfo; then
+        echo "ON"
+    else
+        echo "OFF"
     fi
 }
 
@@ -1340,23 +1350,26 @@ if build "pkg-config" "$version"; then
     build_done "pkg-config" "$version"
 fi
 
-find_git_repo "facebook/zstd" "1" "T"
-if build "libzstd" "$repo_version"; then
-    download "https://github.com/facebook/zstd/archive/refs/tags/v$repo_version.tar.gz" "libzstd-$repo_version.tar.gz"
-    cd build/meson || exit 1
-    execute meson setup build --prefix="$workspace" --buildtype=release --default-library=both --strip -Dbin_tests=false
-    execute ninja "-j$threads" -C build
-    execute ninja -C build install
-    build_done "libzstd" "$repo_version"
-fi
-
-
 find_git_repo "mesonbuild/meson" "1" "T"
 if build "meson" "$repo_version"; then
     download "https://github.com/mesonbuild/meson/archive/refs/tags/$repo_version.tar.gz" "meson-$repo_version.tar.gz"
     execute python3 setup.py build
     execute python3 setup.py install --prefix="$workspace"
     build_done "meson" "$repo_version"
+fi
+
+find_git_repo "facebook/zstd" "1" "T"
+if build "libzstd" "$repo_version"; then
+    download "https://github.com/facebook/zstd/archive/refs/tags/v$repo_version.tar.gz" "libzstd-$repo_version.tar.gz"
+    cd build/meson || exit 1
+    execute meson setup build --prefix="$workspace" \
+                              --buildtype=release \
+                              --default-library=both \
+                              --strip \
+                              -Dbin_tests=false
+    execute ninja "-j$threads" -C build
+    execute ninja -C build install
+    build_done "libzstd" "$repo_version"
 fi
 
 if [[ "$OS" == "Arch" ]]; then
@@ -1512,9 +1525,7 @@ if build "libtiff" "$repo_version"; then
     download "https://gitlab.com/libtiff/libtiff/-/archive/v$repo_version/libtiff-v$repo_version.tar.bz2" "libtiff-$repo_version.tar.bz2"
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" \
-                        --disable-docs \
-                        --disable-sphinx \
-                        --disable-tests \
+                        --disable-{docs,sphinx,tests} \
                         --enable-cxx \
                         --with-pic
     execute make "-j$threads"
@@ -1563,8 +1574,7 @@ if build "fontconfig" "$repo_version"; then
     execute autoupdate
     execute ./configure --prefix="$workspace" \
                         "${extracmds[@]}" \
-                        --enable-iconv \
-                        --enable-static \
+                        --enable-{iconv,static} \
                         --with-arch=$(uname -m) \
                         --with-libiconv-prefix=/usr
     execute make "-j$threads"
@@ -1652,8 +1662,7 @@ if build "freeglut" "$repo_version"; then
                   -DCMAKE_BUILD_TYPE=Release \
                   -DFREEGLUT_BUILD_SHARED_LIBS=OFF \
                   -DFREEGLUT_BUILD_STATIC_LIBS=ON \
-                  -DFREEGLUT_PRINT_ERRORS=OFF \
-                  -DFREEGLUT_PRINT_WARNINGS=OFF \
+                  -DFREEGLUT_PRINT_{ERRORS,WARNINGS}=OFF \
                   -G Ninja -Wno-dev
     execute ninja "-j$threads" -C build
     execute ninja -C build install
@@ -1670,11 +1679,8 @@ if build "$repo_name" "${version//\$ /}"; then
                   -DCMAKE_BUILD_TYPE=Release \
                   -DBUILD_SHARED_LIBS=ON \
                   -DZLIB_INCLUDE_DIR="$workspace/include" \
-                  -DWEBP_BUILD_ANIM_UTILS=OFF \
-                  -DWEBP_BUILD_CWEBP=ON \
-                  -DWEBP_BUILD_DWEBP=ON \
-                  -DWEBP_BUILD_EXTRAS=OFF \
-                  -DWEBP_BUILD_VWEBP=OFF \
+                  -DWEBP_BUILD_{ANIM_UTILS,EXTRAS,VWEBP}=OFF \
+                  -DWEBP_BUILD_{CWEBP,DWEBP}=ON \
                   -DWEBP_ENABLE_SWAP_16BIT_CSP=OFF \
                   -DWEBP_LINK_STATIC=ON \
                   -G Ninja -Wno-dev
@@ -1692,9 +1698,8 @@ if build "libhwy" "$repo_version"; then
     execute cmake -B build \
                   -DCMAKE_INSTALL_PREFIX="$workspace" \
                   -DCMAKE_BUILD_TYPE=Release \
-                  -DHWY_ENABLE_TESTS=OFF \
                   -DBUILD_TESTING=OFF \
-                  -DHWY_ENABLE_EXAMPLES=OFF \
+                  -DHWY_ENABLE_{EXAMPLES,TESTS}=OFF \
                   -DHWY_FORCE_STATIC_LIBS=ON \
                   -G Ninja -Wno-dev
     execute ninja "-j$threads" -C build
@@ -1753,14 +1758,12 @@ if build "$repo_name" "${version//\$ /}"; then
             -B build \
             -DCMAKE_INSTALL_PREFIX="$workspace" \
             -DCMAKE_BUILD_TYPE=Release \
-            -DBUILD_SHARED_LIBS=OFF \
-            -DBUILD_TESTING=OFF \
             -DBUILD_DOCS=OFF \
             -DBUILD_EXAMPLES=OFF \
-            -DOPENCL_SDK_BUILD_SAMPLES=ON \
-            -DOPENCL_SDK_TEST_SAMPLES=OFF \
-            -DCMAKE_C_FLAGS="$CFLAGS" \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DBUILD_TESTING=OFF \
             -DCMAKE_CXX_FLAGS="$CXXFLAGS" \
+            -DCMAKE_C_FLAGS="$CFLAGS" \
             -DOPENCL_HEADERS_BUILD_CXX_TESTS=OFF \
             -DOPENCL_ICD_LOADER_BUILD_SHARED_LIBS=OFF \
             -DOPENCL_SDK_BUILD_OPENGL_SAMPLES=OFF \
@@ -1808,9 +1811,7 @@ if build "c-ares" "$repo_version_trim"; then
     download "https://github.com/c-ares/c-ares/archive/refs/tags/cares-$repo_version.tar.gz" "c-ares-$repo_version_trim.tar.gz"
     execute autoreconf -fi
     execute ./configure --prefix="$workspace" \
-                        --disable-debug \
-                        --disable-warnings \
-                        --disable-shared \
+                        --disable-{debug,shared,warnings} \
                         --enable-static \
                         --with-pic
     execute make "-j$threads"
@@ -1882,8 +1883,7 @@ if build "pcre2" "$repo_version"; then
     download "https://github.com/PCRE2Project/pcre2/archive/refs/tags/pcre2-$repo_version.tar.gz" "pcre2-$repo_version.tar.gz"
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" \
-                        --enable-jit \
-                        --enable-valgrind \
+                        --enable-{jit,valgrind} \
                         --disable-shared
     execute make "-j$threads"
     execute make install
@@ -1958,8 +1958,7 @@ if build "$repo_name" "${version//\$ /}"; then
     execute autoheader -f -W all
     execute automake -a -c -f -W all,no-portability
     execute autoreconf -fi
-    execute ./configure --prefix="$workspace" --with-cpu=x86-64 --with-pic --with-default-audio=pulse \
-                        --with-optimization=3 --with-module-suffix=".so"
+    execute ./configure --prefix="$workspace" --enable-static --with-cpu=x86-64
     execute make "-j$threads"
     execute make install
     build_done "$repo_name" "$version"
@@ -1981,9 +1980,7 @@ if build "jemalloc" "$repo_version"; then
     extracmds1=("--disable-"{debug,doc,fill,log,shared,prof,stats})
     extracmds2=("--enable-"{autogen,static,xmalloc})
     execute ./autogen.sh
-    execute ./configure --prefix="$workspace" \
-                        "${extracmds1[@]}" \
-                        "${extracmds2[@]}"
+    execute ./configure --prefix="$workspace" "${extracmds1[@]}" "${extracmds2[@]}"
     execute make "-j$threads"
     execute make install
     build_done "jemalloc" "$repo_version"
@@ -2029,8 +2026,7 @@ if build "$repo_name" "${version//\$ /}"; then
                        -DCMAKE_BUILD_TYPE=Release \
                        -DBUILD_SHARED_LIBS=OFF \
                        -DSDL_ALSA_SHARED=OFF \
-                       -DSDL_DISABLE_INSTALL_DOCS=ON \
-                       -DSDL_CCACHE=ON \
+                       -DSDL_{CCACHE,DISABLE_INSTALL_DOCS}=ON \
                        -G Ninja -Wno-dev
     execute ninja "-j$threads" -C build
     execute ninja -C build install
@@ -2041,10 +2037,7 @@ find_git_repo "libsndfile/libsndfile" "1" "T"
 if build "libsndfile" "$repo_version"; then
     download "https://github.com/libsndfile/libsndfile/releases/download/$repo_version/libsndfile-$repo_version.tar.xz"
     execute autoreconf -fi
-    execute ./configure --prefix="$workspace" \
-                        --enable-static \
-                        --with-pic \
-                        --with-pkgconfigdir="$workspace/lib/pkgconfig"
+    execute ./configure --prefix="$workspace" --enable-static --with-pic
     execute make "-j$threads"
     execute make install
     build_done "libsndfile" "$repo_version"
@@ -2068,15 +2061,6 @@ if build "$repo_name" "${version//\$ /}"; then
 fi
 CONFIGURE_OPTIONS+=("--enable-libpulse")
 
-if build "libopenmpt" "0.7.3"; then
-    download "https://launchpad.net/ubuntu/+archive/primary/+sourcefiles/libopenmpt/0.7.3-1.1build3/libopenmpt_0.7.3.orig.tar.xz" "libopenmpt-0.7.3.tar.xz"
-    execute autoreconf -fi
-    execute ./configure --prefix="$workspace" --with-pic --with-pulseaudio
-    execute make "-j$threads"
-    execute make install
-    build_done "libopenmpt" "0.7.3"
-fi
-
 find_git_repo "xiph/ogg" "1" "T"
 if build "libogg" "$repo_version"; then
     download "https://github.com/xiph/ogg/archive/refs/tags/v$repo_version.tar.gz" "libogg-$repo_version.tar.gz"
@@ -2084,41 +2068,12 @@ if build "libogg" "$repo_version"; then
     execute cmake -B build \
                   -DCMAKE_INSTALL_PREFIX="$workspace" \
                   -DCMAKE_BUILD_TYPE=Release \
-                  -DBUILD_SHARED_LIBS=OFF \
-                  -DBUILD_TESTING=OFF \
-                  -DCPACK_BINARY_DEB=OFF \
-                  -DCPACK_SOURCE_ZIP=OFF \
+                  -DBUILD_{SHARED_LIBS,TESTING}=OFF \
+                  -DCPACK_{BINARY_DEB,SOURCE_ZIP}=OFF \
                   -G Ninja -Wno-dev
     execute ninja "-j$threads" -C build
     execute ninja -C build install
     build_done "libogg" "$repo_version"
-fi
-
-find_git_repo "xiph/flac" "1" "T"
-if build "libflac" "$repo_version"; then
-    download "https://github.com/xiph/flac/archive/refs/tags/$repo_version.tar.gz" "libflac-$repo_version.tar.gz"
-    execute ./autogen.sh
-    execute cmake -B build \
-                  -DCMAKE_INSTALL_PREFIX="$workspace" \
-                  -DCMAKE_BUILD_TYPE=Release \
-                  -DBUILD_SHARED_LIBS=OFF \
-                  -DINSTALL_CMAKE_CONFIG_MODULE=ON \
-                  -DINSTALL_MANPAGES=OFF \
-                  -DBUILD_CXXLIBS=ON \
-                  -DBUILD_PROGRAMS=ON \
-                  -DWITH_ASM=ON \
-                  -DWITH_AVX=ON \
-                  -DWITH_FORTIFY_SOURCE=ON \
-                  -DWITH_STACK_PROTECTOR=ON \
-                  -DWITH_OGG=ON \
-                  -DENABLE_64_BIT_WORDS=ON \
-                  -DBUILD_DOCS=OFF \
-                  -DBUILD_EXAMPLES=OFF \
-                  -DBUILD_TESTING=OFF \
-                  -G Ninja -Wno-dev
-    execute ninja "-j$threads" -C build
-    execute ninja -C build install
-    build_done "libflac" "$repo_version"
 fi
 
 if "$NONFREE_AND_GPL"; then
@@ -2187,20 +2142,9 @@ if build "libvpx" "$repo_version"; then
     download "https://github.com/webmproject/libvpx/archive/refs/tags/v$repo_version.tar.gz" "libvpx-$repo_version.tar.gz"
     execute sed -i 's/#include "\.\/vpx_tpl\.h"/#include ".\/vpx\/vpx_tpl.h"/' "vpx/vpx_ext_ratectrl.h"
     execute ./configure --prefix="$workspace" \
-                        --as=yasm \
-                        --disable-unit-tests \
-                        --disable-shared \
-                        --disable-examples \
-                        --enable-small \
-                        --enable-multi-res-encoding \
-                        --enable-webm-io \
-                        --enable-libyuv \
-                        --enable-vp8 \
-                        --enable-vp9 \
-                        --enable-postproc \
-                        --enable-vp9-postproc \
-                        --enable-better-hw-compatibility \
-                        --enable-vp9-highbitdepth
+                        --as=yasm --disable-{examples,shared,unit-tests} \
+                        --enable-{better-hw-compatibility,libyuv,multi-res-encoding} \
+                        --enable-{postproc,small,vp8,vp9,vp9-highbitdepth,vp9-postproc,webm-io}
     execute make "-j$threads"
     execute make install
     build_done "libvpx" "$repo_version"
@@ -2221,8 +2165,7 @@ CONFIGURE_OPTIONS+=("--enable-libopencore-"{amrnb,amrwb})
 if build "liblame" "3.100"; then
     download "https://master.dl.sourceforge.net/project/lame/lame/3.100/lame-3.100.tar.gz?viasf=1" "liblame-3.100.tar.gz"
     execute ./configure --prefix="$workspace" \
-                        --disable-shared \
-                        --disable-gtktest \
+                        --disable-{gtktest,shared} \
                         --enable-nasm \
                         --with-libiconv-prefix=/usr
     execute make "-j$threads"
@@ -2242,18 +2185,14 @@ if build "libtheora" "1.1.1"; then
     execute curl -LSso "config.guess" "https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess"
     chmod +x "config.guess"
     execute ./configure --prefix="$workspace" \
-                        --disable-examples \
-                        --disable-oggtest \
-                        --disable-sdltest \
-                        --disable-vorbistest \
-                        --with-ogg="$workspace" \
+                        --disable-{examples,oggtest,sdltest,shared,vorbistest} \
+                        --enable-static
                         --with-ogg-includes="$workspace/include" \
                         --with-ogg-libraries="$workspace/lib" \
-                        --with-vorbis="$workspace" \
+                        --with-ogg="$workspace" \
                         --with-vorbis-includes="$workspace/include" \
                         --with-vorbis-libraries="$workspace/lib" \
-                        --disable-shared \
-                        --enable-static
+                        --with-vorbis="$workspace" \
     execute make "-j$threads"
     execute make install
     build_done "libtheora" "1.1.1"
@@ -2288,10 +2227,7 @@ if build "$repo_name" "${version//\$ /}"; then
                   -DCMAKE_INSTALL_PREFIX="$workspace" \
                   -DCMAKE_BUILD_TYPE=Release \
                   -DBUILD_SHARED_LIBS=OFF \
-                  -DCONFIG_AV1_DECODER=1 \
-                  -DCONFIG_AV1_ENCODER=1 \
-                  -DCONFIG_AV1_HIGHBITDEPTH=1 \
-                  -DCONFIG_AV1_TEMPORAL_DENOISING=1 \
+                  -DCONFIG_AV1_{DECODER,ENCODER,HIGHBITDEPTH,TEMPORAL_DENOISING}=1 \
                   -DCONFIG_DENOISE=1 \
                   -DCONFIG_DISABLE_FULL_PIXEL_SPLIT_8X8=1 \
                   -DENABLE_CCACHE=1 \
@@ -2343,8 +2279,7 @@ if build "avif" "$repo_version"; then
                   -DCMAKE_BUILD_TYPE=Release \
                   -DBUILD_SHARED_LIBS=OFF \
                   -DAVIF_CODEC_AOM=ON \
-                  -DAVIF_CODEC_AOM_DECODE=ON \
-                  -DAVIF_CODEC_AOM_ENCODE=ON \
+                  -DAVIF_CODEC_AOM_{DECODE,ENCODE}=ON \
                   -DAVIF_ENABLE_GTEST=OFF \
                   -DAVIF_ENABLE_WERROR=OFF \
                   -G Ninja -Wno-dev
@@ -2398,6 +2333,7 @@ else
         build_done "$repo_name" "$version"
     fi
 fi
+export PATH="$PATH:$workspace/ant/bin"
 
 # Ubuntu Jammy gives an error so use the APT version instead
 if [[ ! "$OS" == "Ubuntu" ]]; then
@@ -2406,9 +2342,7 @@ if [[ ! "$OS" == "Ubuntu" ]]; then
         download "https://code.videolan.org/videolan/libbluray/-/archive/$repo_version/$repo_version.tar.gz" "libbluray-$repo_version.tar.gz"
         extracmds=("--disable-"{doxygen-doc,doxygen-dot,doxygen-html,doxygen-pdf,doxygen-ps,examples,extra-warnings,shared})
         execute autoreconf -fi
-        execute ./configure --prefix="$workspace" \
-                            "${extracmds[@]}" \
-                            --without-libxml2
+        execute ./configure --prefix="$workspace" "${extracmds[@]}" --without-libxml2 --with-pic
         execute make "-j$threads"
         execute make install
         build_done "libbluray" "$repo_version"
@@ -2496,12 +2430,8 @@ else
         echo "Cloning \"$repo_name\" saving version \"$version\""
         git_clone "$git_url"
         execute ./configure --prefix="$workspace" \
-                            --static-bin \
-                            --static-modules \
-                            --use-a52=local \
-                            --use-faad=local \
-                            --use-freetype=local \
-                            --use-mad=local \
+                            --static-{bin,modules} \
+                            --use-{a52,faad,freetype,mad}=local \
                             --sdl-cfg="$workspace/include/SDL3"
         execute make "-j$threads"
         execute make install
@@ -2522,7 +2452,7 @@ if build "svt-av1" "1.8.0"; then
                   -DBUILD_DEC=ON \
                   -DBUILD_ENC=ON \
                   -DBUILD_TESTING=OFF \
-                  -DENABLE_AVX512=OFF \
+                  -DENABLE_AVX512=$(check_avx512) \
                   -DENABLE_NASM=ON \
                   -DNATIVE=ON \
                   -G Ninja -Wno-dev
@@ -2558,8 +2488,8 @@ if "$NONFREE_AND_GPL"; then
 fi
 
 if "$NONFREE_AND_GPL"; then
-    if build "x265" "3.6"; then
-        download "https://bitbucket.org/multicoreware/x265_git/downloads/x265_3.6.tar.gz" "x265-3.6.tar.gz"
+    if build "x265" "3.5"; then
+        download "https://bitbucket.org/multicoreware/x265_git/downloads/x265_3.5.tar.gz" "x265-3.5.tar.gz"
         fix_libstd_libs
         cd build/linux || exit 1
         rm -fr {8,10,12}bit 2>/dev/null
@@ -2569,13 +2499,11 @@ if "$NONFREE_AND_GPL"; then
         execute cmake ../../../source \
                       -DCMAKE_INSTALL_PREFIX="$workspace" \
                       -DCMAKE_BUILD_TYPE=Release \
-                      -DENABLE_LIBVMAF=OFF \
-                      -DENABLE_CLI=OFF \
-                      -DENABLE_SHARED=OFF \
+                      -DENABLE_{CLI,LIBVMAF,SHARED}=OFF \
                       -DEXPORT_C_API=OFF \
                       -DHIGH_BIT_DEPTH=ON \
-                      -DNATIVE_BUILD=ON \
                       -DMAIN12=ON \
+                      -DNATIVE_BUILD=ON \
                       -G Ninja -Wno-dev
         execute ninja "-j$threads"
         echo "$ making 10bit binaries"
@@ -2583,10 +2511,8 @@ if "$NONFREE_AND_GPL"; then
         execute cmake ../../../source \
                       -DCMAKE_INSTALL_PREFIX="$workspace" \
                       -DCMAKE_BUILD_TYPE=Release \
-                      -DENABLE_LIBVMAF=OFF \
-                      -DENABLE_CLI=OFF \
+                      -DENABLE_{CLI,LIBVMAF,SHARED}=OFF \
                       -DENABLE_HDR10_PLUS=ON \
-                      -DENABLE_SHARED=OFF \
                       -DEXPORT_C_API=OFF \
                       -DHIGH_BIT_DEPTH=ON \
                       -DNATIVE_BUILD=ON \
@@ -2601,13 +2527,11 @@ if "$NONFREE_AND_GPL"; then
                       -DCMAKE_INSTALL_PREFIX="$workspace" \
                       -DCMAKE_BUILD_TYPE=Release \
                       -DENABLE_LIBVMAF=OFF \
-                      -DENABLE_PIC=ON \
-                      -DENABLE_SHARED=ON \
+                      -DENABLE_{PIC,SHARED}=ON \
                       -DEXTRA_LIB="x265_main10.a;x265_main12.a" \
                       -DEXTRA_LINK_FLAGS="-L." \
                       -DHIGH_BIT_DEPTH=ON \
-                      -DLINKED_10BIT=ON \
-                      -DLINKED_12BIT=ON \
+                      -DLINKED_{10BIT,12BIT}=ON \
                       -DNATIVE_BUILD=ON \
                       -DNUMA_ROOT_DIR=/usr \
                       -G Ninja -Wno-dev
@@ -2630,7 +2554,7 @@ EOF
 
         fix_x265_libs # Fix the x265 shared library issue
 
-        build_done "x265" "3.6"
+        build_done "x265" "3.5"
     fi
     CONFIGURE_OPTIONS+=("--enable-libx265")
 fi
@@ -2682,8 +2606,7 @@ if "$NONFREE_AND_GPL"; then
                       -DCMAKE_INSTALL_PREFIX="$workspace" \
                       -DCMAKE_BUILD_TYPE=Release \
                       -DBUILD_SHARED_LIBS=OFF \
-                      -DENABLE_APPS=OFF \
-                      -DENABLE_SHARED=OFF \
+                      -DENABLE_{APPS,SHARED}=OFF \
                       -DENABLE_STATIC=ON \
                       -DUSE_STATIC_LIBSTDCXX=ON \
                       -G Ninja -Wno-dev
@@ -2814,24 +2737,17 @@ if build "libheif" "$repo_version"; then
     execute cmake -B build \
                   -DCMAKE_INSTALL_PREFIX="$workspace" \
                   -DCMAKE_BUILD_TYPE=Release \
-                  -DBUILD_SHARED_LIBS=OFF \
                   -DAOM_INCLUDE_DIR="$workspace/include" \
                   -DAOM_LIBRARY="$workspace/lib/libaom.a" \
+                  -DBUILD_SHARED_LIBS=OFF \
                   -DLIBDE265_INCLUDE_DIR="$workspace/include" \
                   -DLIBDE265_LIBRARY="/usr/lib/x86_64-linux-gnu/libde265.so" \
                   -DLIBSHARPYUV_INCLUDE_DIR="$workspace/include/webp" \
                   -DLIBSHARPYUV_LIBRARY="$workspace/lib/libsharpyuv.so" \
-                  -DWITH_AOM_DECODER=ON \
-                  -DWITH_AOM_ENCODER=ON \
-                  -DWITH_DAV1D=OFF \
-                  -DWITH_EXAMPLES=OFF \
+                  -DWITH_AOM_{DECODER,ENCODER}=ON \
+                  -DWITH_{DAV1D,EXAMPLES,REDUCED_VISIBILITY,SvtEnc,SvtEnc_PLUGIN,X265}=OFF \
                   -DWITH_GDK_PIXBUF="$pixbuf_switch" \
-                  -DWITH_LIBDE265=ON \
-                  -DWITH_X265=OFF \
-                  -DWITH_LIBSHARPYUV=ON \
-                  -DWITH_REDUCED_VISIBILITY=OFF \
-                  -DWITH_SvtEnc=OFF \
-                  -DWITH_SvtEnc_PLUGIN=OFF \
+                  -DWITH_{LIBDE265,LIBSHARPYUV}=ON \
                   -G Ninja -Wno-dev
     execute ninja "-j$threads" -C build
     execute ninja -C build install
@@ -2845,8 +2761,7 @@ if build "openjpeg" "$repo_version"; then
     execute cmake -B build \
                   -DCMAKE_INSTALL_PREFIX="$workspace" \
                   -DCMAKE_BUILD_TYPE=Release \
-                  -DBUILD_SHARED_LIBS=OFF \
-                  -DBUILD_TESTING=OFF \
+                  -DBUILD_{SHARED_LIBS,TESTING}=OFF \
                   -DBUILD_THIRDPARTY=ON \
                   -G Ninja -Wno-dev
     execute ninja "-j$threads" -C build
@@ -2929,17 +2844,10 @@ if build "ffmpeg" "n6.1.1"; then
                  --arch=$(uname -m) \
                  --cc="$CC" \
                  --cxx="$CXX" \
-                 --disable-debug \
-                 --disable-doc \
-                 --disable-large-tests \
-                 --disable-shared \
+                 --disable-{debug,doc,large-tests,shared} \
                  "$ladspa_switch" \
                  "${CONFIGURE_OPTIONS[@]}" \
-                 --enable-chromaprint \
-                 --enable-libbs2b \
-                 --enable-libcaca \
-                 --enable-libgme \
-                 --enable-libmodplug \
+                 --enable-{chromaprint,libbs2b,libcaca,libgme,libmodplug} \
                  --enable-libshine \
                  --enable-libsnappy \
                  --enable-libsoxr \
@@ -2951,17 +2859,17 @@ if build "ffmpeg" "n6.1.1"; then
                  --enable-libzvbi \
                  --enable-lto \
                  --enable-opengl \
-                 --enable-libopenmpt \
                  --enable-pic \
                  --enable-pthreads \
                  --enable-small \
+                 --enable-rpath \
                  --enable-libssh \
                  --enable-static \
                  --enable-libtesseract \
                  --enable-version3 \
                  --enable-libzimg \
-                 --extra-cflags="$CFLAGS -flto" \
-                 --extra-cxxflags="$CXXFLAGS -flto" \
+                 --extra-cflags="$CFLAGS -flto -DCL_TARGET_OPENCL_VERSION=300 -DX265_DEPTH=12 -DENABLE_LIBVMAF=0" \
+                 --extra-cxxflags="$CXXFLAGS -flto -DCL_TARGET_OPENCL_VERSION=300 -DX265_DEPTH=12 -DENABLE_LIBVMAF=0" \
                  --extra-libs="$EXTRALIBS" \
                  --pkg-config-flags="--static" \
                  --pkg-config="$workspace/bin/pkg-config" \
