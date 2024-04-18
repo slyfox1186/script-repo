@@ -128,20 +128,23 @@ Usage: $0 [OPTIONS]
 
 Options:
   -h, --help                 Display this help message.
-  -l, --list                 List installed packages in the virtual environment.
+
   -i, --import               Import packages from pip freeze into the requirements.txt file.
-  -c, --create               Create a new Python virtual environment.
-  -u, --update               Update the existing Python virtual environment.
-  -d, --delete               Delete the Python virtual environment.
-  -a, --add PACKAGES         Install specific packages (space-separated) in the virtual environment.
-  -U, --upgrade PACKAGES     Upgrade specific packages (space-separated) in the virtual environment.
-  -r, --remove PACKAGES      Remove specific packages (space-separated) from the virtual environment.
+  -l, --list                 List installed packages in the virtual environment.
   -p, --path                 Add the virtual environment's bin folder to the user's PATH.
 
+  -c, --create               Create a new Python virtual environment.
+  -d, --delete               Delete the Python virtual environment.
+  -u, --update               Update the existing Python virtual environment.
+
+  -a, --add PACKAGES         Install specific packages (space-separated) in the virtual environment.
+  -r, --remove PACKAGES      Remove specific packages (space-separated) from the virtual environment.
+  -U, --upgrade PACKAGES     Upgrade specific packages (space-separated) in the virtual environment.
+
 Examples:
-  $0 --help
-  $0 --create
-  $0 --path
+  $0 -h
+  $0 -c
+  $0 -p
 EOF
 }
 
