@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Execute like this: ./script.sh
+# Execute like this: ./add-colors-to-nano.sh
 
 configs=(
     asm.nanorc autoconf.nanorc awk.nanorc c.nanorc changelog.nanorc cmake.nanorc
