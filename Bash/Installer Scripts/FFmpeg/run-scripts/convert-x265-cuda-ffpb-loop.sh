@@ -1,85 +1,83 @@
 #!/usr/bin/env bash
 # Shellcheck disable=SC2066,SC2068,SC2086,SC2162
 
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+NC='\033[0m'
+
+log() {
+    echo -e "${GREEN}[INFO]${NC} $1"
+}
+
+fail() {
+    echo -e "${RED}[ERROR]${NC} $1"
+    exit 1
+}
+
+# Check if required Python modules are installed
+if ! python3 -c "import ffpb" &>/dev/null; then
+    fail "Python module 'ffpb' is not installed. Please install it and try again."
+    exit 1
+fi
+
+if ! python3 -c "import google_speech" &>/dev/null; then
+    fail "Python module 'google_speech' is not installed. Please install it and try again."
+    exit 1
+fi
+
 # Set the PATH variable
 if [ -d "$HOME/.local/bin" ]; then
     export PATH="$HOME/.local/bin:$PATH"
 fi
 
-fail() {
-    echo "[ERROR] $1"
-    exit 1
-}
-
-# Create the output directories
-mkdir -p "completed" "original"
-
 # Install required packages
 if command -v apt-get >/dev/null 2>&1; then
     # Debian-based distributions
-    apt_packages=("bc" "ffmpegthumbnailer" "libffmpegthumbnailer-data" "libsox-fmt-all" "python3-pip" "sox" "trash-cli")
-    pip_packages=("ffpb" "google_speech")
-    missing_apt_pkgs=$(comm -23 <(apt-mark showmanual | sort -u) <(printf '%s\n' "${apt_packages[@]}" | sort -u))
-    if [ -n "$missing_apt_pkgs" ]; then
-        echo "Installing: $missing_apt_pkgs"
+    apt_packages=("bc" "ffmpegthumbnailer" "libffmpegthumbnailer-dev" "libsox-fmt-all" "python3-pip" "sox")
+    missing_apt_pkgs=()
+
+    # Loop through the array to find missing packages
+    for pkg in "${apt_packages[@]}"; do
+        if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
+            missing_apt_pkgs+=("$pkg")
+        fi
+    done
+
+    if [ "${#missing_apt_pkgs[@]}" -gt 0 ]; then
+        log "Installing: ${missing_apt_pkgs[@]}"
         echo
-        sudo apt-get install -y $missing_apt_pkgs || fail "Failed to install required packages."
+        sudo apt -y install "${missing_apt_pkgs[@]}" || fail "Failed to install required packages."
     fi
 elif command -v pacman >/dev/null 2>&1; then
     # Arch Linux
-    pacman_packages=("bc" "ffmpegthumbnailer" "libffmpegthumbnailer" "python-pip" "sox" "trash-cli")
-    pip_packages=("ffpb" "google_speech")
-    missing_pacman_pkgs=$(comm -23 <(pacman -Qqe | sort -u) <(printf '%s\n' "${pacman_packages[@]}" | sort -u))
-    if [ -n "$missing_pacman_pkgs" ]; then
-        echo "Installing: $missing_pacman_pkgs"
+    pacman_packages=("bc" "ffmpegthumbnailer" "libffmpegthumbnailer" "python-pip" "sox")
+    missing_pacman_pkgs=()
+
+    for pkg in "${pacman_packages[@]}"; do
+        if ! pacman -Qi "$pkg" >/dev/null 2>&1; then
+            missing_pacman_pkgs+=("$pkg")
+        fi
+    done
+
+    if [ "${#missing_pacman_pkgs[@]}" -gt 0 ]; then
+        log "Installing: ${missing_pacman_pkgs[@]}"
         echo
-        sudo pacman -S --noconfirm --needed $missing_pacman_pkgs || fail "Failed to install required packages."
+        sudo pacman -Sy --noconfirm --needed "${missing_pacman_pkgs[@]}" || fail "Failed to install required packages."
     fi
 else
-    echo "Unsupported package manager. Please install the required packages manually."
-    exit 1
-fi
-
-pip install --break-system-packages --upgrade pip
-pip install --break-system-packages --upgrade "${pip_packages[@]}"
-
-# Delete any files from previous runs
-del_this=$(du -ah --max-depth=1 | grep -oP '/.*\(x265\)\.m(p4|kv)$' | grep -oP '[a-zA-Z0-9]+.*\(x265\)\.m(p4|kv)$')
-
-if [ -n "$del_this" ]; then
-    echo
-    echo "Do you want to delete this video before continuing?: $del_this"
-    echo "[1] Yes"
-    echo "[2] No"
-    echo "[3] Exit"
-    echo
-    read -p "Your choices are (1 to 3): " choice
-    clear
-
-    case "$choice" in
-        1) rm -f "$del_this"
-           clear
-           ;;
-        2) ;;
-        3) exit 0 ;;
-        *) echo
-           echo "Bad user input."
-           exit 1
-           ;;
-    esac
+    fail "Unsupported package manager. Please install the required packages manually."
 fi
 
 # Make sure there are videos available to convert
 vid_test=$(find ./ -maxdepth 1 -type f \( -iname \*.mp4 -o -iname \*.mkv \) | xargs -0n1 | head -n1)
 
 if [ -z "$vid_test" ]; then
-    google_speech "No videos were located. Please add some to the script's directory and try again." 2>/dev/null
-    clear
-    exit 0
+    google_speech "No input videos were located." 2>/dev/null
+    fail "No input videos were located."
 fi
 
 # Create a temporary output folder in the /tmp directory
-ff_dir=$(mktemp -d)
+random_dir=$(mktemp -d)
 
 for vid in *.{mp4,mkv}; do
     vid_test="$(find ./ -maxdepth 1 -type f \( -iname \*.mp4 -o -iname \*.mkv \) | xargs -0n1 | head -n1)"
@@ -95,7 +93,7 @@ for vid in *.{mp4,mkv}; do
     # Modify vars to get file input and output names
     file_in="$vid"
     fext="${file_in#*.}"
-    file_out="$ff_dir/${file_in%.*} (x265).$fext"
+    file_out="$random_dir/${file_in%.*} (x265).$fext"
 
     # Trim the strings
     trim=${max_rate::-11}
@@ -131,7 +129,7 @@ Length:          ${length} mins
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 EOF
 
-# Execute ffpb
+    # Execute ffpb
     echo
     if ffpb -y \
             -vsync 0 \
@@ -159,20 +157,16 @@ EOF
             -b_qfactor 1.1 \
             -c:a copy \
             "$file_out"; then
+        log "Video conversion completed."
         google_speech "Video conversion completed." 2>/dev/null
-        if [[ -f "$file_out" ]]; then
-            mv "$file_in" "$PWD/original"
-            mv "$file_out" "$PWD/completed"
-        fi
+        mv "$file_out" "$PWD/${file_in%.*} (x265).$fext"
     else
-        google_speech "Video conversion failed." 2>/dev/null
-        echo
-        read -p "Press enter to exit."
-        sudo rm -fr "$ff_dir"
-        exit 1
+        sudo rm -fr "$random_dir"
+        google_speech "Video conversion failed for $file_in." 2>/dev/null
+        fail "Video conversion failed for $file_in."
     fi
     clear
 done
 
 # Remove the temporary directory
-sudo rm -fr "$ff_dir"
+sudo rm -fr "$random_dir"
