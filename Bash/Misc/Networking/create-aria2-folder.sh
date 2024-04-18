@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+if [[ "$EUID" -eq 0 ]]; then
+    echo "You must run this script without root or with sudo."
+    exit 1
+fi
+
 DIR="$HOME/.aria2"
 file="$DIR/aria2.conf"
 
@@ -26,7 +31,7 @@ enable-peer-exchange=true
 enable-rpc=false
 file-allocation=none
 listen-port=50101-50109
-load-cookies="$DIR/cookies.txt"
+load-cookies=$DIR/cookies.txt
 max-concurrent-downloads=5
 max-connection-per-server=16
 max-download-limit=0
@@ -38,9 +43,12 @@ peer-id-prefix=-A2-1-37-1
 quiet=false
 rpc-allow-origin-all=true
 rpc-listen-all=false
-save-cookies="$DIR/cookies.txt"
+save-cookies=$DIR/cookies.txt
 seed-ratio=0.1
 seed-time=0
 split=32
 user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36
 EOF
+
+chmod -R +rwx "$DIR"
+chown -R "$USER":"$USER" "$DIR"

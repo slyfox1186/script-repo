@@ -18,8 +18,8 @@ DISK="" # Disk to install Arch Linux on (e.g., /dev/sda or /dev/nvme0n1)
 
 # Partition variables
 PARTITION_COUNT=3
-PARTITION1_SIZE="+550M"
-PARTITION2_SIZE="+2G"
+PARTITION1_SIZE="550M"
+PARTITION2_SIZE="2G"
 PARTITION_SIZES=()
 PARTITION_TYPES=()
 
