@@ -2,7 +2,7 @@
 # shellcheck disable=SC2068,SC2162,SC2317 source=/dev/null
 
 # GitHub: https://github.com/slyfox1186/ffmpeg-build-script
-# Script version: 3.6.1
+# Script version: 3.6.2
 # Updated: 04.17.24
 # Purpose: build ffmpeg from source code with addon development libraries
 #          also compiled from source to help ensure the latest functionality
@@ -19,7 +19,7 @@ fi
 
 # Define global variables
 script_name="${0}"
-script_version="3.6.1"
+script_version="3.6.2"
 cwd="$PWD/ffmpeg-build-script"
 mkdir -p "$cwd" && cd "$cwd" || exit 1
 if [[ "$PWD" =~ ffmpeg-build-script\/ffmpeg-build-script ]]; then
@@ -1405,11 +1405,7 @@ if "$NONFREE_AND_GPL"; then
     if build "openssl" "$repo_version"; then
         download "https://www.openssl.org/source/openssl-$repo_version.tar.gz"
         execute ./Configure --prefix="$workspace" \
-                            enable-egd \
-                            enable-fips \
-                            enable-md2 \
-                            enable-rc5 \
-                            enable-trace \
+                            enable-{egd,fips,md2,rc5,trace} \
                             threads zlib \
                             --with-rand-seed=os \
                             --with-zlib-include="$workspace/include" \
@@ -1431,7 +1427,7 @@ else
     gnu_repo "https://ftp.gnu.org/gnu/nettle/"
     if build "nettle" "$version"; then
         download "https://ftp.gnu.org/gnu/nettle/nettle-$version.tar.gz"
-        execute ./configure --prefix="$workspace" --disable-shared --enable-static --disable-openssl --disable-documentation \
+        execute ./configure --prefix="$workspace" --enable-static --disable-{documentation,openssl,shared} \
                             --libdir="$workspace/lib" CPPFLAGS="$CFLAGS" LDFLAGS="$LDFLAGS"
         execute make "-j$threads"
         execute make install
@@ -1440,9 +1436,9 @@ else
     gnu_repo "https://www.gnupg.org/ftp/gcrypt/gnutls/v3.8/"
     if build "gnutls" "$version"; then
         download "https://www.gnupg.org/ftp/gcrypt/gnutls/v3.8/gnutls-$version.tar.xz"
-        execute ./configure --prefix="$workspace" --disable-shared --enable-static --disable-doc --disable-tools --disable-cxx --disable-tests \
-                            --disable-gtk-doc-html --disable-libdane --disable-nls --enable-local-libopts --disable-guile --with-included-libtasn1 \
-                            --with-included-unistring --without-p11-kit CPPFLAGS="$CPPFLAGS" LDFLAGS="$LDFLAGS"
+        execute ./configure --prefix="$workspace" --disable-{cxx,doc,gtk-doc-html,guile,libdane,nls,shared,tests,tools} \
+                            --enable-{local-libopts,static} --with-included-{libtasn1,unistring} --without-p11-kit \
+                            CPPFLAGS="$CPPFLAGS" LDFLAGS="$LDFLAGS"
         execute make "-j$threads"
         execute make install
         build_done "gnutls" "$version"
@@ -1466,6 +1462,7 @@ if build "yasm" "$repo_version"; then
                   -DCMAKE_INSTALL_PREFIX="$workspace" \
                   -DCMAKE_BUILD_TYPE=Release \
                   -DBUILD_SHARED_LIBS=OFF \
+                  -DYASM_BUILD_TESTS=OFF \
                   -G Ninja -Wno-dev
     execute ninja "-j$threads" -C build
     execute ninja -C build install
@@ -1659,10 +1656,9 @@ if build "freeglut" "$repo_version"; then
     CFLAGS+=" -DFREEGLUT_STATIC"
     execute cmake -B build \
                   -DCMAKE_INSTALL_PREFIX="$workspace" \
-                  -DCMAKE_BUILD_TYPE=Release \
-                  -DFREEGLUT_BUILD_SHARED_LIBS=OFF \
-                  -DFREEGLUT_BUILD_STATIC_LIBS=ON \
-                  -DFREEGLUT_PRINT_{ERRORS,WARNINGS}=OFF \
+                  -DCMAKE_BUILD_TYPE="Release" \
+                  -DBUILD_SHARED_LIBS=OFF \
+                  -DFREEGLUT_BUILD_{DEMOS,SHARED_LIBS,ERRORS,WARNINGS,TESTS}=OFF \
                   -G Ninja -Wno-dev
     execute ninja "-j$threads" -C build
     execute ninja -C build install
@@ -1741,8 +1737,7 @@ if build "gflags" "$repo_version"; then
                   -DBUILD_gflags_LIB=ON \
                   -DBUILD_STATIC_LIBS=ON \
                   -DINSTALL_HEADERS=ON \
-                  -DREGISTER_BUILD_DIR=ON \
-                  -DREGISTER_INSTALL_PREFIX=ON \
+                  -DREGISTER_{BUILD_DIR,INSTALL_PREFIX}=ON \
                   -G Ninja -Wno-dev
     execute ninja "-j$threads" -C build
     execute ninja -C build install
@@ -1758,16 +1753,12 @@ if build "$repo_name" "${version//\$ /}"; then
             -B build \
             -DCMAKE_INSTALL_PREFIX="$workspace" \
             -DCMAKE_BUILD_TYPE=Release \
-            -DBUILD_DOCS=OFF \
-            -DBUILD_EXAMPLES=OFF \
-            -DBUILD_SHARED_LIBS=OFF \
-            -DBUILD_TESTING=OFF \
+            -DBUILD_{DOCS,EXAMPLES,SHARED_LIBS,TESTING}=OFF \
             -DCMAKE_CXX_FLAGS="$CXXFLAGS" \
             -DCMAKE_C_FLAGS="$CFLAGS" \
             -DOPENCL_HEADERS_BUILD_CXX_TESTS=OFF \
             -DOPENCL_ICD_LOADER_BUILD_SHARED_LIBS=OFF \
-            -DOPENCL_SDK_BUILD_OPENGL_SAMPLES=OFF \
-            -DOPENCL_SDK_BUILD_SAMPLES=OFF \
+            -DOPENCL_SDK_BUILD_{OPENGL_SAMPLES,SAMPLES}=OFF \
             -DOPENCL_SDK_TEST_SAMPLES=OFF \
             -DTHREADS_PREFER_PTHREAD_FLAG=ON \
             -G Ninja -Wno-dev
@@ -1845,10 +1836,9 @@ if build "$repo_name" "${version//\$ /}"; then
                               --buildtype=release \
                               --default-library=static \
                               --strip \
-                              -Ddocs=disabled \
+                              -D{docs,tests}=disabled \
                               -Donline_docs="false" \
-                              -Dplugins="$lv2_switch" \
-                              -Dtests=disabled
+                              -Dplugins="$lv2_switch"
     execute ninja "-j$threads" -C build
     execute ninja -C build install
     build_done "$repo_name" "$version"
@@ -1958,7 +1948,7 @@ if build "$repo_name" "${version//\$ /}"; then
     execute autoheader -f -W all
     execute automake -a -c -f -W all,no-portability
     execute autoreconf -fi
-    execute ./configure --prefix="$workspace" --enable-static --with-cpu=x86-64
+    execute ./configure --prefix="$workspace" --enable-static
     execute make "-j$threads"
     execute make install
     build_done "$repo_name" "$version"
@@ -2186,13 +2176,14 @@ if build "libtheora" "1.1.1"; then
     chmod +x "config.guess"
     execute ./configure --prefix="$workspace" \
                         --disable-{examples,oggtest,sdltest,shared,vorbistest} \
-                        --enable-static
+                        --enable-static \
                         --with-ogg-includes="$workspace/include" \
                         --with-ogg-libraries="$workspace/lib" \
                         --with-ogg="$workspace" \
+                        --with-sdl-prefix="$workspace" \
                         --with-vorbis-includes="$workspace/include" \
                         --with-vorbis-libraries="$workspace/lib" \
-                        --with-vorbis="$workspace" \
+                        --with-vorbis="$workspace"
     execute make "-j$threads"
     execute make install
     build_done "libtheora" "1.1.1"
@@ -2231,8 +2222,7 @@ if build "$repo_name" "${version//\$ /}"; then
                   -DCONFIG_DENOISE=1 \
                   -DCONFIG_DISABLE_FULL_PIXEL_SPLIT_8X8=1 \
                   -DENABLE_CCACHE=1 \
-                  -DENABLE_EXAMPLES=0 \
-                  -DENABLE_TESTS=0 \
+                  -DENABLE_{EXAMPLES,TESTS}=0 \
                   -G Ninja -Wno-dev \
                   "$packages/av1"
     execute ninja "-j$threads" -C build
@@ -2280,8 +2270,7 @@ if build "avif" "$repo_version"; then
                   -DBUILD_SHARED_LIBS=OFF \
                   -DAVIF_CODEC_AOM=ON \
                   -DAVIF_CODEC_AOM_{DECODE,ENCODE}=ON \
-                  -DAVIF_ENABLE_GTEST=OFF \
-                  -DAVIF_ENABLE_WERROR=OFF \
+                  -DAVIF_ENABLE_{GTEST,WERROR}=OFF \
                   -G Ninja -Wno-dev
     execute ninja "-j$threads" -C build
     execute ninja -C build install
@@ -2380,7 +2369,7 @@ if build "mediainfo-cli" "$repo_version"; then
     execute ./configure --prefix="$workspace" --enable-staticlibs --disable-shared
     execute make "-j$threads"
     execute make install
-    execute cp -f "$packages/mediainfo-cli-$repo_version/Project/GNU/CLI/mediainfo" /usr/local/bin/
+    execute cp -f "$packages/mediainfo-cli-$repo_version/Project/GNU/CLI/mediainfo" "/usr/local/bin/"
     build_done "mediainfo-cli" "$repo_version"
 fi
 
@@ -2449,8 +2438,7 @@ if build "svt-av1" "1.8.0"; then
                   -DCMAKE_BUILD_TYPE=Release \
                   -DBUILD_SHARED_LIBS=OFF \
                   -DBUILD_APPS=OFF \
-                  -DBUILD_DEC=ON \
-                  -DBUILD_ENC=ON \
+                  -DBUILD_{DEC,ENC}=ON \
                   -DBUILD_TESTING=OFF \
                   -DENABLE_AVX512=$(check_avx512) \
                   -DENABLE_NASM=ON \
@@ -2488,8 +2476,8 @@ if "$NONFREE_AND_GPL"; then
 fi
 
 if "$NONFREE_AND_GPL"; then
-    if build "x265" "3.5"; then
-        download "https://bitbucket.org/multicoreware/x265_git/downloads/x265_3.5.tar.gz" "x265-3.5.tar.gz"
+    if build "x265" "3.6"; then
+        download "https://bitbucket.org/multicoreware/x265_git/downloads/x265_3.6.tar.gz" "x265-3.6.tar.gz"
         fix_libstd_libs
         cd build/linux || exit 1
         rm -fr {8,10,12}bit 2>/dev/null
@@ -2554,7 +2542,7 @@ EOF
 
         fix_x265_libs # Fix the x265 shared library issue
 
-        build_done "x265" "3.5"
+        build_done "x265" "3.6"
     fi
     CONFIGURE_OPTIONS+=("--enable-libx265")
 fi
@@ -2670,8 +2658,7 @@ if build "$repo_name" "${version//\$ /}"; then
     execute cmake -B build \
                   -DCMAKE_INSTALL_PREFIX="$workspace" \
                   -DCMAKE_BUILD_TYPE=Release \
-                  -DABSL_ENABLE_INSTALL=ON \
-                  -DABSL_PROPAGATE_CXX_STD=ON \
+                  -DABSL_{ENABLE_INSTALL,PROPAGATE_CXX_STD}=ON \
                   -DBUILD_SHARED_LIBS=OFF \
                   -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
                   -DCMAKE_INSTALL_SBINDIR=sbin \
@@ -2837,6 +2824,7 @@ log_update "Latest FFmpeg release version available: $ffmpeg_version"
 # FFmpeg release version 7 does not build as it has too many bugs and is too new.
 # We must stick with the latest version that works
 if build "ffmpeg" "n6.1.1"; then
+    CFLAGS+=" -flto -DCL_TARGET_OPENCL_VERSION=300 -DX265_DEPTH=12 -DENABLE_LIBVMAF=0"
     download "https://ffmpeg.org/releases/ffmpeg-6.1.1.tar.xz" "ffmpeg-n6.1.1.tar.xz"
     [[ "$OS" == "Arch" ]] && patch_ffmpeg
     mkdir build; cd build
@@ -2848,28 +2836,12 @@ if build "ffmpeg" "n6.1.1"; then
                  "$ladspa_switch" \
                  "${CONFIGURE_OPTIONS[@]}" \
                  --enable-{chromaprint,libbs2b,libcaca,libgme,libmodplug} \
-                 --enable-libshine \
-                 --enable-libsnappy \
-                 --enable-libsoxr \
-                 --enable-libspeex \
-                 --enable-libssh \
-                 --enable-libtwolame \
-                 --enable-libv4l2 \
-                 --enable-libvo-amrwbenc \
-                 --enable-libzvbi \
-                 --enable-lto \
-                 --enable-opengl \
-                 --enable-pic \
-                 --enable-pthreads \
-                 --enable-small \
-                 --enable-rpath \
-                 --enable-libssh \
-                 --enable-static \
-                 --enable-libtesseract \
-                 --enable-version3 \
-                 --enable-libzimg \
-                 --extra-cflags="$CFLAGS -flto -DCL_TARGET_OPENCL_VERSION=300 -DX265_DEPTH=12 -DENABLE_LIBVMAF=0" \
-                 --extra-cxxflags="$CXXFLAGS -flto -DCL_TARGET_OPENCL_VERSION=300 -DX265_DEPTH=12 -DENABLE_LIBVMAF=0" \
+                 --enable-{libshine,libsnappy,libsoxr,libspeex,libssh} \
+                 --enable-{libtwolame,libv4l2,libvo-amrwbenc,libzvbi} \
+                 --enable-{lto,opengl,pic,pthreads,small,rpath,libssh} \
+                 --enable-{static,libtesseract,version3,libzimg} \
+                 --extra-cflags="$CFLAGS" \
+                 --extra-cxxflags="$CFLAGS" \
                  --extra-libs="$EXTRALIBS" \
                  --pkg-config-flags="--static" \
                  --pkg-config="$workspace/bin/pkg-config" \
