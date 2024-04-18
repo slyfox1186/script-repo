@@ -6,12 +6,12 @@ tmp_dir=$(mktemp -d)
 scripts=("loop.sh" "loop-paths.sh" "wmv-to-mp4.sh")
 
 # Prompt the user with choices
-echo "Please select an option:"
-echo "1. Download all scripts stored in the file created by the cat command"
-echo "2. Download only the file 'loop.sh (AKA convert-x265-cuda-ffpb-loop.sh)' script"
-echo "3. Download only the file 'loop-paths.sh (AKA convert-x265-cuda-ffpb-loop-paths.sh)' script"
-echo "4. Download only the file 'wmv-to-mp4.sh (AKA convert-wmv-to-mp4.sh)' script"
-echo "5. Exit script"
+echo "Please select the script(s) to download:"
+echo "1. All"
+echo "2. loop.sh"
+echo "3. loop-paths.sh"
+echo "4. wmv-to-mp4.sh"
+echo "5. Exit"
 
 read -p "Enter your choice (1-5): " choice
 
