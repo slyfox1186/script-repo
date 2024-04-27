@@ -8,7 +8,7 @@
 #          also compiled from source to help ensure the latest functionality
 # Supported Distros: Arch Linux
 #                    Debian 11|12
-#                    Ubuntu (20|22|23).04 & 23.10 || 24.04 not currently working
+#                    Ubuntu (20|22|23).04 & 23.10
 # Supported architecture: x86_64
 # CUDA SDK Toolkit: Updated to version 12.4.1
 
@@ -2791,44 +2791,33 @@ if [[ "$wsl_flag" == "yes_wsl" ]]; then
     install_windows_hardware_acceleration
 fi
 
-# Check the last build version of ffmpeg if it exists to determine if an update has occured
-if [[ -f "$packages/ffmpeg.done" ]]; then
-    # Define a function to read the file content
-    read_file_contents() {
-        local file_path="$1"
-        if [[ -f "$file_path" ]]; then
-            # Read the content of the file into a variable
-            local content=$(cat "$file_path")
-            echo "$content"
-        fi
-    }
+# Run the 'ffmpeg -version' command and capture its output
+ffmpeg_version_output=$(ffmpeg -version 2>/dev/null)
 
-    file_path="$packages/ffmpeg.done"
-    ffmpeg_current_version=$(read_file_contents "$file_path")
+# Check if the command executed successfully
+if [ $? -eq 0 ]; then
+    # Extract the version number using grep and awk
+    ffmpeg_version=$(echo "$ffmpeg_version_output" | grep -oP 'ffmpeg version \K\d+\.\d+')
+    
+    # Format the version number with the desired prefix
+    ffmpeg_version_formatted="n$ffmpeg_version"
+    
+    echo
+    log_update "Installed FFmpeg version: $ffmpeg_version_formatted"
+    log_update "Latest FFmpeg release version available: $ffmpeg_version_formatted"
+else
+    echo
+    log_update "Failed to retrieve installed FFmpeg version"
+    log_update "Latest FFmpeg release version available: Unknown"
 fi
-
-# Update the compilter flags before building ffmpeg
-source_compiler_flags
-
-# If true, alert the user that no ffmpeg version is found
-[[ -z "$ffmpeg_current_version" ]] && ffmpeg_current_version="Not installed"
-
-# Get the latest FFmpeg version by parsing its repository
-ffmpeg_version=$(check_ffmpeg_version "https://github.com/FFmpeg/FFmpeg.git")
-# Trim the front of the version number so the download link works
-ffmpeg_version_trimmed="${ffmpeg_version//n/}"
-
-echo
-log_update "Installed FFmpeg version: $ffmpeg_current_version"
-log_update "Latest FFmpeg release version available: $ffmpeg_version"
 
 # Build FFmpeg from source using the latest git clone
 # FFmpeg release version 7 does not build as it has too many bugs and is too new.
 # We must stick with the latest version that works
 find_git_repo "FFmpeg/FFmpeg" "1" "T"
-if build "ffmpeg" "$repo_version"; then
+if build "ffmpeg" "n${repo_version}"; then
     CFLAGS+=" -flto -DCL_TARGET_OPENCL_VERSION=300 -DX265_DEPTH=12 -DENABLE_LIBVMAF=0"
-    download "https://ffmpeg.org/releases/ffmpeg-$repo_version.tar.xz" "ffmpeg-$repo_version.tar.xz"
+    download "https://ffmpeg.org/releases/ffmpeg-$repo_version.tar.xz" "ffmpeg-n${repo_version}.tar.xz"
     [[ "$OS" == "Arch" ]] && patch_ffmpeg
     mkdir build; cd build
     ../configure --prefix=/usr/local \
@@ -2852,7 +2841,7 @@ if build "ffmpeg" "$repo_version"; then
                  --strip=$(type -P strip)
     execute make "-j$threads"
     execute make install
-    build_done "ffmpeg" "$repo_version"
+    build_done "ffmpeg" "n${repo_version}"
 fi
 
 # Execute the ldconfig command to ensure that all library changes are detected by ffmpeg
