@@ -31,7 +31,7 @@ fi
 packages="$cwd/packages"
 workspace="$cwd/workspace"
 # Set a regex string to match and then exclude any found release candidate versions of a program. Utilize stable releases only.
-git_regex='(Rc|rc|rC|RC|alpha|beta|early|init|next|pending|pre|rc|tentative)+[0-9]*$'
+git_regex='(Rc|rc|rC|RC|alpha|beta|early|init|next|pending|pre|tentative)+[0-9]*$'
 debug=OFF
 
 # Pre-defined color variables
