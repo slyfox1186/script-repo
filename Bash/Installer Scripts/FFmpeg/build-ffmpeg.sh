@@ -23,7 +23,6 @@ script_version="3.6.3"
 cwd="$PWD/ffmpeg-build-script"
 mkdir -p "$cwd" && cd "$cwd" || exit 1
 if [[ "$PWD" =~ ffmpeg-build-script\/ffmpeg-build-script ]]; then
-    clear
     cd ../
     sudo rm -fr ffmpeg-build-script
     cwd="$PWD"
