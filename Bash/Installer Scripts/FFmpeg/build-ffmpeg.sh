@@ -2,8 +2,8 @@
 # shellcheck disable=SC2068,SC2162,SC2317 source=/dev/null
 
 # GitHub: https://github.com/slyfox1186/ffmpeg-build-script
-# Script version: 3.6.2
-# Updated: 04.17.24
+# Script version: 3.6.3
+# Updated: 04.27.24
 # Purpose: build ffmpeg from source code with addon development libraries
 #          also compiled from source to help ensure the latest functionality
 # Supported Distros: Arch Linux
@@ -19,7 +19,7 @@ fi
 
 # Define global variables
 script_name="${0}"
-script_version="3.6.2"
+script_version="3.6.3"
 cwd="$PWD/ffmpeg-build-script"
 mkdir -p "$cwd" && cd "$cwd" || exit 1
 if [[ "$PWD" =~ ffmpeg-build-script\/ffmpeg-build-script ]]; then
@@ -47,7 +47,7 @@ box_out_banner() {
     input_char=$(echo "$@" | wc -c)
     line=$(for i in $(seq 0 "$input_char"); do printf "-"; done)
     tput bold
-    line=$(tput setaf 3)$line
+    line="$(tput setaf 3)$line"
     space="${line//-/ }"
     echo " $line"
     printf "|" ; echo -n "$space" ; printf "%s\n" "|";
@@ -821,7 +821,7 @@ get_local_cuda_version() {
 # Required Geforce CUDA development packages
 install_cuda() {
     local choice
-    log "Checking GPU Status"
+    echo "Checking GPU Status"
     echo "========================================================"
     amd_gpu_test=$(check_amd_gpu)
     check_nvidia_gpu
@@ -880,16 +880,16 @@ apt_pkgs() {
     # Define an array of apt package names
     pkgs=(
         $1 $libcppabi_pkg $libcpp_pkg $libunwind_pkg $nvidia_driver $nvidia_utils $openjdk_pkg $gcc_plugin_pkg
-        asciidoc autoconf autoconf-archive automake autopoint binutils bison build-essential cargo cargo-c ccache
-        checkinstall curl doxygen fcitx-libs-dev flex flite1-dev gawk gcc gettext gimp-data git gnome-desktop-testing
-        gnustep-gui-runtime google-perftools gperf gtk-doc-tools guile-3.0-dev help2man jq junit ladspa-sdk lib32stdc++6
-        libamd2 libasound2-dev libass-dev libaudio-dev libavfilter-dev libbabl-0.1-0 libbluray-dev libbpf-dev libbs2b-dev
-        libbz2-dev libc6 libc6-dev libcaca-dev libcairo2-dev libcdio-dev libcdio-paranoia-dev libcdparanoia-dev libchromaprint-dev
-        libcjson-dev libcodec2-dev libcrypto++-dev libcurl4-openssl-dev libdav1d-dev libdbus-1-dev libde265-dev libdevil-dev
-        libdmalloc-dev libdrm-dev libdvbpsi-dev libebml-dev libegl1-mesa-dev libffi-dev libgbm-dev libgdbm-dev libgegl-0.4-0
-        libgegl-common libgimp2.0 libgl1-mesa-dev libgles2-mesa-dev libglib2.0-dev libgme-dev libgmock-dev libgnutls28-dev
-        libgnutls30 libgoogle-perftools-dev libgoogle-perftools4 libgsm1-dev libgtest-dev libgvc6 libibus-1.0-dev libintl-perl
-        libjxl-dev libladspa-ocaml-dev libldap2-dev libleptonica-dev liblilv-dev liblz-dev liblzma-dev liblzo2-dev libmp3lame-dev
+        asciidoc autoconf autoconf-archive automake autopoint binutils bison build-essential cargo ccache checkinstall
+        curl doxygen fcitx-libs-dev flex flite1-dev gawk gcc gettext gimp-data git gnome-desktop-testing gnustep-gui-runtime
+        google-perftools gperf gtk-doc-tools guile-3.0-dev help2man jq junit ladspa-sdk lib32stdc++6 libamd2 libasound2-dev
+        libass-dev libaudio-dev libavfilter-dev libbabl-0.1-0 libbluray-dev libbpf-dev libbs2b-dev libbz2-dev libc6 libc6-dev
+        libcaca-dev libcairo2-dev libcdio-dev libcdio-paranoia-dev libcdparanoia-dev libchromaprint-dev libcjson-dev
+        libcodec2-dev libcrypto++-dev libcurl4-openssl-dev libdav1d-dev libdbus-1-dev libde265-dev libdevil-dev libdmalloc-dev
+        libdrm-dev libdvbpsi-dev libebml-dev libegl1-mesa-dev libffi-dev libgbm-dev libgdbm-dev libgegl-0.4-0 libgegl-common
+        libgimp2.0 libgl1-mesa-dev libgles2-mesa-dev libglib2.0-dev libgme-dev libgmock-dev libgnutls28-dev libgnutls30
+        libgoogle-perftools-dev libgoogle-perftools4 libgsm1-dev libgtest-dev libgvc6 libibus-1.0-dev libintl-perl
+        libladspa-ocaml-dev libldap2-dev libleptonica-dev liblilv-dev liblz-dev liblzma-dev liblzo2-dev libmp3lame-dev
         libmathic-dev libmatroska-dev libmbedtls-dev libmetis5 libmfx-dev libmodplug-dev libmusicbrainz5-dev libnuma-dev
         libpango1.0-dev libperl-dev libplacebo-dev libpocketsphinx-dev libportaudio-ocaml-dev libpsl-dev libpstoedit-dev
         libpulse-dev librabbitmq-dev libraw-dev librsvg2-dev librtmp-dev librubberband-dev librust-gstreamer-base-sys-dev
@@ -898,7 +898,8 @@ apt_pkgs() {
         libtool libtwolame-dev libudev-dev libv4l-dev libva-dev libvdpau-dev libvidstab-dev libvlccore-dev libvo-amrwbenc-dev
         libx11-dev libxcursor-dev libxext-dev libxfixes-dev libxi-dev libxkbcommon-dev libxrandr-dev libxss-dev libxvidcore-dev
         libzmq3-dev libzvbi-dev libzzip-dev lsb-release lshw lzma-dev m4 mesa-utils pandoc python3 python3-pip python3-venv
-        ragel re2c scons texi2html texinfo tk-dev unzip valgrind wget xmlto libsctp-dev libflac-dev
+        ragel re2c scons texi2html texinfo tk-dev unzip valgrind wget xmlto libsctp-dev libflac-dev libglfw3-dev libgl1-mesa-dev
+        libglu1-mesa-dev
     )
 
     [[ "$OS" == "Debian" ]] && pkgs+=("nvidia-smi")
@@ -1165,16 +1166,16 @@ ubuntu_os_version() {
     jammy_pkgs+=" librust-malloc-buf-dev libsrt-doc libsvtav1-dev libsvtav1dec-dev libsvtav1enc-dev libtbbmalloc2 libwayland-dev libclang1-15"
     jammy_pkgs+=" libcamd2 libccolamd2 libcholmod3 libcolamd2 libsuitesparseconfig5 libumfpack5"
     lunar_kenetic_pkgs="libhwy-dev libjxl-dev librist-dev libsrt-gnutls-dev libsvtav1-dev libsvtav1dec-dev libsvtav1enc-dev libyuv-dev"
-    lunar_kenetic_pkgs+=" libcamd2 libccolamd2 libcholmod3 libcolamd2 libsuitesparseconfig5 libumfpack5"
-    mantic_pkgs="libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev libhwy-dev libsrt-gnutls-dev libyuv-dev libcamd2 libccolamd2 libcholmod3"
-    mantic_pkgs+=" libsuitesparseconfig5 libumfpack5"
-    noble_pkgs="libcamd3 libccolamd3 libcholmod5 libcolamd3 libsuitesparseconfig7 libumfpack6"
+    lunar_kenetic_pkgs+=" cargo-c libcamd2 libccolamd2 libcholmod3 libcolamd2 libsuitesparseconfig5 libumfpack5"
+    mantic_pkgs="libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev libhwy-dev libsrt-gnutls-dev libyuv-dev libcamd2"
+    mantic_pkgs+=" libccolamd2 libcholmod3 cargo-c libsuitesparseconfig5 libumfpack5 libjxl-dev"
+    noble_pkgs="cargo-c libcamd3 libccolamd3 libcholmod5 libcolamd3 libsuitesparseconfig7 libumfpack6 libjxl-dev"
     case "$VER" in
         msft)
             ubuntu_msft
             ;;
         24.04)
-        apt_pkgs "$1 $noble_pkgs"
+            apt_pkgs "$1 $noble_pkgs"
             ;;
         23.10)
             apt_pkgs "$1 $mantic_pkgs $lunar_kenetic_pkgs $jammy_pkgs $focal_pkgs"
@@ -1188,7 +1189,8 @@ ubuntu_os_version() {
         20.04)
             apt_pkgs "$1 $ubuntu_common_pkgs $focal_pkgs"
             ;;
-        *)  fail "Could not detect the Ubuntu release version. Line: $LINENO"
+        *)
+            fail "Could not detect the Ubuntu release version. Line: $LINENO"
             ;;
     esac
 }
@@ -1212,7 +1214,7 @@ get_os_version() {
 
     nvidia_utils_version=$(apt list nvidia-utils-* 2>/dev/null |
                            grep -oP '^nvidia-utils-[0-9]{3}' |
-                           sort -ruV | uniq | head -n1)
+                           sort -ruV | head -n1)
 
     nvidia_encode_version=$(apt list libnvidia-encode* 2>&1 |
                             grep -oP 'libnvidia-encode-[0-9]{3}' |
