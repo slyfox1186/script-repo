@@ -8,7 +8,7 @@
 #          also compiled from source to help ensure the latest functionality
 # Supported Distros: Arch Linux
 #                    Debian 11|12
-#                    Ubuntu (20|22|23).04 & 23.10
+#                    Ubuntu (20|22|23).04 & 23.10 || 24.04 not currently working
 # Supported architecture: x86_64
 # CUDA SDK Toolkit: Updated to version 12.4.1
 
