@@ -1258,8 +1258,8 @@ case "$OS" in
     Arch) iscuda=$(find /opt/cuda/ -type f -name nvcc 2>/dev/null)
           cuda_path=$(find /opt/cuda/ -type f -name nvcc 2>/dev/null | grep -oP '^.*/bin?')
           ;;
-    *)    iscuda=$(find /usr/local/cuda* -type f -name nvcc 2>/dev/null | sort -ruV | head -n1)
-          cuda_path=$(find /usr/local/cuda* -type f -name nvcc 2>/dev/null | sort -ruV | head -n1 | grep -oP '^.*/bin?')
+    *)    iscuda=$(find /usr/local/cuda/ -type f -name nvcc 2>/dev/null | sort -ruV | head -n1)
+          cuda_path=$(find /usr/local/cuda/ -type f -name nvcc 2>/dev/null | sort -ruV | head -n1 | grep -oP '^.*/bin?')
           ;;
 esac
 
