@@ -118,8 +118,8 @@ cleanup() {
 }
 
 display_ffmpeg_versions() {
-    local file
-    local files=( [0]=ffmpeg [1]=ffprobe [2]=ffplay )
+    local file files
+    files=( [0]=ffmpeg [1]=ffprobe [2]=ffplay )
 
     echo
     for file in ${files[@]}; do
