@@ -2825,9 +2825,10 @@ log_update "Latest FFmpeg release version available: $ffmpeg_version"
 # Build FFmpeg from source using the latest git clone
 # FFmpeg release version 7 does not build as it has too many bugs and is too new.
 # We must stick with the latest version that works
-if build "ffmpeg" "n6.1.1"; then
+find_git_repo "FFmpeg/FFmpeg" "1" "T"
+if build "ffmpeg" "$repo_version"; then
     CFLAGS+=" -flto -DCL_TARGET_OPENCL_VERSION=300 -DX265_DEPTH=12 -DENABLE_LIBVMAF=0"
-    download "https://ffmpeg.org/releases/ffmpeg-6.1.1.tar.xz" "ffmpeg-n6.1.1.tar.xz"
+    download "https://ffmpeg.org/releases/ffmpeg-$repo_version.tar.xz" "ffmpeg-$repo_version.tar.xz"
     [[ "$OS" == "Arch" ]] && patch_ffmpeg
     mkdir build; cd build
     ../configure --prefix=/usr/local \
@@ -2851,7 +2852,7 @@ if build "ffmpeg" "n6.1.1"; then
                  --strip=$(type -P strip)
     execute make "-j$threads"
     execute make install
-    build_done "ffmpeg" "n6.1.1"
+    build_done "ffmpeg" "$repo_version"
 fi
 
 # Execute the ldconfig command to ensure that all library changes are detected by ffmpeg
