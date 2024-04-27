@@ -203,7 +203,7 @@ install_windows_hardware_acceleration() {
 
 install_rustc() {
     get_rustc_ver=$(rustc --version | grep -oP '[0-9.]+' | head -n1)
-    if [[ ! "$get_rustc_ver" == "1.76.0" ]]; then
+    if [[ ! "$get_rustc_ver" == "1.77.2" ]]; then
         echo "Installing RustUp"
         curl -fsS --proto '=https' --tlsv1.2 'https://sh.rustup.rs' | sh -s -- --default-toolchain stable -y &>/dev/null
         source "$HOME/.cargo/env"
