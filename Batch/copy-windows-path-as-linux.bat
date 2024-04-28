@@ -3,7 +3,6 @@ SETLOCAL ENABLEEXTENSIONS
 COLOR 0A
 
 CLS
-
 ECHO Select an option: & ECHO=
 ECHO [1] Add "Copy Linux Path" to the context menu
 ECHO [2] Remove "Copy Linux Path" from the context menu & ECHO=
