@@ -27,8 +27,7 @@ parse_version() {
     grep -oP "$second_match" |
     grep -Eiv "$exclude_words" |
     sort -rV | head -n1 |
-    sed "$trim_this" |
-    sed 's/^v//'
+    sed "$trim_this" | sed 's/^v//'
 }
 
 # Main script execution
