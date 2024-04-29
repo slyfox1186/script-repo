@@ -5,7 +5,7 @@
 # Expected Output: e.g., 1.77.0
 
 # Regex patterns
-first_match='href="[^"]*/releases/tag/[^"]*'
+first_match='href="[^"]*/releases/tag/\K[^"]*'
 second_match='(?:[a-z-]+-)?\K([0-9]+(?:[._-][0-9]+)*(?:-[a-zA-Z0-9]+)?)'
 exclude_words='alpha|beta|early|init|next|pending|pre|rc|tentative'
 trim_this='s/-$//'
