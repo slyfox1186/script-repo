@@ -2,8 +2,8 @@
 
 ##  Github Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-sed
 ##  Purpose: build gnu sed
-##  Updated: 02.03.24
-##  Script version: 1.1
+##  Updated: 05.29.24
+##  Script version: 1.2
 
 set -euo pipefail
 
@@ -13,7 +13,7 @@ GREEN='\033[0;32m'
 NC='\033[0m'
 
 # Set variables
-script_ver=1.1
+script_ver="1.2"
 archive_dir="sed-4.9"
 archive_url="https://ftp.gnu.org/gnu/sed/$archive_dir.tar.xz"
 archive_name="$archive_dir.tar.${archive_url##*.}"
