@@ -2831,9 +2831,9 @@ if build "ffmpeg" "n${repo_version}"; then
                  "${CONFIGURE_OPTIONS[@]}" \
                  --enable-{chromaprint,libbs2b,libcaca,libgme,libmodplug} \
                  --enable-{libshine,libsnappy,libsoxr,libspeex,libssh} \
-                 --enable-{libtwolame,libv4l2,libvo-amrwbenc,libzvbi} \
-                 --enable-{lto,opengl,pic,pthreads,small,rpath,libssh} \
-                 --enable-{static,libtesseract,version3,libzimg} \
+                 --enable-{libtesseract,libtwolame,libv4l2,libvo-amrwbenc,libzimg} \
+                 --enable-{libzvbi,lto,opengl,pic,pthreads,rpath,small} \
+                 --enable-{static,version3} \
                  --extra-cflags="$CFLAGS" \
                  --extra-cxxflags="$CFLAGS" \
                  --extra-libs="$EXTRALIBS" \
