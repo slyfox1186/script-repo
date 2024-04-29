@@ -2,8 +2,8 @@
 # shellcheck disable=SC2068,SC2162,SC2317 source=/dev/null
 
 # GitHub: https://github.com/slyfox1186/ffmpeg-build-script
-# Script version: 3.6.3
-# Updated: 04.27.24
+# Script version: 3.6.4
+# Updated: 04.28.24
 # Purpose: build ffmpeg from source code with addon development libraries
 #          also compiled from source to help ensure the latest functionality
 # Supported Distros: Arch Linux
@@ -19,7 +19,7 @@ fi
 
 # Define global variables
 script_name="${0}"
-script_version="3.6.3"
+script_version="3.6.4"
 cwd="$PWD/ffmpeg-build-script"
 mkdir -p "$cwd" && cd "$cwd" || exit 1
 if [[ "$PWD" =~ ffmpeg-build-script\/ffmpeg-build-script ]]; then
@@ -34,7 +34,6 @@ git_regex='(Rc|rc|rC|RC|alpha|beta|early|init|next|pending|pre|tentative)+[0-9]*
 debug=OFF
 
 # Pre-defined color variables
-CYAN='\033[0;36m'
 GREEN='\033[0;32m'
 RED='\033[0;31m'
 YELLOW='\033[0;33m'
@@ -169,15 +168,11 @@ check_and_install_cargo_c() {
         ensure_no_cargo_or_rustc_processes
 
         # Perform cleanup only when it's safe
-        cargo clean
+        execute cargo clean
         find "$HOME/.cargo/registry/index" -type f -name ".cargo-lock" -delete
 
-        if ! cargo install cargo-c; then
-            fail "Failed to execute: cargo install cargo-c."
-        fi
-        log_update "cargo-c installation completed."
-    else
-        log "cargo-c is already installed."
+        # Install cargo-c
+        execute cargo install cargo-c
     fi
 }
 
@@ -334,7 +329,7 @@ gnu_repo() {
 }
 
 github_repo() {
-    local count max_attempts repot url url_flag
+    local count max_attempts repo url url_flag
     repo="$1"
     url="$2"
     url_flag="$3"
@@ -348,7 +343,11 @@ github_repo() {
             repo_version=$(curl -fsSL "https://github.com/xiph/rav1e/tags/" |
                            grep -oP 'p[0-9]+\.tar\.gz' | sed 's/\.tar\.gz//g' |
                            head -n1)
-            [[ -n "$repo_version" ]] && return 0 || continue
+            if [[ -n "$repo_version" ]]; then
+                return 0
+            else
+                continue
+            fi
         else
             curl_cmd=$(curl -fsSL "https://github.com/$repo/$url" | grep -o 'href="[^"]*\.tar\.gz"')
         fi
@@ -725,7 +724,10 @@ nvidia_architecture() {
             "NVIDIA H100")
                 nvidia_arch_type="compute_90,code=sm_90"
                 ;;
-            *) fail "Failed to set the variable \"nvidia_arch_type\". Line: $LINENO" ;;
+            *) echo "If you get a driver version \"mismatch\" when executing the command \"nvidia-smi\", reboot your PC and rerun the script."
+               echo
+               fail "Failed to set the variable \"nvidia_arch_type\". Line: $LINENO"
+               ;;
         esac
     else
         return 1
@@ -774,6 +776,7 @@ cuda_download() {
         break
     done
 
+    echo
     echo "Downloading the CUDA SDK Toolkit - version $cuda_version_number"
 
     mkdir -p "$packages/nvidia-cuda"
@@ -786,14 +789,14 @@ cuda_download() {
         package_name="$packages/nvidia-cuda/cuda-$distro-$cuda_version_number.$pkg_ext"
         wget --show-progress -cqO "$package_name" "$cuda_url/$installer_path"
         dpkg -i "$package_name"
-        cp -f /var/cuda-repo-${distro}${version}-local/cuda-*-keyring.gpg "/usr/share/keyrings/"
+        cp -f "/var/cuda-repo-${distro}${version}-local/cuda-"*"-keyring.gpg" "/usr/share/keyrings/"
         [[ "$distro" == "debian"* ]] && add-apt-repository -y contrib
     elif [[ "$pkg_ext" == "pin" ]]; then
         wget --show-progress -cqO "/etc/apt/preferences.d/cuda-repository-pin-600" "$cuda_pin_url/$pin_file"
         package_name="$packages/nvidia-cuda/cuda-$distro-$cuda_version_number.deb"
         wget --show-progress -cqO "$package_name" "$cuda_url/$installer_path"
         dpkg -i "$package_name"
-        cp -f /var/cuda-repo-${distro}-12-4-local/cuda-*-keyring.gpg "/usr/share/keyrings/"
+        cp -f "/var/cuda-repo-${distro}-12-4-local/cuda-"*"-keyring.gpg" "/usr/share/keyrings/"
     fi
 
     apt update
@@ -951,13 +954,13 @@ apt_pkgs() {
 
 check_avx512() {
     # Checking if /proc/cpuinfo exists on the system
-    if [[ ! -f /proc/cpuinfo ]]; then
+    if [[ ! -f "/proc/cpuinfo" ]]; then
         echo "Error: /proc/cpuinfo does not exist on this system." >&2
         return 2
     fi
 
     # Search for AVX512 flag in cpuinfo
-    if grep -qo 'avx512' /proc/cpuinfo; then
+    if grep -qo "avx512" "/proc/cpuinfo"; then
         echo "ON"
     else
         echo "OFF"
@@ -965,7 +968,8 @@ check_avx512() {
 }
 
 fix_libstd_libs() {
-    local libstdc_path=$(find /usr/lib/x86_64-linux-gnu/ -type f -name 'libstdc++.so.6.0.*' | sort -ruV | head -n1)
+    local libstdc_path
+    libstdc_path=$(find /usr/lib/x86_64-linux-gnu/ -type f -name 'libstdc++.so.6.0.*' | sort -ruV | head -n1)
     if [[ ! -f "/usr/lib/x86_64-linux-gnu/libstdc++.so" ]] && [[ -f "$libstdc_path" ]]; then
 
         exec ln -sf "$libstdc_path" "/usr/lib/x86_64-linux-gnu/libstdc++.so"
@@ -973,8 +977,9 @@ fix_libstd_libs() {
 }
 
 fix_x265_libs() {
-    local x265_libs=$(find $workspace/lib/ -type f -name 'libx265.so.*' | sort -rV | head -n1)
-    local x265_libs_trim=$(echo "$x265_libs" | sed "s:.*/::" | head -n1)
+    local x265_libs x265_libs_trim
+    x265_libs=$(find "$workspace"/lib/ -type f -name 'libx265.so.*' | sort -rV | head -n1)
+    x265_libs_trim=$(echo "$x265_libs" | sed "s:.*/::" | head -n1)
 
     case "$OS" in
         Arch)
@@ -1002,11 +1007,9 @@ if version_split.length() > 1\\n  pa_version_minor = version_split[1]\\nelse\\n 
 }
 
 libpulse_fix_libs() {
-    local pulse_version="$1"
-    local libpulse_lib=$(find "$workspace/lib/" -type f -name "libpulsecommon-*.so" | head -n1)
-    local libpulse_trim=$(echo "$libpulse_lib" |
-                          sed 's:.*/::' |
-                          head -n1)
+    local libpulse_lib pulse_version
+    pulse_version="$1"
+    libpulse_lib=$(find "$workspace/lib/" -type f -name "libpulsecommon-*.so" | head -n1)
 
     if [[ "$OS" == "Arch" ]]; then
         mkdir -p "/usr/lib/pulseaudio"
@@ -1026,7 +1029,8 @@ libpulse_fix_libs() {
 }
 
 find_latest_nasm_version() {
-    local latest_version=$(curl -fsS "https://www.nasm.us/pub/nasm/stable/" |
+    local latest_version
+    latest_version=$(curl -fsS "https://www.nasm.us/pub/nasm/stable/" |
                            grep -oP 'nasm-\K[0-9]+\.[0-9]+\.[0-9]+(?=\.tar\.xz)' |
                            sort -ruV |
                            head -n1)
@@ -1135,8 +1139,8 @@ debian_os_version() {
 
     case "$VER" in
         msft)          debian_msft ;;
-        12|trixie|sid) apt_pkgs "$1 $debian_pkgs librist-dev" ;;
-        11)            apt_pkgs "$1 $debian_pkgs" ;;
+        12|trixie|sid) apt_pkgs "$1 ${debian_pkgs[@]} librist-dev" ;;
+        11)            apt_pkgs "$1 ${debian_pkgs[@]}" ;;
         *)             fail "Could not detect the Debian release version. Line: $LINENO" ;;
     esac
 }
@@ -1223,7 +1227,7 @@ get_os_version
 
 # Check if running Windows WSL2
 get_wsl_version() {
-    if [[ $(grep -i "microsoft" /proc/version) ]]; then
+    if [[ $(grep -iq "microsoft" /proc/version) ]]; then
         wsl_flag="yes_wsl"
         OS="WSL2"
         wsl_common_pkgs="cppcheck libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev libyuv-utils"
@@ -1573,7 +1577,7 @@ if build "fontconfig" "$repo_version"; then
     execute ./configure --prefix="$workspace" \
                         "${extracmds[@]}" \
                         --enable-{iconv,static} \
-                        --with-arch=$(uname -m) \
+                        --with-arch="$(uname -m)" \
                         --with-libiconv-prefix=/usr
     execute make "-j$threads"
     execute make install
@@ -1627,7 +1631,7 @@ fi
 find_git_repo "fribidi/fribidi" "1" "T"
 if build "fribidi" "$repo_version"; then
     download "https://github.com/fribidi/fribidi/archive/refs/tags/v$repo_version.tar.gz" "fribidi-$repo_version.tar.gz"
-    extracmds=("-D"{docs,tests}"="false"")
+    extracmds=("-D"{docs,tests}"=false")
     execute autoreconf -fi
     execute meson setup build --prefix="$workspace" \
                               --buildtype=release \
@@ -1869,7 +1873,6 @@ fi
 
 find_git_repo "pcre2project/pcre2" "1" "T"
 repo_version="${repo_version//2-/}"
-target_url="https://github.com/PCRE2Project/pcre2/releases/download/pcre2-$tag_urls/pcre2-$tag_urls.tar.gz"
 if build "pcre2" "$repo_version"; then
     download "https://github.com/PCRE2Project/pcre2/archive/refs/tags/pcre2-$repo_version.tar.gz" "pcre2-$repo_version.tar.gz"
     execute ./autogen.sh
@@ -2039,7 +2042,7 @@ if build "$repo_name" "${version//\$ /}"; then
     echo "Cloning \"$repo_name\" saving version \"$version\""
     git_clone "$git_url"
     fix_pulse_meson_build_file
-    extracmds=("-D"{daemon,doxygen,ipv6,man,tests}"="false"")
+    extracmds=("-D"{daemon,doxygen,ipv6,man,tests}"=false")
     execute meson setup build --prefix="$workspace" \
                               --buildtype=release \
                               --default-library=static \
@@ -2441,7 +2444,7 @@ if build "svt-av1" "1.8.0"; then
                   -DBUILD_APPS=OFF \
                   -DBUILD_{DEC,ENC}=ON \
                   -DBUILD_TESTING=OFF \
-                  -DENABLE_AVX512=$(check_avx512) \
+                  -DENABLE_AVX512="$(check_avx512)" \
                   -DENABLE_NASM=ON \
                   -DNATIVE=ON \
                   -G Ninja -Wno-dev
@@ -2794,7 +2797,7 @@ fi
 ffmpeg_version_output=$(ffmpeg -version 2>/dev/null)
 
 # Check if the command executed successfully
-if [ $? -eq 0 ]; then
+if [ "$?" -eq 0 ]; then
     # Extract the version number using grep and awk
     ffmpeg_version=$(echo "$ffmpeg_version_output" | grep -oP 'ffmpeg version \K\d+\.\d+')
     
@@ -2802,12 +2805,12 @@ if [ $? -eq 0 ]; then
     ffmpeg_version_formatted="n$ffmpeg_version"
     
     echo
-    log_update "Installed FFmpeg version: $ffmpeg_version_formatted"
-    log_update "Latest FFmpeg release version available: $ffmpeg_version_formatted"
+    log_update "The installed FFmpeg version is: $ffmpeg_version_formatted"
+    log_update "The latest FFmpeg release version available: $ffmpeg_version_formatted"
 else
     echo
-    log_update "Failed to retrieve installed FFmpeg version"
-    log_update "Latest FFmpeg release version available: Unknown"
+    log_update "Failed to retrieve an installed FFmpeg version"
+    log_update "The latest FFmpeg release version available is: Unknown"
 fi
 
 # Build FFmpeg from source using the latest git clone
@@ -2818,9 +2821,9 @@ if build "ffmpeg" "n${repo_version}"; then
     CFLAGS+=" -flto -DCL_TARGET_OPENCL_VERSION=300 -DX265_DEPTH=12 -DENABLE_LIBVMAF=0"
     download "https://ffmpeg.org/releases/ffmpeg-$repo_version.tar.xz" "ffmpeg-n${repo_version}.tar.xz"
     [[ "$OS" == "Arch" ]] && patch_ffmpeg
-    mkdir build; cd build
+    mkdir build; cd build || exit 1
     ../configure --prefix=/usr/local \
-                 --arch=$(uname -m) \
+                 --arch="$(uname -m)" \
                  --cc="$CC" \
                  --cxx="$CXX" \
                  --disable-{debug,doc,large-tests,shared} \
@@ -2837,7 +2840,7 @@ if build "ffmpeg" "n${repo_version}"; then
                  --pkg-config-flags="--static" \
                  --pkg-config="$workspace/bin/pkg-config" \
                  --pkgconfigdir="$workspace/lib/pkgconfig" \
-                 --strip=$(type -P strip)
+                 --strip="$(type -P strip)"
     execute make "-j$threads"
     execute make install
     build_done "ffmpeg" "n${repo_version}"
