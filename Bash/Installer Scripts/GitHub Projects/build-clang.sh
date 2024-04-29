@@ -91,8 +91,7 @@ get_llvm_release_version() {
 }
 
 set_compiler_flags() {
-    CFLAGS="-O2 -fPIE -mtune=native -DNDEBUG -fstack-protector-strong"
-    CFLAGS+=" -D_FORTIFY_SOURCE=2 -Wno-unused-parameter"
+    CFLAGS="-O2 -fPIE -mtune=native -DNDEBUG -fstack-protector-strong -D_FORTIFY_SOURCE=2 -Wno-unused-parameter"
     CXXFLAGS="$CFLAGS"
     LDFLAGS="-Wl,-rpath,$install_prefix/lib -Wl,--as-needed"
     export CC CXX CFLAGS CXXFLAGS LDFLAGS
