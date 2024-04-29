@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 # Script to build LLVM Clang
-# Updated: 04.04.24
-# Script version: 2.0
+# Updated: 05.29.24
+# Script version: 2.1
 # Added multiple script arguments including the ability to set the version of Clang to install.
 
 set -euo pipefail
@@ -44,7 +44,7 @@ install_required_packages() {
     local pkgs=(
         autoconf autoconf-archive automake autopoint binutils binutils-dev
         build-essential ccache cmake curl doxygen jq libc6-dev libedit-dev
-        libffi-dev libgmp-dev libomp-dev libpfm4-dev librust-atomic-dev
+        libffi-dev libgmp-dev libomp-dev libpfm4-dev librust-atom-dev
         libtool libxml2-dev libzstd-dev m4 ninja-build python3-dev rsync
         swig zlib1g-dev
     )
@@ -130,7 +130,6 @@ build_llvm_clang() {
           -DCMAKE_CXX_FLAGS="$CXXFLAGS" \
           -DCMAKE_C_COMPILER="$CC" \
           -DCMAKE_C_FLAGS="$CFLAGS" \
-          -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" \
           -DCMAKE_INSTALL_PREFIX="$install_prefix" \
           -DCUDA_TOOLKIT_ROOT_DIR="/usr/local/cuda" \
           -DLLVM_BUILD_DOCS=OFF \
