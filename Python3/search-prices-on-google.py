@@ -24,16 +24,20 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
 
-# Uncomment these lines if nltk resources haven't been downloaded yet
-# nltk.download('wordnet')
-# nltk.download('omw-1.4')
+def download_nltk_resources():
+    resources = ['omw-1.4', 'punkt', 'wordnet']
+    for resource in resources:
+        nltk.download(resource)
+
+# Call the function at the start of your script
+download_nltk_resources()
 
 lemmatizer = WordNetLemmatizer()
 
 # Configuration Variables
-BROWSER = 'chromium'  # Adjust based on your environment. Use full path if needed.
+BROWSER = 'chromium'  # Adjust based on your environment. You can use the full path if you need it.
 ## This can be used in Windows WSL like the below comment:
-## BROWSER = 'chrome.exe'  # Adjust based on your environment. Use full path if needed.
+## BROWSER = 'chrome.exe'  # Adjust based on your environment. You can use the full path if you need it.
 
 DESIRED_WORDS = [
     'walmart.com',
@@ -214,7 +218,7 @@ def parse_results(response, query):
                         except ValueError:
                             continue  # Skip this result if the price cannot be converted to float
 
-                        # Check if price is within the specified range
+                        # Check if the price is within the specified range
                         if MINIMUM_PRICE <= price_float <= MAXIMUM_PRICE:
                             results.append((title, url, price, contains_desired_word))
                     else:
@@ -276,14 +280,14 @@ def write_results_to_file(results, filepath):
 
     directory = os.path.dirname(filepath)
     if directory:
-        os.makedirs(directory, exist_ok=True) # Create directory if it doesn't exist and is not empty
+        os.makedirs(directory, exist_ok=True) # Create the directory if it doesn't exist and is not empty
 
     with open(filepath, 'w') as file:
         for title, url, price, _ in results:
             file.write(f"Title: {title}\nURL: {url}\nPrice: {price}\n\n")
 
 def display_menu(results, show_output_option):
-    """Displays search results and prompts user for action with progress updates."""
+    """Displays search results and prompts the user for action with progress updates."""
     clear_screen()
     if not results:
         logger.info(colored("No results found.", NO_RESULTS_COLOR))
@@ -304,7 +308,7 @@ def display_menu(results, show_output_option):
         # Printing the formatted strings
         print(colored(title_display, RESULT_TITLE_COLOR, 'on_' + RESULT_TITLE_BG_COLOR if RESULT_TITLE_BG_COLOR else None))
         print(colored(url_display, RESULT_URL_COLOR, 'on_' + RESULT_URL_BG_COLOR if RESULT_URL_BG_COLOR else None))
-        print()  # Extra newline for better readability between entries
+        print()  # Extra new line for better readability between entries
 
     print('-' * 80)  # End separator for visual clarity
 
