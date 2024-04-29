@@ -37,4 +37,4 @@ if [[ -z "$1" ]]; then
 fi
 
 version=$(get_latest_release_version "$1")
-echo "Latest version: $version"
+echo "$version"
