@@ -151,7 +151,6 @@ build_llvm_clang() {
           -DLLVM_INCLUDE_TOOLS=ON \
           -DLLVM_NATIVE_ARCH=$(uname -m) \
           -DLLVM_OPTIMIZED_TABLEGEN=ON \
-          -DLLVM_USE_LINKER=lld \
           -DLLVM_DEFAULT_TARGET_TRIPLE="$system_triplet" \
           -G Ninja -Wno-dev
     echo
