@@ -77,7 +77,7 @@ cleanup() {
     case "$response" in
         [yY]*|"")
         sudo rm -rf "$cwd"
-        log_msg "Build directory removed."
+        log "Build directory removed."
         ;;
         [nN]*) ;;
     esac
