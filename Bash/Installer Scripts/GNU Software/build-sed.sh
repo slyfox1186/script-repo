@@ -10,7 +10,6 @@ set -euo pipefail
 # Set color variables
 RED='\033[0;31m'
 GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
 NC='\033[0m'
 
 # Set variables
@@ -73,8 +72,8 @@ exit_fn() {
 cleanup() {
     local choice
     echo
-    read -p "Remove temporary build directory '$cwd'? [y/N] " response
-    case "$response" in
+    read -p "Remove temporary build directory '$cwd'? [y/N] " choice
+    case "$choice" in
         [yY]*|"")
         sudo rm -rf "$cwd"
         log "Build directory removed."
