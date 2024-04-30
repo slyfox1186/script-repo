@@ -13,6 +13,7 @@ display_help() {
     echo "    -i, --ignore-case Ignore case distinctions in the pattern"
     echo "    -l, --limit       Limit the number of search results (default: 20)"
     echo "    -r, --regex       Interpret the pattern as a regular expression"
+    echo "    -u, --update      Update the locate database before searching"
     echo "    -h, --help        Display this help information"
     echo
     echo "Example:"
@@ -61,6 +62,10 @@ while [[ $# -gt 0 ]]; do
             use_regex=true
             shift
             ;;
+        -u|--update)
+            update_db=true
+            shift
+            ;;
         -h|--help)
             display_help
             exit 0
@@ -76,6 +81,18 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# Update the locate database if requested
+if [[ $update_db == true ]]; then
+    echo "Updating locate database..."
+    if ! sudo updatedb; then
+        printf "\n%s\n" "Error: Failed to update locate database." >&2
+        exit 1
+    else
+        printf "\n%s\n" "The datebase was successfully updated."
+        exit 0
+    fi
+fi
+
 # Check if search patterns are provided
 if [[ $# -eq 0 ]]; then
     echo "Error: Please provide at least one search pattern." >&2
@@ -84,15 +101,6 @@ if [[ $# -eq 0 ]]; then
 fi
 
 search_patterns=("$@")
-
-# Update the locate database if requested
-if [[ $update_db == true ]]; then
-    echo "Updating locate database..."
-    if ! sudo updatedb; then
-        echo "Error: Failed to update locate database." >&2
-        exit 1
-    fi
-fi
 
 # Build the locate command with options
 locate_cmd="locate"
@@ -104,21 +112,11 @@ if [[ $use_regex == true ]]; then
 fi
 locate_cmd+=" --limit $limit"
 
-# Process regex patterns to ensure proper handling in locate
-if [[ $use_regex == true ]]; then
-    for i in "${!search_patterns[@]}"; do
-        # This line adds additional escaping to handle special regex characters properly
-        search_patterns[$i]=$(echo "${search_patterns[$i]}" | sed 's/ /\\ /g')
-    done
-fi
-
 # Determine search type (directories, files, or both)
 if [[ $directories_only == true ]]; then
-    # Append a slash to the end of results to ensure only directories are included
-    post_process_cmd=" | grep '/$'"
+    post_process_cmd=" | xargs -I {} find {} -maxdepth 0 -type d"
 elif [[ $files_only == true ]]; then
-    # Exclude results that end with a slash, ensuring only files are included
-    post_process_cmd=" | grep -v '/$'"
+    post_process_cmd=" | xargs -I {} find {} -maxdepth 0 -type f"
 else
     post_process_cmd=""
 fi
@@ -127,25 +125,13 @@ fi
 if [[ $count_only == true ]]; then
     count=0
     for pattern in "${search_patterns[@]}"; do
-        if [[ $directories_only == true ]]; then
-            count=$((count + $(eval "$locate_cmd \"$pattern\" | xargs -I {} find {} -maxdepth 0 -type d | wc -l")))
-        elif [[ $files_only == true ]]; then
-            count=$((count + $(eval "$locate_cmd \"$pattern\" | xargs -I {} find {} -maxdepth 0 -type f | wc -l")))
-        else
-            count=$((count + $(eval "$locate_cmd \"$pattern\" | wc -l")))
-        fi
+        count=$((count + $(eval "$locate_cmd \"$pattern\" $post_process_cmd | wc -l")))
     done
     echo "Total number of matching entries: $count"
 else
     for pattern in "${search_patterns[@]}"; do
         echo "Search results for pattern: $pattern"
-        if [[ $directories_only == true ]]; then
-            eval "$locate_cmd \"$pattern\" | xargs -I {} find {} -maxdepth 0 -type d | tr '\n' '\0' | xargs -0 -n 1 echo"
-        elif [[ $files_only == true ]]; then
-            eval "$locate_cmd \"$pattern\" | xargs -I {} find {} -maxdepth 0 -type f | tr '\n' '\0' | xargs -0 -n 1 echo"
-        else
-            eval "$locate_cmd \"$pattern\" | tr '\n' '\0' | xargs -0 -n 1 echo"
-        fi
+        eval "$locate_cmd \"$pattern\" $post_process_cmd | tr '\n' '\0' | xargs -0 -n 1 echo"
         echo "-----"
     done
 fi
