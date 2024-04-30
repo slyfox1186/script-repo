@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 
-# Create an output file that contains all of the video paths
+# Create a temporary file to store the file paths in
 temp_file=$(mktemp)
+
+# Add the video paths that FFmpeg will process to the temporary file that was created above
 cat > "$temp_file" <<'EOF'
 /path/to/video.mkv
 /path/to/video.mp4
