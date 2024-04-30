@@ -61,7 +61,7 @@ The script supports various command line arguments to predefine settings, minimi
 3. **Make executable:** `chmod +x step2.sh`
 4. **Execute script:** `./step2.sh`
 5. **Answer each prompt**
-6. **Load straight into the Gnome GUI OR Reboot**
+6. **Load straight into the Gnome GUI OR reboot first (recommended)**
 
 #### **Conclusion**:
 
