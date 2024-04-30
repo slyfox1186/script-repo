@@ -1,22 +1,28 @@
 #!/usr/bin/env bash
 
 # Build OpenSSL
-# Updated: 04.17.24
+# Updated: 04.30.24
 # GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-openssl.sh
-# Script Version: 1.1
+# Script Version: 1.4
 
 # Function to display the usage instructions
 usage() {
     echo "Usage: $0 [OPTIONS]"
     echo "Options:"
     echo "  -6, --enable-ipv6          Enable IPv6 support (default: disabled)"
+    echo "  -c, --command <command>    Specify the command to use with 'sudo make install' (default: install_sw)"
     echo "  -h, --help                 Display this help message and exit"
     echo "  -j, --jobs <n>             Set the number of parallel jobs for compilation (default: number of CPU cores)"
     echo "  -k, --keep-build           Keep the build directory after installation"
+    echo "  -l, --list                 List all available OpenSSL versions"
+    echo "  -m, --list-commands        List available 'make install' commands and their descriptions"
     echo "  -p, --prefix <path>        Set the installation prefix (default: /usr/local/ssl)"
     echo "  -v, --version <version>    Specify the OpenSSL version to install (default: latest 3.2.x)"
     exit 0
 }
+
+list_versions_flag=0
+list_commands_flag=0
 
 # Function to parse command-line arguments
 parse_arguments() {
@@ -25,6 +31,10 @@ parse_arguments() {
             -6|--enable-ipv6)
                 enable_ipv6="true"
                 shift
+                ;;
+            -c|--command)
+                make_install_command="$2"
+                shift 2
                 ;;
             -h|--help)
                 usage
@@ -35,6 +45,14 @@ parse_arguments() {
                 ;;
             -k|--keep-build)
                 keep_build="true"
+                shift
+                ;;
+            -l|--list)
+                list_versions_flag=1
+                shift
+                ;;
+            -m|--list-commands)
+                list_commands_flag=1
                 shift
                 ;;
             -p|--prefix)
@@ -90,14 +108,26 @@ install_required_packages() {
     fi
 }
 
+get_highest_clang_version() {
+    local version
+    for version in 13 14 15 16; do
+        if command -v "clang-$version" &>/dev/null; then
+            compiler_cc="clang-$version"
+        fi
+    done
+    compiler_cxx=${compiler_cc//clang/}
+    compiler_cxx="clang++${compiler_cxx}"
+}
+
 # Function to set compiler flags
 set_compiler_flags() {
-    CC="ccache clang"
-    CXX="ccache clang++"
+    CC="$compiler_cc"
+    CXX="$compiler_cxx"
     CFLAGS="-O2 -pipe -fstack-protector-strong -march=native"
     CPPFLAGS="-D_FORTIFY_SOURCE=2"
     CXXFLAGS="$CFLAGS"
-    export CC CFLAGS CPPFLAGS CXX CXXFLAGS
+    LDFLAGS="-Wl,-O1 -Wl,--sort-common -Wl,--as-needed -Wl,-z,relro,-z,now $CFLAGS $CXXFLAGS"
+    export CC CFLAGS CPPFLAGS CXX CXXFLAGS LDFLAGS
 }
 
 # Function to update the shared library cache
@@ -126,6 +156,33 @@ create_pkgconfig_softlinks() {
     done
 }
 
+# Function to list available OpenSSL versions
+list_versions() {
+    echo "Available OpenSSL versions:"
+    echo
+    curl -fsS "https://www.openssl.org/source/" | grep -oP 'openssl-\d+\.\d+\.\d+\.tar\.gz' | sed 's/openssl-//;s/\.tar\.gz//' | sort -uV
+}
+
+# Function to list available 'make install' commands
+list_commands() {
+    echo "Available 'make install' commands:"
+    echo
+    echo "  all                   Build all the software components and documentation"
+    echo "  build_sw              Build all the software components (DEFAULT)"
+    echo "  build_docs            Build all documentation components"
+    echo "  clean                 Remove all build artifacts and return the directory to a clean state"
+    echo "  depend                Rebuild the dependencies in the Makefiles (legacy option, not needed since OpenSSL 1.1.0)"
+    echo "  install               Install all OpenSSL components"
+    echo "  install_sw            Only install the OpenSSL software components"
+    echo "  install_docs          Only install the OpenSSL documentation components"
+    echo "  install_man_docs      Only install the OpenSSL man pages (Unix only)"
+    echo "  install_html_docs     Only install the OpenSSL HTML documentation"
+    echo "  install_fips          Install the FIPS provider module configuration file"
+    echo "  list-tests            Print a list of all the self test names"
+    echo "  test                  Build and run the OpenSSL self tests"
+    echo "  uninstall             Uninstall all OpenSSL components"
+}
+
 # Function to download OpenSSL
 download_openssl() {
     local max_retries openssl_url retry_count tar_file
@@ -141,7 +198,7 @@ download_openssl() {
         echo
         if wget --show-progress -cqO "$tar_file" "$openssl_url"; then
             echo
-            break
+            break 0
         else
             echo "Download failed. Retrying in 5 seconds..."
             echo
@@ -170,9 +227,8 @@ extract_openssl() {
                 if tar -xzf "$tar_file" -C "$cwd"; then
                     echo "Extraction completed successfully."
                     echo
-                    # Replace basename command with variable expansion
                     extracted_dir="${tar_file##*/}"
-                    extracted_dir="${extracted_dir%.tar.gz}"  # Remove the .tar.gz suffix to get the directory name
+                    extracted_dir="${extracted_dir%.tar.gz}"
                     if [[ "$extracted_dir" != "$version" ]]; then
                         echo "Renaming extracted directory from $extracted_dir to $version..."
                         mv "$cwd/$extracted_dir" "$src_dir"
@@ -214,7 +270,6 @@ configure_openssl() {
         "--prefix=$install_dir"
         "--openssldir=$install_dir"
         "--release"
-        "-w"
         "--with-zlib-include=/usr/include"
         "--with-zlib-lib=/usr/lib/x86_64-linux-gnu"
         "enable-ec_nistp_64_gcc_128"
@@ -248,7 +303,7 @@ build_and_install_openssl() {
     make "-j${jobs:-$(nproc --all)}" || fail "Failed to execute: make -j${jobs:-$(nproc --all)}. Line: $LINENO"
     echo
     echo "Installing OpenSSL..."
-    sudo make install_sw || fail "Failed to execute: make install_sw. Line: $LINENO"
+    sudo make install "$make_install_command" || fail "Failed to execute: make install $make_install_command. Line: $LINENO"
     echo
     sudo openssl
 }
@@ -259,29 +314,40 @@ prepare_certificates_directory() {
     certs_dir="$install_dir/certs"
     echo "Creating and preparing the certificates directory at $certs_dir..."
     sudo mkdir -p "$certs_dir"
-    # Optionally, link or copy system certificates
-    sudo ln -sf /etc/ssl/certs/* "$certs_dir"  # Adjust the path as needed for your system
-    # Update the certificate hashes
+    sudo ln -sf /etc/ssl/certs/* "$certs_dir"
     sudo "$install_dir/bin/c_rehash" "$certs_dir"
     echo "Certificates directory is ready."
 }
 
 # Main function
 main() {
-    local cwd enable_ipv6 install_dir jobs keep_build src_dir tar_file temp_dir version
+    local cwd enable_ipv6 install_dir jobs keep_build make_install_command src_dir tar_file temp_dir version
+
+    parse_arguments "$@"
+
+    if [[ "$list_versions_flag" == "1" ]]; then
+        list_versions
+        exit 0
+    fi
+
+    if [[ "$list_commands_flag" == "1" ]]; then
+        list_commands
+        exit 0
+    fi
+
+    clear
     temp_dir=$(mktemp -d)
     cwd="$temp_dir/openssl-build"
     enable_ipv6="false"
     install_dir="/usr/local/ssl"
     keep_build="false"
+    make_install_command="${make_install_command:-install_sw}"
     tar_file="$cwd/openssl-$version.tar.gz"
 
     if [[ "$EUID" -eq 0 ]]; then
         echo "You must run this script without root or with sudo."
         exit 1
     fi
-
-    parse_arguments "$@"
 
     if [[ -z "$version" ]]; then
         version=$(curl -fsS "https://www.openssl.org/source/" | grep -oP 'openssl-3\.2\.\d+\.tar\.gz' | head -n1 | sed 's/openssl-//;s/\.tar\.gz//')
@@ -292,6 +358,7 @@ main() {
     src_dir="$cwd/$version"
 
     echo
+    get_highest_clang_version
     set_compiler_flags
     mkdir -p "$cwd"
     install_required_packages
