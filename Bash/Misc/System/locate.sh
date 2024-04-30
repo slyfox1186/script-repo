@@ -12,6 +12,7 @@ display_help() {
     echo "  -l, --limit       Limit the number of search results (default: 25)"
     echo "  -p, --path        Specify the path to limit the search"
     echo "  -r, --regex       Interpret the pattern as a regular expression"
+    echo "  -e, --exclude     Exclude patterns from search results"
     echo "  -u, --update      Update the locate database before searching"
     echo "  -h, --help        Display this help information"
     echo "Example:"
@@ -40,6 +41,7 @@ while [[ $# -gt 0 ]]; do
         -l|--limit) limit="$2"; shift ;;
         -p|--path) search_path="$2"; shift ;;
         -r|--regex) use_regex=true ;;
+        -e|--exclude) exclude_patterns="$2"; shift ;;
         -u|--update) update_db=true ;;
         -h|--help) display_help; exit 0 ;;
         *) break ;;
@@ -81,19 +83,28 @@ locate_cmd+=" --null"
 [[ -n "$search_path" ]] && locate_cmd+=" | grep -F \"$search_path\""
 
 post_process_cmd=""
-if [[ $directories_only == true ]] && [[ $files_only == false ]]; then
-    post_process_cmd=" | xargs -0 -I{} find \"{}\" -type d | $set_limit"
-elif [[ $directories_only == false ]] && [[ $files_only == true ]]; then
-    post_process_cmd=" | xargs -0 -I{} find \"{}\" -type f | $set_limit"
-elif [[ $directories_only == true ]] && [[ $files_only == true ]]; then
-    post_process_cmd=" | xargs -0 -I{} find \"{}\" | $set_limit"
+
+# Exclude patterns from search results
+if [[ -n $exclude_patterns ]]; then
+    exclude_cmd=" | grep -v \"$exclude_patterns\""
 fi
+
+if [[ $directories_only == true ]] && [[ $files_only == false ]]; then
+    post_process_cmd=" | xargs -0 -I{} find \"{}\" -type d "$exclude_cmd" | $set_limit"
+elif [[ $directories_only == false ]] && [[ $files_only == true ]]; then
+    post_process_cmd=" | xargs -0 -I{} find \"{}\" -type f "$exclude_cmd" | $set_limit"
+elif [[ $directories_only == true ]] && [[ $files_only == true ]]; then
+    post_process_cmd=" | xargs -0 -I{} find \"{}\" "$exclude_cmd" | $set_limit"
+fi
+
 for pattern in "${search_patterns[@]}"; do
     echo "Search results for pattern: $pattern"
     echo "--------"
     full_command="${locate_cmd} \"$pattern\"${post_process_cmd}"
-    if ! eval "$full_command | tr '\n' '\0' | xargs -0 -n1 echo"; then
-        printf "\s%s\n" "No matches found"
+    if [[ -n "$full_command" ]]; then
+        if ! eval "$full_command | tr '\n' '\0' | xargs -0 -n1 echo"; then
+            printf "\s%s\n" "No matches found"
+        fi
     fi
     echo
 done
