@@ -35,7 +35,7 @@ check_dependencies() {
 
 # Main video conversion function
 convert_videos() {
-    local aspect_ratio bitrate bufsize file_out height length maxrate temp_file threads trim width
+    local aspect_ratio bitrate bufsize file_out height length maxrate temp_file threads total_input_size total_output_size total_space_saved trim width
     temp_file=$(mktemp)
 
     # Create an output file that contains all of the video paths
@@ -44,9 +44,11 @@ convert_videos() {
 /path/to/video.mp4
 EOF
 
-    while read -u 9 video; do
-        local aspect_ratio bufsize file_out height length maxrate threads trim width bitrate
+    total_input_size=0
+    total_output_size=0
+    total_space_saved=0
 
+    while read -u 9 video; do
         aspect_ratio=$(ffprobe -v error -select_streams v:0 -show_entries stream=display_aspect_ratio -of default=nk=1:nw=1 "$video")
         length=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$video")
         maxrate=$(ffprobe -v error -show_entries format=bit_rate -of default=nk=1:nw=1 "$video")
@@ -68,28 +70,29 @@ EOF
 
         # Determine the number of threads based on the result of '$(nproc --all)'
         if [ "$(nproc --all)" -ge 16 ]; then
-            cpu_thread_count=16
+            cpu_thread_count="16"
         else
-            cpu_thread_count=$(nproc --all)
+            cpu_thread_count="$(nproc --all)"
         fi
 
         # Print video stats in the terminal
-        cat <<EOF
-${BLUE}::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::${NC}
-${YELLOW}Working Dir:${NC}     ${PURPLE}$(pwd)${NC}
-${YELLOW}Input File:${NC}      ${CYAN}$video${NC}
-${YELLOW}Output File:${NC}     ${CYAN}$file_out${NC}
-${YELLOW}Aspect Ratio:${NC}    ${PURPLE}$aspect_ratio${NC}
-${YELLOW}Dimensions:${NC}      ${PURPLE}${width}x${height}${NC}
-${YELLOW}Maxrate:${NC}         ${PURPLE}${maxrate}k${NC}
-${YELLOW}Bufsize:${NC}         ${PURPLE}${bufsize}k${NC}
-${YELLOW}Bitrate:${NC}         ${PURPLE}${bitrate}k${NC}
-${YELLOW}Length:${NC}          ${PURPLE}$length mins${NC}
-${YELLOW}Threads:${NC}         ${PURPLE}$threads${NC}
-${BLUE}::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::${NC}
-EOF
+        printf "\\n${BLUE}::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::${NC}\\n"
+        printf "${YELLOW}Working Dir:${NC}     ${PURPLE}%s${NC}\\n" "$(pwd)"
+        printf "${YELLOW}Input File:${NC}      ${CYAN}%s${NC}\\n" "$video"
+        printf "${YELLOW}Output File:${NC}     ${CYAN}%s${NC}\\n" "$file_out"
+        printf "${YELLOW}Aspect Ratio:${NC}    ${PURPLE}%s${NC}\\n" "$aspect_ratio"
+        printf "${YELLOW}Dimensions:${NC}      ${PURPLE}%sx%s${NC}\\n" "$width" "$height"
+        printf "${YELLOW}Maxrate:${NC}         ${PURPLE}%sk${NC}\\n" "$maxrate"
+        printf "${YELLOW}Bufsize:${NC}         ${PURPLE}%sk${NC}\\n" "$bufsize"
+        printf "${YELLOW}Bitrate:${NC}         ${PURPLE}%sk${NC}\\n" "$bitrate"
+        printf "${YELLOW}Length:${NC}          ${PURPLE}%s mins${NC}\\n" "$length"
+        printf "${YELLOW}Threads:${NC}         ${PURPLE}%s${NC}\\n" "$threads"
+        printf "${BLUE}::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::${NC}\\n"
 
         log "Converting $video"
+
+        input_size=$(du -m "$video" | cut -f1)
+        total_input_size=$((total_input_size + input_size))
 
         if ffpb -y -hide_banner -hwaccel_output_format cuda \
             -threads "$cpu_thread_count" -i "$video" -fps_mode vfr \
@@ -99,6 +102,12 @@ EOF
             -bf:v 3 -g:v 250 -b_ref_mode:v middle -qmin:v 0 -temporal-aq:v 1 \
             -rc-lookahead:v 20 -i_qfactor:v 0.75 -b_qfactor:v 1.1 -c:a copy "$file_out"; then
             log "Video conversion completed: $file_out"
+            output_size=$(du -m "$file_out" | cut -f1)
+            total_output_size=$((total_output_size + output_size))
+            space_saved=$((input_size - output_size))
+            total_space_saved=$((total_space_saved + space_saved))
+            echo -e "${YELLOW}Space saved for $video:${NC} ${PURPLE}${space_saved} MB${NC}"
+            echo -e "${YELLOW}Current total space saved:${NC} ${PURPLE}${total_space_saved} MB${NC}"
             rm "$video" "$file_out"
             sed -i "\|^$video\$|d" "$temp_file"
         else
@@ -106,6 +115,10 @@ EOF
         fi
     done 9< "$temp_file"
     rm "$temp_file"
+
+    log "Total input size: ${total_input_size} MB"
+    log "Total output size: ${total_output_size} MB"
+    log "Total space saved: ${total_space_saved} MB"
 }
 
 # Check dependencies and start the video conversion process
