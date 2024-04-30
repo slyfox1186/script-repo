@@ -108,9 +108,9 @@ locate_cmd+=" --limit $limit"
 
 # Determine search type (directories, files, or both)
 if [[ $directories_only == true ]]; then
-    post_process_cmd=" | xargs -I {} sudo find {} -maxdepth 0 -type d 2>/dev/null"
+    post_process_cmd=" | xargs -I{} sudo find {} -maxdepth 0 -type d 2>/dev/null"
 elif [[ $files_only == true ]]; then
-    post_process_cmd=" | xargs -I {} sudo find {} -maxdepth 0 -type f 2>/dev/null"
+    post_process_cmd=" | xargs -I{} sudo find {} -maxdepth 0 -type f 2>/dev/null"
 else
     post_process_cmd=""
 fi
