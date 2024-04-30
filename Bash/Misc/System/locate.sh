@@ -136,15 +136,11 @@ else
     for pattern in "${search_patterns[@]}"; do
         echo "Search results for pattern: $pattern"
         if [[ $directories_only == true ]]; then
-            if ! eval "$locate_cmd \"$pattern\" | sed 's/\/[^/]*$//' | sort | uniq | tr '\n' '\0' | xargs -0 -I {} echo {}"; then
-                echo "Error: Failed to execute locate command." >&2
-                exit 1
-            fi
+            # Ensure paths are processed line by line
+            eval "$locate_cmd \"$pattern\" | sed 's/\/[^/]*$//' | sort | uniq | tr '\n' '\0' | xargs -0 -n 1 echo"
         else
-            if ! eval "$locate_cmd \"$pattern\""; then
-                echo "Error: Failed to execute locate command." >&2
-                exit 1
-            fi
+            # Similar handling for files, ensuring paths are printed one per line
+            eval "$locate_cmd \"$pattern\" | tr '\n' '\0' | xargs -0 -n 1 echo"
         fi
         echo "-----"
     done
