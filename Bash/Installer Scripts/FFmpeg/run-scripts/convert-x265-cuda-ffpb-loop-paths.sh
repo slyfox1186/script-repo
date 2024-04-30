@@ -21,16 +21,13 @@ fail() {
 
 # Check for required dependencies before proceeding
 check_dependencies() {
-    local missing_dependencies=()
-    for dependency in bc ffpb google_speech sed; do
-        if ! command -v "$dependency" &>/dev/null; then
-            missing_dependencies+=("$dependency")
+    local missing_pkgs=()
+    for pkg in bc ffpb google_speech sed; do
+        if ! command -v "$pkg" &>/dev/null; then
+            missing_pkgs+=("$pkg")
         fi
     done
-    if [ ${#missing_dependencies[@]} -ne 0 ]; then
-        echo -e "${RED}Missing dependencies: ${missing_dependencies[*]}. Please install them.${NC}"
-        exit 1
-    fi
+    [[ ${#missing_pkgs[@]} -ne 0 ]] && fail "Missing dependencies: ${missing_pkgs[*]}. Please install them."
 }
 
 # Main video conversion function
@@ -95,14 +92,14 @@ EOF
         total_input_size=$((total_input_size + input_size))
 
         if ffpb -y -hide_banner -hwaccel_output_format cuda \
-            -threads "$cpu_thread_count" -i "$video" -fps_mode vfr \
+            -threads "$cpu_thread_count" -i "$video" -fps_mode:v vfr \
             -threads "$cpu_thread_count" -c:v hevc_nvenc -preset medium \
-            -profile:v main10 -pix_fmt p010le -rc:v vbr -tune hq \
+            -profile:v main10 -pix_fmt p010le -rc:v vbr -tune:v hq \
             -b:v "${bitrate}k" -bufsize:v "${bufsize}k" -maxrate:v "${maxrate}k" \
             -bf:v 3 -g:v 250 -b_ref_mode:v middle -qmin:v 0 -temporal-aq:v 1 \
             -rc-lookahead:v 20 -i_qfactor:v 0.75 -b_qfactor:v 1.1 -c:a copy "$file_out"; then
 
-            google_speech "Video converted." >/dev/null
+            google_speech "Video converted." &>/dev/null
 
             log "$Video conversion completed:${NC}" "$file_out"
 
@@ -114,14 +111,14 @@ EOF
             # Extract the video name from the full path using variable expansion
             video_name="${video##*/}"
 
-            echo -e "${YELLOW}Space saved for $video_name:${NC} ${PURPLE}${space_saved} MB${NC}"
-            echo -e "${YELLOW}Current total space saved:${NC} ${PURPLE}${total_space_saved} MB${NC}"
+            echo -e "${YELLOW}Space saved for \"$video_name\" ${PURPLE}$space_saved MB${NC}"
+            echo -e "${YELLOW}Total cumulative space saved: ${PURPLE}$total_space_saved MB${NC}"
 
             rm "$video"
 
             sed -i "\|^$video\$|d" "$temp_file"
         else
-            google_speech "Video conversion failed." >/dev/null
+            google_speech "Video conversion failed." &>/dev/null
             fail "Video conversion failed for: $video"
         fi
     done 9< "$temp_file"
