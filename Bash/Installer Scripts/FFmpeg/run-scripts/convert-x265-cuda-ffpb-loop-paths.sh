@@ -35,7 +35,8 @@ check_dependencies() {
 
 # Main video conversion function
 convert_videos() {
-    local temp_file=$(mktemp)
+    local aspect_ratio bitrate bufsize file_out height length maxrate temp_file threads trim width
+    temp_file=$(mktemp)
 
     # Create an output file that contains all of the video paths
     cat > "$temp_file" <<'EOF'
