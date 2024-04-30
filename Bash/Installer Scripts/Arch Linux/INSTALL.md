@@ -51,7 +51,7 @@ The script supports various command line arguments to predefine settings, minimi
 3. **Download the Step 1 script:** `curl -LSso step1.sh https://arch1.optimizethis.net`
 4. **Make executable:** `chmod +x step1.sh`
 5. **Execute script:** `./step1.sh -u yourUsername -p yourPassword -r yourRootPassword -c yourComputerName -t yourTimezone -d yourDisk`
-6. **Answer each prompt:**
+6. **Answer each prompt**
 
 ### Step 2 - Post Installer
 
