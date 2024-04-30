@@ -25,7 +25,7 @@ create_squid_user() {
 }
 
 # Check if user squid exists
-if id "squid" &>/dev/null; then
+if getent passwd squid &>/dev/null; then
     echo "The user \"squid\" was found"
 else
     echo "The user \"squid\" was not found"
@@ -57,8 +57,8 @@ acl Safe_ports port 563                         # commonly used (at least at one
 acl Safe_ports port 591                         # filemaker
 acl Safe_ports port 777                         # multiling http
 acl CONNECT method CONNECT
-acl whitelist dstdom_regex /etc/squid/whitelist.txt
-acl blacklist dstdomain /etc/squid/blacklist.txt
+acl whitelist dstdom_regex $squid_whitelist
+acl blacklist dstdomain $squid_blacklist
 
 http_access allow local_network
 http_access allow localnet
