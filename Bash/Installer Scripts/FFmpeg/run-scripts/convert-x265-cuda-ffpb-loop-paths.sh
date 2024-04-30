@@ -68,9 +68,9 @@ EOF
 
         # Determine the number of threads based on the result of '$(nproc --all)'
         if [ "$(nproc --all)" -ge 16 ]; then
-            threads=16
+            cpu_thread_count=16
         else
-            threads=$(nproc --all)
+            cpu_thread_count=$(nproc --all)
         fi
 
         # Print video stats in the terminal
@@ -92,14 +92,14 @@ EOF
         log "Converting $video"
 
         if ffpb -y -hide_banner -hwaccel_output_format cuda \
-            -threads "$threads" -i "$video" -fps_mode vfr \
-            -threads "$threads" -c:v hevc_nvenc -preset medium \
+            -threads "$cpu_thread_count" -i "$video" -fps_mode vfr \
+            -threads "$cpu_thread_count" -c:v hevc_nvenc -preset medium \
             -profile:v main10 -pix_fmt p010le -rc:v vbr -tune hq \
-            -b:v "${bitrate}k" -bufsize "${bufsize}k" -maxrate "${maxrate}k" \
-            -bf:v 3 -g 250 -b_ref_mode middle -qmin 0 -temporal-aq 1 \
-            -rc-lookahead 20 -i_qfactor 0.75 -b_qfactor 1.1 -c:a copy "$file_out"; then
+            -b:v "${bitrate}k" -bufsize:v "${bufsize}k" -maxrate:v "${maxrate}k" \
+            -bf:v 3 -g:v 250 -b_ref_mode:v middle -qmin:v 0 -temporal-aq:v 1 \
+            -rc-lookahead:v 20 -i_qfactor:v 0.75 -b_qfactor:v 1.1 -c:a copy "$file_out"; then
             log "Video conversion completed: $file_out"
-            rm "$video"
+            rm "$video" "$file_out"
             sed -i "\|^$video\$|d" "$temp_file"
         else
             fail "Video conversion failed for: $video"
