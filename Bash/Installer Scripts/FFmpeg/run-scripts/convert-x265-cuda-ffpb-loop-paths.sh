@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
 
+# Create an output file that contains all of the video paths
+temp_file=$(mktemp)
+cat > "$temp_file" <<'EOF'
+/path/to/video.mkv
+/path/to/video.mp4
+EOF
+
 # Define color codes
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -36,14 +43,7 @@ check_dependencies() {
 # Main video conversion function
 convert_videos() {
     local aspect_ratio bitrate bufsize file_out height length maxrate original_bitrate
-    local temp_file threads total_input_size total_output_size total_space_saved width
-    temp_file=$(mktemp)
-
-    # Create an output file that contains all of the video paths
-    cat > "$temp_file" <<'EOF'
-/path/to/video.mkv
-/path/to/video.mp4
-EOF
+    local threads total_input_size total_output_size total_space_saved width
 
     total_input_size=0
     total_output_size=0
