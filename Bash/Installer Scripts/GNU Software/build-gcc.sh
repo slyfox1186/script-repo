@@ -4,7 +4,7 @@
 # Build GNU GCC
 # Versions available:  9|10|11|12|13
 # Features: Automatically sources the latest release of each version.
-# Updated: 03.17.2024
+# Updated: 04.30.24
 
 set -eo pipefail
 
