@@ -12,9 +12,7 @@ GREEN='\033[0;32m'
 RED='\033[0;31m'
 NC='\033[0m'
 
-export 
-
-ARIA2_STATIC="no"
+export ARIA2_STATIC="no"
 
 log() {
     echo -e "${GREEN}[LOG]${NC} $*"
@@ -265,7 +263,7 @@ main() {
                 cleanup="true"
                 ;;
             -S|--static)
-                ARIA2_STATIC="yes"
+                export ARIA2_STATIC="yes"
                 ;;
             -h|--help)
                 display_help
