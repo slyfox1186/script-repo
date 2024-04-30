@@ -35,7 +35,7 @@ while [[ $# -gt 0 ]]; do
         -c|--count) count_only=true ;;
         -d|--dir) directories_only=true ;;
         -f|--file) files_only=true ;;
-        -a|--all) directories_only=false; files_only=false ;;
+        -a|--all) directories_only=true; files_only=true ;;
         -C|--case) case_sensitive=true ;;
         -l|--limit) limit="$2"; shift ;;
         -p|--path) search_path="$2"; shift ;;
@@ -70,21 +70,30 @@ search_patterns=("$@")
 locate_cmd="locate"
 [[ $case_sensitive != true ]] && locate_cmd+=" -i"
 [[ $use_regex == true ]] && locate_cmd+=" --regex"
-locate_cmd+=" --null --limit $limit"
+
+# Add the limit option here
+[[ -n "$limit" ]] && set_limit="head -n$limit"
+
+# Move the --null option after --limit
+locate_cmd+=" --null"
 
 # Adjusting the locate command to filter by path if provided
 [[ -n "$search_path" ]] && locate_cmd+=" | grep -F \"$search_path\""
 
 post_process_cmd=""
-[[ $directories_only == true ]] && post_process_cmd=" | xargs -0 -I {} find \"{}\" -type d"
-[[ $files_only == true ]] && post_process_cmd=" | xargs -0 -I {} find \"{}\" -type f"
-
+if [[ $directories_only == true ]] && [[ $files_only == false ]]; then
+    post_process_cmd=" | xargs -0 -I{} find \"{}\" -type d | $set_limit"
+elif [[ $directories_only == false ]] && [[ $files_only == true ]]; then
+    post_process_cmd=" | xargs -0 -I{} find \"{}\" -type f | $set_limit"
+elif [[ $directories_only == true ]] && [[ $files_only == true ]]; then
+    post_process_cmd=" | xargs -0 -I{} find \"{}\" | $set_limit"
+fi
 for pattern in "${search_patterns[@]}"; do
     echo "Search results for pattern: $pattern"
+    echo "--------"
     full_command="${locate_cmd} \"$pattern\"${post_process_cmd}"
-    if eval "$full_command | tr '\n' '\0' | xargs -0 -n 1 echo"; then
-        printf "%s\n\n" "No results found"
-    else
-        echo "-----"
+    if ! eval "$full_command | tr '\n' '\0' | xargs -0 -n1 echo"; then
+        printf "\s%s\n" "No matches found"
     fi
+    echo
 done
