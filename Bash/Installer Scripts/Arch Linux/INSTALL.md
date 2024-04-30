@@ -54,7 +54,7 @@ The script supports various command line arguments to predefine settings, minimi
 6. **Answer each prompt**
 
 ### Step 2 - Post Installer
-#### The below steps are done only after loading back into the Arch OS that was installed in step 1
+#### The below steps are done only after rebooting into the Arch OS that was installed in step 1
 
 1. **Login with root (use the root password that you set in step 1)**
 2. **Download the Step 2 script:** `curl -LSso step2.sh https://arch2.optimizethis.net`
