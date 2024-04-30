@@ -3,14 +3,14 @@
 # Build OpenSSL
 # Updated: 04.30.24
 # GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-openssl.sh
-# Script Version: 1.4
+# Script Version: 1.5
 
 # Function to display the usage instructions
 usage() {
     echo "Usage: $0 [OPTIONS]"
     echo "Options:"
     echo "  -6, --enable-ipv6          Enable IPv6 support (default: disabled)"
-    echo "  -c, --command <command>    Specify the command to use with 'sudo make install' (default: install_sw)"
+    echo "  -c, --command <command>    Specify the command(s) to use with 'sudo make install' (default: install_sw, comma-separated)"
     echo "  -h, --help                 Display this help message and exit"
     echo "  -j, --jobs <n>             Set the number of parallel jobs for compilation (default: number of CPU cores)"
     echo "  -k, --keep-build           Keep the build directory after installation"
@@ -33,7 +33,7 @@ parse_arguments() {
                 shift
                 ;;
             -c|--command)
-                make_install_command="$2"
+                IFS=',' read -ra make_install_command <<< "$2"
                 shift 2
                 ;;
             -h|--help)
@@ -126,7 +126,7 @@ set_compiler_flags() {
     CFLAGS="-O2 -pipe -fstack-protector-strong -march=native"
     CPPFLAGS="-D_FORTIFY_SOURCE=2"
     CXXFLAGS="$CFLAGS"
-    LDFLAGS="-Wl,-O1 -Wl,--sort-common -Wl,--as-needed -Wl,-z,relro,-z,now $CFLAGS $CXXFLAGS"
+    LDFLAGS="-Wl,-O1 -Wl,--sort-common -Wl,--as-needed -Wl,-z,relro,-z,now"
     export CC CFLAGS CPPFLAGS CXX CXXFLAGS LDFLAGS
 }
 
@@ -198,7 +198,7 @@ download_openssl() {
         echo
         if wget --show-progress -cqO "$tar_file" "$openssl_url"; then
             echo
-            break 0
+            break
         else
             echo "Download failed. Retrying in 5 seconds..."
             echo
@@ -266,7 +266,6 @@ configure_openssl() {
         "-DOPENSSL_USE_IPV6=$([[ "$enable_ipv6" == true ]] && echo 1 || echo 0)"
         "-Wl,-rpath=$install_dir/lib64"
         "-Wl,--enable-new-dtags"
-        "-Wl,-z,relro,-z,now"
         "--prefix=$install_dir"
         "--openssldir=$install_dir"
         "--release"
@@ -274,6 +273,7 @@ configure_openssl() {
         "--with-zlib-lib=/usr/lib/x86_64-linux-gnu"
         "enable-ec_nistp_64_gcc_128"
         "enable-egd"
+        "enable-fips"
         "enable-pic"
         "enable-shared"
         "enable-threads"
@@ -303,9 +303,10 @@ build_and_install_openssl() {
     make "-j${jobs:-$(nproc --all)}" || fail "Failed to execute: make -j${jobs:-$(nproc --all)}. Line: $LINENO"
     echo
     echo "Installing OpenSSL..."
-    sudo make install "$make_install_command" || fail "Failed to execute: make install $make_install_command. Line: $LINENO"
     echo
-    sudo openssl
+    sudo make install "${make_install_command[@]}" || fail "Failed to execute: make install ${make_install_command[*]}. Line: $LINENO"
+    echo
+    sudo openssl fipsinstall
 }
 
 # Function to create and prepare the certificates directory
@@ -341,7 +342,7 @@ main() {
     enable_ipv6="false"
     install_dir="/usr/local/ssl"
     keep_build="false"
-    make_install_command="${make_install_command:-install_sw}"
+    make_install_command=("${make_install_command[@]:-install_sw}")
     tar_file="$cwd/openssl-$version.tar.gz"
 
     if [[ "$EUID" -eq 0 ]]; then
