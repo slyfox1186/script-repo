@@ -113,8 +113,14 @@ if [[ $use_regex == true ]]; then
 fi
 
 # Determine search type (directories, files, or both)
-if [[ $directories_only == true || $files_only == true ]]; then
-    locate_cmd+=" --basename"
+if [[ $directories_only == true ]]; then
+    # Append a slash to the end of results to ensure only directories are included
+    post_process_cmd=" | grep '/$'"
+elif [[ $files_only == true ]]; then
+    # Exclude results that end with a slash, ensuring only files are included
+    post_process_cmd=" | grep -v '/$'"
+else
+    post_process_cmd=""
 fi
 
 # Execute the locate command and process the results
@@ -122,24 +128,22 @@ if [[ $count_only == true ]]; then
     count=0
     for pattern in "${search_patterns[@]}"; do
         if [[ $directories_only == true ]]; then
-            count=$((count + $(eval "$locate_cmd \"$pattern\"" | sed 's/\/[^/]*$//' | sort | uniq | wc -l)))
+            count=$((count + $(eval "$locate_cmd \"$pattern\" | xargs -I {} find {} -maxdepth 0 -type d | wc -l")))
+        elif [[ $files_only == true ]]; then
+            count=$((count + $(eval "$locate_cmd \"$pattern\" | xargs -I {} find {} -maxdepth 0 -type f | wc -l")))
         else
-            count=$((count + $(eval "$locate_cmd \"$pattern\"" | wc -l)))
+            count=$((count + $(eval "$locate_cmd \"$pattern\" | wc -l")))
         fi
     done
-    if [[ $directories_only == true ]]; then
-        echo "Total number of matching directories: $count"
-    else
-        echo "Total number of matching files: $count"
-    fi
+    echo "Total number of matching entries: $count"
 else
     for pattern in "${search_patterns[@]}"; do
         echo "Search results for pattern: $pattern"
         if [[ $directories_only == true ]]; then
-            # Ensure paths are processed line by line
-            eval "$locate_cmd \"$pattern\" | sed 's/\/[^/]*$//' | sort | uniq | tr '\n' '\0' | xargs -0 -n 1 echo"
+            eval "$locate_cmd \"$pattern\" | xargs -I {} find {} -maxdepth 0 -type d | tr '\n' '\0' | xargs -0 -n 1 echo"
+        elif [[ $files_only == true ]]; then
+            eval "$locate_cmd \"$pattern\" | xargs -I {} find {} -maxdepth 0 -type f | tr '\n' '\0' | xargs -0 -n 1 echo"
         else
-            # Similar handling for files, ensuring paths are printed one per line
             eval "$locate_cmd \"$pattern\" | tr '\n' '\0' | xargs -0 -n 1 echo"
         fi
         echo "-----"
