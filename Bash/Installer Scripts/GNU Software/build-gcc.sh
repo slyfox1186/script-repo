@@ -37,12 +37,8 @@ usage() {
 log() {
     local message="$1"
     local timestamp=$(date +'%m.%d.%Y %I:%M:%S %p')
-    if [[ "$verbose" -eq 1 ]]; then
-        echo -e "\\n${GREEN}[INFO]${NC} $timestamp $message\\n"
-    fi
-    if [[ -n "$log_file" ]]; then
-        echo "$timestamp $message" >> "$log_file"
-    fi
+    [[ "$verbose" -eq 1 ]] && echo -e "\\n${GREEN}[INFO]${NC} $timestamp $message\\n"
+    [[ -n "$log_file" ]] && echo "$timestamp $message" >> "$log_file"
 }
 
 warn() {
@@ -58,9 +54,7 @@ fail() {
     local message="$1"
     local timestamp=$(date +'%m.%d.%Y %I:%M:%S %p')
     echo -e "${RED}[ERROR]${NC} $timestamp $message"
-    if [[ -n "$log_file" ]]; then
-        echo "$timestamp ERROR: $message" >> "$log_file"
-    fi
+    [[ -n "$log_file" ]] && echo "$timestamp ERROR: $message" >> "$log_file"
     echo "To report a bug, create an issue at: https://github.com/slyfox1186/script-repo/issues"
     exit 1
 }
@@ -103,46 +97,46 @@ set_ccache_dir() {
 }
 
 set_env_vars() {
+    echo
     log "Setting environment variables..."
+    echo
     CC="gcc"
     CXX="g++"
     CFLAGS="-O3 -pipe -march=native"
     CXXFLAGS="-O3 -pipe -march=native"
     CPPFLAGS="-D_FORTIFY_SOURCE=2"
-    LDFLAGS="-Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now,-rpath"
-    LDFLAGS+=",/usr/local/gcc-$version/lib64,-rpath,/usr/local/gcc-$version/lib"
+    LDFLAGS="-Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now,"
+    LDFLAGS+="-rpath,/usr/local/gcc-$version/lib64,-rpath,/usr/local/gcc-$version/lib"
     PATH="$ccache_dir:$workspace/bin:$HOME/perl5/bin:$HOME/.cargo/bin:"
     PATH+="$HOME/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-    PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:"
-    PKG_CONFIG_PATH+="/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:"
-    PKG_CONFIG_PATH+="/usr/lib64/pkgconfig:/usr/lib/pkgconfig"
+    PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/pkgconfig"
     export CC CFLAGS CPPFLAGS CXX CXXFLAGS LDFLAGS PATH PKG_CONFIG_PATH
 }
 
 install_deps() {
     log "Installing dependencies..."
     local deps=(
-                autoconf autoconf-archive automake binutils bison build-essential
-                ccache curl flex gawk gcc g++ gnat libc6-dev libtool make m4 patch
-                texinfo zlib1g-dev
+                autoconf autoconf-archive automake binutils bison
+                build-essential ccache curl flex gawk gnat libc6-dev
+                libtool make m4 patch texinfo zlib1g-dev
            )
     if command -v apt-get &>/dev/null; then
-        apt-get update
+        apt update
         for dep in "${deps[@]}"; do
-            if ! dpkg -s "$dep" >/dev/null 2>&1; then
-                apt-get install -y "$dep"
+            if ! dpkg -s "$dep" &>/dev/null; then
+                apt -y install "$dep"
             fi
         done
     elif command -v dnf &>/dev/null; then
         for dep in "${deps[@]}"; do
-            if ! rpm -q "$dep" >/dev/null 2>&1; then
+            if ! rpm -q "$dep" &>/dev/null; then
                 dnf install -y "$dep"
             fi
         done
     elif command -v pacman &>/dev/null; then
         for dep in "${deps[@]}"; do
-            if ! pacman -Qs "$dep" >/dev/null 2>&1; then
-                pacman -S --noconfirm --needed "$dep"
+            if ! pacman -Qs "$dep" &>/dev/null; then
+                pacman -S --needed --noconfirm "$dep"
             fi
         done
     else
