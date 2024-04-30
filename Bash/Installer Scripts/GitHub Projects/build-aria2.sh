@@ -77,15 +77,21 @@ PKG_CONFIG_PATH="\
 export PKG_CONFIG_PATH
 
 install_packages() {
-    local pkgs=(autoconf autoconf-archive autogen automake build-essential ca-certificates
-                ccache curl libssl-dev libtool libtool-bin m4 pkg-config zlib1g-dev)
+    local pkgs=(
+                autoconf autoconf-archive automake build-essential
+                ca-certificates ccache curl libgoogle-perftools-dev
+                libssl-dev libtool m4 pkg-config zlib1g-dev
+            )
     log "Attempting to install required packages..."
-    sudo apt install -y "${pkgs[@]}"
     for pkg in "${pkgs[@]}"; do
-        sudo dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed" || fail "Failed to install: $pkg"
+        if sudo dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
+            missing_pkgs+=" $pkg"
+        fi
     done
+    [[ -n "$missing_pkgs" ]] && sudo apt -y install $missing_pkgs
     echo
     log "Installation of required packages completed."
+    echo
 }
 
 github_latest_release_version() {
@@ -113,21 +119,6 @@ prepare_build_environment() {
     mkdir -p "$temp_dir"
 }
 
-build_jemalloc() {
-    local jemalloc_url jemalloc_version
-    echo
-    log "Compiling jemalloc..."
-    echo
-    jemalloc_version=$(github_latest_release_version "https://github.com/jemalloc/jemalloc.git")
-    jemalloc_url="https://github.com/jemalloc/jemalloc/releases/download/$jemalloc_version/jemalloc-$jemalloc_version.tar.bz2"
-    curl -sSL "$jemalloc_url" | tar -jx
-    cd "jemalloc-$jemalloc_version" || exit 1
-    ./configure --prefix="$temp_dir/jemalloc" --enable-static --disable-shared CFLAGS="-fPIE" CXXFLAGS="-fPIE" LDFLAGS="-pie"
-    make "-j$(nproc --all)" && \
-    sudo make install
-    cd ../
-}
-
 build_libgpg_error() {
     local libgpg_error_url libgpg_error_version
     echo
@@ -137,7 +128,8 @@ build_libgpg_error() {
     libgpg_error_url="https://gnupg.org/ftp/gcrypt/libgpg-error/libgpg-error-$libgpg_error_version.tar.bz2"
     curl -sSL "$libgpg_error_url" | tar -jx
     cd "libgpg-error-$libgpg_error_version" || exit 1
-    ./configure --prefix="$temp_dir/libgpg-error" --enable-static --disable-shared CFLAGS="-fPIE" CXXFLAGS="-fPIE" LDFLAGS="-pie"
+    ./configure --prefix="$temp_dir/libgpg-error" --enable-static --disable-shared \
+                CFLAGS="-fPIE" CXXFLAGS="-fPIE" LDFLAGS="-pie"
     make "-j$(nproc --all)" && \
     sudo make install
     cd ../
@@ -153,7 +145,8 @@ build_c_ares() {
     curl -sSL "$c_ares_url" | tar -zx
     cd "c-ares-cares-$c_ares_version" || exit 1
     autoreconf -fi
-    ./configure --prefix="$temp_dir/c-ares" --enable-static --disable-shared CFLAGS="-fPIE" CXXFLAGS="-fPIE" LDFLAGS="-pie"
+    ./configure --prefix="$temp_dir/c-ares" --enable-static --disable-shared \
+                CFLAGS="-fPIE" CXXFLAGS="-fPIE" LDFLAGS="-pie"
     make "-j$(nproc --all)" && \
     sudo make install
     cd ../
@@ -168,7 +161,8 @@ build_sqlite3() {
     sqlite_url="https://github.com/sqlite/sqlite/archive/refs/tags/version-$sqlite_version.tar.gz"
     curl -sSL "https://github.com/sqlite/sqlite/archive/refs/tags/version-3.45.3.tar.gz" | tar -zx
     cd "sqlite-version-$sqlite_version" || exit 1
-    ./configure --prefix="$temp_dir/sqlite3" --enable-static --disable-shared CFLAGS="-fPIE" CXXFLAGS="-fPIE" LDFLAGS="-pie"
+    ./configure --prefix="$temp_dir/sqlite3" --enable-static --disable-shared \
+                CFLAGS="-fPIE" CXXFLAGS="-fPIE" LDFLAGS="-pie"
     make "-j$(nproc --all)" && \
     sudo make install
     cd ../
@@ -184,17 +178,13 @@ build_aria2() {
     curl -sSL "$aria2_url" | tar -Jx
     cd "aria2-$aria2_version" || exit 1
     sed -i "s/1, 16/1, 128/g" "src/OptionHandlerFactory.cc"
-    PATH="$temp_dir/jemalloc/bin:$temp_dir/libgpg-error/bin:$PATH" \
-    ./configure --prefix=/usr/local --enable-static --disable-shared --without-gnutls --with-openssl \
+    ./configure --prefix=/usr/local --enable-static --disable-shared \
+                --without-gnutls --with-openssl \
                 --with-ca-bundle=$(sudo find /etc/ -type f -name ca-certificates.crt) \
-                --with-jemalloc="$temp_dir/jemalloc" --with-libcares="$temp_dir/c-ares" \
+                --with-tcmalloc --with-libcares="$temp_dir/c-ares" \
                 --with-sqlite3="$temp_dir/sqlite3" --enable-lto --enable-profile-guided-optimization \
-                LDFLAGS="-L$temp_dir/jemalloc/lib -L$temp_dir/libgpg-error/lib -L$temp_dir/c-ares/lib -L$temp_dir/sqlite3/lib $LDFLAGS" \
-                CPPFLAGS="-I$temp_dir/jemalloc/include -I$temp_dir/libgpg-error/include -I$temp_dir/c-ares/include -I$temp_dir/sqlite3/include"
-    make "-j$(nproc --all)"
-    sudo make install
-    sudo /usr/local/bin/aria2c --optimize-profile
-    make clean
+                LDFLAGS="-L$temp_dir/libgpg-error/lib -L$temp_dir/c-ares/lib -L$temp_dir/sqlite3/lib $LDFLAGS" \
+                CPPFLAGS="-I$temp_dir/libgpg-error/include -I$temp_dir/c-ares/include -I$temp_dir/sqlite3/include"
     make "-j$(nproc --all)" && \
     sudo make install
     cd ../
@@ -289,7 +279,6 @@ main() {
     install_packages
     prepare_build_environment
     cd "$temp_dir" || exit 1
-    build_jemalloc
     build_libgpg_error
     build_c_ares
     build_sqlite3
