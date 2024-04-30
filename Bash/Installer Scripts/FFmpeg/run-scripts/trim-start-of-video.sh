@@ -17,14 +17,14 @@ trim_video() {
     fi
 }
 
-# Check if a path is provided as an argument
-if [[ "$#" -eq 0 ]]; then
-    echo "Please provide the path of the video or folder to be processed."
-    exit 1
+if [[ -n "$1" ]]; then
+    in_file="$1"
+else
+    in_file=$(find . -maxdepth 1 -type f -name "*.mp4")
 fi
 
 # Get the absolute path of the provided argument
-video_path=$(realpath "$1")
+video_path=$(realpath "$in_file")
 
 # Check if the provided path is a file or directory
 if [[ -f "$video_path" ]]; then
