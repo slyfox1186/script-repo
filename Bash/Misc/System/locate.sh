@@ -9,7 +9,7 @@ display_help() {
     echo "  -f, --file        Limit results to files only"
     echo "  -a, --all         Include both directories and files (default)"
     echo "  -C, --case        Enable case-sensitive search"
-    echo "  -l, --limit       Limit the number of search results (default: 40)"
+    echo "  -l, --limit       Limit the number of search results (default: 25)"
     echo "  -p, --path        Specify the path to limit the search"
     echo "  -r, --regex       Interpret the pattern as a regular expression"
     echo "  -u, --update      Update the locate database before searching"
@@ -24,7 +24,7 @@ count_only=false
 directories_only=false
 files_only=false
 case_sensitive=false
-limit=40
+limit=25
 use_regex=false
 update_db=false
 search_path=""
