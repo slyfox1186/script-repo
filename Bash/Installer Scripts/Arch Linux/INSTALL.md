@@ -54,12 +54,14 @@ The script supports various command line arguments to predefine settings, minimi
 6. **Answer each prompt**
 
 ### Step 2 - Post Installer
+#### The below steps are done only after loading back into the Arch OS that was installed in step 1
 
-1. **Download the Step 2 script:** `curl -LSso step2.sh https://arch2.optimizethis.net`
-2. **Make executable:** `chmod +x step2.sh`
-3. **Execute script:** `./step2.sh`
-4. **Answer each prompt**
-5. **Load straight into the Gnome GUI OR Reboot**
+1. **Login with root (use the root password that you set in step 1)**
+2. **Download the Step 2 script:** `curl -LSso step2.sh https://arch2.optimizethis.net`
+3. **Make executable:** `chmod +x step2.sh`
+4. **Execute script:** `./step2.sh`
+5. **Answer each prompt**
+6. **Load straight into the Gnome GUI OR Reboot**
 
 #### **Conclusion**:
 
