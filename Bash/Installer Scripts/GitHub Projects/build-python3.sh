@@ -6,20 +6,58 @@
 ##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-python3
 ##  Purpose: Install Python3 from the source code acquired from the official website: https://www.python.org/downloads
 ##  Features: Static build, OpenSSL backend
-##  Updated: 01.27.24
-##  Script version: 2.4 (Optimized and Corrected)
+##  Updated: 04.30.24
+##  Script version: 2.5 (Optimized and Corrected)
 
 if [[ "$EUID" -eq 0 ]]; then
-    echo "You must run this script with without root or sudo."
+    echo "You must run this script without root or sudo."
     exit 1
 fi
 
-script_ver=2.4
+script_ver=2.5
 python_version=3.12.3
 archive_url="https://www.python.org/ftp/python/$python_version/Python-$python_version.tar.xz"
 install_dir="/usr/local/python3-$python_version"
 cwd="$PWD/python3-build-script"
 openssl_prefix=$(dirname $(readlink -f $(type -P openssl)))
+
+usage() {
+    echo "Usage: $0 [OPTIONS]"
+    echo
+    echo "Options:"
+    echo "  -v, --version   Set the Python version (default: 3.12.3)"
+    echo "  -l, --list      List available Python3 versions"
+    echo "  -h, --help      Display this help message"
+    echo
+}
+
+list_versions() {
+    curl -fsS "https://www.python.org/ftp/python/" | grep -oP 'href="[^"]*\K[0-9]+\.[0-9]+\.[0-9]+' | sort -uV
+}
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -v|--version)
+            python_version="$2"
+            archive_url="https://www.python.org/ftp/python/$python_version/Python-$python_version.tar.xz"
+            install_dir="/usr/local/python3-$python_version"
+            shift 2
+            ;;
+        -l|--list)
+            list_versions
+            exit 0
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1"
+            usage
+            exit 1
+            ;;
+    esac
+done
 
 exit_fn() {
     printf "\n%s\n%s\n\n" "Make sure to star this repository to show your support!" "$web_repo"
@@ -53,7 +91,7 @@ cleanup() {
         *) unset choice
            cleanup
            ;;
-    esac
+    esac 
 }
 
 show_ver_fn() {
@@ -65,7 +103,7 @@ prepare_environment() {
     echo "Python3 Build Script - v$script_ver"
     echo "==============================================="
 
-    [[ -d "$cwd" ]] && rm -fr "$cwd"
+    [[ -d "$cwd" ]] && rm -fr "$cwd" 
     mkdir -p "$cwd"
 
     export PATH="\
@@ -130,10 +168,10 @@ install_required_packages() {
     local pkgs missing_packages
 
     pkgs=(
-        autoconf autoconf-archive autogen automake binutils build-essential ccache
+        autoconf autoconf-archive autogen automake binutils build-essential ccache 
         curl git itstool libb2-dev libexempi-dev libgnome-desktop-3-dev libhandy-1-dev
         libpeas-dev libpeasd-3-dev libssl-dev libtool libtool-bin m4 nasm openssl python3
-        valgrind yasm zlib1g-dev
+        valgrind yasm zlib1g-dev 
     )
 
     for pkg in "${pkgs[@]}"; do
@@ -142,7 +180,7 @@ install_required_packages() {
         fi
     done
 
-    if [[ ${#Missing_packages[@]} -gt 0 ]]; then
+    if [[ ${#missing_packages[@]} -gt 0 ]]; then
         sudo apt install ${missing_packages[@]} || fail "Failed to install required packages. Line: $LINENO"
     else
         echo "All required packages are already installed."
@@ -151,7 +189,7 @@ install_required_packages() {
 
 create_symlinks() {
     echo "Creating symlinks for essential programs"
-    echo "========================================="
+    echo "========================================="  
     local bin_dir="$install_dir/bin"
     local programs=("python3" "pip3" "idle3" "pydoc3" "python3-config")
 
@@ -161,7 +199,7 @@ create_symlinks() {
 }
 
 create_user_site() {
-    mkdir -p "$HOME/.local/lib/python3.12/site-packages"
+    mkdir -p "$HOME/.local/lib/python$python_version/site-packages"
 }
 
 build_python() {
@@ -189,7 +227,7 @@ build_python() {
 
 # Main script execution
 prepare_environment
-install_required_packages
+install_required_packages  
 set_compiler_flags
 download_and_extract_python
 build_python
