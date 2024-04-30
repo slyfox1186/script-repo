@@ -15,7 +15,7 @@ if [[ "$EUID" -eq 0 ]]; then
 fi
 
 script_ver=2.4
-python_version=3.12.2
+python_version=3.12.3
 archive_url="https://www.python.org/ftp/python/$python_version/Python-$python_version.tar.xz"
 install_dir="/usr/local/python3-$python_version"
 cwd="$PWD/python3-build-script"
