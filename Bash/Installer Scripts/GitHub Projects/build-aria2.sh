@@ -12,6 +12,10 @@ GREEN='\033[0;32m'
 RED='\033[0;31m'
 NC='\033[0m'
 
+export 
+
+ARIA2_STATIC="no"
+
 log() {
     echo -e "${GREEN}[LOG]${NC} $*"
 }
@@ -26,15 +30,17 @@ display_help() {
     echo "Build aria2 from source code with hardening options."
     echo
     echo "Options:"
-    echo "  -s, --service     Create aria2 service"
-    echo "  -d, --debug       Enable debug mode for more detailed output"
-    echo "  -c, --cleanup     Clean up build files after compilation"
-    echo "  -h, --help        Display this help message and exit"
+    echo "  -s, --service       Create aria2 service"
+    echo "  -d, --debug         Enable debug mode for more detailed output"
+    echo "  -c, --cleanup       Clean up build files after compilation"
+    echo "  -S, --static        Set aria2 as statically linked (ARIA2_STATIC=yes)"
+    echo "  -h, --help          Display this help message and exit"
     echo
     echo "Examples:"
-    echo "  $0                  # Build aria2 from source with hardening options"
-    echo "  $0 -s               # Build aria2 with hardening options and create a systemd service"
-    echo "  $0 -d -c            # Build aria2 with debug mode and cleanup enabled"
+    echo "  $0                     # Build aria2 from source with hardening options"
+    echo "  $0 --static            # Build aria2 from source with hardening options and set as statically linked"
+    echo "  $0 -s --static         # Build aria2 with hardening options, create a systemd service, and set as statically linked"
+    echo "  $0 -d -c --static      # Build aria2 with debug mode, cleanup enabled, and set as statically linked"
     echo
     exit 0
 }
@@ -71,7 +77,7 @@ PKG_CONFIG_PATH="\
 /usr/local/share/pkgconfig:\
 /usr/lib64/pkgconfig:\
 /usr/lib/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
+/usr/lib x86_64-linux-gnu/pkgconfig:\
 /usr/share/pkgconfig\
 "
 export PKG_CONFIG_PATH
@@ -83,6 +89,7 @@ install_packages() {
                 libssl-dev libtool m4 pkg-config zlib1g-dev
             )
     log "Attempting to install required packages..."
+    echo
     for pkg in "${pkgs[@]}"; do
         if sudo dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
             missing_pkgs+=" $pkg"
@@ -257,6 +264,9 @@ main() {
             -c|--cleanup)
                 cleanup="true"
                 ;;
+            -S|--static)
+                ARIA2_STATIC="yes"
+                ;;
             -h|--help)
                 display_help
                 ;;
@@ -269,7 +279,7 @@ main() {
     done
 
     echo
-    log "Starting aria2 build process..."
+    log "Starting aria2 build process with ARIA2_STATIC set to $ARIA2_STATIC..."
     echo
 
     set_compiler_options
