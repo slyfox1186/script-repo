@@ -42,7 +42,7 @@ display_help() {
 set_compiler_options() {
     CC="ccache gcc"
     CXX="ccache g++"
-    CFLAGS="-O3 -march=native -mtune=native -pipe -fstack-protector-strong -D_FORTIFY_SOURCE=2"
+    CFLAGS="-O3 -march=native -flto -fPIC -fPIE -mtune=native -pipe -fstack-protector-strong -D_FORTIFY_SOURCE=2"
     CXXFLAGS="$CFLAGS"
     LDFLAGS="-Wl,-z,relro,-z,now -pie"
     export CC CXX CFLAGS CXXFLAGS LDFLAGS
@@ -128,8 +128,7 @@ build_libgpg_error() {
     libgpg_error_url="https://gnupg.org/ftp/gcrypt/libgpg-error/libgpg-error-$libgpg_error_version.tar.bz2"
     curl -sSL "$libgpg_error_url" | tar -jx
     cd "libgpg-error-$libgpg_error_version" || exit 1
-    ./configure --prefix="$temp_dir/libgpg-error" --enable-static --disable-shared \
-                CFLAGS="$CFLAGS -fPIE" CXXFLAGS="$CXXFLAGS -fPIE" LDFLAGS="$LDFLAGS -pie"
+    ./configure --prefix="$temp_dir/libgpg-error" --enable-static --disable-shared
     make "-j$(nproc --all)" && \
     sudo make install
     cd ../
@@ -145,8 +144,7 @@ build_c_ares() {
     curl -sSL "$c_ares_url" | tar -zx
     cd "c-ares-cares-$c_ares_version" || exit 1
     autoreconf -fi
-    ./configure --prefix="$temp_dir/c-ares" --enable-static --disable-shared \
-                CFLAGS="$CFLAGS -fPIE" CXXFLAGS="$CXXFLAGS -fPIE" LDFLAGS="$LDFLAGS -pie"
+    ./configure --prefix="$temp_dir/c-ares" --enable-static --disable-shared
     make "-j$(nproc --all)" && \
     sudo make install
     cd ../
@@ -161,8 +159,7 @@ build_sqlite3() {
     sqlite_url="https://github.com/sqlite/sqlite/archive/refs/tags/version-$sqlite_version.tar.gz"
     curl -sSL "https://github.com/sqlite/sqlite/archive/refs/tags/version-3.45.3.tar.gz" | tar -zx
     cd "sqlite-version-$sqlite_version" || exit 1
-    ./configure --prefix="$temp_dir/sqlite3" --enable-static --disable-shared \
-                CFLAGS="$CFLAGS -fPIE" CXXFLAGS="$CXXFLAGS -fPIE" LDFLAGS="$LDFLAGS -pie"
+    ./configure --prefix="$temp_dir/sqlite3" --enable-static --disable-shared
     make "-j$(nproc --all)" && \
     sudo make install
     cd ../
