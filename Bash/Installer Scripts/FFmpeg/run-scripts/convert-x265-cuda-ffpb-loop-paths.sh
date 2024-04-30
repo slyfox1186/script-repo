@@ -11,18 +11,18 @@ NC='\033[0m' # No Color
 
 # Log functions
 log() {
-    echo -e "\\n${GREEN}[INFO]${NC} $1\\n"
+    echo -e "\\n${GREEN}[INFO]${NC} $1 $2\\n"
 }
 
 fail() {
-    echo -e "\\n${RED}[ERROR]${NC} $1\\n"
+    echo -e "\\n${RED}[ERROR]${NC} $1 $2\\n"
     exit 1
 }
 
 # Check for required dependencies before proceeding
 check_dependencies() {
     local missing_dependencies=()
-    for dependency in ffpb bc sed; do
+    for dependency in bc ffpb google_speech sed; do
         if ! command -v "$dependency" &>/dev/null; then
             missing_dependencies+=("$dependency")
         fi
@@ -77,7 +77,7 @@ EOF
 
         # Print video stats in the terminal
         printf "\\n${BLUE}::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::${NC}\\n"
-        printf "${YELLOW}Working Dir:${NC}     ${PURPLE}%s${NC}\\n" "$(pwd)"
+        printf "${YELLOW}Working Dir:${NC}     ${PURPLE}%s${NC}\\n" "$PWD"
         printf "${YELLOW}Input File:${NC}      ${CYAN}%s${NC}\\n" "$video"
         printf "${YELLOW}Output File:${NC}     ${CYAN}%s${NC}\\n" "$file_out"
         printf "${YELLOW}Aspect Ratio:${NC}    ${PURPLE}%s${NC}\\n" "$aspect_ratio"
@@ -89,7 +89,7 @@ EOF
         printf "${YELLOW}Threads:${NC}         ${PURPLE}%s${NC}\\n" "$threads"
         printf "${BLUE}::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::${NC}\\n"
 
-        log "Converting $video"
+        log "Converting${NC}" "$video"
 
         input_size=$(du -m "$video" | cut -f1)
         total_input_size=$((total_input_size + input_size))
@@ -101,16 +101,27 @@ EOF
             -b:v "${bitrate}k" -bufsize:v "${bufsize}k" -maxrate:v "${maxrate}k" \
             -bf:v 3 -g:v 250 -b_ref_mode:v middle -qmin:v 0 -temporal-aq:v 1 \
             -rc-lookahead:v 20 -i_qfactor:v 0.75 -b_qfactor:v 1.1 -c:a copy "$file_out"; then
-            log "Video conversion completed: $file_out"
+
+            google_speech "Video converted."
+
+            log "$Video conversion completed:${NC}" "$file_out"
+
             output_size=$(du -m "$file_out" | cut -f1)
             total_output_size=$((total_output_size + output_size))
             space_saved=$((input_size - output_size))
             total_space_saved=$((total_space_saved + space_saved))
-            echo -e "${YELLOW}Space saved for $video:${NC} ${PURPLE}${space_saved} MB${NC}"
+
+            # Extract the video name from the full path using variable expansion
+            video_name="${video##*/}"
+
+            echo -e "${YELLOW}Space saved for $video_name:${NC} ${PURPLE}${space_saved} MB${NC}"
             echo -e "${YELLOW}Current total space saved:${NC} ${PURPLE}${total_space_saved} MB${NC}"
-            rm "$video" "$file_out"
+
+            rm "$video"
+
             sed -i "\|^$video\$|d" "$temp_file"
         else
+            google_speech "Video conversion failed."
             fail "Video conversion failed for: $video"
         fi
     done 9< "$temp_file"
