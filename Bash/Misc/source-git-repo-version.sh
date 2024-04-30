@@ -2,7 +2,7 @@
 
 # This script will return the latest release version of a GitHub repository.
 # Example usage: ./source-git-repo-version.sh "https://github.com/rust-lang/rust.git"
-# Expected Output: e.g., 1.77.0
+# Expected Output: e.g., 1.77.2
 
 # Regex patterns
 first_match='href="[^"]*/releases/tag/\K[^"]*'
