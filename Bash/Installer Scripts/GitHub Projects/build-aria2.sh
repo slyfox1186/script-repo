@@ -129,7 +129,7 @@ build_libgpg_error() {
     curl -sSL "$libgpg_error_url" | tar -jx
     cd "libgpg-error-$libgpg_error_version" || exit 1
     ./configure --prefix="$temp_dir/libgpg-error" --enable-static --disable-shared \
-                CFLAGS="-fPIE" CXXFLAGS="-fPIE" LDFLAGS="-pie"
+                CFLAGS="$CFLAGS -fPIE" CXXFLAGS="$CXXFLAGS -fPIE" LDFLAGS="$LDFLAGS -pie"
     make "-j$(nproc --all)" && \
     sudo make install
     cd ../
@@ -146,7 +146,7 @@ build_c_ares() {
     cd "c-ares-cares-$c_ares_version" || exit 1
     autoreconf -fi
     ./configure --prefix="$temp_dir/c-ares" --enable-static --disable-shared \
-                CFLAGS="-fPIE" CXXFLAGS="-fPIE" LDFLAGS="-pie"
+                CFLAGS="$CFLAGS -fPIE" CXXFLAGS="$CXXFLAGS -fPIE" LDFLAGS="$LDFLAGS -pie"
     make "-j$(nproc --all)" && \
     sudo make install
     cd ../
@@ -162,7 +162,7 @@ build_sqlite3() {
     curl -sSL "https://github.com/sqlite/sqlite/archive/refs/tags/version-3.45.3.tar.gz" | tar -zx
     cd "sqlite-version-$sqlite_version" || exit 1
     ./configure --prefix="$temp_dir/sqlite3" --enable-static --disable-shared \
-                CFLAGS="-fPIE" CXXFLAGS="-fPIE" LDFLAGS="-pie"
+                CFLAGS="$CFLAGS -fPIE" CXXFLAGS="$CXXFLAGS -fPIE" LDFLAGS="$LDFLAGS -pie"
     make "-j$(nproc --all)" && \
     sudo make install
     cd ../
