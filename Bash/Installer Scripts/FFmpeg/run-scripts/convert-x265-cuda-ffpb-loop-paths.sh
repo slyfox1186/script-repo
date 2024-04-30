@@ -111,7 +111,7 @@ EOF
             # Extract the video name from the full path using variable expansion
             video_name="${video##*/}"
 
-            echo -e "${YELLOW}Space saved for \"$video_name\" ${PURPLE}$space_saved MB${NC}"
+            echo -e "${YELLOW}Space saved for \"$video_name\": ${PURPLE}$space_saved MB${NC}"
             echo -e "${YELLOW}Total cumulative space saved: ${PURPLE}$total_space_saved MB${NC}"
 
             rm "$video"
