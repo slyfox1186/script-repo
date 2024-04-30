@@ -29,23 +29,24 @@ convert_videos() {
     local temp_file=$(mktemp)
 
     # Create an output file that contains all of the video paths
-    cat > "$temp_file" <<EOF
+    cat > "$temp_file" <<'EOF'
 /path/to/video.mkv
 /path/to/video.mp4
 EOF
 
     while read -u 9 video; do
-        local aspect_ratio=$(ffprobe -v error -select_streams v:0 -show_entries stream=display_aspect_ratio -of default=nk=1:nw=1 "$video")
-        local length=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$video")
-        local maxrate=$(ffprobe -v error -show_entries format=bit_rate -of default=nk=1:nw=1 "$video")
-        local height=$(ffprobe -v error -select_streams v:0 -show_entries stream=height -of csv=s=x:p=0 "$video")
-        local width=$(ffprobe -v error -select_streams v:0 -show_entries stream=width -of csv=s=x:p=0 "$video")
+        local aspect_ratio file_out height length maxrate width trim bitrate
+        aspect_ratio=$(ffprobe -v error -select_streams v:0 -show_entries stream=display_aspect_ratio -of default=nk=1:nw=1 "$video")
+        length=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$video")
+        maxrate=$(ffprobe -v error -show_entries format=bit_rate -of default=nk=1:nw=1 "$video")
+        height=$(ffprobe -v error -select_streams v:0 -show_entries stream=height -of csv=s=x:p=0 "$video")
+        width=$(ffprobe -v error -select_streams v:0 -show_entries stream=width -of csv=s=x:p=0 "$video")
 
-        local file_out="${video%.*} (x265).${video##*.}"
+        file_out="${video%.*} (x265).${video##*.}"
 
         # Using bc for floating-point arithmetic
-        local trim=$(echo "scale=2; $maxrate / 1000" | bc)
-        local bitrate=$(echo "scale=2; $trim / 2" | bc)
+        trim=$(echo "scale=2; $maxrate / 1000" | bc)
+        bitrate=$(echo "scale=2; $trim / 2" | bc)
         # Converting bitrate to integer for compatibility with ffmpeg options
         bitrate=$(printf "%.0f" "$bitrate")
         maxrate=$((bitrate * 3))
@@ -78,8 +79,8 @@ EOF
 
         log "Converting $video"
         
-        if ffpb -y -vsync 0 -hide_banner -hwaccel_output_format cuda \
-                -threads $(nproc --all) -i -threads $(nproc --all) "$video" -c:v hevc_nvenc -preset medium -profile main10 \
+        if ffmpeg -y -hide_banner -hwaccel_output_format cuda \
+                -threads $(nproc --all) -i "$video" -fps_mode vfr -threads $(nproc --all) -c:v hevc_nvenc -preset medium -profile:v main10 \
                 -pix_fmt p010le -rc:v vbr -tune hq -b:v "${bitrate}k" \
                 -bufsize "${bufsize}k" -maxrate "${maxrate}k" -bf:v 3 -g 250 \
                 -b_ref_mode middle -qmin 0 -temporal-aq 1 -rc-lookahead 20 \
