@@ -27,7 +27,6 @@ check_dependencies() {
 # Main video conversion function
 convert_videos() {
     local temp_file=$(mktemp)
-
     # Create an output file that contains all of the video paths
     cat > "$temp_file" <<'EOF'
 /path/to/video.mkv
@@ -35,56 +34,57 @@ convert_videos() {
 EOF
 
     while read -u 9 video; do
-        local aspect_ratio file_out height length maxrate width trim bitrate
+        local aspect_ratio bufsize file_out height length maxrate threads trim width bitrate
         aspect_ratio=$(ffprobe -v error -select_streams v:0 -show_entries stream=display_aspect_ratio -of default=nk=1:nw=1 "$video")
         length=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$video")
         maxrate=$(ffprobe -v error -show_entries format=bit_rate -of default=nk=1:nw=1 "$video")
         height=$(ffprobe -v error -select_streams v:0 -show_entries stream=height -of csv=s=x:p=0 "$video")
         width=$(ffprobe -v error -select_streams v:0 -show_entries stream=width -of csv=s=x:p=0 "$video")
-
         file_out="${video%.*} (x265).${video##*.}"
 
         # Using bc for floating-point arithmetic
         trim=$(echo "scale=2; $maxrate / 1000" | bc)
         bitrate=$(echo "scale=2; $trim / 2" | bc)
+
         # Converting bitrate to integer for compatibility with ffmpeg options
         bitrate=$(printf "%.0f" "$bitrate")
         maxrate=$((bitrate * 3))
-        local bufsize=$((bitrate * 2))
+        bufsize=$((bitrate * 2))
         length=$(printf "%.0f" "$length")
         length=$((length / 60))
 
+        # Determine the number of threads based on the result of '$(nproc --all)'
+        threads
+        if [ "$(nproc --all)" -ge 16 ]; then
+            threads=16
+        else
+            threads=$(nproc --all)
+        fi
+
         # Print video stats in the terminal
         cat <<EOF
-
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-
-Working Dir:     $(pwd)
-
-Input File:      $video
-Output File:     $file_out
-
-Aspect Ratio:    $aspect_ratio
-Dimensions:      ${width}x${height}
-
-Maxrate:         ${maxrate}k
-Bufsize:         ${bufsize}k
-Bitrate:         ${bitrate}k
-
-Length:          $length mins
-
+Working Dir: $(pwd)
+Input File: $video
+Output File: $file_out
+Aspect Ratio: $aspect_ratio
+Dimensions: ${width}x${height}
+Maxrate: ${maxrate}k
+Bufsize: ${bufsize}k
+Bitrate: ${bitrate}k
+Length: $length mins
+Threads: $threads
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-
 EOF
 
         log "Converting $video"
-        
         if ffpb -y -hide_banner -hwaccel_output_format cuda \
-                -threads $(nproc --all) -i "$video" -fps_mode vfr -threads $(nproc --all) -c:v hevc_nvenc -preset medium -profile:v main10 \
-                -pix_fmt p010le -rc:v vbr -tune hq -b:v "${bitrate}k" \
-                -bufsize "${bufsize}k" -maxrate "${maxrate}k" -bf:v 3 -g 250 \
-                -b_ref_mode middle -qmin 0 -temporal-aq 1 -rc-lookahead 20 \
-                -i_qfactor 0.75 -b_qfactor 1.1 -c:a copy "$file_out"; then
+           -threads "$threads" -i "$video" -fps_mode vfr \
+           -threads "$threads" -c:v hevc_nvenc -preset medium \
+           -profile:v main10 -pix_fmt p010le -rc:v vbr -tune hq \
+           -b:v "${bitrate}k" -bufsize "${bufsize}k" -maxrate "${maxrate}k" \
+           -bf:v 3 -g 250 -b_ref_mode middle -qmin 0 -temporal-aq 1 \
+           -rc-lookahead 20 -i_qfactor 0.75 -b_qfactor 1.1 -c:a copy "$file_out"; then
             log "Video conversion completed: $file_out"
             rm "$video"
             sed -i "\|^$video\$|d" "$temp_file"
