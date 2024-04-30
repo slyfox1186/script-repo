@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Create a temporary file to store the file paths in
+# Create a temporary file to store the video paths in
 temp_file=$(mktemp)
 
 # Add the video paths that FFmpeg will process to the temporary file that was created above
