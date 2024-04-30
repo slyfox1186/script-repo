@@ -81,31 +81,30 @@ for input_file in "${video_files[@]}"; do
     total_duration=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 -i "$input_file" | awk '{print $1}')
 
 # Calculate start and end keyframe timestamps
-    if [ $trim_start -gt 0 ]; then
+    if [[ $trim_start -gt 0 ]]; then
         formatted_start_time=$(ffprobe -v error -select_streams v -of csv=p=0 -show_entries frame=best_effort_timestamp_time -read_intervals $trim_start%+$trim_start -i "$input_file" | head -n1)
-        if [ -z "$formatted_start_time" ]; then
+        if [[ -z "$formatted_start_time" ]]; then
             echo -e "${YELLOW}No keyframe found near start time $trim_start, using the exact time instead.${NC}"
             formatted_start_time=$trim_start
         fi
     else
         formatted_start_time=$(ffprobe -v error -of default=noprint_wrappers=1:nokey=1 -select_streams v:0 -skip_frame nokey -show_frames -show_entries frame=pkt_dts_time "$input_file" |
-                               grep -E '^[0-9]+\.[0-9]+$' |
-                               head -n1
-                          )
+                               grep -E '^[0-9]+\.[0-9]+$' | head -n1)
     fi
 
-    if [ $trim_end -gt 0 ]; then
+    if [[ $trim_end -gt 0 ]]; then
         target_end_time=$(echo "$total_duration - $trim_end" | bc)
-        formatted_end_time=$(ffprobe -v error -select_streams v -of csv=p=0 -show_entries frame=best_effort_timestamp_time -read_intervals -$trim_end%-$trim_end -i "$input_file" | sort -rV | head -n1)
-        if [ -z "$formatted_end_time" ]; then
+        formatted_end_time=$(ffprobe -v error -select_streams v -of csv=p=0 -show_entries frame=best_effort_timestamp_time -read_intervals -$trim_end%-$trim_end -i "$input_file" |
+                             sort -rV | head -n1)
+        if [[ -z "$formatted_end_time" ]]; then
             echo -e "${YELLOW}No keyframe found near end time $trim_end, using the exact time instead.${NC}"
-            formatted_end_time=$target_end_time
+            formatted_end_time="$target_end_time"
         fi
     else
-        formatted_end_time=$total_duration
+        formatted_end_time="$total_duration"
     fi
 
-    if [ $verbose -eq 1 ]; then
+    if [[ "$verbose" -eq 1 ]]; then
         echo -e "${YELLOW}Trimming from $formatted_start_time to $formatted_end_time.${NC}"
     fi
 
@@ -120,27 +119,25 @@ for input_file in "${video_files[@]}"; do
     [[ -n "$formatted_end_time" ]] && trim_end_cmd="-to \"$formatted_end_time\""
 
 # Prompt user before processing
-    if [ $verbose -eq 1 ]; then
+    if [[ $verbose -eq 1 ]]; then
         read -p "Proceed with trimming? (y/n) " choice
         echo    # Move to a new line
-        if [[ $choice != [Yy] ]]; then
+        if [[ "$choice" != [Yy] ]]; then
             echo -e "${YELLOW}Skipping $input_file based on user choice.${NC}"
             continue
         fi
     fi
 
-    if [ $overwrite -eq 1 ]; then
+    if [[ $overwrite -eq 1 ]]; then
         temp_output=$(mktemp /tmp/ffmpeg.XXXXXX)
         temp_output+=".$extension"
         command="ffmpeg -hide_banner $trim_start_cmd -y -i \"$input_file\" $trim_end_cmd -c copy \"$temp_output\""
         eval $command && mv "$temp_output" "$input_file"
         echo -e "${GREEN}Successfully processed and overwritten $input_file${NC}\\n"
-        echo "$final_output" >> video-processing.log
     else
         command="ffpb -hide_banner $trim_start_cmd -y -i \"$input_file\" $trim_end_cmd -c copy \"$final_output\""
         eval $command
         echo -e "${GREEN}Successfully processed $input_file into $final_output${NC}\\n"
-        echo "$final_output" >> video-processing.log
     fi
     clear
 done
