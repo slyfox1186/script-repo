@@ -106,8 +106,8 @@ set_env_vars() {
     log "Setting environment variables..."
     CC="gcc"
     CXX="g++"
-    CFLAGS="-g -O3 -pipe -march=native"
-    CXXFLAGS="-g -O3 -pipe -march=native"
+    CFLAGS="-O3 -pipe -march=native"
+    CXXFLAGS="-O3 -pipe -march=native"
     CPPFLAGS="-D_FORTIFY_SOURCE=2"
     LDFLAGS="-Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now,-rpath"
     LDFLAGS+=",/usr/local/gcc-$version/lib64,-rpath,/usr/local/gcc-$version/lib"
@@ -179,44 +179,61 @@ build_gcc() {
     local languages="$2"
     local configure_options="$3"
 
+    echo
     log "Building GCC $version"
+    echo
     download "https://ftp.gnu.org/gnu/gcc/gcc-$version/gcc-$version.tar.xz"
 
     local gcc_dir="$build_dir/gcc-$version"
-    if [[ ! -d "$gcc_dir" ]]; then
+    [[ ! -d "$gcc_dir" ]]; then
         fail "GCC $version source directory not found: $gcc_dir"
     fi
 
     cd "$gcc_dir" || fail "Failed to change directory to $gcc_dir"
 
+    echo
     log "Running autoreconf and downloading prerequisites"
+    echo
+
     autoreconf -fi
     ./contrib/download_prerequisites
 
-    mkdir -p builddir
-    cd builddir || fail "Failed to change directory to builddir"
+    mkdir -p builddir && cd builddir || fail "Failed to change directory to builddir"
 
+    echo
     log "Configuring GCC $version"
+    echo
+
     ../configure --prefix="/usr/local/gcc-$version" \
                  --enable-languages="$languages" \
                  --disable-multilib --with-system-zlib \
                  "$configure_options"
 
+    echo
     log "Compiling GCC $version"
-    make "-j$(nproc --all)"
+    echo
 
+    make "-j$(nproc --all)"
+    
+    echo
     log "Installing GCC $version"
+    echo
+
     make install-strip
 }
 
 create_symlinks() {
-    local version="$1"
+    local bin_dir major_version programs source_path symlink_path target_dir version
+
+    echo
     log "Creating symlinks for GCC $version..."
+    echo
 
-    local bin_dir="/usr/local/gcc-$version/bin"
-    local target_dir="/usr/local/bin"
+    version="$1"
+    bin_dir="/usr/local/gcc-$version/bin"
+    target_dir="/usr/local/bin"
 
-    local programs=(
+    programs=(
         "c++" "cpp" "g++" "gcc" "gcc-ar" "gcc-nm" "gcc-ranlib"
         "gcov" "gcov-dump" "gcov-tool" "gfortran" "gnat" "gnatbind"
         "gnatchop" "gnatclean" "gnatkr" "gnatlink" "gnatls" "gnatmake"
@@ -224,12 +241,14 @@ create_symlinks() {
     )
 
     for program in "${programs[@]}"; do
-        local source_path="$bin_dir/$program"
+        source_path="$bin_dir/$program"
         if [[ -x "$source_path" && ! "$program" =~ ^pc-linux-gnu-gcc-|^pc-linux-gnu- ]]; then
-            local major_version="${version%%.*}"
-            local symlink_path="$target_dir/$program-$major_version"
+            major_version="${version%%.*}"
+            symlink_path="$target_dir/$program-$major_version"
             ln -sfn "$source_path" "$symlink_path"
+            echo
             log "Created symlink: $symlink_path -> $source_path"
+            echo
         fi
     done
 }
@@ -237,16 +256,22 @@ create_symlinks() {
 cleanup() {
     if [[ "$keep_build_dir" -ne 1 ]]; then
         log "Cleaning up..."
-        rm -rf "$build_dir"
+        rm -fr "$build_dir"
+
+        echo
         log "Removed temporary build directory: $build_dir"
+        echo
     else
+        echo
         log "Temporary build directory retained: $build_dir"
+        echo
     fi
 }
 
 select_versions() {
-    local -a versions=(9 10 11 12 13)
-    local -a selected_versions=()
+    local -a selected_versions versions
+    versions=(9 10 11 12 13)
+    selected_versions=()
 
     echo -e "\\n${GREEN}Select the GCC version(s) to install:${NC}\n"
     echo -e "${CYAN}1. Single version${NC}"
@@ -255,6 +280,7 @@ select_versions() {
 
     echo
     read -p "Enter your choice: " choice
+    echo
 
     case "$choice" in
         1)
@@ -313,7 +339,9 @@ select_versions() {
 }
 
 install_autoconf() {
+    echo
     log "Installing autoconf 2.69"
+    echo
     curl -fsSLo "$build_dir/autoconf-2.69.tar.xz" "https://ftp.gnu.org/gnu/autoconf/autoconf-2.69.tar.xz"
     mkdir -p "$build_dir/autoconf-2.69/build" "$workspace"
     tar -xf "$build_dir/autoconf-2.69.tar.xz" -C "$build_dir/autoconf-2.69" --strip-components 1
@@ -322,7 +350,7 @@ install_autoconf() {
     autoconf
     cd build || exit 1
     ../configure --prefix="$build_dir/workspace"
-    make "-j$(nproc --all)"
+    make "-j$(nproc --all)" && \
     make install
 }
 
@@ -342,9 +370,7 @@ main() {
         fail "This script must be run as root or with sudo."
     fi
 
-    if [[ -d "$build_dir" ]]; then
-        rm -rf "$build_dir"
-    fi
+    [[ -d "$build_dir" ]] && rm -fr "$build_dir"
     mkdir -p "$build_dir"
 
     set_ccache_dir
@@ -354,6 +380,7 @@ main() {
     cleanup
     summary
 
+    echo
     log "Build completed successfully!"
     echo -e "\\n${GREEN}Make sure to star this repository to show your support!${NC}"
     echo "https://github.com/slyfox1186/script-repo"
