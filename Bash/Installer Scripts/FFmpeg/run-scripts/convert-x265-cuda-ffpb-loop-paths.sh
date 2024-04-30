@@ -21,18 +21,22 @@ fail() {
 
 # Check for required dependencies before proceeding
 check_dependencies() {
-    local missing_pkgs=()
+    local missing_pkgs
+    missing_pkgs=()
     for pkg in bc ffpb google_speech sed; do
         if ! command -v "$pkg" &>/dev/null; then
             missing_pkgs+=("$pkg")
         fi
     done
-    [[ ${#missing_pkgs[@]} -ne 0 ]] && fail "Missing dependencies: ${missing_pkgs[*]}. Please install them."
+    if [ ${#missing_pkgs[@]} -ne 0 ]; then
+        fail "Missing dependencies: ${missing_pkgs[*]}. Please install them."
+    fi
 }
 
 # Main video conversion function
 convert_videos() {
-    local aspect_ratio bitrate bufsize file_out height length maxrate temp_file threads total_input_size total_output_size total_space_saved trim width
+    local aspect_ratio bitrate bufsize file_out height length maxrate original_bitrate
+    local temp_file threads total_input_size total_output_size total_space_saved width
     temp_file=$(mktemp)
 
     # Create an output file that contains all of the video paths
@@ -47,30 +51,34 @@ EOF
 
     while read -u 9 video; do
         aspect_ratio=$(ffprobe -v error -select_streams v:0 -show_entries stream=display_aspect_ratio -of default=nk=1:nw=1 "$video")
-        length=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$video")
-        maxrate=$(ffprobe -v error -show_entries format=bit_rate -of default=nk=1:nw=1 "$video")
         height=$(ffprobe -v error -select_streams v:0 -show_entries stream=height -of csv=s=x:p=0 "$video")
         width=$(ffprobe -v error -select_streams v:0 -show_entries stream=width -of csv=s=x:p=0 "$video")
+        length=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$video")
+        original_bitrate=$(ffprobe -v error -show_entries format=bit_rate -of default=nk=1:nw=1 "$video")
 
         file_out="${video%.*} (x265).${video##*.}"
 
-        # Using bc for floating-point arithmetic
-        trim=$(echo "scale=2; $maxrate / 1000" | bc)
-        bitrate=$(echo "scale=2; $trim / 2" | bc)
+        # Calculate optimal settings for x265
+        bitrate=$(echo "$original_bitrate * 0.5" | bc) # Aim for about 50% of the original bitrate
+        bufsize=$(echo "$bitrate * 1.5" | bc) # Set bufsize to 150% of the new bitrate
+        maxrate=$(echo "$bitrate * 2" | bc) # Allow maxrate to peak to 200% of the bitrate
 
-        # Converting bitrate to integer for compatibility with ffmpeg options
+        # Convert floating point to integer
         bitrate=$(printf "%.0f" "$bitrate")
-        maxrate=$((bitrate * 3))
-        bufsize=$((bitrate * 2))
+        bufsize=$(printf "%.0f" "$bufsize")
+        maxrate=$(printf "%.0f" "$maxrate")
+
+        bitrate=$((bitrate / 1024))
+        bufsize=$((bufsize / 1024))
+        maxrate=$((maxrate / 1024))
+
+        # Ensure integer arithmetic by truncating to integers before any operations
         length=$(printf "%.0f" "$length")
         length=$((length / 60))
 
-        # Determine the number of threads based on the result of '$(nproc --all)'
-        if [ "$(nproc --all)" -ge 16 ]; then
-            cpu_thread_count="16"
-        else
-            cpu_thread_count="$(nproc --all)"
-        fi
+        # Determine the number of threads based on the CPU cores available
+        threads=$(nproc --all)
+        threads=$((threads>16 ? 16 : threads)) # Cap at 16 threads for efficiency
 
         # Print video stats in the terminal
         printf "\\n${BLUE}::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::${NC}\\n"
@@ -91,9 +99,10 @@ EOF
         input_size=$(du -m "$video" | cut -f1)
         total_input_size=$((total_input_size + input_size))
 
+        # Conversion using ffmpeg with HEVC codec
         if ffpb -y -hide_banner -hwaccel_output_format cuda \
-            -threads "$cpu_thread_count" -i "$video" -fps_mode:v vfr \
-            -threads "$cpu_thread_count" -c:v hevc_nvenc -preset medium \
+            -threads "$threads" -i "$video" -fps_mode:v vfr \
+            -c:v hevc_nvenc -preset medium \
             -profile:v main10 -pix_fmt p010le -rc:v vbr -tune:v hq \
             -b:v "${bitrate}k" -bufsize:v "${bufsize}k" -maxrate:v "${maxrate}k" \
             -bf:v 3 -g:v 250 -b_ref_mode:v middle -qmin:v 0 -temporal-aq:v 1 \
@@ -101,17 +110,14 @@ EOF
 
             google_speech "Video converted." &>/dev/null
 
-            log "$Video conversion completed:${NC}" "$file_out"
+            log "Video conversion completed:${NC}" "$file_out"
 
             output_size=$(du -m "$file_out" | cut -f1)
             total_output_size=$((total_output_size + output_size))
             space_saved=$((input_size - output_size))
             total_space_saved=$((total_space_saved + space_saved))
 
-            # Extract the video name from the full path using variable expansion
-            video_name="${video##*/}"
-
-            echo -e "${YELLOW}Space saved for \"$video_name\": ${PURPLE}$space_saved MB${NC}"
+            echo -e "${YELLOW}Space saved for \"$video##*/\": ${PURPLE}$space_saved MB${NC}"
             echo -e "${YELLOW}Total cumulative space saved: ${PURPLE}$total_space_saved MB${NC}"
 
             rm "$video"
