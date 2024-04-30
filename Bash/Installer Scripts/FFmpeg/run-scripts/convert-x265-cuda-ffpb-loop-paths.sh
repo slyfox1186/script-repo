@@ -11,11 +11,11 @@ NC='\033[0m' # No Color
 
 # Log functions
 log() {
-    echo -e "\\n${GREEN}[INFO] $1${NC}\\n"
+    echo -e "\\n${GREEN}[INFO]${NC} $1\\n"
 }
 
 fail() {
-    echo -e "\\n${RED}[ERROR] $1${NC}\\n"
+    echo -e "\\n${RED}[ERROR]${NC} $1\\n"
     exit 1
 }
 
