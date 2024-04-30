@@ -102,7 +102,7 @@ EOF
             -bf:v 3 -g:v 250 -b_ref_mode:v middle -qmin:v 0 -temporal-aq:v 1 \
             -rc-lookahead:v 20 -i_qfactor:v 0.75 -b_qfactor:v 1.1 -c:a copy "$file_out"; then
 
-            google_speech "Video converted."
+            google_speech "Video converted." >/dev/null
 
             log "$Video conversion completed:${NC}" "$file_out"
 
@@ -121,7 +121,7 @@ EOF
 
             sed -i "\|^$video\$|d" "$temp_file"
         else
-            google_speech "Video conversion failed."
+            google_speech "Video conversion failed." >/dev/null
             fail "Video conversion failed for: $video"
         fi
     done 9< "$temp_file"
