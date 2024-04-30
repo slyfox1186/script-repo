@@ -48,16 +48,16 @@ The script supports various command line arguments to predefine settings, minimi
 
 1. **Locate the drive you want to format:** `fdisk -l | less`
 2. **Install cURL:** `pacman -Sy --noconfirm curl`
-3. **Download the Step 1 script:** `curl -LSso part-1.sh https://arch1.optimizethis.net`
-4. **Make executable:** `chmod +x part-1.sh`
-5. **Execute script:** `./part-1.sh -u yourUsername -p yourPassword -r yourRootPassword -c yourComputerName -t yourTimezone -d yourDisk`
+3. **Download the Step 1 script:** `curl -LSso step1.sh https://arch1.optimizethis.net`
+4. **Make executable:** `chmod +x step1.sh`
+5. **Execute script:** `./step1.sh -u yourUsername -p yourPassword -r yourRootPassword -c yourComputerName -t yourTimezone -d yourDisk`
 6. **Answer each prompt:**
 
 ### Step 2 - Post Installer
 
-1. **Download the Step 2 script:** `curl -LSso part-2.sh https://arch2.optimizethis.net`
-2. **Make executable:** `chmod +x part-2.sh`
-3. **Execute script:** `./part-2.sh`
+1. **Download the Step 2 script:** `curl -LSso step2.sh https://arch2.optimizethis.net`
+2. **Make executable:** `chmod +x step2.sh`
+3. **Execute script:** `./step2.sh`
 4. **Answer each prompt**
 5. **Load straight into the Gnome GUI OR Reboot**
 
