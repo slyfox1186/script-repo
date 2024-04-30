@@ -54,7 +54,6 @@ EOF
         length=$((length / 60))
 
         # Determine the number of threads based on the result of '$(nproc --all)'
-        threads
         if [ "$(nproc --all)" -ge 16 ]; then
             threads=16
         else
