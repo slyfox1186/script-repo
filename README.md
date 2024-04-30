@@ -92,7 +92,7 @@ Supports building different OpenSSL versions with various configuration options.
 - **Supported OS:** Debian 11/12, Ubuntu 20.04/22.04/23.04, and possibly other Debian-based distros.
 ```bash
 curl -LSso build-openssl.sh https://ossl.optimizethis.net
-sudo bash build-openssl.sh
+bash build-openssl.sh
 ```
 
 ### Install [Rust](https://github.com/rust-lang/rust) Programming Language
