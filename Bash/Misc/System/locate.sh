@@ -1,76 +1,48 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# Function to display help information
 display_help() {
     echo "Usage: $0 [OPTIONS] PATTERN"
     echo "Search for files and directories using the locate command."
-    echo
     echo "Options:"
-    echo "    -c, --count       Display only the count of matching entries"
-    echo "    -d, --dir         Limit results to directories only"
-    echo "    -f, --file        Limit results to files only"
-    echo "    -a, --all         Include both directories and files (default)"
-    echo "    -i, --ignore-case Ignore case distinctions in the pattern"
-    echo "    -l, --limit       Limit the number of search results (default: 20)"
-    echo "    -r, --regex       Interpret the pattern as a regular expression"
-    echo "    -u, --update      Update the locate database before searching"
-    echo "    -h, --help        Display this help information"
-    echo
+    echo "  -c, --count       Display only the count of matching entries"
+    echo "  -d, --dir         Limit results to directories only"
+    echo "  -f, --file        Limit results to files only"
+    echo "  -a, --all         Include both directories and files (default)"
+    echo "  -C, --case        Enable case-sensitive search"
+    echo "  -l, --limit       Limit the number of search results (default: 40)"
+    echo "  -p, --path        Specify the path to limit the search"
+    echo "  -r, --regex       Interpret the pattern as a regular expression"
+    echo "  -u, --update      Update the locate database before searching"
+    echo "  -h, --help        Display this help information"
     echo "Example:"
-    echo "    $0 -i -l 10 \"*.txt\""
-    echo "    Search for files ending with .txt (case-insensitive) and limit results to 10"
+    echo "  $0 -l 10 \"*.txt\""
+    echo "  Search for files ending with .txt and limit results to 10"
 }
 
-# Default values for options
-count_only="false"
-directories_only="false"
-files_only="false"
-ignore_case="false"
-limit="20"
-update_db="false"
-use_regex="false"
+# Initialize default values
+count_only=false
+directories_only=false
+files_only=false
+case_sensitive=false
+limit=40
+use_regex=false
+update_db=false
+search_path=""
 
 # Parse command line options
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        -c|--count)
-            count_only="true"
-            ;;
-        -d|--dir)
-            directories_only="true"
-            ;;
-        -f|--file)
-            files_only="true"
-            ;;
-        -a|--all)
-            directories_only="false"
-            files_only="false"
-            ;;
-        -i|--ignore-case)
-            ignore_case="true"
-            ;;
-        -l|--limit)
-            limit="$2"
-            shift
-            ;;
-        -r|--regex)
-            use_regex="true"
-            ;;
-        -u|--update)
-            update_db="true"
-            ;;
-        -h|--help)
-            display_help
-            exit 0
-            ;;
-        -*)
-            echo "Invalid option: $1" >&2
-            display_help >&2
-            exit 1
-            ;;
-        *)
-            break
-            ;;
+        -c|--count) count_only=true ;;
+        -d|--dir) directories_only=true ;;
+        -f|--file) files_only=true ;;
+        -a|--all) directories_only=false; files_only=false ;;
+        -C|--case) case_sensitive=true ;;
+        -l|--limit) limit="$2"; shift ;;
+        -p|--path) search_path="$2"; shift ;;
+        -r|--regex) use_regex=true ;;
+        -u|--update) update_db=true ;;
+        -h|--help) display_help; exit 0 ;;
+        *) break ;;
     esac
     shift
 done
@@ -87,45 +59,32 @@ if [[ $update_db == true ]]; then
     fi
 fi
 
-# Check if search patterns are provided
 if [[ $# -eq 0 ]]; then
-    echo "Error: Please provide at least one search pattern." >&2
-    display_help >&2
+    printf "\n%s\n" "Error: Please provide at least one search pattern."
+    display_help
     exit 1
 fi
 
 search_patterns=("$@")
 
-# Build the locate command with options
 locate_cmd="locate"
-if [[ $ignore_case == true ]]; then
-    locate_cmd+=" -i"
-fi
-if [[ $use_regex == true ]]; then
-    locate_cmd+=" --regex"
-fi
-locate_cmd+=" --limit $limit"
+[[ $case_sensitive != true ]] && locate_cmd+=" -i"
+[[ $use_regex == true ]] && locate_cmd+=" --regex"
+locate_cmd+=" --null --limit $limit"
 
-# Determine search type (directories, files, or both)
-if [[ $directories_only == true ]]; then
-    post_process_cmd=" | xargs -I{} sudo find {} -maxdepth 0 -type d 2>/dev/null"
-elif [[ $files_only == true ]]; then
-    post_process_cmd=" | xargs -I{} sudo find {} -maxdepth 0 -type f 2>/dev/null"
-else
-    post_process_cmd=""
-fi
+# Adjusting the locate command to filter by path if provided
+[[ -n "$search_path" ]] && locate_cmd+=" | grep -F \"$search_path\""
 
-# Execute the locate command and process the results
-if [[ $count_only == true ]]; then
-    count=0
-    for pattern in "${search_patterns[@]}"; do
-        count=$((count + $(eval "$locate_cmd \"$pattern\" $post_process_cmd | wc -l")))
-    done
-    echo "Total number of matching entries: $count"
-else
-    for pattern in "${search_patterns[@]}"; do
-        echo "Search results for pattern: $pattern"
-        eval "$locate_cmd \"$pattern\" $post_process_cmd | tr '\n' '\0' | xargs -0 -n 1 echo"
+post_process_cmd=""
+[[ $directories_only == true ]] && post_process_cmd=" | xargs -0 -I {} find \"{}\" -type d"
+[[ $files_only == true ]] && post_process_cmd=" | xargs -0 -I {} find \"{}\" -type f"
+
+for pattern in "${search_patterns[@]}"; do
+    echo "Search results for pattern: $pattern"
+    full_command="${locate_cmd} \"$pattern\"${post_process_cmd}"
+    if eval "$full_command | tr '\n' '\0' | xargs -0 -n 1 echo"; then
+        printf "%s\n\n" "No results found"
+    else
         echo "-----"
-    done
-fi
+    fi
+done
