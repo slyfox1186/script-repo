@@ -22,49 +22,42 @@ display_help() {
 }
 
 # Default values for options
-count_only=false
-directories_only=false
-files_only=false
-ignore_case=false
-limit=20
-use_regex=false
-update_db=false
+count_only="false"
+directories_only="false"
+files_only="false"
+ignore_case="false"
+limit="20"
+update_db="false"
+use_regex="false"
 
 # Parse command line options
 while [[ $# -gt 0 ]]; do
     case "$1" in
         -c|--count)
-            count_only=true
-            shift
+            count_only="true"
             ;;
         -d|--dir)
-            directories_only=true
-            shift
+            directories_only="true"
             ;;
         -f|--file)
-            files_only=true
-            shift
+            files_only="true"
             ;;
         -a|--all)
-            directories_only=false
-            files_only=false
-            shift
+            directories_only="false"
+            files_only="false"
             ;;
         -i|--ignore-case)
-            ignore_case=true
-            shift
+            ignore_case="true"
             ;;
         -l|--limit)
             limit="$2"
-            shift 2
+            shift
             ;;
         -r|--regex)
-            use_regex=true
-            shift
+            use_regex="true"
             ;;
         -u|--update)
-            update_db=true
-            shift
+            update_db="true"
             ;;
         -h|--help)
             display_help
@@ -79,6 +72,7 @@ while [[ $# -gt 0 ]]; do
             break
             ;;
     esac
+    shift
 done
 
 # Update the locate database if requested
@@ -114,9 +108,9 @@ locate_cmd+=" --limit $limit"
 
 # Determine search type (directories, files, or both)
 if [[ $directories_only == true ]]; then
-    post_process_cmd=" | xargs -I {} find {} -maxdepth 0 -type d"
+    post_process_cmd=" | xargs -I {} sudo find {} -maxdepth 0 -type d 2>/dev/null"
 elif [[ $files_only == true ]]; then
-    post_process_cmd=" | xargs -I {} find {} -maxdepth 0 -type f"
+    post_process_cmd=" | xargs -I {} sudo find {} -maxdepth 0 -type f 2>/dev/null"
 else
     post_process_cmd=""
 fi
