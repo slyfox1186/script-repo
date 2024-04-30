@@ -17,7 +17,6 @@ install_prefix="/usr/local"
 cwd="$PWD/libhwy-build-script"
 packages="$cwd/packages"
 workspace="$cwd/workspace"
-pc_type=$(gcc -dumpmachine)
 debug=OFF
 
 # Create output directories
@@ -367,7 +366,6 @@ if build "libhwy" "$g_ver"; then
     build_done "libhwy" "$g_ver"
 fi
 
-# Ldconfig must be run next in order to update file changes or the version commands might not work
 sudo ldconfig
 
 # Cleanup leftover files
