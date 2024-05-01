@@ -236,6 +236,7 @@ prompt_loadkeys() {
             localectl list-keymaps > "$tempfile"
             more "$tempfile"
             rm "$tempfile"
+            echo
             read -p "Enter the value for loadkeys: " loadkeys_value
             if [[ -n "$loadkeys_value" ]]; then
                 loadkeys "$loadkeys_value"
