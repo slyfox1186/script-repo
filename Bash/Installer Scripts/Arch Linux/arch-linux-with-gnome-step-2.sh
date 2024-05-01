@@ -1,3 +1,4 @@
+
 #!/usr/bin/env bash
 
 # Check if the script is being run with root privileges
@@ -28,9 +29,7 @@ log() {
 # Install required software using pacman
 log "Installing required packages..." "info"
 PACKAGES="gdm gedit gedit-plugins git gnome gnome-terminal gnome-text-editor gnome-tweaks nvidia pulseaudio pulseaudio-alsa reflector xorg xorg-server xorg-xinit"
-echo
-echo "The default packages set to be installed: $PACKAGES"
-echo
+printf "\n%s\n\n" "The default packages set to be installed: $PACKAGES"
 
 # Prompt the user to add or remove packages
 read -p "Enter additional packages to install (space-separated) or press Enter to continue: " ADDITIONAL_PACKAGES
@@ -47,9 +46,10 @@ for pkg in $REMOVE_PACKAGES; do
 done
 
 # Install the packages
-sudo pacman -Sy --needed --noconfirm $PACKAGES
+pacman -Sy --needed --noconfirm $PACKAGES
 
 # Check if a graphics driver is installed
+echo
 log "Checking for installed graphics drivers..." "info"
 echo
 
@@ -61,17 +61,17 @@ if ! pacman -Qs "xf86-video-" >/dev/null && ! pacman -Qs "nvidia" >/dev/null && 
     echo
 fi
 
-# Set visudo env var
-log "Setting visudo environment variable..." "info"
+# Set vienv var
+log "Setting vienvironment variable..." "info"
 EDITOR=nano visudo
 
 enable_nvidia_tweaks() {
-    # Set Nvidia custom settings using sudo tee
-    echo "options nvidia_drm modeset=1" | sudo tee "/etc/modprobe.d/nvidia-xorg-enable-drm.conf" >/dev/null
+    # Set Nvidia custom settings using tee
+    echo "options nvidia_drm modeset=1" | tee "/etc/modprobe.d/nvidia-xorg-enable-drm.conf" >/dev/null
 
-    # Enable Nvidia Driver update pacman hook using sudo tee with a here-doc
+    # Enable Nvidia Driver update pacman hook using tee with a here-doc
     [[ ! -d "/etc/pacman.d/hooks/" ]] && mkdir -p "/etc/pacman.d/hooks/"
-    sudo tee "/etc/pacman.d/hooks/nvidia.hook" >/dev/null <<'EOF'
+    tee "/etc/pacman.d/hooks/nvidia.hook" >/dev/null <<'EOF'
 [Trigger]
 Operation=Install
 Operation=Upgrade
@@ -103,21 +103,47 @@ esac
 # Enable the LightDM display manager
 echo
 log "Enabling the GDM display manager..." "info"
-sudo systemctl enable gdm.service
+echo
+systemctl enable gdm.service
+echo
 
-# Prompt the user to start the GUI
-echo
-read -p "Do you want to start the GUI now? [y/N]: " start_gui
-echo
-if [[ "$start_gui" =~ ^[Yy]$ ]]; then
-    log "Starting the GUI..." "info"
-    sudo systemctl start gdm.service
-    log "GUI started. Exiting script." "info"
-    sleep 3
-    exit 0
-else
-    echo
-    log "GUI not started. The script will reboot to complete the setup." "info"
-    read -p "Press Enter to continue."
-    exit 0
-fi
+prompt_gui() {
+        read -p "Do you want to enter straight into the GUI? [not recommended] (y/n): " gui_choice
+        case "$gui_choice" in
+            [yY]*|[yY][eE][sS]*)
+                systemctl start gdm.service
+                exit 0
+                ;;
+            [nN]*|[nN][oO]*)
+                ;;
+            *)
+                echo "Bad user input.. try again."
+                sleep 3
+                unset gui_choice
+                clear
+                prompt_gui
+                ;;
+        esac
+}
+
+prompt_reboot() {
+        read -p "Do you want to reboot now? [recommended] (y/n): " reboot_choice
+        case "$reboot_choice" in
+            [yY]*|[yY][eE][sS]*)
+                reboot
+                ;;
+            [nN]*|[nN][oO]*)
+                ;;
+            *)
+                echo "Bad user input.. try again."
+                sleep 3
+                unset reboot_choice
+                clear
+                prompt_reboot
+                ;;
+        esac
+    fi
+}
+
+prompt_gui
+prompt_reboot
