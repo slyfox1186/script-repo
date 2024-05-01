@@ -292,29 +292,24 @@ echo "$USERNAME:$USER_PASSWORD" | chpasswd
 echo "" >> /etc/sudoers
 echo "%wheel ALL=(ALL) ALL" >> /etc/sudoers
 
-bootctl install
+bootctl --path=/boot/efi install 2>&1 | tee /mnt/chroot-install.log
 
-cat > /boot/loader/loader.conf << LOADER_CONF
-default arch.conf
-timeout 4
-console-mode max
-editor no
-LOADER_CONF
+echo "default arch.conf" > /boot/efi/loader/loader.conf
+echo "timeout 4" >> /boot/efi/loader/loader.conf
+echo "console-mode max" >> /boot/efi/loader/loader.conf
+echo "editor no" >> /boot/efi/loader/loader.conf
 
 # Get the PARTUUID of the root partition
 root_partuuid=$(blkid -s PARTUUID -o value ${DISK3})
+echo "PARTUUID retrieved: $root_partuuid" >> /mnt/chroot-install.log
 
-cat > /boot/loader/entries/arch.conf << ARCH_CONF
-title   Arch Linux
-linux   /vmlinuz-linux
-initrd  /initramfs-linux.img
-options root=PARTUUID=$root_partuuid rw
-ARCH_CONF
+echo "title Arch Linux" > /boot/efi/loader/entries/arch.conf
+echo "linux /vmlinuz-linux" >> /boot/efi/loader/entries/arch.conf
+echo "initrd /initramfs-linux.img" >> /boot/efi/loader/entries/arch.conf
+echo "options root=PARTUUID=$root_partuuid rw" >> /boot/efi/loader/entries/arch.conf
 
 systemctl enable NetworkManager.service
-log "NetworkManager service enabled."
 systemctl start NetworkManager.service
-log "NetworkManager service started."
 EOF
 }
 
