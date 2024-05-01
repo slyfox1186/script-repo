@@ -29,7 +29,7 @@ The script supports various command line arguments to predefine settings, minimi
 - `-r ROOT_PASSWORD`: Sets the root password.
 - `-c COMPUTER_NAME`: Sets the computer name.
 - `-t TIMEZONE`: Sets the timezone (default: US/Eastern).
-- `-d DISK`: Specifies the target disk (e.g., /dev/sdX or /dev/nvmeXn1).
+- `-d DISK`: Specifies the target disk (e.g., sdX or nvmeXn1.. `/dev/` with be prepended to what you choose).
 - `-h`: Displays a help message outlining these options.
 
 #### **Benefits of Using This Script**:
@@ -42,27 +42,48 @@ The script supports various command line arguments to predefine settings, minimi
 
 ## **Installation Instructions**
 
+### To install Arch Linux using GRUB as the bootloader
 ### Step 1 - Pre Installer
-
 #### Load into the Arch Linux USB bootloader
 
-1. **Locate the drive you want to format:** `fdisk -l | less`
+1. **Locate the drive you want to format:** `fdisk -l | less` (sdX or nvmeXn1)
 2. **Install cURL:** `pacman -Sy --noconfirm curl`
-3. **Download the Step 1 script:** `curl -LSso step1.sh https://arch1.optimizethis.net`
-4. **Make executable:** `chmod +x step1.sh`
-5. **Execute script:** `./step1.sh -u yourUsername -p yourPassword -r yourRootPassword -c yourComputerName -t yourTimezone -d yourDisk`
+3. **Download the Step 1 script:** `curl -LSso arch-grub.sh https://arch-grub.optimizethis.net`
+4. **Make executable:** `chmod +x arch-grub.sh`
+5. **Execute script:** `./arch-grub.sh -u yourUsername -p yourPassword -r yourRootPassword -c yourComputerName -t yourTimezone -d yourDisk`
 6. **Answer each prompt**
 
 ### Step 2 - Post Installer
 #### The below steps are done only after rebooting into the Arch OS that was installed in step 1
 
 1. **Login with root (use the root password that you set in step 1)**
-2. **Download the Step 2 script:** `curl -LSso step2.sh https://arch2.optimizethis.net`
-3. **Make executable:** `chmod +x step2.sh`
-4. **Execute script:** `./step2.sh`
+2. **Download the Step 2 script:** `curl -LSso arch-post.sh https://arch-post.optimizethis.net`
+3. **Make executable:** `chmod +x arch-post.sh`
+4. **Execute script:** `./arch-post.sh`
 5. **Answer each prompt**
 6. **Load straight into the Gnome GUI OR reboot first (recommended)**
+________________________________________________________________________
 
+### To install Arch Linux using systemd-boot as the bootloader
+### Step 1 - Pre Installer
+#### Load into the Arch Linux USB bootloader
+
+1. **Locate the drive you want to format:** `fdisk -l | less` (sdX or nvmeXn1)
+2. **Install cURL:** `pacman -Sy --noconfirm curl`
+3. **Download the Step 1 script:** `curl -LSso arch-systemd-boot.sh https://arch-systemd-boot.optimizethis.net`
+4. **Make executable:** `chmod +x arch-systemd-boot.sh`
+5. **Execute script:** `./arch-systemd-boot.sh -u yourUsername -p yourPassword -r yourRootPassword -c yourComputerName -t yourTimezone -d yourDisk`
+6. **Answer each prompt**
+
+### Step 2 - Post Installer
+#### The below steps are done only after rebooting into the Arch OS that was installed in step 1
+
+1. **Login with root (use the root password that you set in step 1)**
+2. **Download the Step 2 script:** `curl -LSso arch-post.sh https://arch-post.optimizethis.net`
+3. **Make executable:** `chmod +x arch-post.sh`
+4. **Execute script:** `./arch-post.sh`
+5. **Answer each prompt**
+6. **Load straight into the Gnome GUI OR reboot first (recommended)**
 #### **Conclusion**:
 
 This script is meticulously crafted to make Arch Linux installation with Gnome seamless and user-friendly, catering to both newcomers and seasoned Linux enthusiasts. By including command line arguments, it allows for quick setups in automated setups such as scripting deployments for multiple machines.
