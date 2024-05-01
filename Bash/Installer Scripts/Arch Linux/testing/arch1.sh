@@ -236,7 +236,6 @@ prompt_loadkeys() {
             localectl list-keymaps > "$tempfile"
             more "$tempfile"
             rm "$tempfile"
-            echo
             read -p "Enter the value for loadkeys: " loadkeys_value
             if [[ -n "$loadkeys_value" ]]; then
                 loadkeys "$loadkeys_value"
@@ -255,7 +254,7 @@ prompt_loadkeys() {
 }
 
 install_packages() {
-    local PACKAGES="base efibootmgr linux linux-firmware linux-headers nano networkmanager os-prober reflector sudo systemd-boot"
+    local PACKAGES="base efibootmgr linux linux-firmware linux-headers nano networkmanager os-prober reflector sudo"
     echo
     log "Installing essential packages..."
     echo "Current package list: $PACKAGES"
@@ -295,24 +294,21 @@ echo "%wheel ALL=(ALL) ALL" >> /etc/sudoers
 
 bootctl install
 
-cat > /boot/efi/loader/loader.conf << LOADER_CONF
-default arch
-timeout 10
-console-mode max
-editor no
-LOADER_CONF
+echo "default arch.conf" > /boot/loader/loader.conf
+echo "timeout 4" >> /boot/loader/loader.conf
+echo "console-mode max" >> /boot/loader/loader.conf
+echo "editor no" >> /boot/loader/loader.conf
 
-cat > /boot/efi/loader/entries/arch.conf << ARCH_CONF
-title   Arch Linux
-linux   /vmlinuz-linux
-initrd  /initramfs-linux.img
-options root=${DISK3} rw
-ARCH_CONF
+# Get the PARTUUID of the root partition
+root_partuuid=$(blkid -s PARTUUID -o value ${DISK3})
+
+echo "title Arch Linux" > /boot/loader/entries/arch.conf
+echo "linux /vmlinuz-linux" >> /boot/loader/entries/arch.conf
+echo "initrd /initramfs-linux.img" >> /boot/loader/entries/arch.conf
+echo "options root=PARTUUID=$root_partuuid rw" >> /boot/loader/entries/arch.conf
 
 systemctl enable NetworkManager.service
-log "NetworkManager service enabled."
 systemctl start NetworkManager.service
-log "NetworkManager service started."
 EOF
 }
 
