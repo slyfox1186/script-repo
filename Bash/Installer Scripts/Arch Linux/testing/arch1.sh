@@ -270,10 +270,6 @@ install_packages() {
     pacstrap -K /mnt $PACKAGES
 }
 
-# Get the PARTUUID of the root partition
-root_partuuid=$(blkid -s PARTUUID -o value ${DISK3})
-echo "PARTUUID retrieved: $root_partuuid" 
-
 configure_chroot() {
     log "Entering chroot to configure system..."
     arch-chroot /mnt /bin/bash <<EOF
@@ -297,6 +293,9 @@ echo "" >> /etc/sudoers
 echo "%wheel ALL=(ALL) ALL" >> /etc/sudoers
 
 bootctl --path=/boot/efi install > /boot/efi/install.log 2>&1
+
+root_partuuid=$(blkid -s PARTUUID -o value /dev/sdb3)
+echo "Fetching PARTUUID inside chroot: $root_partuuid"  # This line will confirm the output.
 
 echo "default arch.conf" > /boot/efi/loader/loader.conf
 echo "timeout 4" >> /boot/efi/loader/loader.conf
