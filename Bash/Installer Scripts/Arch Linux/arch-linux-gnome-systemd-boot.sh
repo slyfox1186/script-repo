@@ -8,13 +8,30 @@ log() {
     echo -e "${GREEN}[LOG]${NC} $1"
 }
 
-# Variables
+# Variables with placeholders for command line arguments
 USERNAME=""
 USER_PASSWORD=""
 ROOT_PASSWORD=""
 COMPUTER_NAME=""
-TIMEZONE="US/Eastern"
+TIMEZONE="US/Eastern"  # Default value for TIMEZONE
 DISK=""
+
+# Helper function to prompt for missing variables
+prompt_variable() {
+    local prompt_msg var_name var_value
+    var_name="$1"
+    prompt_msg="$2"
+    eval var_value=\$$var_name
+
+    while [[ -z "$var_value" ]]; do
+        read -p "$prompt_msg: " var_value
+        if [[ -z "$var_value" ]]; then
+            printf "\n%s\n\n" "This is a required field. Please enter a value."
+        else
+            eval $var_name='$var_value'
+        fi
+    done
+}
 
 # Partition variables
 PARTITION_COUNT=3
@@ -36,12 +53,12 @@ help() {
     echo "  -r ROOT_PASSWORD  Set the root password"
     echo "  -c COMPUTER_NAME  Set the computer name"
     echo "  -t TIMEZONE       Set the timezone (default: US/Eastern)"
-    echo "  -d DISK           Set the target disk (e.g., /dev/sdX or /dev/nvmeXn1)"
+    echo "  -d DISK           Set the target disk (e.g., sdX or nvmeXn1)"
     echo "  -h                Display this help message"
     echo
     echo "Examples:"
-    echo "  $0 -u john -p password123 -r rootpass -c myarch -t Europe/London -d /dev/sda"
-    echo "  $0 -u jane -p pass456 -r rootpass789 -c janepc -d /dev/nvme0n1"
+    echo "  $0 -u john -p password123 -r rootpass -c myarch -t Europe/London -d sda"
+    echo "  $0 -u jane -p pass456 -r rootpass789 -c janepc -d nvme0n1"
     exit 0
 }
 
@@ -60,62 +77,57 @@ while getopts ":u:p:r:c:t:d:h" opt; do
     esac
 done
 
-# Prompt for missing variables
-prompt_variable() {
-    local prompt var_name var_value
-    var_name="$1"
-    prompt="$2"
-    var_value=$(eval echo \$var_name)
-    while [[ -z "$var_value" ]]; do
-        read -p "$prompt: " var_value
-        eval $var_name="$var_value"
-    done
-}
+# Append '/dev/' to DISK for internal use
+FULL_DISK_PATH="/dev/$DISK"
 
-# Set values for the prompt_variable function
-prompt_variable USERNAME "Enter the non-root username"
-prompt_variable USER_PASSWORD "Enter the non-root user password"
-prompt_variable ROOT_PASSWORD "Enter the root password"
-prompt_variable COMPUTER_NAME "Enter the computer name"
-prompt_variable DISK "Enter the target disk (e.g., /dev/sda or /dev/nvme0n1)"
+# Check and prompt for each required variable
+[[ -z "$USERNAME" ]] && clear; prompt_variable USERNAME "Enter the non-root username"
+[[ -z "$USER_PASSWORD" ]] && clear; prompt_variable USER_PASSWORD "Enter the non-root user password"
+[[ -z "$ROOT_PASSWORD" ]] && clear; prompt_variable ROOT_PASSWORD "Enter the root password"
+[[ -z "$COMPUTER_NAME" ]] && clear; prompt_variable COMPUTER_NAME "Enter the computer name"
+[[ -z "$DISK" ]] && clear; prompt_variable DISK "Enter the target disk (e.g., sdX or nvmeXn1)"
 
 # Determine disk partition naming convention
-if [[ "$DISK" == *"nvme"* ]]; then
-    DISK1="${DISK}p1"
-    DISK2="${DISK}p2"
-    DISK3="${DISK}p3"
+if [[ "$FULL_DISK_PATH" == *"nvme"* ]]; then
+    DISK1="${FULL_DISK_PATH}p1"
+    DISK2="${FULL_DISK_PATH}p2"
+    DISK3="${FULL_DISK_PATH}p3"
 else
-    DISK1="${DISK}1"
-    DISK2="${DISK}2"
-    DISK3="${DISK}3"
+    DISK1="${FULL_DISK_PATH}1"
+    DISK2="${FULL_DISK_PATH}2"
+    DISK3="${FULL_DISK_PATH}3"
 fi
 
 # Partition the disk
 setup_disk() {
-    local disk_parts end SIZE start type
-    disk_parts=("$DISK1" "$DISK2" "$DISK3")
+    echo "Partition 1 will be set as GPT and EFI."
+    read -p "Enter partition 1 size or hit enter to use the default value (default: 500M): " input_part1_size
+    if [[ -z "$input_part1_size" ]]; then
+        PARTITION1_SIZE="500M"
+    else
+        PARTITION1_SIZE="$input_part1_size"
+    fi
 
-    read -p "Enter the number of partitions (minimum 3): " PARTITION_COUNT
+    echo "Partition 2 will be set as swap."
+    read -p "Enter partition 2 size or hit enter to use the default value (default: 2G): " input_part2_size
+    if [[ -z "$input_part2_size" ]]; then
+        PARTITION2_SIZE="2G"
+    else
+        PARTITION2_SIZE="$input_part2_size"
+    fi
+
+    echo "Enter the number of partitions (minimum 3, default 3):"
+    read -p "Number of partitions: " input_partition_count
+    if [[ -z "$input_partition_count" ]]; then
+        PARTITION_COUNT=3
+    else
+        PARTITION_COUNT="$input_partition_count"
+    fi
+
     while [[ "$PARTITION_COUNT" -lt 3 ]]; do
         echo "The minimum number of partitions is 3."
         read -p "Enter the number of partitions (minimum 3): " PARTITION_COUNT
     done
-
-    # Store the default partition size set at the top of the script in another
-    # variable in case the user wants to just hit enter and use the default value 
-    DEFAULT_PARTITION1_SIZE="$PARTITION1_SIZE"
-    echo "Partition 1 will be set as GPT and EFI."
-    read -p "Enter partition 1 size or hit enter to use the default value (default: 500M): " PARTITION1_SIZE
-
-    [[ -z "$PARTITION1_SIZE" ]] && PARTITION1_SIZE="$DEFAULT_PARTITION1_SIZE"
-
-    # Store the default partition size set at the top of the script in another
-    # variable in case the user wants to just hit enter and use the default value
-    DEFAULT_PARTITION2_SIZE="$PARTITION2_SIZE"
-    echo "Partition 2 will be set as swap."
-    read -p "Enter partition 2 size or hit enter to use the default value (default: 2G): " PARTITION2_SIZE
-
-    [[ -z "$PARTITION2_SIZE" ]] && PARTITION2_SIZE="$DEFAULT_PARTITION2_SIZE"
 
     for ((i=3; i<PARTITION_COUNT; i++)); do
         read -p "Enter SIZE for partition $i: " SIZE
@@ -172,37 +184,37 @@ setup_disk() {
     echo "The last partition will be set as Linux x86-64 root and use the remaining disk space."
 
     echo
-    log "Partitioning disk $DISK..."
-    parted -s "$DISK" mklabel gpt
+    log "Partitioning disk $FULL_DISK_PATH..."
+    parted -s "$FULL_DISK_PATH" mklabel gpt
 
-    parted -s "$DISK" mkpart primary fat32 1 $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g')
-    parted -s "$DISK" set 1 esp on
-    parted -s "$DISK" mkpart primary linux-swap $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g') $(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
+    parted -s "$FULL_DISK_PATH" mkpart primary fat32 1 $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g')
+    parted -s "$FULL_DISK_PATH" set 1 esp on
+    parted -s "$FULL_DISK_PATH" mkpart primary linux-swap $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g') $(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
 
     start=$(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
     for ((i=0; i<${#PARTITION_SIZES[@]}; i++)); do
         SIZE=$(echo "$(echo "${PARTITION_SIZES[i]}" | sed 's/[^0-9]*//g') * 1024" | bc)
         end=$((start + SIZE))
-        parted -s "$DISK" mkpart primary $start $end
+        parted -s "$FULL_DISK_PATH" mkpart primary $start $end
         type=${PARTITION_TYPES[i]}
         case $type in
-            1) parted -s "$DISK" set $((i+3)) esp on ;;
-            2) parted -s "$DISK" set $((i+3)) bios_grub on ;;
-            4) parted -s "$DISK" set $((i+3)) boot on ;;
-            19) parted -s "$DISK" set $((i+3)) swap on ;;
+            1) parted -s "$FULL_DISK_PATH" set $((i+3)) esp on ;;
+            2) parted -s "$FULL_DISK_PATH" set $((i+3)) bios_grub on ;;
+            4) parted -s "$FULL_DISK_PATH" set $((i+3)) boot on ;;
+            19) parted -s "$FULL_DISK_PATH" set $((i+3)) swap on ;;
         esac
         start=$end
     done
 
-    parted -s "$DISK" mkpart primary $start 100%
-    parted -s "$DISK" set $PARTITION_COUNT 23
+    parted -s "$FULL_DISK_PATH" mkpart primary $start 100%
+    parted -s "$FULL_DISK_PATH" set $PARTITION_COUNT 23
 
     echo
     log "Creating filesystems..."
 
     mkfs.fat -F32 "$DISK1"
     mkswap "$DISK2"
-    mkfs.ext4 "${DISK}${PARTITION_COUNT}"
+    mkfs.ext4 "${FULL_DISK_PATH}${PARTITION_COUNT}"
 }
 
 # Mount the partitions
@@ -210,7 +222,7 @@ mount_partitions() {
     log "Enabling swap and mounting partitions..."
     swapon "$DISK2"
 
-    mount "${DISK}${PARTITION_COUNT}" /mnt
+    mount "${FULL_DISK_PATH}${PARTITION_COUNT}" /mnt
     mount --mkdir "$DISK1" /mnt/boot/efi
 }
 
@@ -313,7 +325,7 @@ configure_chroot() {
 
 # Fetch PARTUUID after exiting arch-chroot and export it to the arch.conf file
 generate_and_set_partuuid() {
-    PARTUUID=$(blkid -s PARTUUID -o value "${DISK}${PARTITION_COUNT}")
+    PARTUUID=$(blkid -s PARTUUID -o value "${FULL_DISK_PATH}${PARTITION_COUNT}")
     echo "options root=PARTUUID=$PARTUUID rw" >> /mnt/boot/efi/loader/entries/arch.conf
 }
 
