@@ -217,7 +217,7 @@ setup_disk() {
     mkfs.fat -F32 "$DISK1"
     mkswap "$DISK2"
     if [[ "$DISK" == *"nvme"* ]]; then
-        mkfs.ext4 "${DISK}$p{PARTITION_COUNT}"
+        mkfs.ext4 "${DISK}p${PARTITION_COUNT}"
     else
         mkfs.ext4 "${DISK}${PARTITION_COUNT}"
     fi
@@ -229,7 +229,7 @@ mount_partitions() {
     swapon "$DISK2"
 
     if [[ "$DISK" == *"nvme"* ]]; then
-        mount "${DISK}$p{PARTITION_COUNT}" /mnt
+        mount "${DISK}p${PARTITION_COUNT}" /mnt
     else
         mount "${DISK}${PARTITION_COUNT}" /mnt
     fi
@@ -337,7 +337,7 @@ configure_chroot() {
 # Fetch PARTUUID after exiting arch-chroot and export it to the arch.conf file
 generate_and_set_partuuid() {
     if [[ "$DISK" == *"nvme"* ]]; then
-        PARTUUID=$(blkid -s PARTUUID -o value "${DISK}$p{PARTITION_COUNT}")
+        PARTUUID=$(blkid -s PARTUUID -o value "${DISK}p${PARTITION_COUNT}")
     else
         PARTUUID=$(blkid -s PARTUUID -o value "${DISK}${PARTITION_COUNT}")
     fi
