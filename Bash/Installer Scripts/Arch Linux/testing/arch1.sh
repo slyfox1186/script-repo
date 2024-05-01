@@ -4,7 +4,7 @@ GREEN='\033[0;32m'
 NC='\033[0m'
 
 log() {
-    echo -e "${GREEN}[LOG $(date +'%R:%S')]${NC} $1"
+    echo -e "${GREEN}[LOG]${NC} $1"
 }
 
 USERNAME=""
@@ -15,7 +15,7 @@ TIMEZONE="US/Eastern"
 DISK=""
 
 PARTITION_COUNT=3
-PARTITION1_SIZE="550M"
+PARTITION1_SIZE="500M"
 PARTITION2_SIZE="2G"
 PARTITION_SIZES=()
 PARTITION_TYPES=()
@@ -56,9 +56,10 @@ while getopts ":u:p:r:c:t:d:h" opt; do
 done
 
 prompt_variable() {
-    local var_name="$1"
-    local prompt="$2"
-    local var_value=$(eval echo \$$var_name)
+    local prompt var_name var_value
+    var_name="$1"
+    prompt="$2"
+    var_value=$(eval echo \$var_name)
     while [[ -z "$var_value" ]]; do
         read -p "$prompt: " var_value
         eval $var_name="$var_value"
@@ -82,8 +83,9 @@ else
 fi
 
 setup_disk() {
-    local disk_parts=("$DISK1" "$DISK2" "$DISK3")
-    
+    local disk_parts end SIZE start type
+    disk_parts=("$DISK1" "$DISK2" "$DISK3")
+
     read -p "Enter the number of partitions (minimum 3): " PARTITION_COUNT
     while [[ "$PARTITION_COUNT" -lt 3 ]]; do
         echo "The minimum number of partitions is 3."
@@ -154,76 +156,42 @@ setup_disk() {
     log "Partitioning disk $DISK..."
     parted -s "$DISK" mklabel gpt
 
-    if [[ "$DISK" == *"nvme"* ]]; then
-        parted -s "$DISK" mkpart primary fat32 1 $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g')
-        parted -s "$DISK" set 1 esp on
-        parted -s "$DISK" mkpart primary linux-swap $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g') $(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
-        
-        local start=$(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
-        for ((i=0; i<${#PARTITION_SIZES[@]}; i++)); do
-            local SIZE=$(echo "$(echo "${PARTITION_SIZES[i]}" | sed 's/[^0-9]*//g') * 1024" | bc)
-            local end=$((start + SIZE))
-            parted -s "$DISK" mkpart primary $start $end
-            local type=${PARTITION_TYPES[i]}
-            case $type in
-                1) parted -s "$DISK" set $((i+3)) esp on ;;
-                2) parted -s "$DISK" set $((i+3)) bios_grub on ;;
-                4) parted -s "$DISK" set $((i+3)) boot on ;;
-                19) parted -s "$DISK" set $((i+3)) swap on ;;
-            esac
-            start=$end
-        done
-        
-        parted -s "$DISK" mkpart primary $start 100%
-        parted -s "$DISK" set $PARTITION_COUNT 23
-    else
-        parted -s "$DISK" mkpart primary fat32 1 $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g')
-        parted -s "$DISK" set 1 esp on
-        parted -s "$DISK" mkpart primary linux-swap $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g') $(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
-        
-        local start=$(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
-        for ((i=0; i<${#PARTITION_SIZES[@]}; i++)); do
-            local SIZE=$(echo "$(echo "${PARTITION_SIZES[i]}" | sed 's/[^0-9]*//g') * 1024" | bc)
-            local end=$((start + SIZE))
-            parted -s "$DISK" mkpart primary $start $end
-            local type=${PARTITION_TYPES[i]}
-            case $type in
-                1) parted -s "$DISK" set $((i+3)) esp on ;;
-                2) parted -s "$DISK" set $((i+3)) bios_grub on ;;
-                4) parted -s "$DISK" set $((i+3)) boot on ;;
-                19) parted -s "$DISK" set $((i+3)) swap on ;;
-            esac
-            start=$end
-        done
-        
-        parted -s "$DISK" mkpart primary $start 100%
-        parted -s "$DISK" set $PARTITION_COUNT 23
-    fi
+    parted -s "$DISK" mkpart primary fat32 1 $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g')
+    parted -s "$DISK" set 1 esp on
+    parted -s "$DISK" mkpart primary linux-swap $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g') $(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
+
+    start=$(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
+    for ((i=0; i<${#PARTITION_SIZES[@]}; i++)); do
+        SIZE=$(echo "$(echo "${PARTITION_SIZES[i]}" | sed 's/[^0-9]*//g') * 1024" | bc)
+        end=$((start + SIZE))
+        parted -s "$DISK" mkpart primary $start $end
+        type=${PARTITION_TYPES[i]}
+        case $type in
+            1) parted -s "$DISK" set $((i+3)) esp on ;;
+            2) parted -s "$DISK" set $((i+3)) bios_grub on ;;
+            4) parted -s "$DISK" set $((i+3)) boot on ;;
+            19) parted -s "$DISK" set $((i+3)) swap on ;;
+        esac
+        start=$end
+    done
+
+    parted -s "$DISK" mkpart primary $start 100%
+    parted -s "$DISK" set $PARTITION_COUNT 23
 
     echo
     log "Creating filesystems..."
-    if [[ "$DISK" == *"nvme"* ]]; then
-        mkfs.fat -F32 "${DISK}p1"
-        mkswap "${DISK}p2"
-        mkfs.ext4 "${DISK}p${PARTITION_COUNT}"
-    else
-        mkfs.fat -F32 "${DISK}1"
-        mkswap "${DISK}2"
-        mkfs.ext4 "${DISK}${PARTITION_COUNT}"
-    fi
+
+    mkfs.fat -F32 "$DISK1"
+    mkswap "$DISK2"
+    mkfs.ext4 "${DISK}${PARTITION_COUNT}"
 }
 
 mount_partitions() {
     log "Enabling swap and mounting partitions..."
     swapon "$DISK2"
-    
-    if [[ "$DISK" == *"nvme"* ]]; then
-        mount "${DISK}p${PARTITION_COUNT}" /mnt
-        mount --mkdir "${DISK}p1" /mnt/boot/efi
-    else
-        mount "${DISK}${PARTITION_COUNT}" /mnt
-        mount --mkdir "${DISK}1" /mnt/boot/efi
-    fi
+
+    mount "${DISK}${PARTITION_COUNT}" /mnt
+    mount --mkdir "$DISK1" /mnt/boot/efi
 }
 
 prompt_loadkeys() {
@@ -254,7 +222,8 @@ prompt_loadkeys() {
 }
 
 install_packages() {
-    local PACKAGES="base efibootmgr linux linux-firmware linux-headers nano networkmanager os-prober reflector sudo"
+    local PACKAGES
+    PACKAGES="base efibootmgr linux linux-firmware linux-headers nano networkmanager os-prober reflector sudo"
     echo
     log "Installing essential packages..."
     echo "Current package list: $PACKAGES"
@@ -272,109 +241,90 @@ install_packages() {
 
 configure_chroot() {
     log "Entering chroot to configure system..."
-    arch-chroot /mnt /bin/bash <<EOF
-ln -sf "/usr/share/zoneinfo/$TIMEZONE" /etc/localtime
-hwclock --systohc
-
-echo "en_US.UTF-8 UTF-8" > /etc/locale.gen
-locale-gen
-echo "LANG=en_US.UTF-8" > /etc/locale.conf
-
-echo "$COMPUTER_NAME" > /etc/hostname
-mkinitcpio -P
-echo "127.0.1.1 myarch.localdomain $COMPUTER_NAME" >> /etc/hosts
-
-echo root:"$ROOT_PASSWORD" | chpasswd
-
-useradd -m -G wheel -s /bin/bash $USERNAME
-echo "$USERNAME:$USER_PASSWORD" | chpasswd
-
-echo "" >> /etc/sudoers
-echo "%wheel ALL=(ALL) ALL" >> /etc/sudoers
-
-bootctl --path=/boot/efi install > /boot/efi/install.log 2>&1
-
-root_partuuid=$(blkid -s PARTUUID -o value /dev/sdb3)
-echo "Fetching PARTUUID inside chroot: $root_partuuid"  # This line will confirm the output.
-
-echo "default arch.conf" > /boot/efi/loader/loader.conf
-echo "timeout 4" >> /boot/efi/loader/loader.conf
-echo "console-mode max" >> /boot/efi/loader/loader.conf
-echo "editor no" >> /boot/efi/loader/loader.conf
-
-echo "title Arch Linux" > /boot/efi/loader/entries/arch.conf
-echo "linux /vmlinuz-linux" >> /boot/efi/loader/entries/arch.conf
-echo "initrd /initramfs-linux.img" >> /boot/efi/loader/entries/arch.conf
-echo "options root=PARTUUID=$root_partuuid rw" >> /boot/efi/loader/entries/arch.conf
-
-systemctl enable NetworkManager.service
-systemctl start NetworkManager.service
-EOF
+    arch-chroot /mnt /bin/bash -c "
+ln -sf '/usr/share/zoneinfo/$TIMEZONE' /etc/localtime;
+hwclock --systohc;
+echo 'en_US.UTF-8 UTF-8' > /etc/locale.gen;
+locale-gen;
+echo 'LANG=en_US.UTF-8' > /etc/locale.conf;
+echo '$COMPUTER_NAME' > /etc/hostname;
+mkinitcpio -P;
+echo '127.0.1.1 myarch.localdomain $COMPUTER_NAME' >> /etc/hosts;
+echo root:'$ROOT_PASSWORD' | chpasswd;
+useradd -m -G wheel -s /bin/bash $USERNAME;
+echo '$USERNAME:$USER_PASSWORD' | chpasswd;
+echo '' >> /etc/sudoers;
+echo '%wheel ALL=(ALL) ALL' >> /etc/sudoers;
+bootctl --path=/boot/efi install;
+echo 'default arch.conf' > /boot/efi/loader/loader.conf;
+echo 'timeout 4' >> /boot/efi/loader/loader.conf;
+echo 'console-mode max' >> /boot/efi/loader/loader.conf;
+echo 'editor no' >> /boot/efi/loader/loader.conf;
+echo 'title Arch Linux' > /boot/efi/loader/entries/arch.conf;
+echo 'linux /vmlinuz-linux' >> /boot/efi/loader/entries/arch.conf;
+echo 'initrd /initramfs-linux.img' >> /boot/efi/loader/entries/arch.conf;
+systemctl enable NetworkManager.service;
+systemctl start NetworkManager.service;
+"
 }
+
+# After disk and partitions are configured, fetch the PARTUUID
+PARTUUID=$(blkid -s PARTUUID -o value "${DISK3}") # Adjust as needed to target the correct root partition
+export PARTUUID
 
 prompt_umount() {
     local choice
-    while true; do
-        read -p "Do you want to unmount all partitions? (y/n): " choice
-        case "$choice" in
-            [yY]*|[yY][eE][sS]*)
-                log "Unmounting all partitions..."
-                umount -R /mnt
-                swapoff -a
-                break
-                ;;
-            [nN]*|[nN][oO]*)
-                break
-                ;;
-            *)  echo "Invalid choice. Please enter 'y' or 'n'."
-                sleep 4
-                unset choice
-                prompt_umount
-                ;;
-        esac
-    done
+    clear
+    read -p "Installation complete. Do you want to unmount all partitions? (y/n): " choice
+    case "$choice" in
+        [yY]*|[yY][eE][sS]*)
+            log "Unmounting all partitions..."
+            umount -R /mnt
+            swapoff -a
+            ;;
+        [nN]*|[nN][oO]*)
+            ;;
+        *)  unset choice
+            prompt_umount
+            ;;
+    esac
 }
 
 prompt_reboot() {
     local choice
-    echo
-    while true; do
-        read -p "Installation complete. Do you want to reboot now? (y/n): " choice
-        case "$choice" in
-            [yY]*|[yY][eE][sS]*)
-                reboot
-                break
-                ;;
-            [nN]*|[nN][oO]*)
-                break
-                exit
-                ;;
-            *)  echo "Invalid choice. Please enter 'y' or 'n'."
-                sleep 4
-                unset choice
-                prompt_reboot
-                ;;
-        esac
-    done
+    clear
+    read -p "Do you want to reboot now? (y/n): " choice
+    case "$choice" in
+        [yY]*|[yY][eE][sS]*)
+            reboot
+            ;;
+        [nN]*|[nN][oO]*)
+            ;;
+        *)  unset choice
+            prompt_reboot
+            ;;
+    esac
 }
 
-main() {
-    log "Starting installation..."
-    prompt_loadkeys
-    timedatectl set-ntp true
-    log "System clock synchronized."
+log "Starting installation..."
+prompt_loadkeys
+timedatectl set-ntp true
+log "System clock synchronized."
 
-    setup_disk
-    mount_partitions
-    install_packages
-    
-    echo
-    log "Generating fstab..."
-    genfstab -U /mnt >> /mnt/etc/fstab
+setup_disk
+mount_partitions
+install_packages
 
-    configure_chroot
-    prompt_umount
-    prompt_reboot
-}
+echo
+log "Generating fstab..."
+genfstab -U /mnt >> /mnt/etc/fstab
 
-main
+configure_chroot
+
+# Fetch PARTUUID after exiting arch-chroot
+PARTUUID=$(blkid -s PARTUUID -o value "${DISK}${PARTITION_COUNT}")
+export PARTUUID
+echo "options root=PARTUUID=$PARTUUID rw" >> /mnt/boot/efi/loader/entries/arch.conf
+
+prompt_umount
+prompt_reboot
