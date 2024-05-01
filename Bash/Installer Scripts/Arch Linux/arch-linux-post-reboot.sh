@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2162
 
 # Check if the script is being run with root privileges
 if [[ "$EUID" -ne 0 ]]; then
@@ -107,41 +108,40 @@ systemctl enable gdm.service
 echo
 
 prompt_gui() {
-        read -p "Do you want to enter straight into the GUI? [not recommended] (y/n): " gui_choice
-        case "$gui_choice" in
-            [yY]*|[yY][eE][sS]*)
-                systemctl start gdm.service
-                exit 0
-                ;;
-            [nN]*|[nN][oO]*)
-                ;;
-            *)
-                echo "Bad user input... try again."
-                sleep 3
-                unset gui_choice
-                clear
-                prompt_gui
-                ;;
-        esac
+    read -p "Do you want to enter straight into the GUI? [not recommended] (y/n): " gui_choice
+    case "$gui_choice" in
+        [yY]*|[yY][eE][sS]*)
+            systemctl start gdm.service
+            exit 0
+            ;;
+        [nN]*|[nN][oO]*)
+            ;;
+        *)
+            echo "Bad user input... try again."
+            sleep 3
+            unset gui_choice
+            clear
+            prompt_gui
+            ;;
+    esac
 }
 
 prompt_reboot() {
-        read -p "Do you want to reboot now? [recommended] (y/n): " reboot_choice
-        case "$reboot_choice" in
-            [yY]*|[yY][eE][sS]*)
-                reboot
-                ;;
-            [nN]*|[nN][oO]*)
-                ;;
-            *)
-                echo "Bad user input... try again."
-                sleep 3
-                unset reboot_choice
-                clear
-                prompt_reboot
-                ;;
-        esac
-    fi
+    read -p "Do you want to reboot now? [recommended] (y/n): " reboot_choice
+    case "$reboot_choice" in
+        [yY]*|[yY][eE][sS]*)
+            reboot
+            ;;
+        [nN]*|[nN][oO]*)
+            ;;
+        *)
+            echo "Bad user input... try again."
+            sleep 3
+            unset reboot_choice
+            clear
+            prompt_reboot
+            ;;
+    esac
 }
 
 prompt_gui
