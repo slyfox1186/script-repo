@@ -291,9 +291,9 @@ configure_chroot() {
         echo 'linux /vmlinuz-linux' >> /boot/efi/loader/entries/arch.conf
         echo 'initrd /initramfs-linux.img' >> /boot/efi/loader/entries/arch.conf
 
-        # Enable NetworkManager so you have access to internet
-        # after rebooting into Arch for the first time
+        # Enable NetworkManager so you have access to the internet after rebooting
         systemctl enable NetworkManager
+        systemctl start NetworkManager.service
     "
 }
 
