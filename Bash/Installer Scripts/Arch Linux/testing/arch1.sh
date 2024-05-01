@@ -18,27 +18,20 @@ DISK=""
 
 # Helper function to prompt for missing variables
 prompt_variable() {
-    local var_name="$1"
-    local prompt_msg="$2"
-    local var_value
+    local prompt_msg var_name var_value
+    var_name="$1"
+    prompt_msg="$2"
     eval var_value=\$$var_name
 
     while [[ -z "$var_value" ]]; do
         read -p "$prompt_msg: " var_value
         if [[ -z "$var_value" ]]; then
-            echo "This is a required field. Please enter a value."
+            printf "\n%s\n\n" "This is a required field. Please enter a value."
         else
             eval $var_name='$var_value'
         fi
     done
 }
-
-# Check and prompt for each required variable
-[[ -z "$USERNAME" ]] && prompt_variable USERNAME "Enter the non-root username"
-[[ -z "$USER_PASSWORD" ]] && prompt_variable USER_PASSWORD "Enter the non-root user password"
-[[ -z "$ROOT_PASSWORD" ]] && prompt_variable ROOT_PASSWORD "Enter the root password"
-[[ -z "$COMPUTER_NAME" ]] && prompt_variable COMPUTER_NAME "Enter the computer name"
-[[ -z "$DISK" ]] && prompt_variable DISK "Enter the target disk (e.g., sdX or nvmeXn1)"
 
 # Append '/dev/' to DISK for internal use
 FULL_DISK_PATH="/dev/$DISK"
@@ -67,8 +60,8 @@ help() {
     echo "  -h                Display this help message"
     echo
     echo "Examples:"
-    echo "  $0 -u john -p password123 -r rootpass -c myarch -t Europe/London -d /dev/sda"
-    echo "  $0 -u jane -p pass456 -r rootpass789 -c janepc -d /dev/nvme0n1"
+    echo "  $0 -u john -p password123 -r rootpass -c myarch -t Europe/London -d sda"
+    echo "  $0 -u jane -p pass456 -r rootpass789 -c janepc -d nvme0n1"
     exit 0
 }
 
@@ -87,24 +80,12 @@ while getopts ":u:p:r:c:t:d:h" opt; do
     esac
 done
 
-# Prompt for missing variables
-prompt_variable() {
-    local prompt var_name var_value
-    var_name="$1"
-    prompt="$2"
-    var_value=$(eval echo \$var_name)
-    while [[ -z "$var_value" ]]; do
-        read -p "$prompt: " var_value
-        eval $var_name="$var_value"
-    done
-}
-
-# Set values for the prompt_variable function
-prompt_variable USERNAME "Enter the non-root username"
-prompt_variable USER_PASSWORD "Enter the non-root user password"
-prompt_variable ROOT_PASSWORD "Enter the root password"
-prompt_variable COMPUTER_NAME "Enter the computer name"
-prompt_variable DISK "Enter the target disk (e.g., /dev/sda or /dev/nvme0n1)"
+# Check and prompt for each required variable
+[[ -z "$USERNAME" ]] && clear; prompt_variable USERNAME "Enter the non-root username"
+[[ -z "$USER_PASSWORD" ]] && clear; prompt_variable USER_PASSWORD "Enter the non-root user password"
+[[ -z "$ROOT_PASSWORD" ]] && clear; prompt_variable ROOT_PASSWORD "Enter the root password"
+[[ -z "$COMPUTER_NAME" ]] && clear; prompt_variable COMPUTER_NAME "Enter the computer name"
+[[ -z "$DISK" ]] && clear; prompt_variable DISK "Enter the target disk (e.g., sdX or nvmeXn1)"
 
 # Determine disk partition naming convention
 if [[ "$FULL_DISK_PATH" == *"nvme"* ]]; then
