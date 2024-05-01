@@ -41,7 +41,7 @@ fi
 
 # Remove packages from the list
 for pkg in $REMOVE_PACKAGES; do
-    PACKAGES=$(echo "$PACKAGES" | sed "s/\b$pkg\b//g")
+    PACKAGES=$(echo "$PACKAGES" | sed "s/\b$(echo $pkg | sed 's/[.[\]*^$/]/\\&/g')\b//g")
 done
 
 # Install the packages
