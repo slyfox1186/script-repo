@@ -5,7 +5,7 @@ NC='\033[0m'
 
 # Verbose logging function
 log() {
-    echo -e "${GREEN}[LOG $(date +'%R:%S')]${NC} $1"
+    echo -e "${GREEN}[LOG]${NC} $1"
 }
 
 # Variables
