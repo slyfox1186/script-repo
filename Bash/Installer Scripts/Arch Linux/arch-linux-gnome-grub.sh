@@ -9,16 +9,16 @@ log() {
 }
 
 # Variables
-USERNAME="" # Non-root username
-USER_PASSWORD="" # Non-root user password
-ROOT_PASSWORD="" # Root password
+USERNAME=""
+USER_PASSWORD=""
+ROOT_PASSWORD=""
 COMPUTER_NAME=""
 TIMEZONE="US/Eastern"
-DISK="" # Disk to install Arch Linux on (e.g., /dev/sda or /dev/nvme0n1)
+DISK=""
 
 # Partition variables
 PARTITION_COUNT=3
-PARTITION1_SIZE="550M"
+PARTITION1_SIZE="500M"
 PARTITION2_SIZE="2G"
 PARTITION_SIZES=()
 PARTITION_TYPES=()
@@ -71,6 +71,7 @@ prompt_variable() {
     done
 }
 
+# Set values for the prompt_variable function
 prompt_variable USERNAME "Enter the non-root username"
 prompt_variable USER_PASSWORD "Enter the non-root user password"
 prompt_variable ROOT_PASSWORD "Enter the root password"
@@ -88,26 +89,33 @@ else
     DISK3="${DISK}3"
 fi
 
-# Disk setup
+# Partition the disk
 setup_disk() {
-    local disk_parts=("$DISK1" "$DISK2" "$DISK3")
-    
-    # Prompt for partition count
+    local disk_parts end SIZE start type
+    disk_parts=("$DISK1" "$DISK2" "$DISK3")
+
     read -p "Enter the number of partitions (minimum 3): " PARTITION_COUNT
     while [[ "$PARTITION_COUNT" -lt 3 ]]; do
         echo "The minimum number of partitions is 3."
         read -p "Enter the number of partitions (minimum 3): " PARTITION_COUNT
     done
 
-    # Set partition 1 as GPT and EFI
+    # Store the default partition size set at the top of the script in another
+    # variable in case the user wants to just hit enter and use the default value 
+    DEFAULT_PARTITION1_SIZE="$PARTITION1_SIZE"
     echo "Partition 1 will be set as GPT and EFI."
-    read -p "Enter partition 1 SIZE (e.g., 550M): " PARTITION1_SIZE
+    read -p "Enter partition 1 size or hit enter to use the default value (default: 500M): " PARTITION1_SIZE
 
-    # Set partition 2 as swap and prompt for SIZE
+    [[ -z "$PARTITION1_SIZE" ]] && PARTITION1_SIZE="$DEFAULT_PARTITION1_SIZE"
+
+    # Store the default partition size set at the top of the script in another
+    # variable in case the user wants to just hit enter and use the default value
+    DEFAULT_PARTITION2_SIZE="$PARTITION2_SIZE"
     echo "Partition 2 will be set as swap."
-    read -p "Enter partition 2 SIZE (e.g., 2G): " PARTITION2_SIZE
+    read -p "Enter partition 2 size or hit enter to use the default value (default: 2G): " PARTITION2_SIZE
 
-    # Prompt for sizes and types of remaining partitions (excluding the last one)
+    [[ -z "$PARTITION2_SIZE" ]] && PARTITION2_SIZE="$DEFAULT_PARTITION2_SIZE"
+
     for ((i=3; i<PARTITION_COUNT; i++)); do
         read -p "Enter SIZE for partition $i: " SIZE
         PARTITION_SIZES+=("$SIZE")
@@ -160,88 +168,49 @@ setup_disk() {
         PARTITION_TYPES+=("$type")
     done
 
-    # Set the last partition as root (x86-64)
     echo "The last partition will be set as Linux x86-64 root and use the remaining disk space."
 
-    # Partition the disk
     echo
     log "Partitioning disk $DISK..."
     parted -s "$DISK" mklabel gpt
 
-    if [[ "$DISK" == *"nvme"* ]]; then
-        parted -s "$DISK" mkpart primary fat32 1 $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g')
-        parted -s "$DISK" set 1 esp on
-        parted -s "$DISK" mkpart primary linux-swap $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g') $(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
-        
-        local start=$(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
-        for ((i=0; i<${#PARTITION_SIZES[@]}; i++)); do
-            local SIZE=$(echo "$(echo "${PARTITION_SIZES[i]}" | sed 's/[^0-9]*//g') * 1024" | bc)
-            local end=$((start + SIZE))
-            parted -s "$DISK" mkpart primary $start $end
-            local type=${PARTITION_TYPES[i]}
-            case $type in
-                1) parted -s "$DISK" set $((i+3)) esp on ;;
-                2) parted -s "$DISK" set $((i+3)) bios_grub on ;;
-                4) parted -s "$DISK" set $((i+3)) boot on ;;
-                19) parted -s "$DISK" set $((i+3)) swap on ;;
-            esac
-            start=$end
-        done
-        
-        # Create the final partition with the remaining space and set the partition type to Linux filesystem
-        parted -s "$DISK" mkpart primary $start 100%
-        parted -s "$DISK" set $PARTITION_COUNT 20
-    else
-        parted -s "$DISK" mkpart primary fat32 1 $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g')
-        parted -s "$DISK" set 1 esp on
-        parted -s "$DISK" mkpart primary linux-swap $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g') $(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
-        
-        local start=$(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
-        for ((i=0; i<${#PARTITION_SIZES[@]}; i++)); do
-            local SIZE=$(echo "$(echo "${PARTITION_SIZES[i]}" | sed 's/[^0-9]*//g') * 1024" | bc)
-            local end=$((start + SIZE))
-            parted -s "$DISK" mkpart primary $start $end
-            local type=${PARTITION_TYPES[i]}
-            case $type in
-                1) parted -s "$DISK" set $((i+3)) esp on ;;
-                2) parted -s "$DISK" set $((i+3)) bios_grub on ;;
-                4) parted -s "$DISK" set $((i+3)) boot on ;;
-                19) parted -s "$DISK" set $((i+3)) swap on ;;
-            esac
-            start=$end
-        done
-        
-        # Create the final partition with the remaining space and set the partition type to Linux filesystem
-        parted -s "$DISK" mkpart primary $start 100%
-        parted -s "$DISK" set $PARTITION_COUNT 23
-    fi
+    parted -s "$DISK" mkpart primary fat32 1 $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g')
+    parted -s "$DISK" set 1 esp on
+    parted -s "$DISK" mkpart primary linux-swap $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g') $(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
 
-    # Make filesystems
+    start=$(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
+    for ((i=0; i<${#PARTITION_SIZES[@]}; i++)); do
+        SIZE=$(echo "$(echo "${PARTITION_SIZES[i]}" | sed 's/[^0-9]*//g') * 1024" | bc)
+        end=$((start + SIZE))
+        parted -s "$DISK" mkpart primary $start $end
+        type=${PARTITION_TYPES[i]}
+        case $type in
+            1) parted -s "$DISK" set $((i+3)) esp on ;;
+            2) parted -s "$DISK" set $((i+3)) bios_grub on ;;
+            4) parted -s "$DISK" set $((i+3)) boot on ;;
+            19) parted -s "$DISK" set $((i+3)) swap on ;;
+        esac
+        start=$end
+    done
+
+    parted -s "$DISK" mkpart primary $start 100%
+    parted -s "$DISK" set $PARTITION_COUNT 23
+
     echo
     log "Creating filesystems..."
-    if [[ "$DISK" == *"nvme"* ]]; then
-        mkfs.fat -F32 "${DISK}p1"
-        mkswap "${DISK}p2"
-        mkfs.ext4 "${DISK}p${PARTITION_COUNT}"
-    else
-        mkfs.fat -F32 "${DISK}1"
-        mkswap "${DISK}2"
-        mkfs.ext4 "${DISK}${PARTITION_COUNT}"
-    fi
+
+    mkfs.fat -F32 "$DISK1"
+    mkswap "$DISK2"
+    mkfs.ext4 "${DISK}${PARTITION_COUNT}"
 }
 
-# Partition mounting
+# Mount the partitions
 mount_partitions() {
     log "Enabling swap and mounting partitions..."
     swapon "$DISK2"
-    
-    if [[ "$DISK" == *"nvme"* ]]; then
-        mount "${DISK}p${PARTITION_COUNT}" /mnt
-        mount --mkdir "${DISK}p1" /mnt/boot/efi
-    else
-        mount "${DISK}${PARTITION_COUNT}" /mnt
-        mount --mkdir "${DISK}1" /mnt/boot/efi
-    fi
+
+    mount "${DISK}${PARTITION_COUNT}" /mnt
+    mount --mkdir "$DISK1" /mnt/boot/efi
 }
 
 # Prompt for loadkeys
@@ -286,7 +255,14 @@ install_packages() {
     pacstrap -K /mnt $PACKAGES
 }
 
-# Chroot configuration
+# Create the fstab file in Arch Linux /etc
+generate_fstab() {
+    echo
+    log "Generating fstab..."
+    genfstab -U /mnt >> /mnt/etc/fstab
+}
+
+# Use a heredoc to execute commands using the arch-chroot command
 configure_chroot() {
     log "Entering chroot to configure system..."
     arch-chroot /mnt /bin/bash <<EOF
@@ -332,75 +308,51 @@ systemctl start NetworkManager.service
 EOF
 }
 
-# Prompt for unmounting partitions
+# Prompt to unmount all of the partitions
 prompt_umount() {
     local choice
-    while true; do
-        read -p "Do you want to unmount all partitions? (y/n): " choice
-        case "$choice" in
-            [yY]*|[yY][eE][sS]*)
-                log "Unmounting all partitions..."
-                umount -R /mnt
-                swapoff -a
-                break
-                ;;
-            [nN]*|[nN][oO]*)
-                break
-                ;;
-            *)  echo "Invalid choice. Please enter 'y' or 'n'."
-                sleep 4
-                unset choice
-                prompt_umount
-                ;;
-        esac
-    done
+    echo
+    read -p "Installation complete. Do you want to unmount all partitions? (y/n): " choice
+    case "$choice" in
+        [yY]*|[yY][eE][sS]*)
+            log "Unmounting all partitions..."
+            umount -R /mnt
+            swapoff -a
+            ;;
+        [nN]*|[nN][oO]*)
+            ;;
+        *)  unset choice
+            prompt_umount
+            ;;
+    esac
 }
 
-# Prompt for reboot
+# Prompt to reboot the pc
 prompt_reboot() {
     local choice
     echo
-    while true; do
-        read -p "Installation complete. Do you want to reboot now? (y/n): " choice
-        case "$choice" in
-            [yY]*|[yY][eE][sS]*)
-                reboot
-                break
-                ;;
-            [nN]*|[nN][oO]*)
-                break
-                exit
-                ;;
-            *)  echo "Invalid choice. Please enter 'y' or 'n'."
-                sleep 4
-                unset choice
-                prompt_reboot
-                ;;
-        esac
-    done
+    read -p "Do you want to reboot now? (y/n): " choice
+    case "$choice" in
+        [yY]*|[yY][eE][sS]*)
+            reboot
+            ;;
+        [nN]*|[nN][oO]*)
+            ;;
+        *)  unset choice
+            prompt_reboot
+            ;;
+    esac
 }
 
-# Main script
-main() {
-    # Start installation
-    log "Starting installation..."
-    prompt_loadkeys
-    timedatectl set-ntp true
-    log "System clock synchronized."
-
-    setup_disk
-    mount_partitions
-    install_packages
-    
-    # Generate fstab
-    echo
-    log "Generating fstab..."
-    genfstab -U /mnt >> /mnt/etc/fstab
-
-    configure_chroot
-    prompt_umount
-    prompt_reboot
-}
-
-# Run the main script
-main
+# Start the installation
+log "Starting installation..."
+prompt_loadkeys
+timedatectl set-ntp true
+log "System clock synchronized."
+setup_disk
+mount_partitions
+install_packages
+generate_fstab
+configure_chroot
+prompt_umount
+prompt_reboot
