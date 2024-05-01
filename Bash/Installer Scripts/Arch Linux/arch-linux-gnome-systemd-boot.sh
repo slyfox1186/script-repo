@@ -3,10 +3,12 @@
 GREEN='\033[0;32m'
 NC='\033[0m'
 
+# Verbose logging function
 log() {
     echo -e "${GREEN}[LOG]${NC} $1"
 }
 
+# Variables
 USERNAME=""
 USER_PASSWORD=""
 ROOT_PASSWORD=""
@@ -14,12 +16,14 @@ COMPUTER_NAME=""
 TIMEZONE="US/Eastern"
 DISK=""
 
+# Partition variables
 PARTITION_COUNT=3
 PARTITION1_SIZE="500M"
 PARTITION2_SIZE="2G"
 PARTITION_SIZES=()
 PARTITION_TYPES=()
 
+# Help function
 help() {
     echo "Arch Linux Installation Script"
     echo "This script automates the installation of Arch Linux."
@@ -41,6 +45,7 @@ help() {
     exit 0
 }
 
+# Parse command line arguments
 while getopts ":u:p:r:c:t:d:h" opt; do
     case "$opt" in
         u) USERNAME="$OPTARG" ;;
@@ -55,6 +60,7 @@ while getopts ":u:p:r:c:t:d:h" opt; do
     esac
 done
 
+# Prompt for missing variables
 prompt_variable() {
     local prompt var_name var_value
     var_name="$1"
@@ -66,12 +72,14 @@ prompt_variable() {
     done
 }
 
+# Set values for the prompt_variable function
 prompt_variable USERNAME "Enter the non-root username"
 prompt_variable USER_PASSWORD "Enter the non-root user password"
 prompt_variable ROOT_PASSWORD "Enter the root password"
 prompt_variable COMPUTER_NAME "Enter the computer name"
 prompt_variable DISK "Enter the target disk (e.g., /dev/sda or /dev/nvme0n1)"
 
+# Determine disk partition naming convention
 if [[ "$DISK" == *"nvme"* ]]; then
     DISK1="${DISK}p1"
     DISK2="${DISK}p2"
@@ -82,6 +90,7 @@ else
     DISK3="${DISK}3"
 fi
 
+# Partition the disk
 setup_disk() {
     local disk_parts end SIZE start type
     disk_parts=("$DISK1" "$DISK2" "$DISK3")
@@ -196,6 +205,7 @@ setup_disk() {
     mkfs.ext4 "${DISK}${PARTITION_COUNT}"
 }
 
+# Mount the partitions
 mount_partitions() {
     log "Enabling swap and mounting partitions..."
     swapon "$DISK2"
@@ -204,6 +214,7 @@ mount_partitions() {
     mount --mkdir "$DISK1" /mnt/boot/efi
 }
 
+# Prompt for loadkeys
 prompt_loadkeys() {
     local loadkeys_value
     while [[ -z "$loadkeys_value" ]]; do
@@ -231,6 +242,7 @@ prompt_loadkeys() {
     done
 }
 
+# Package installation
 install_packages() {
     local PACKAGES
     PACKAGES="base efibootmgr linux linux-firmware linux-headers nano networkmanager os-prober reflector sudo"
@@ -249,12 +261,14 @@ install_packages() {
     pacstrap -K /mnt $PACKAGES
 }
 
+# Create the fstab file in Arch Linux /etc
 generate_fstab() {
     echo
     log "Generating fstab..."
     genfstab -U /mnt >> /mnt/etc/fstab
 }
 
+# Use a heredoc to execute commands using the arch-chroot command
 configure_chroot() {
     log "Configuring installed system..."
 
@@ -297,12 +311,13 @@ configure_chroot() {
     "
 }
 
+# Fetch PARTUUID after exiting arch-chroot and export it to the arch.conf file
 generate_and_set_partuuid() {
-    # Fetch PARTUUID after exiting arch-chroot and export it to the arch.conf file
     PARTUUID=$(blkid -s PARTUUID -o value "${DISK}${PARTITION_COUNT}")
     echo "options root=PARTUUID=$PARTUUID rw" >> /mnt/boot/efi/loader/entries/arch.conf
 }
 
+# Prompt to unmount all of the partitions
 prompt_umount() {
     local choice
     echo
@@ -321,6 +336,7 @@ prompt_umount() {
     esac
 }
 
+# Prompt to reboot the pc
 prompt_reboot() {
     local choice
     echo
@@ -337,11 +353,11 @@ prompt_reboot() {
     esac
 }
 
+# Start the installation
 log "Starting installation..."
 prompt_loadkeys
 timedatectl set-ntp true
 log "System clock synchronized."
-
 setup_disk
 mount_partitions
 install_packages
