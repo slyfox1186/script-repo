@@ -239,53 +239,67 @@ install_packages() {
     pacstrap -K /mnt $PACKAGES
 }
 
-# After disk and partitions are configured, fetch the PARTUUID
-PARTUUID=$(blkid -s PARTUUID -o value "${DISK3}") # Adjust as needed to target the correct root partition
-export PARTUUID
+generate_fstab() {
+    echo
+    log "Generating fstab..."
+    genfstab -U /mnt >> /mnt/etc/fstab
+}
 
 configure_chroot() {
-    log "Entering chroot to configure system..."
+    log "Configuring installed system..."
+
     arch-chroot /mnt /bin/bash -c "
-ln -sf '/usr/share/zoneinfo/$TIMEZONE' /etc/localtime;
-hwclock --systohc;
-echo 'en_US.UTF-8 UTF-8' > /etc/locale.gen;
-locale-gen;
-echo 'LANG=en_US.UTF-8' > /etc/locale.conf;
-echo '$COMPUTER_NAME' > /etc/hostname;
-mkinitcpio -P;
-echo '127.0.1.1 myarch.localdomain $COMPUTER_NAME' >> /etc/hosts;
-echo root:'$ROOT_PASSWORD' | chpasswd;
-useradd -m -G wheel -s /bin/bash $USERNAME;
-echo '$USERNAME:$USER_PASSWORD' | chpasswd;
-echo '' >> /etc/sudoers;
-echo '%wheel ALL=(ALL) ALL' >> /etc/sudoers;
-bootctl --path=/boot/efi install;
-echo 'default arch.conf' > /boot/efi/loader/loader.conf;
-echo 'timeout 4' >> /boot/efi/loader/loader.conf;
-echo 'console-mode max' >> /boot/efi/loader/loader.conf;
-echo 'editor no' >> /boot/efi/loader/loader.conf;
-echo 'title Arch Linux' > /boot/efi/loader/entries/arch.conf;
-echo 'linux /vmlinuz-linux' >> /boot/efi/loader/entries/arch.conf;
-echo 'initrd /initramfs-linux.img' >> /boot/efi/loader/entries/arch.conf;
-echo 'options root=PARTUUID=$PARTUUID rw' >> /boot/efi/loader/entries/arch.conf;
-systemctl enable NetworkManager.service;
-systemctl start NetworkManager.service;
-"
+        ln -sf '/usr/share/zoneinfo/$TIMEZONE' /etc/localtime
+        hwclock --systohc
+
+        echo 'en_US.UTF-8 UTF-8' > /etc/locale.gen
+        locale-gen
+        echo 'LANG=en_US.UTF-8' > /etc/locale.conf
+
+        echo '$COMPUTER_NAME' > /etc/hostname
+        echo '127.0.1.1 myarch.localdomain $COMPUTER_NAME' >> /etc/hosts
+
+        echo 'root:$ROOT_PASSWORD' | chpasswd
+
+        useradd -m -G wheel -s /bin/bash '$USERNAME'
+        echo '$USERNAME:$USER_PASSWORD' | chpasswd
+
+        echo '%wheel ALL=(ALL) ALL' >> /etc/sudoers
+
+        # Copy kernel and initramfs to the ESP
+        cp /boot/vmlinuz-linux /boot/efi/
+        cp /boot/initramfs-linux.img /boot/efi/
+
+        # Install and configure bootloader
+        bootctl --path=/boot/efi install
+
+        echo 'default arch' > /boot/efi/loader/loader.conf
+        echo 'timeout 4' >> /boot/efi/loader/loader.conf
+        echo 'editor 0' >> /boot/efi/loader/loader.conf
+
+        echo 'title Arch Linux' > /boot/efi/loader/entries/arch.conf
+        echo 'linux /vmlinuz-linux' >> /boot/efi/loader/entries/arch.conf
+        echo 'initrd /initramfs-linux.img' >> /boot/efi/loader/entries/arch.conf
+    "
+}
+
+generate_and_set_partuuid() {
+    # Fetch PARTUUID after exiting arch-chroot and export it to the arch.conf file
+    PARTUUID=$(blkid -s PARTUUID -o value "${DISK}${PARTITION_COUNT}")
+    echo "options root=PARTUUID=$PARTUUID rw" >> /mnt/boot/efi/loader/entries/arch.conf
 }
 
 prompt_umount() {
     local choice
-    clear
+    echo
     read -p "Installation complete. Do you want to unmount all partitions? (y/n): " choice
     case "$choice" in
         [yY]*|[yY][eE][sS]*)
             log "Unmounting all partitions..."
             umount -R /mnt
             swapoff -a
-            break
             ;;
         [nN]*|[nN][oO]*)
-            break
             ;;
         *)  unset choice
             prompt_umount
@@ -295,16 +309,13 @@ prompt_umount() {
 
 prompt_reboot() {
     local choice
-    clear
+    echo
     read -p "Do you want to reboot now? (y/n): " choice
     case "$choice" in
         [yY]*|[yY][eE][sS]*)
             reboot
-            break
             ;;
         [nN]*|[nN][oO]*)
-            break
-            exit
             ;;
         *)  unset choice
             prompt_reboot
@@ -312,23 +323,16 @@ prompt_reboot() {
     esac
 }
 
-main() {
-    log "Starting installation..."
-    prompt_loadkeys
-    timedatectl set-ntp true
-    log "System clock synchronized."
+log "Starting installation..."
+prompt_loadkeys
+timedatectl set-ntp true
+log "System clock synchronized."
 
-    setup_disk
-    mount_partitions
-    install_packages
-
-    echo
-    log "Generating fstab..."
-    genfstab -U /mnt >> /mnt/etc/fstab
-
-    configure_chroot
-    prompt_umount
-    prompt_reboot
-}
-
-main
+setup_disk
+mount_partitions
+install_packages
+generate_fstab
+configure_chroot
+generate_and_set_partuuid
+prompt_umount
+prompt_reboot
