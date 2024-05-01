@@ -1,4 +1,3 @@
-
 #!/usr/bin/env bash
 
 # Check if the script is being run with root privileges
@@ -117,7 +116,7 @@ prompt_gui() {
             [nN]*|[nN][oO]*)
                 ;;
             *)
-                echo "Bad user input.. try again."
+                echo "Bad user input... try again."
                 sleep 3
                 unset gui_choice
                 clear
@@ -135,7 +134,7 @@ prompt_reboot() {
             [nN]*|[nN][oO]*)
                 ;;
             *)
-                echo "Bad user input.. try again."
+                echo "Bad user input... try again."
                 sleep 3
                 unset reboot_choice
                 clear
