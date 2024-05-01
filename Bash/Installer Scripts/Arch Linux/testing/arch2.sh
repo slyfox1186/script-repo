@@ -3,27 +3,23 @@
 GREEN='\033[0;32m'
 NC='\033[0m'
 
-# Verbose logging function
 log() {
     echo -e "${GREEN}[LOG $(date +'%R:%S')]${NC} $1"
 }
 
-# Variables
-USERNAME="" # Non-root username
-USER_PASSWORD="" # Non-root user password
-ROOT_PASSWORD="" # Root password
+USERNAME=""
+USER_PASSWORD=""
+ROOT_PASSWORD=""
 COMPUTER_NAME=""
 TIMEZONE="US/Eastern"
-DISK="" # Disk to install Arch Linux on (e.g., /dev/sda or /dev/nvme0n1)
+DISK=""
 
-# Partition variables
 PARTITION_COUNT=3
-PARTITION1_SIZE="500M"
+PARTITION1_SIZE="550M"
 PARTITION2_SIZE="2G"
 PARTITION_SIZES=()
 PARTITION_TYPES=()
 
-# Help function
 help() {
     echo "Arch Linux Installation Script"
     echo "This script automates the installation of Arch Linux."
@@ -45,7 +41,6 @@ help() {
     exit 0
 }
 
-# Parse command line arguments
 while getopts ":u:p:r:c:t:d:h" opt; do
     case "$opt" in
         u) USERNAME="$OPTARG" ;;
@@ -60,7 +55,6 @@ while getopts ":u:p:r:c:t:d:h" opt; do
     esac
 done
 
-# Prompt for missing variables
 prompt_variable() {
     local var_name="$1"
     local prompt="$2"
@@ -77,37 +71,31 @@ prompt_variable ROOT_PASSWORD "Enter the root password"
 prompt_variable COMPUTER_NAME "Enter the computer name"
 prompt_variable DISK "Enter the target disk (e.g., /dev/sda or /dev/nvme0n1)"
 
-# Determine disk partition naming convention and root partition
 if [[ "$DISK" == *"nvme"* ]]; then
     DISK1="${DISK}p1"
     DISK2="${DISK}p2"
     DISK3="${DISK}p3"
-    ROOT_PART="${DISK}p${PARTITION_COUNT}"
 else
     DISK1="${DISK}1"
     DISK2="${DISK}2"
     DISK3="${DISK}3"
-    ROOT_PART="${DISK}${PARTITION_COUNT}"
 fi
 
-# Disk setup
 setup_disk() {
-    # Prompt for partition count
+    local disk_parts=("$DISK1" "$DISK2" "$DISK3")
+    
     read -p "Enter the number of partitions (minimum 3): " PARTITION_COUNT
     while [[ "$PARTITION_COUNT" -lt 3 ]]; do
         echo "The minimum number of partitions is 3."
         read -p "Enter the number of partitions (minimum 3): " PARTITION_COUNT
     done
 
-    # Set partition 1 as GPT and EFI
     echo "Partition 1 will be set as GPT and EFI."
     read -p "Enter partition 1 SIZE (e.g., 550M): " PARTITION1_SIZE
 
-    # Set partition 2 as swap and prompt for SIZE
     echo "Partition 2 will be set as swap."
     read -p "Enter partition 2 SIZE (e.g., 2G): " PARTITION2_SIZE
 
-    # Prompt for sizes and types of remaining partitions (excluding the last one)
     for ((i=3; i<PARTITION_COUNT; i++)); do
         read -p "Enter SIZE for partition $i: " SIZE
         PARTITION_SIZES+=("$SIZE")
@@ -115,6 +103,7 @@ setup_disk() {
         echo "Available partition types:"
         echo
         echo "1 EFI System"
+        echo "2 MBR Partition Scheme"
         echo "3 Intel Fast Flash"
         echo "4 BIOS Boot"
         echo "5 Sony Boot Partition"
@@ -159,106 +148,88 @@ setup_disk() {
         PARTITION_TYPES+=("$type")
     done
 
-    # Set the last partition as root (x86-64)
     echo "The last partition will be set as Linux x86-64 root and use the remaining disk space."
 
-    # Partition the disk
     echo
     log "Partitioning disk $DISK..."
     parted -s "$DISK" mklabel gpt
 
-    parted -s "$DISK" mkpart primary fat32 1 $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g')
-    parted -s "$DISK" set 1 esp on
-    parted -s "$DISK" mkpart primary linux-swap $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g') $(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
-    
-    local start=$(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
-    for ((i=0; i<${#PARTITION_SIZES[@]}; i++)); do
-        local SIZE=$(echo "$(echo "${PARTITION_SIZES[i]}" | sed 's/[^0-9]*//g') * 1024" | bc)
-        local end=$((start + SIZE))
-        parted -s "$DISK" mkpart primary $start $end
-        local type=${PARTITION_TYPES[i]}
-        case $type in
-            1) parted -s "$DISK" set $((i+3)) esp on ;;
-            4) parted -s "$DISK" set $((i+3)) boot on ;;
-            19) parted -s "$DISK" set $((i+3)) swap on ;;
-        esac
-        start=$end
-    done
-    
-    # Create the final partition with the remaining space and set the partition type to Linux filesystem
-    parted -s "$DISK" mkpart primary $start 100%
-    parted -s "$DISK" set $PARTITION_COUNT 23
-
-    # Format partitions with ext4 filesystem
-    echo
-    log "Formatting partitions with ext4 filesystem..."
-    mkfs.fat -F32 "$DISK1"
-    mkswap "$DISK2"
-    for ((i=3; i<=PARTITION_COUNT; i++)); do
-        if [[ $i -ne 2 ]]; then 
-            partition="${DISK}${i}"
-            mkfs.ext4 "$partition"
-        fi
-    done
-}
-
-# Partition mounting
-mount_partitions() {
-    log "Enabling swap and mounting partitions..."
-    
     if [[ "$DISK" == *"nvme"* ]]; then
-        swapon "${DISK}p2"
-        mount "${DISK}p${PARTITION_COUNT}" /mnt
-        mount --mkdir "${DISK}p1" /mnt/boot/efi
+        parted -s "$DISK" mkpart primary fat32 1 $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g')
+        parted -s "$DISK" set 1 esp on
+        parted -s "$DISK" mkpart primary linux-swap $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g') $(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
         
-        for ((i=3; i<PARTITION_COUNT; i++)); do
-            read -p "Do you want to mount partition ${DISK}p$i? (y/n): " choice
-            case "$choice" in
-                [yY]*|[yY][eE][sS]*)
-                    read -p "Enter the mount path for partition ${DISK}p$i (press Enter to skip): " mount_path
-                    if [[ -n "$mount_path" ]]; then
-                        mount --mkdir "${DISK}p$i" "$mount_path"
-                        log "Partition ${DISK}p$i mounted at $mount_path"
-                    else
-                        log "Skipping mount for partition ${DISK}p$i"
-                    fi
-                    ;;
-                *)
-                    log "Skipping mount for partition ${DISK}p$i"
-                    ;;
+        local start=$(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
+        for ((i=0; i<${#PARTITION_SIZES[@]}; i++)); do
+            local SIZE=$(echo "$(echo "${PARTITION_SIZES[i]}" | sed 's/[^0-9]*//g') * 1024" | bc)
+            local end=$((start + SIZE))
+            parted -s "$DISK" mkpart primary $start $end
+            local type=${PARTITION_TYPES[i]}
+            case $type in
+                1) parted -s "$DISK" set $((i+3)) esp on ;;
+                2) parted -s "$DISK" set $((i+3)) bios_grub on ;;
+                4) parted -s "$DISK" set $((i+3)) boot on ;;
+                19) parted -s "$DISK" set $((i+3)) swap on ;;
             esac
+            start=$end
         done
+        
+        parted -s "$DISK" mkpart primary $start 100%
+        parted -s "$DISK" set $PARTITION_COUNT 23
     else
-        swapon "${DISK}2"
-        mount "${DISK}${PARTITION_COUNT}" /mnt
-        mount --mkdir "${DISK}1" /mnt/boot/efi
+        parted -s "$DISK" mkpart primary fat32 1 $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g')
+        parted -s "$DISK" set 1 esp on
+        parted -s "$DISK" mkpart primary linux-swap $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g') $(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
         
-        for ((i=3; i<PARTITION_COUNT; i++)); do
-            read -p "Do you want to mount partition ${DISK}$i? (y/n): " choice
-            case "$choice" in
-                [yY]*|[yY][eE][sS]*)
-                    read -p "Enter the mount path for partition ${DISK}$i (press Enter to skip): " mount_path
-                    if [[ -n "$mount_path" ]]; then
-                        mount --mkdir "${DISK}$i" "$mount_path"
-                        log "Partition ${DISK}$i mounted at $mount_path"
-                    else
-                        log "Skipping mount for partition ${DISK}$i"
-                    fi
-                    ;;
-                *)
-                    log "Skipping mount for partition ${DISK}$i"
-                    ;;
+        local start=$(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
+        for ((i=0; i<${#PARTITION_SIZES[@]}; i++)); do
+            local SIZE=$(echo "$(echo "${PARTITION_SIZES[i]}" | sed 's/[^0-9]*//g') * 1024" | bc)
+            local end=$((start + SIZE))
+            parted -s "$DISK" mkpart primary $start $end
+            local type=${PARTITION_TYPES[i]}
+            case $type in
+                1) parted -s "$DISK" set $((i+3)) esp on ;;
+                2) parted -s "$DISK" set $((i+3)) bios_grub on ;;
+                4) parted -s "$DISK" set $((i+3)) boot on ;;
+                19) parted -s "$DISK" set $((i+3)) swap on ;;
             esac
+            start=$end
         done
+        
+        parted -s "$DISK" mkpart primary $start 100%
+        parted -s "$DISK" set $PARTITION_COUNT 23
+    fi
+
+    echo
+    log "Creating filesystems..."
+    if [[ "$DISK" == *"nvme"* ]]; then
+        mkfs.fat -F32 "${DISK}p1"
+        mkswap "${DISK}p2"
+        mkfs.ext4 "${DISK}p${PARTITION_COUNT}"
+    else
+        mkfs.fat -F32 "${DISK}1"
+        mkswap "${DISK}2"
+        mkfs.ext4 "${DISK}${PARTITION_COUNT}"
     fi
 }
 
-# Prompt for loadkeys
+mount_partitions() {
+    log "Enabling swap and mounting partitions..."
+    swapon "$DISK2"
+    
+    if [[ "$DISK" == *"nvme"* ]]; then
+        mount "${DISK}p${PARTITION_COUNT}" /mnt
+        mount --mkdir "${DISK}p1" /mnt/boot/efi
+    else
+        mount "${DISK}${PARTITION_COUNT}" /mnt
+        mount --mkdir "${DISK}1" /mnt/boot/efi
+    fi
+}
+
 prompt_loadkeys() {
     local loadkeys_value
     while [[ -z "$loadkeys_value" ]]; do
-        clear
-        read -p "Enter the value for loadkeys (press 'l' to list available options or Enter to continue): " loadkeys_value
+        read -p "Enter the value for loadkeys (press 'l' to list available options): " loadkeys_value
         if [[ "$loadkeys_value" == "l" ]]; then
             echo "Available keymaps:"
             tempfile=$(mktemp)
@@ -268,6 +239,11 @@ prompt_loadkeys() {
             read -p "Enter the value for loadkeys: " loadkeys_value
             if [[ -n "$loadkeys_value" ]]; then
                 loadkeys "$loadkeys_value"
+            else
+                echo "You must enter a value to continue. Press l to get a list of available options."
+                echo
+                read -p "Press enter to try again."
+                prompt_loadkeys
             fi
         elif [[ -n "$loadkeys_value" ]]; then
             loadkeys "$loadkeys_value"
@@ -277,178 +253,71 @@ prompt_loadkeys() {
     done
 }
 
-# Package installation
 install_packages() {
-    local PACKAGES="base linux linux-headers linux-firmware nano networkmanager sudo systemd" # Updated package list
+    local PACKAGES="base efibootmgr linux linux-firmware linux-headers nano networkmanager os-prober reflector sudo"
     echo
     log "Installing essential packages..."
     echo "Current package list: $PACKAGES"
     echo
     read -p "Enter to continue or, add additional packages to install (spaced separated) with the ability to remove a package by prefixing it with a minus sign '-': " add_pkgs
-    for package in $add_pkgs; do
+    for pkgs in $add_pkgs; do
         if [[ "$package" == -* ]]; then
-            PACKAGES=$(echo "$PACKAGES" | sed "s/${package#-}//g")
+            PACKAGES=$(echo "$PACKAGES" | sed "s/${pkgs#-}//g")
         else
             PACKAGES+=" $package"
         fi
     done
-    pacstrap /mnt $PACKAGES
+    pacstrap -K /mnt $PACKAGES
 }
 
-# Ensure system is in UEFI mode
-if [ ! -d "/sys/firmware/efi/efivars" ]; then
-    echo "System is not booted in UEFI mode. Please ensure the system is booted in UEFI mode to install systemd-boot."
-    exit 1
-fi
-
-# Retrieve UUID of the root partition and export it for later use
-UUID=$(blkid -o value -s UUID ${ROOT_PART})
-export UUID
-
-# Chroot configuration
 configure_chroot() {
     log "Entering chroot to configure system..."
     arch-chroot /mnt /bin/bash <<EOF
-# Set timezone and hardware clock
 ln -sf "/usr/share/zoneinfo/$TIMEZONE" /etc/localtime
 hwclock --systohc
 
-# Localization
 echo "en_US.UTF-8 UTF-8" > /etc/locale.gen
 locale-gen
 echo "LANG=en_US.UTF-8" > /etc/locale.conf
 
-# Network configuration
 echo "$COMPUTER_NAME" > /etc/hostname
+mkinitcpio -P
 echo "127.0.1.1 myarch.localdomain $COMPUTER_NAME" >> /etc/hosts
 
-# Set root password
 echo root:"$ROOT_PASSWORD" | chpasswd
 
-# Create a new user with user variables
 useradd -m -G wheel -s /bin/bash $USERNAME
 echo "$USERNAME:$USER_PASSWORD" | chpasswd
 
-# Enable sudo for wheel group
 echo "" >> /etc/sudoers
-echo "%wheel ALL=(ALL:ALL) NOPASSWD: ALL" >> /etc/sudoers
+echo "%wheel ALL=(ALL) ALL" >> /etc/sudoers
 
-# Install systemd-boot to the ESP
 bootctl install
 
-# Setup loader entries
-[[ ! -d /boot/efi/loader/entries ]] && mkdir -p /boot/efi/loader/entries
-echo "default arch.conf" > /boot/efi/loader/loader.conf
-echo "timeout 4" >> /boot/efi/loader/loader.conf
-echo "console-mode max" >> /boot/efi/loader/loader.conf
-echo "editor no" >> /boot/efi/loader/loader.conf
-echo "title Arch Linux" > /boot/efi/loader/entries/arch.conf
-echo "linux /vmlinuz-linux" >> /boot/efi/loader/entries/arch.conf
-echo "initrd /initramfs-linux.img" >> /boot/efi/loader/entries/arch.conf
-echo "options root=PARTUUID=$PARTUUID rw" >> /boot/efi/loader/entries/arch.conf
+cat > /boot/loader/loader.conf << LOADER_CONF
+default arch.conf
+timeout 4
+console-mode max
+editor no
+LOADER_CONF
 
-# Systemd-boot has a feature called "automatic discovery" that can detect and configure bootloaders for other operating systems.
-echo "search.fs_label Arch Linux" > /boot/efi/loader/entries/auto-entries.conf
+# Get the PARTUUID of the root partition
+root_partuuid=$(blkid -s PARTUUID -o value ${DISK3})
 
-# Move vmlinuz-linux kernel and initramfs.img to /boot/efi so that that systemd-boot will be able to find them
-[[ ! -d /etc/pacman.d/hooks ]] && mkdir -p /etc/pacman.d/hooks
-echo "[Trigger]" > /etc/pacman.d/hooks/99-update-boot-images.hook
-echo "Operation = Install" >> /etc/pacman.d/hooks/99-update-boot-images.hook
-echo "Operation = Upgrade" >> /etc/pacman.d/hooks/99-update-boot-images.hook
-echo "Type = Package" >> /etc/pacman.d/hooks/99-update-boot-images.hook
-echo "Target = linux" >> /etc/pacman.d/hooks/99-update-boot-images.hook
-echo "" >> /etc/pacman.d/hooks/99-update-boot-images.hook
-echo "[Action]" >> /etc/pacman.d/hooks/99-update-boot-images.hook
-echo "Description = Move Kernel and Initramfs to custom boot path" >> /etc/pacman.d/hooks/99-update-boot-images.hook
-echo "When = PostTransaction" >> /etc/pacman.d/hooks/99-update-boot-images.hook
-echo "Exec = /bin/sh -c 'cp -f /boot/vmlinuz-linux /boot/efi/; cp -f /boot/initramfs-linux.img /boot/efi/'" >> /etc/pacman.d/hooks/99-update-boot-images.hook
+cat > /boot/loader/entries/arch.conf << ARCH_CONF
+title   Arch Linux
+linux   /vmlinuz-linux
+initrd  /initramfs-linux.img
+options root=PARTUUID=$root_partuuid rw
+ARCH_CONF
 
-# Move the kernel and initramfs files to the default location in /boot
-mkinitcpio -P
-
-# Copy the vmlinuz-linux kernel to /boot/efi so that that systemd-boot will be able to find it
-find / -type f \( -name "vmlinuz-linux" -o -name "initramfs-linux.img" \) -exec cp {} /boot/efi/ \;
-
-# Copy the vmlinuz-linux kernel and initramfs.img to /boot/efi every time there is a kernel upgrade to avoid fatal errors
-echo "[Trigger]" > /etc/pacman.d/hooks/100-copy-kernel-to-efi.hook
-echo "Operation = Install" >> /etc/pacman.d/hooks/100-copy-kernel-to-efi.hook
-echo "Operation = Upgrade" >> /etc/pacman.d/hooks/100-copy-kernel-to-efi.hook
-echo "Type = Package" >> /etc/pacman.d/hooks/100-copy-kernel-to-efi.hook
-echo "Target = linux" >> /etc/pacman.d/hooks/100-copy-kernel-to-efi.hook
-echo "" >> /etc/pacman.d/hooks/100-copy-kernel-to-efi.hook
-echo "[Action]" >> /etc/pacman.d/hooks/100-copy-kernel-to-efi.hook
-echo "Description = Copying kernel and initramfs to EFI partition" >> /etc/pacman.d/hooks/100-copy-kernel-to-efi.hook
-echo "When = PostTransaction" >> /etc/pacman.d/hooks/100-copy-kernel-to-efi.hook
-echo "Exec = /bin/sh -c 'cp -f /boot/initramfs-linux.img /boot/efi/'" >> /etc/pacman.d/hooks/100-copy-kernel-to-efi.hook
-echo "Depends = rsync" >> /etc/pacman.d/hooks/100-copy-kernel-to-efi.hook
-
-bootctl update
-
-# Define the local ESP mount point
-local_esp="/boot/efi"
-local_mount_point="/mnt/other_efi"
-
-# Ensure the local ESP is mounted
-if ! mountpoint -q "$local_esp"; then
-    echo "Local ESP ($local_esp) is not mounted. Exiting."
-    exit 1
-fi
-
-# Make sure the mount directory exists
-mkdir -p $local_mount_point
-
-# Find all partitions with a VFAT filesystem
-efi_partitions=$(blkid -o device -t TYPE=vfat)
-
-# Patterns for identifying the EFI executables
-ubuntu_pattern="*ubuntu*grubx64.efi"
-windows_pattern="*Microsoft*bootmgfw.efi"
-
-# Function to copy EFI files
-copy_efi_file() {
-    src="$1"
-    dest="$2"
-    # Ensure the destination directory exists
-    mkdir -p "$(dirname "$local_esp/$dest")"
-    if [ -f "$src" ]; then
-        echo "Copying $src to $local_esp/$dest..."
-        cp "$src" "$local_esp/$dest"
-        echo "File copied."
-    else
-        echo "EFI file not found at $src."
-    fi
-}
-
-# Loop through each EFI partition
-for part in $efi_partitions; do
-    echo "Checking EFI partition: $part"
-
-    # Mount the partition temporarily
-    mount $part $local_mount_point
-
-    # Search for and copy Ubuntu and Windows EFI files
-    ubuntu_efi_file=$(find $local_mount_point -type f -iname "$ubuntu_pattern")
-    windows_efi_file=$(find $local_mount_point -type f -iname "$windows_pattern")
-
-    if [ -n "$ubuntu_efi_file" ]; then
-        copy_efi_file "$ubuntu_efi_file" "EFI/ubuntu/grubx64.efi"
-    fi
-    if [ -n "$windows_efi_file" ]; then
-        copy_efi_file "$windows_efi_file" "EFI/Microsoft/Boot/bootmgfw.efi"
-    fi
-
-    # Unmount the EFI partition
-    umount $local_mount_point
-done
-
-echo "Script completed."
-
-# Enable the NetworkManager so you have internet when you reboot into Arch Linux going forward
 systemctl enable NetworkManager.service
+log "NetworkManager service enabled."
+systemctl start NetworkManager.service
+log "NetworkManager service started."
 EOF
 }
 
-# Prompt for unmounting partitions
 prompt_umount() {
     local choice
     while true; do
@@ -472,7 +341,6 @@ prompt_umount() {
     done
 }
 
-# Prompt for reboot
 prompt_reboot() {
     local choice
     echo
@@ -496,7 +364,6 @@ prompt_reboot() {
     done
 }
 
-# Main function
 main() {
     log "Starting installation..."
     prompt_loadkeys
@@ -505,20 +372,15 @@ main() {
 
     setup_disk
     mount_partitions
-
-    # Retrieve PARTUUID of the root partition and export it for later use
-    PARTUUID=$(blkid -o value -s PARTUUID ${ROOT_PART})
-    export PARTUUID
-
     install_packages
-
+    
+    echo
     log "Generating fstab..."
     genfstab -U /mnt >> /mnt/etc/fstab
 
-    configure_chroot  # Call configure_chroot where PARTUUID will be used
+    configure_chroot
     prompt_umount
     prompt_reboot
 }
 
-# Run the main script
 main
