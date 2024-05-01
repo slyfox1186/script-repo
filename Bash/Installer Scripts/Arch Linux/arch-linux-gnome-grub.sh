@@ -293,52 +293,42 @@ configure_chroot() {
 # Set timezone and hardware clock
 ln -sf "/usr/share/zoneinfo/$TIMEZONE" /etc/localtime
 hwclock --systohc
-log "Timezone set to $TIMEZONE."
 
 # Localization
 echo "en_US.UTF-8 UTF-8" > /etc/locale.gen
 locale-gen
 echo "LANG=en_US.UTF-8" > /etc/locale.conf
-log "Locale set."
 
 # Network configuration
 echo "$COMPUTER_NAME" > /etc/hostname
 mkinitcpio -P
 echo "127.0.1.1 myarch.localdomain $COMPUTER_NAME" >> /etc/hosts
-log "Network configuration complete."
 
 # Set root password
 echo root:"$ROOT_PASSWORD" | chpasswd
-log "Root password set."
 
 # Create a new user with user variables
 useradd -m -G wheel -s /bin/bash $USERNAME
 echo "$USERNAME:$USER_PASSWORD" | chpasswd
-log "User $USERNAME created."
 
 # Enable sudo for wheel group
 echo "" >> /etc/sudoers
 echo "%wheel ALL=(ALL) ALL" >> /etc/sudoers
-log "Sudo privileges granted to the wheel group."
 
 # Grub installation and configuration
 grub-install --target=x86_64-efi --bootloader-id=GRUB --efi-directory=/boot/efi
 grub-mkconfig -o /boot/grub/grub.cfg
-log "GRUB installed."
 
 mkdir -p /boot/efi/EFI/BOOT
 
 cp -f /boot/efi/EFI/GRUB/grubx64.efi /boot/efi/EFI/BOOT/BOOTX64.EFI
-log "GRUB bootloader copied to EFI directory."
 
 echo 'bcf boot add 1 fs0:\EFI\GRUB\grubx64.efi "Arch Linux Bootloader"' > /boot/efi/startup.sh
 echo 'exit' >> /boot/efi/startup.sh
-log "UEFI startup script created."
 
-systemctl enable NetworkManager.service
-log "NetworkManager service enabled."
+# Enable NetworkManager so you have access to the internet after rebooting
+systemctl enable NetworkManager
 systemctl start NetworkManager.service
-log "NetworkManager service started."
 EOF
 }
 
