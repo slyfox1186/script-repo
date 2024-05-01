@@ -100,30 +100,34 @@ fi
 
 # Partition the disk
 setup_disk() {
-    local disk_parts end SIZE start type
-    disk_parts=("$DISK1" "$DISK2" "$DISK3")
+    echo "Partition 1 will be set as GPT and EFI."
+    read -p "Enter partition 1 size or hit enter to use the default value (default: 500M): " input_part1_size
+    if [[ -z "$input_part1_size" ]]; then
+        PARTITION1_SIZE="500M"
+    else
+        PARTITION1_SIZE="$input_part1_size"
+    fi
 
-    read -p "Enter the number of partitions (minimum 3): " PARTITION_COUNT
+    echo "Partition 2 will be set as swap."
+    read -p "Enter partition 2 size or hit enter to use the default value (default: 2G): " input_part2_size
+    if [[ -z "$input_part2_size" ]]; then
+        PARTITION2_SIZE="2G"
+    else
+        PARTITION2_SIZE="$input_part2_size"
+    fi
+
+    echo "Enter the number of partitions (minimum 3, default 3):"
+    read -p "Number of partitions: " input_partition_count
+    if [[ -z "$input_partition_count" ]]; then
+        PARTITION_COUNT=3
+    else
+        PARTITION_COUNT="$input_partition_count"
+    fi
+
     while [[ "$PARTITION_COUNT" -lt 3 ]]; do
         echo "The minimum number of partitions is 3."
         read -p "Enter the number of partitions (minimum 3): " PARTITION_COUNT
     done
-
-    # Store the default partition size set at the top of the script in another
-    # variable in case the user wants to just hit enter and use the default value 
-    DEFAULT_PARTITION1_SIZE="$PARTITION1_SIZE"
-    echo "Partition 1 will be set as GPT and EFI."
-    read -p "Enter partition 1 size or hit enter to use the default value (default: 500M): " PARTITION1_SIZE
-
-    [[ -z "$PARTITION1_SIZE" ]] && PARTITION1_SIZE="$DEFAULT_PARTITION1_SIZE"
-
-    # Store the default partition size set at the top of the script in another
-    # variable in case the user wants to just hit enter and use the default value
-    DEFAULT_PARTITION2_SIZE="$PARTITION2_SIZE"
-    echo "Partition 2 will be set as swap."
-    read -p "Enter partition 2 size or hit enter to use the default value (default: 2G): " PARTITION2_SIZE
-
-    [[ -z "$PARTITION2_SIZE" ]] && PARTITION2_SIZE="$DEFAULT_PARTITION2_SIZE"
 
     for ((i=3; i<PARTITION_COUNT; i++)); do
         read -p "Enter SIZE for partition $i: " SIZE
