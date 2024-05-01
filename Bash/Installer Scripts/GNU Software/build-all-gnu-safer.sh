@@ -79,6 +79,7 @@ for script in "${scripts[@]}"; do
 done
 
 for file in $(find ./ -maxdepth 1 -type f | sort -V | sed 's/\.\///g'); do
+    [[ "$file" =~ nano ]] && file+=" -v 7.2"
     if echo "y" | bash "$file"; then
         sudo mv "$file" "$cwd/completed"
     else
