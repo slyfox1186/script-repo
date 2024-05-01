@@ -33,9 +33,6 @@ prompt_variable() {
     done
 }
 
-# Append '/dev/' to DISK for internal use
-FULL_DISK_PATH="/dev/$DISK"
-
 # Partition variables
 PARTITION_COUNT=3
 PARTITION1_SIZE="500M"
@@ -80,6 +77,9 @@ while getopts ":u:p:r:c:t:d:h" opt; do
     esac
 done
 
+# Append '/dev/' to DISK for internal use
+FULL_DISK_PATH="/dev/$DISK"
+
 # Check and prompt for each required variable
 [[ -z "$USERNAME" ]] && clear; prompt_variable USERNAME "Enter the non-root username"
 [[ -z "$USER_PASSWORD" ]] && clear; prompt_variable USER_PASSWORD "Enter the non-root user password"
@@ -102,15 +102,27 @@ fi
 setup_disk() {
     echo "Partition 1 will be set as GPT and EFI."
     read -p "Enter partition 1 size or hit enter to use the default value (default: 500M): " input_part1_size
-    PARTITION1_SIZE=${input_part1_size:-$PARTITION1_SIZE}
+    if [[ -z "$input_part1_size" ]]; then
+        PARTITION1_SIZE="500M"
+    else
+        PARTITION1_SIZE="$input_part1_size"
+    fi
 
     echo "Partition 2 will be set as swap."
     read -p "Enter partition 2 size or hit enter to use the default value (default: 2G): " input_part2_size
-    PARTITION2_SIZE=${input_part2_size:-$PARTITION2_SIZE}
+    if [[ -z "$input_part2_size" ]]; then
+        PARTITION2_SIZE="2G"
+    else
+        PARTITION2_SIZE="$input_part2_size"
+    fi
 
     echo "Enter the number of partitions (minimum 3, default 3):"
     read -p "Number of partitions: " input_partition_count
-    PARTITION_COUNT=${input_partition_count:-$PARTITION_COUNT}
+    if [[ -z "$input_partition_count" ]]; then
+        PARTITION_COUNT=3
+    else
+        PARTITION_COUNT="$input_partition_count"
+    fi
 
     while [[ "$PARTITION_COUNT" -lt 3 ]]; do
         echo "The minimum number of partitions is 3."
@@ -202,7 +214,7 @@ setup_disk() {
 
     mkfs.fat -F32 "$DISK1"
     mkswap "$DISK2"
-    mkfs.ext4 "${DISK}${PARTITION_COUNT}"
+    mkfs.ext4 "${FULL_DISK_PATH}${PARTITION_COUNT}"
 }
 
 # Mount the partitions
@@ -210,7 +222,7 @@ mount_partitions() {
     log "Enabling swap and mounting partitions..."
     swapon "$DISK2"
 
-    mount "${DISK}${PARTITION_COUNT}" /mnt
+    mount "${FULL_DISK_PATH}${PARTITION_COUNT}" /mnt
     mount --mkdir "$DISK1" /mnt/boot/efi
 }
 
@@ -313,7 +325,7 @@ configure_chroot() {
 
 # Fetch PARTUUID after exiting arch-chroot and export it to the arch.conf file
 generate_and_set_partuuid() {
-    PARTUUID=$(blkid -s PARTUUID -o value "${DISK}${PARTITION_COUNT}")
+    PARTUUID=$(blkid -s PARTUUID -o value "${FULL_DISK_PATH}${PARTITION_COUNT}")
     echo "options root=PARTUUID=$PARTUUID rw" >> /mnt/boot/efi/loader/entries/arch.conf
 }
 
