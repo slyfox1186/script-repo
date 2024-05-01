@@ -214,7 +214,11 @@ setup_disk() {
 
     mkfs.fat -F32 "$DISK1"
     mkswap "$DISK2"
-    mkfs.ext4 "${FULL_DISK_PATH}${PARTITION_COUNT}"
+    if [[ "$FULL_DISK_PATH" == *"nvme"* ]]; then
+        mkfs.ext4 "${FULL_DISK_PATH}$p{PARTITION_COUNT}"
+    else
+        mkfs.ext4 "${FULL_DISK_PATH}${PARTITION_COUNT}"
+    fi
 }
 
 # Mount the partitions
@@ -222,7 +226,12 @@ mount_partitions() {
     log "Enabling swap and mounting partitions..."
     swapon "$DISK2"
 
-    mount "${FULL_DISK_PATH}${PARTITION_COUNT}" /mnt
+    if [[ "$FULL_DISK_PATH" == *"nvme"* ]]; then
+        mount "${FULL_DISK_PATH}$p{PARTITION_COUNT}" /mnt
+    else
+        mount "${FULL_DISK_PATH}${PARTITION_COUNT}" /mnt
+    fi
+    
     mount --mkdir "$DISK1" /mnt/boot/efi
 }
 
@@ -325,7 +334,11 @@ configure_chroot() {
 
 # Fetch PARTUUID after exiting arch-chroot and export it to the arch.conf file
 generate_and_set_partuuid() {
-    PARTUUID=$(blkid -s PARTUUID -o value "${FULL_DISK_PATH}${PARTITION_COUNT}")
+    if [[ "$FULL_DISK_PATH" == *"nvme"* ]]; then
+        PARTUUID=$(blkid -s PARTUUID -o value "${FULL_DISK_PATH}$p{PARTITION_COUNT}")
+    else
+        PARTUUID=$(blkid -s PARTUUID -o value "${FULL_DISK_PATH}${PARTITION_COUNT}")
+    fi
     echo "options root=PARTUUID=$PARTUUID rw" >> /mnt/boot/efi/loader/entries/arch.conf
 }
 
