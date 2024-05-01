@@ -3,23 +3,54 @@
 GREEN='\033[0;32m'
 NC='\033[0m'
 
+# Verbose logging function
 log() {
     echo -e "${GREEN}[LOG]${NC} $1"
 }
 
+# Variables with placeholders for command line arguments
 USERNAME=""
 USER_PASSWORD=""
 ROOT_PASSWORD=""
 COMPUTER_NAME=""
-TIMEZONE="US/Eastern"
+TIMEZONE="US/Eastern"  # Default value for TIMEZONE
 DISK=""
 
+# Helper function to prompt for missing variables
+prompt_variable() {
+    local prompt_msg var_name var_value
+    var_name="$1"
+    prompt_msg="$2"
+    eval var_value=\$$var_name
+
+    while [[ -z "$var_value" ]]; do
+        read -p "$prompt_msg: " var_value
+        if [[ -z "$var_value" ]]; then
+            printf "\n%s\n\n" "This is a required field. Please enter a value."
+        else
+            eval $var_name='$var_value'
+        fi
+    done
+}
+
+# Check and prompt for each required variable
+[[ -z "$USERNAME" ]] && clear; prompt_variable USERNAME "Enter the non-root username"
+[[ -z "$USER_PASSWORD" ]] && clear; prompt_variable USER_PASSWORD "Enter the non-root user password"
+[[ -z "$ROOT_PASSWORD" ]] && clear; prompt_variable ROOT_PASSWORD "Enter the root password"
+[[ -z "$COMPUTER_NAME" ]] && clear; prompt_variable COMPUTER_NAME "Enter the computer name"
+[[ -z "$DISK" ]] && clear; prompt_variable DISK "Enter the target disk (e.g., sdX or nvmeXn1)"
+
+# Append '/dev/' to DISK for internal use
+FULL_DISK_PATH="/dev/$DISK"
+
+# Partition variables
 PARTITION_COUNT=3
 PARTITION1_SIZE="500M"
 PARTITION2_SIZE="2G"
 PARTITION_SIZES=()
 PARTITION_TYPES=()
 
+# Help function
 help() {
     echo "Arch Linux Installation Script"
     echo "This script automates the installation of Arch Linux."
@@ -32,15 +63,16 @@ help() {
     echo "  -r ROOT_PASSWORD  Set the root password"
     echo "  -c COMPUTER_NAME  Set the computer name"
     echo "  -t TIMEZONE       Set the timezone (default: US/Eastern)"
-    echo "  -d DISK           Set the target disk (e.g., /dev/sdX or /dev/nvmeXn1)"
+    echo "  -d DISK           Set the target disk (e.g., sdX or nvmeXn1)"
     echo "  -h                Display this help message"
     echo
     echo "Examples:"
-    echo "  $0 -u john -p password123 -r rootpass -c myarch -t Europe/London -d /dev/sda"
-    echo "  $0 -u jane -p pass456 -r rootpass789 -c janepc -d /dev/nvme0n1"
+    echo "  $0 -u john -p password123 -r rootpass -c myarch -t Europe/London -d sda"
+    echo "  $0 -u jane -p pass456 -r rootpass789 -c janepc -d nvme0n1"
     exit 0
 }
 
+# Parse command line arguments
 while getopts ":u:p:r:c:t:d:h" opt; do
     case "$opt" in
         u) USERNAME="$OPTARG" ;;
@@ -55,33 +87,18 @@ while getopts ":u:p:r:c:t:d:h" opt; do
     esac
 done
 
-prompt_variable() {
-    local prompt var_name var_value
-    var_name="$1"
-    prompt="$2"
-    var_value=$(eval echo \$var_name)
-    while [[ -z "$var_value" ]]; do
-        read -p "$prompt: " var_value
-        eval $var_name="$var_value"
-    done
-}
-
-prompt_variable USERNAME "Enter the non-root username"
-prompt_variable USER_PASSWORD "Enter the non-root user password"
-prompt_variable ROOT_PASSWORD "Enter the root password"
-prompt_variable COMPUTER_NAME "Enter the computer name"
-prompt_variable DISK "Enter the target disk (e.g., /dev/sda or /dev/nvme0n1)"
-
-if [[ "$DISK" == *"nvme"* ]]; then
-    DISK1="${DISK}p1"
-    DISK2="${DISK}p2"
-    DISK3="${DISK}p3"
+# Determine disk partition naming convention
+if [[ "$FULL_DISK_PATH" == *"nvme"* ]]; then
+    DISK1="${FULL_DISK_PATH}p1"
+    DISK2="${FULL_DISK_PATH}p2"
+    DISK3="${FULL_DISK_PATH}p3"
 else
-    DISK1="${DISK}1"
-    DISK2="${DISK}2"
-    DISK3="${DISK}3"
+    DISK1="${FULL_DISK_PATH}1"
+    DISK2="${FULL_DISK_PATH}2"
+    DISK3="${FULL_DISK_PATH}3"
 fi
 
+# Partition the disk
 setup_disk() {
     local disk_parts end SIZE start type
     disk_parts=("$DISK1" "$DISK2" "$DISK3")
@@ -163,30 +180,30 @@ setup_disk() {
     echo "The last partition will be set as Linux x86-64 root and use the remaining disk space."
 
     echo
-    log "Partitioning disk $DISK..."
-    parted -s "$DISK" mklabel gpt
+    log "Partitioning disk $FULL_DISK_PATH..."
+    parted -s "$FULL_DISK_PATH" mklabel gpt
 
-    parted -s "$DISK" mkpart primary fat32 1 $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g')
-    parted -s "$DISK" set 1 esp on
-    parted -s "$DISK" mkpart primary linux-swap $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g') $(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
+    parted -s "$FULL_DISK_PATH" mkpart primary fat32 1 $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g')
+    parted -s "$FULL_DISK_PATH" set 1 esp on
+    parted -s "$FULL_DISK_PATH" mkpart primary linux-swap $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g') $(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
 
     start=$(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
     for ((i=0; i<${#PARTITION_SIZES[@]}; i++)); do
         SIZE=$(echo "$(echo "${PARTITION_SIZES[i]}" | sed 's/[^0-9]*//g') * 1024" | bc)
         end=$((start + SIZE))
-        parted -s "$DISK" mkpart primary $start $end
+        parted -s "$FULL_DISK_PATH" mkpart primary $start $end
         type=${PARTITION_TYPES[i]}
         case $type in
-            1) parted -s "$DISK" set $((i+3)) esp on ;;
-            2) parted -s "$DISK" set $((i+3)) bios_grub on ;;
-            4) parted -s "$DISK" set $((i+3)) boot on ;;
-            19) parted -s "$DISK" set $((i+3)) swap on ;;
+            1) parted -s "$FULL_DISK_PATH" set $((i+3)) esp on ;;
+            2) parted -s "$FULL_DISK_PATH" set $((i+3)) bios_grub on ;;
+            4) parted -s "$FULL_DISK_PATH" set $((i+3)) boot on ;;
+            19) parted -s "$FULL_DISK_PATH" set $((i+3)) swap on ;;
         esac
         start=$end
     done
 
-    parted -s "$DISK" mkpart primary $start 100%
-    parted -s "$DISK" set $PARTITION_COUNT 23
+    parted -s "$FULL_DISK_PATH" mkpart primary $start 100%
+    parted -s "$FULL_DISK_PATH" set $PARTITION_COUNT 23
 
     echo
     log "Creating filesystems..."
@@ -196,6 +213,7 @@ setup_disk() {
     mkfs.ext4 "${DISK}${PARTITION_COUNT}"
 }
 
+# Mount the partitions
 mount_partitions() {
     log "Enabling swap and mounting partitions..."
     swapon "$DISK2"
@@ -204,6 +222,7 @@ mount_partitions() {
     mount --mkdir "$DISK1" /mnt/boot/efi
 }
 
+# Prompt for loadkeys
 prompt_loadkeys() {
     local loadkeys_value
     while [[ -z "$loadkeys_value" ]]; do
@@ -231,6 +250,7 @@ prompt_loadkeys() {
     done
 }
 
+# Package installation
 install_packages() {
     local PACKAGES
     PACKAGES="base efibootmgr linux linux-firmware linux-headers nano networkmanager os-prober reflector sudo"
@@ -249,12 +269,14 @@ install_packages() {
     pacstrap -K /mnt $PACKAGES
 }
 
+# Create the fstab file in Arch Linux /etc
 generate_fstab() {
     echo
     log "Generating fstab..."
     genfstab -U /mnt >> /mnt/etc/fstab
 }
 
+# Use a heredoc to execute commands using the arch-chroot command
 configure_chroot() {
     log "Configuring installed system..."
 
@@ -290,15 +312,20 @@ configure_chroot() {
         echo 'title Arch Linux' > /boot/efi/loader/entries/arch.conf
         echo 'linux /vmlinuz-linux' >> /boot/efi/loader/entries/arch.conf
         echo 'initrd /initramfs-linux.img' >> /boot/efi/loader/entries/arch.conf
+
+        # Enable NetworkManager so you have access to the internet after rebooting
+        systemctl enable NetworkManager
+        systemctl start NetworkManager.service
     "
 }
 
+# Fetch PARTUUID after exiting arch-chroot and export it to the arch.conf file
 generate_and_set_partuuid() {
-    # Fetch PARTUUID after exiting arch-chroot and export it to the arch.conf file
     PARTUUID=$(blkid -s PARTUUID -o value "${DISK}${PARTITION_COUNT}")
     echo "options root=PARTUUID=$PARTUUID rw" >> /mnt/boot/efi/loader/entries/arch.conf
 }
 
+# Prompt to unmount all of the partitions
 prompt_umount() {
     local choice
     echo
@@ -317,6 +344,7 @@ prompt_umount() {
     esac
 }
 
+# Prompt to reboot the pc
 prompt_reboot() {
     local choice
     echo
@@ -333,11 +361,11 @@ prompt_reboot() {
     esac
 }
 
+# Start the installation
 log "Starting installation..."
 prompt_loadkeys
 timedatectl set-ntp true
 log "System clock synchronized."
-
 setup_disk
 mount_partitions
 install_packages
