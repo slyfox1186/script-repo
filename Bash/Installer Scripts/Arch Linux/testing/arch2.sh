@@ -292,16 +292,15 @@ echo "$USERNAME:$USER_PASSWORD" | chpasswd
 echo "" >> /etc/sudoers
 echo "%wheel ALL=(ALL) ALL" >> /etc/sudoers
 
-bootctl --path=/boot/efi install 2>&1 | tee /mnt/chroot-install.log
+bootctl --path=/boot/efi install > /boot/efi/install.log 2>&1
+
+root_partuuid=$(blkid -s PARTUUID -o value ${DISK3})
+echo "Fetching PARTUUID inside chroot: $root_partuuid"  # This line will confirm the output.
 
 echo "default arch.conf" > /boot/efi/loader/loader.conf
 echo "timeout 4" >> /boot/efi/loader/loader.conf
 echo "console-mode max" >> /boot/efi/loader/loader.conf
 echo "editor no" >> /boot/efi/loader/loader.conf
-
-# Get the PARTUUID of the root partition
-root_partuuid=$(blkid -s PARTUUID -o value ${DISK3})
-echo "PARTUUID retrieved: $root_partuuid" >> /mnt/chroot-install.log
 
 echo "title Arch Linux" > /boot/efi/loader/entries/arch.conf
 echo "linux /vmlinuz-linux" >> /boot/efi/loader/entries/arch.conf
