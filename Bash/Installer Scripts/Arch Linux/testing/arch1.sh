@@ -33,9 +33,6 @@ prompt_variable() {
     done
 }
 
-# Append '/dev/' to DISK for internal use
-FULL_DISK_PATH="/dev/$DISK"
-
 # Partition variables
 PARTITION_COUNT=3
 PARTITION1_SIZE="500M"
@@ -87,12 +84,17 @@ done
 [[ -z "$COMPUTER_NAME" ]] && clear; prompt_variable COMPUTER_NAME "Enter the computer name"
 [[ -z "$DISK" ]] && clear; prompt_variable DISK "Enter the target disk (e.g., sdX or nvmeXn1)"
 
+# Append '/dev/' to DISK for internal use
+FULL_DISK_PATH="/dev/$DISK"
+
 # Determine disk partition naming convention
 if [[ "$FULL_DISK_PATH" == *"nvme"* ]]; then
+    DISK="${FULL_DISK_PATH}"
     DISK1="${FULL_DISK_PATH}p1"
     DISK2="${FULL_DISK_PATH}p2"
     DISK3="${FULL_DISK_PATH}p3"
 else
+    DISK="${FULL_DISK_PATH}"
     DISK1="${FULL_DISK_PATH}1"
     DISK2="${FULL_DISK_PATH}2"
     DISK3="${FULL_DISK_PATH}3"
@@ -184,37 +186,41 @@ setup_disk() {
     echo "The last partition will be set as Linux x86-64 root and use the remaining disk space."
 
     echo
-    log "Partitioning disk $FULL_DISK_PATH..."
-    parted -s "$FULL_DISK_PATH" mklabel gpt
+    log "Partitioning disk $DISK..."
+    parted -s "$DISK" mklabel gpt
 
-    parted -s "$FULL_DISK_PATH" mkpart primary fat32 1 $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g')
-    parted -s "$FULL_DISK_PATH" set 1 esp on
-    parted -s "$FULL_DISK_PATH" mkpart primary linux-swap $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g') $(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
+    parted -s "$DISK" mkpart primary fat32 1 $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g')
+    parted -s "$DISK" set 1 esp on
+    parted -s "$DISK" mkpart primary linux-swap $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g') $(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
 
     start=$(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
     for ((i=0; i<${#PARTITION_SIZES[@]}; i++)); do
         SIZE=$(echo "$(echo "${PARTITION_SIZES[i]}" | sed 's/[^0-9]*//g') * 1024" | bc)
         end=$((start + SIZE))
-        parted -s "$FULL_DISK_PATH" mkpart primary $start $end
+        parted -s "$DISK" mkpart primary $start $end
         type=${PARTITION_TYPES[i]}
         case $type in
-            1) parted -s "$FULL_DISK_PATH" set $((i+3)) esp on ;;
-            2) parted -s "$FULL_DISK_PATH" set $((i+3)) bios_grub on ;;
-            4) parted -s "$FULL_DISK_PATH" set $((i+3)) boot on ;;
-            19) parted -s "$FULL_DISK_PATH" set $((i+3)) swap on ;;
+            1) parted -s "$DISK" set $((i+3)) esp on ;;
+            2) parted -s "$DISK" set $((i+3)) bios_grub on ;;
+            4) parted -s "$DISK" set $((i+3)) boot on ;;
+            19) parted -s "$DISK" set $((i+3)) swap on ;;
         esac
         start=$end
     done
 
-    parted -s "$FULL_DISK_PATH" mkpart primary $start 100%
-    parted -s "$FULL_DISK_PATH" set $PARTITION_COUNT 23
+    parted -s "$DISK" mkpart primary $start 100%
+    parted -s "$DISK" set $PARTITION_COUNT 23
 
     echo
     log "Creating filesystems..."
 
     mkfs.fat -F32 "$DISK1"
     mkswap "$DISK2"
-    mkfs.ext4 "${DISK}${PARTITION_COUNT}"
+    if [[ "$DISK" == *"nvme"* ]]; then
+        mkfs.ext4 "${DISK}$p{PARTITION_COUNT}"
+    else
+        mkfs.ext4 "${DISK}${PARTITION_COUNT}"
+    fi
 }
 
 # Mount the partitions
@@ -222,7 +228,12 @@ mount_partitions() {
     log "Enabling swap and mounting partitions..."
     swapon "$DISK2"
 
-    mount "${DISK}${PARTITION_COUNT}" /mnt
+    if [[ "$DISK" == *"nvme"* ]]; then
+        mount "${DISK}$p{PARTITION_COUNT}" /mnt
+    else
+        mount "${DISK}${PARTITION_COUNT}" /mnt
+    fi
+    
     mount --mkdir "$DISK1" /mnt/boot/efi
 }
 
@@ -325,7 +336,11 @@ configure_chroot() {
 
 # Fetch PARTUUID after exiting arch-chroot and export it to the arch.conf file
 generate_and_set_partuuid() {
-    PARTUUID=$(blkid -s PARTUUID -o value "${DISK}${PARTITION_COUNT}")
+    if [[ "$DISK" == *"nvme"* ]]; then
+        PARTUUID=$(blkid -s PARTUUID -o value "${DISK}$p{PARTITION_COUNT}")
+    else
+        PARTUUID=$(blkid -s PARTUUID -o value "${DISK}${PARTITION_COUNT}")
+    fi
     echo "options root=PARTUUID=$PARTUUID rw" >> /mnt/boot/efi/loader/entries/arch.conf
 }
 
