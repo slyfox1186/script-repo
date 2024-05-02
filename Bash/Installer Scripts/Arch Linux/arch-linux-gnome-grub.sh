@@ -273,7 +273,7 @@ install_packages() {
             PACKAGES+=" $package"
         fi
     done
-    pacstrap -K /mnt $PACKAGES
+    pacstrap /mnt $PACKAGES
 }
 
 # Set the time and date for the system clock
