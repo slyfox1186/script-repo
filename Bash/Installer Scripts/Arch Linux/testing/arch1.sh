@@ -8,12 +8,12 @@ log() {
     echo -e "${GREEN}[LOG]${NC} $1"
 }
 
-# Variables with placeholders for command line arguments
+# Variables
 USERNAME=""
 USER_PASSWORD=""
 ROOT_PASSWORD=""
 COMPUTER_NAME=""
-TIMEZONE="US/Eastern"  # Default value for TIMEZONE
+TIMEZONE="US/Eastern"
 DISK=""
 
 # Helper function to prompt for missing variables
@@ -77,6 +77,9 @@ while getopts ":u:p:r:c:t:d:h" opt; do
     esac
 done
 
+# Append '/dev/' to DISK for internal use
+FULL_DISK_PATH="/dev/$DISK"
+
 # Check and prompt for each required variable
 [[ -z "$USERNAME" ]] && clear; prompt_variable USERNAME "Enter the non-root username"
 [[ -z "$USER_PASSWORD" ]] && clear; prompt_variable USER_PASSWORD "Enter the non-root user password"
@@ -84,17 +87,12 @@ done
 [[ -z "$COMPUTER_NAME" ]] && clear; prompt_variable COMPUTER_NAME "Enter the computer name"
 [[ -z "$DISK" ]] && clear; prompt_variable DISK "Enter the target disk (e.g., sdX or nvmeXn1)"
 
-# Append '/dev/' to DISK for internal use
-FULL_DISK_PATH="/dev/$DISK"
-
 # Determine disk partition naming convention
 if [[ "$FULL_DISK_PATH" == *"nvme"* ]]; then
-    DISK="${FULL_DISK_PATH}"
     DISK1="${FULL_DISK_PATH}p1"
     DISK2="${FULL_DISK_PATH}p2"
     DISK3="${FULL_DISK_PATH}p3"
 else
-    DISK="${FULL_DISK_PATH}"
     DISK1="${FULL_DISK_PATH}1"
     DISK2="${FULL_DISK_PATH}2"
     DISK3="${FULL_DISK_PATH}3"
@@ -102,29 +100,18 @@ fi
 
 # Partition the disk
 setup_disk() {
+    local part1_size part2_size
     echo "Partition 1 will be set as GPT and EFI."
-    read -p "Enter partition 1 size or hit enter to use the default value (default: 500M): " input_part1_size
-    if [[ -z "$input_part1_size" ]]; then
-        PARTITION1_SIZE="500M"
-    else
-        PARTITION1_SIZE="$input_part1_size"
-    fi
+    read -p "Enter partition 1 size or hit enter to use the default value (default: 500M): " part1_size
+    PARTITION1_SIZE=${part1_size:-$PARTITION1_SIZE}
 
     echo "Partition 2 will be set as swap."
-    read -p "Enter partition 2 size or hit enter to use the default value (default: 2G): " input_part2_size
-    if [[ -z "$input_part2_size" ]]; then
-        PARTITION2_SIZE="2G"
-    else
-        PARTITION2_SIZE="$input_part2_size"
-    fi
+    read -p "Enter partition 2 size or hit enter to use the default value (default: 2G): " part2_size
+    PARTITION2_SIZE=${part2_size:-$PARTITION2_SIZE}
 
     echo "Enter the number of partitions (minimum 3, default 3):"
     read -p "Number of partitions: " input_partition_count
-    if [[ -z "$input_partition_count" ]]; then
-        PARTITION_COUNT=3
-    else
-        PARTITION_COUNT="$input_partition_count"
-    fi
+    PARTITION_COUNT=${input_partition_count:-$PARTITION_COUNT}
 
     while [[ "$PARTITION_COUNT" -lt 3 ]]; do
         echo "The minimum number of partitions is 3."
@@ -217,7 +204,7 @@ setup_disk() {
     mkfs.fat -F32 "$DISK1"
     mkswap "$DISK2"
     if [[ "$DISK" == *"nvme"* ]]; then
-        mkfs.ext4 "${DISK}p${PARTITION_COUNT}"
+        mkfs.ext4 "${DISK}$p{PARTITION_COUNT}"
     else
         mkfs.ext4 "${DISK}${PARTITION_COUNT}"
     fi
@@ -229,7 +216,7 @@ mount_partitions() {
     swapon "$DISK2"
 
     if [[ "$DISK" == *"nvme"* ]]; then
-        mount "${DISK}p${PARTITION_COUNT}" /mnt
+        mount "${DISK}$p{PARTITION_COUNT}" /mnt
     else
         mount "${DISK}${PARTITION_COUNT}" /mnt
     fi
@@ -241,6 +228,7 @@ mount_partitions() {
 prompt_loadkeys() {
     local loadkeys_value
     while [[ -z "$loadkeys_value" ]]; do
+        clear
         read -p "Enter the value for loadkeys (press 'l' to list available options): " loadkeys_value
         if [[ "$loadkeys_value" == "l" ]]; then
             echo "Available keymaps:"
@@ -268,7 +256,7 @@ prompt_loadkeys() {
 # Package installation
 install_packages() {
     local PACKAGES
-    PACKAGES="base efibootmgr linux linux-lts linux-headers nano networkmanager os-prober reflector sudo"
+    PACKAGES="base efibootmgr linux linux-firmware linux-headers nano networkmanager os-prober reflector sudo"
     echo
     log "Installing essential packages..."
     echo "Current package list: $PACKAGES"
@@ -284,6 +272,13 @@ install_packages() {
     pacstrap -K /mnt $PACKAGES
 }
 
+# Set the time and date for the system clock
+set_time_date() {
+    log "Synchronizing system clock..."
+    timedatectl set-ntp true
+    log "System clock synchronized!"
+}
+
 # Create the fstab file in Arch Linux /etc
 generate_fstab() {
     echo
@@ -293,55 +288,50 @@ generate_fstab() {
 
 # Use a heredoc to execute commands using the arch-chroot command
 configure_chroot() {
-    log "Configuring installed system..."
+    log "Entering chroot to configure system..."
+    arch-chroot /mnt /bin/bash <<EOF
+# Set timezone and hardware clock
+ln -sf "/usr/share/zoneinfo/$TIMEZONE" /etc/localtime
+hwclock --systohc
 
-    arch-chroot /mnt /bin/bash -c "
-        ln -sf '/usr/share/zoneinfo/$TIMEZONE' /etc/localtime
-        hwclock --systohc
+# Localization
+echo 'en_US.UTF-8 UTF-8' > /etc/locale.gen
+locale-gen
+echo 'LANG=en_US.UTF-8' > /etc/locale.conf
 
-        echo 'en_US.UTF-8 UTF-8' > /etc/locale.gen
-        locale-gen
-        echo 'LANG=en_US.UTF-8' > /etc/locale.conf
+# Network configuration
+echo "$COMPUTER_NAME" > /etc/hostname
+mkinitcpio -P
+echo "127.0.1.1 localhost.localdomain $COMPUTER_NAME" >> /etc/hosts
 
-        echo '$COMPUTER_NAME' > /etc/hostname
-        echo '127.0.1.1 myarch.localdomain $COMPUTER_NAME' >> /etc/hosts
+# Create a new user with user variables
+useradd -mG wheel -s /bin/bash $USERNAME
 
-        echo 'root:$ROOT_PASSWORD' | chpasswd
+# Set non-root user password
+echo "$USERNAME:$USER_PASSWORD" | chpasswd
 
-        useradd -m -G wheel -s /bin/bash '$USERNAME'
-        echo '$USERNAME:$USER_PASSWORD' | chpasswd
+# Set root password
+echo "root:$ROOT_PASSWORD" | chpasswd
 
-        echo '%wheel ALL=(ALL) ALL' >> /etc/sudoers
+# Enable sudo for wheel group
+echo "" >> /etc/sudoers
+echo '%wheel ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
 
-        # Copy kernel and initramfs to the ESP
-        cp /boot/vmlinuz-linux /boot/efi/
-        cp /boot/initramfs-linux.img /boot/efi/
+# Grub installation and configuration
+grub-install --target=x86_64-efi --bootloader-id=GRUB --efi-directory=/boot/efi
+grub-mkconfig -o /boot/grub/grub.cfg
 
-        # Install and configure bootloader
-        bootctl --path=/boot/efi install
+mkdir -p /boot/efi/EFI/BOOT
 
-        echo 'default arch' > /boot/efi/loader/loader.conf
-        echo 'timeout 4' >> /boot/efi/loader/loader.conf
-        echo 'editor 0' >> /boot/efi/loader/loader.conf
+cp -f /boot/efi/EFI/GRUB/grubx64.efi /boot/efi/EFI/BOOT/BOOTX64.EFI
 
-        echo 'title Arch Linux' > /boot/efi/loader/entries/arch.conf
-        echo 'linux /vmlinuz-linux' >> /boot/efi/loader/entries/arch.conf
-        echo 'initrd /initramfs-linux.img' >> /boot/efi/loader/entries/arch.conf
+echo 'bcf boot add 1 fs0:\EFI\GRUB\grubx64.efi "Arch Linux Bootloader"' > /boot/efi/startup.sh
+echo 'exit' >> /boot/efi/startup.sh
 
-        # Enable NetworkManager so you have access to the internet after rebooting
-        systemctl enable NetworkManager
-        systemctl start NetworkManager.service
-    "
-}
-
-# Fetch PARTUUID after exiting arch-chroot and export it to the arch.conf file
-generate_and_set_partuuid() {
-    if [[ "$DISK" == *"nvme"* ]]; then
-        PARTUUID=$(blkid -s PARTUUID -o value "${DISK}p${PARTITION_COUNT}")
-    else
-        PARTUUID=$(blkid -s PARTUUID -o value "${DISK}${PARTITION_COUNT}")
-    fi
-    echo "options root=PARTUUID=$PARTUUID rw" >> /mnt/boot/efi/loader/entries/arch.conf
+# Enable NetworkManager so you have access to the internet after rebooting
+systemctl enable NetworkManager
+systemctl start NetworkManager.service
+EOF
 }
 
 # Prompt to unmount all of the partitions
@@ -357,7 +347,10 @@ prompt_umount() {
             ;;
         [nN]*|[nN][oO]*)
             ;;
-        *)  unset choice
+        *)  echo "Bad user choice... the script will let you try again..."
+            sleep 4
+            unset choice
+            clear
             prompt_umount
             ;;
     esac
@@ -374,7 +367,10 @@ prompt_reboot() {
             ;;
         [nN]*|[nN][oO]*)
             ;;
-        *)  unset choice
+        *)  echo "Bad user choice... the script will let you try again..."
+            sleep 4
+            unset choice
+            clear
             prompt_reboot
             ;;
     esac
@@ -383,13 +379,11 @@ prompt_reboot() {
 # Start the installation
 log "Starting installation..."
 prompt_loadkeys
-timedatectl set-ntp true
-log "System clock synchronized."
+set_time_date
 setup_disk
 mount_partitions
 install_packages
 generate_fstab
 configure_chroot
-generate_and_set_partuuid
 prompt_umount
 prompt_reboot
