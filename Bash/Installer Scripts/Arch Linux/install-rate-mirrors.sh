@@ -21,9 +21,9 @@ update_now() {
 }
 
 echo
-read -p "To link static choose yes else choose no (y/n): " choice
+read -p "To link static choose yes else choose no (y/n): " choice_install
 echo
-case "$choice" in
+case "$choice_install" in
     [yY]) yay -S rate-mirrors-bin ;;
     [nN]) yay -S rate-mirrors ;;
 esac
