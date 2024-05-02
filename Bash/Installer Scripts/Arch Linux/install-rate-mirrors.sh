@@ -5,8 +5,19 @@ if [[ "$EUID" -eq 0 ]]; then
     exit
 fi
 
-# Install the required package paccache through the pacman-contrib package
+# Install required package paccache through the pacman-contrib package
 sudo pacman -Sy --needed --noconfirm pacman-contrib
+
+# Enable alias expansion in the script
+shopt -s expand_aliases
+
+# Define aliases
+alias ua-drop-caches='sudo paccache -rk3; yay -Sc --aur --noconfirm'
+alias ua-update-all='export TMPFILE="$(mktemp)"; sudo true; \
+rate-mirrors --save=$TMPFILE arch --max-delay=21600 && \
+sudo mv /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist-backup && \
+sudo mv $TMPFILE /etc/pacman.d/mirrorlist && ua-drop-caches && \
+yay -Syyu --noconfirm'
 
 update_now() {
     echo "Updating the mirror list now..."
@@ -29,8 +40,7 @@ sudo mv /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist-backup && \
 sudo mv $TMPFILE /etc/pacman.d/mirrorlist && ua-drop-caches && \
 yay -Syyu --noconfirm'
 EOF
-    } >> "$HOME/.bashrc"
-    echo
+    } >> "${HOME}/.bashrc"
     echo "Aliases added to your .bashrc file."
 }
 
@@ -49,6 +59,8 @@ case "$choice_run" in
     [nN]) ;;
 esac
 
+# Append the aliases to the user's ~/.bashrc file
 append_aliases_to_bashrc
+
 echo
 echo "Script completed."
