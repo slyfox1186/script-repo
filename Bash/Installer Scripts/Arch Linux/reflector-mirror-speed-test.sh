@@ -58,9 +58,13 @@ prompt_user() {
     read -p "Set how many mirrors to test (default: 100): " prompt_latest
     read -p "Set how many of the fastest mirrors to keep (default: 5): " prompt_fastest
     read -p "Set the output file path (default: /etc/pacman.d/mirrorlist): " prompt_save
+    read -p "Set the countries sparated by commas (default: United States,Canada): " prompt_country
+    read -p "Set the protocol [http|https|http,https] (default: http,https): " prompt_protocols
     [[ -n "$prompt_latest" ]] && latest="$prompt_latest"
     [[ -n "$prompt_fastest" ]] && fastest="$prompt_fastest"
     [[ -n "$prompt_save" ]] && save="$prompt_save"
+    [[ -n "$prompt_country" ]] && country="$prompt_country"
+    [[ -n "$prompt_protocols" ]] && protocols="$prompt_protocols"
 }
 
 echo
