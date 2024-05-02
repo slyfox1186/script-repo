@@ -244,7 +244,7 @@ alias sgc='sudo grub-customizer'
 alias update-grub='grub-mkconfig -o /boot/grub/grub.cfg'
 
 alias install='clear; pacman -S --needed --noconfirm'
-alias list='clear; pacman -Ss'
+alias list="clear; pacman -Ss $1 | grep -oP '^[a-z0-9-]+\/\K[a-z-]+\s"
 alias remove='clear; pacman -R --noconfirm'
 alias qpkg='clear; pacman -Ql'
 alias update='clear; pacman -Syu'
