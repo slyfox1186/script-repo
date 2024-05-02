@@ -200,7 +200,7 @@ setup_disk() {
     done
 
     parted -s "$DISK" mkpart primary $start 100%
-    parted -s "$DISK" set $PARTITION_COUNT 23
+    parted -s "$DISK" set $PARTITION_COUNT
 
     echo
     log "Creating filesystems..."
