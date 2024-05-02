@@ -14,7 +14,7 @@ NC='\033[0m'
 
 # Logging function
 log() {
-    case $2 in
+    case "$2" in
         "info")
             echo -e "${GREEN}[INFO]${NC} $1"
             ;;
@@ -26,9 +26,29 @@ log() {
     esac
 }
 
-# Install required software using pacman
-log "Installing required packages..." "info"
-PACKAGES="gdm gedit gedit-plugins git gnome gnome-terminal gnome-text-editor gnome-tweaks nvidia pulseaudio pulseaudio-alsa reflector xorg xorg-server xorg-xinit"
+# Detect CPU manufacturer and set microcode package
+CPU_VENDOR=$(grep -m 1 'vendor_id' /proc/cpuinfo | awk '{print $3}')
+MICROCODE_PACKAGE=""
+
+if [[ "$CPU_VENDOR" == "GenuineIntel" ]]; then
+    MICROCODE_PACKAGE="intel-ucode"
+    log "Intel CPU detected, adding Intel microcode package to installation..." "info"
+elif [[ "$CPU_VENDOR" == "AuthenticAMD" ]]; then
+    MICROCODE_PACKAGE="amd-ucode"
+    log "AMD CPU detected, adding AMD microcode package to installation..." "info"
+else
+    log "Unknown CPU vendor, proceeding without microcode package..." "warning"
+fi
+
+# Installation list of packages
+PACKAGES="base-devel gdm gedit gedit-plugins git gnome gnome-terminal gnome-text-editor gnome-tweaks"
+PACKAGES+=" less nvidia os-prober pulseaudio pulseaudio-alsa reflector trash-cli xorg xorg-server xorg-xinit"
+
+# Append microcode package if detected
+if [[ -n "$MICROCODE_PACKAGE" ]]; then
+    PACKAGES+=" $MICROCODE_PACKAGE"
+fi
+
 printf "\n%s\n\n" "The default packages set to be installed: $PACKAGES"
 
 # Prompt the user to add or remove packages
@@ -61,17 +81,14 @@ if ! pacman -Qs "xf86-video-" >/dev/null && ! pacman -Qs "nvidia" >/dev/null && 
     echo
 fi
 
-# Set vienv var
-log "Setting vienvironment variable..." "info"
-EDITOR=nano visudo
-
 enable_nvidia_tweaks() {
+    local nvidia_choice
     # Set Nvidia custom settings using tee
     echo "options nvidia_drm modeset=1" | tee "/etc/modprobe.d/nvidia-xorg-enable-drm.conf" >/dev/null
 
     # Enable Nvidia Driver update pacman hook using tee with a here-doc
     [[ ! -d "/etc/pacman.d/hooks/" ]] && mkdir -p "/etc/pacman.d/hooks/"
-    tee "/etc/pacman.d/hooks/nvidia.hook" >/dev/null <<'EOF'
+    tee em/etc/pacman.d/hooks/nvidia.hook >/dev/null <<'EOF'
 [Trigger]
 Operation=Install
 Operation=Upgrade
@@ -81,23 +98,50 @@ Type=Package
 Target=nvidia
 #Target=nvidia-open
 #Target=nvidia-lts
+# If running a different kernel, modify below to match
 Target=linux
-# Change the linux part above if a different kernel is used
 
 [Action]
-Description=Update NVIDIA module in initcpio
+Description=Updating NVIDIA module in initcpio
 Depends=mkinitcpio
 When=PostTransaction
 NeedsTargets
 Exec=/bin/sh -c 'while read -r trg; do case $trg in linux*) exit 0; esac; done; /usr/bin/mkinitcpio -P'
 EOF
+
+    echo "Creating the Xorg server configuration file"
+    nvidia-xconfig
+}
+
+set_rendering_mode() {
+    echo
+    read -p "Are you running multiple graphics cards in SLI? (y/n): " nvidia_choice
+    case "$nvidia_choice" in
+        [yY]*|[yY][eE][sS]*)
+            nvidia-xconfig --busid=PCI:3:0:0 --sli=AA
+        [nN]*|[nN][oO]*)
+            nvidia-xconfig --busid=PCI:3:0:0 --sli=0
+            ;;
+        *)
+            echo "Bas user input... Re-loading the question."
+            sleep 4
+            unset nvidia_choice
+            clear
+            set_rendering_mode
+            ;;
+    esac
 }
 
 echo
 read -p "Do you want to enable Nvidia related tweaks? (y/n): " nvidia_choice
 case "$nvidia_choice" in
-    [yY]*) enable_nvidia_tweaks ;;
-    [nN]*) ;;
+    [yY]*|[yY][eE][sS]*)
+        enable_nvidia_tweaks
+        set_rendering_mode
+        ;;
+    [nN]*|[nN][oO]*)
+        ;;
+    *)  ;;
 esac
 
 # Enable the LightDM display manager
@@ -105,9 +149,9 @@ echo
 log "Enabling the GDM display manager..." "info"
 echo
 systemctl enable gdm.service
-echo
 
 prompt_gui() {
+    echo
     read -p "Do you want to enter straight into the GUI? [not recommended] (y/n): " gui_choice
     case "$gui_choice" in
         [yY]*|[yY][eE][sS]*)
@@ -118,7 +162,7 @@ prompt_gui() {
             ;;
         *)
             echo "Bad user input... try again."
-            sleep 3
+            sleep 4
             unset gui_choice
             clear
             prompt_gui
@@ -136,7 +180,7 @@ prompt_reboot() {
             ;;
         *)
             echo "Bad user input... try again."
-            sleep 3
+            sleep 4
             unset reboot_choice
             clear
             prompt_reboot
