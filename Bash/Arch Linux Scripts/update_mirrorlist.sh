@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
 
 # Check for non-root execution
-if [[ "$EUID" -ne 0 ]]; then
-    echo "You must run this script as root or with sudo."
+if [[ "$EUID" -eq 0 ]]; then
+    echo "You must run this script without root or sudo."
     exit 1
 fi
+
+# Installl required pacman packages
+sudo pacman -Sy --needed --noconfirm reflector
 
 # Help menu function
 print_help() {
@@ -74,10 +77,9 @@ case "$prompt_choice" in
     [nN]*) ;;
 esac
 
-clear
-
 # Reflector command with configurable options
-reflector --age "$age" \
+clear
+sudo reflector --age "$age" \
           --country "$country" \
           --fastest "$fastest" \
           --download-timeout "$timeout" \
