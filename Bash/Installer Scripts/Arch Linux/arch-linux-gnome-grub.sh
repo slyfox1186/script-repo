@@ -89,10 +89,12 @@ FULL_DISK_PATH="/dev/$DISK"
 
 # Determine disk partition naming convention
 if [[ "$FULL_DISK_PATH" == *"nvme"* ]]; then
+    DISK="${FULL_DISK_PATH}"
     DISK1="${FULL_DISK_PATH}p1"
     DISK2="${FULL_DISK_PATH}p2"
     DISK3="${FULL_DISK_PATH}p3"
 else
+    DISK="${FULL_DISK_PATH}"
     DISK1="${FULL_DISK_PATH}1"
     DISK2="${FULL_DISK_PATH}2"
     DISK3="${FULL_DISK_PATH}3"
@@ -204,7 +206,7 @@ setup_disk() {
     mkfs.fat -F32 "$DISK1"
     mkswap "$DISK2"
     if [[ "$DISK" == *"nvme"* ]]; then
-        mkfs.ext4 "${DISK}$p{PARTITION_COUNT}"
+        mkfs.ext4 "${DISK}p${PARTITION_COUNT}"
     else
         mkfs.ext4 "${DISK}${PARTITION_COUNT}"
     fi
@@ -216,7 +218,7 @@ mount_partitions() {
     swapon "$DISK2"
 
     if [[ "$DISK" == *"nvme"* ]]; then
-        mount "${DISK}$p{PARTITION_COUNT}" /mnt
+        mount "${DISK}p${PARTITION_COUNT}" /mnt
     else
         mount "${DISK}${PARTITION_COUNT}" /mnt
     fi
