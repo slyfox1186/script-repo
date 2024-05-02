@@ -2119,4 +2119,9 @@ venv() {
     bash "$random_dir/pip-venv-installer.sh" $arg
 }
 
+## PACMAN PARSE SEARCHES FOR PACKAGES
 
+function list() {
+    clear
+    pacman -Ss $1 | grep -oP '^[a-z]+\/\K[^/]+\s+([^\s]+)(?:\s+[^\[]+)?(\s+\[installed\])?'
+}
