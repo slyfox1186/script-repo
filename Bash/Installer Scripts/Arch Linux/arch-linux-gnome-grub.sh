@@ -260,7 +260,7 @@ prompt_loadkeys() {
 # Package installation
 install_packages() {
     local PACKAGES
-    PACKAGES="base efibootmgr grub linux linux-firmware linux-headers nano networkmanager os-prober reflector sudo"
+    PACKAGES="base efibootmgr grub grub-customizer linux linux-firmware linux-headers nano networkmanager os-prober reflector sudo"
     echo
     log "Installing essential packages..."
     echo "Current package list: $PACKAGES"
