@@ -28,8 +28,8 @@
 readonly script_name="update_mirrorlist.sh"
 readonly script_version="1.0"
 readonly default_log_file="/var/log/pacman-mirror-update.log"
-readonly default_num_mirrors=200
-readonly default_protocol="https"
+readonly default_num_mirrors=100
+readonly default_protocol="https,http"
 readonly default_frequency="weekly"
 
 # Function to display the help menu
@@ -50,7 +50,6 @@ display_help() {
     echo "  -p, --protocol <protocol>    Set the protocol for the reflector command (default: https)"
     echo "                               Valid values: http, https, both"
     echo "  -s, --service                Only run the code for creating the systemd service"
-    echo "  -v, --verbose                Enable verbose output for the reflector command"
     echo
     echo "Examples:"
     echo "  $0 -f daily -m 100           Run the script, set the service frequency to daily, test 100 mirrors"
@@ -61,7 +60,7 @@ display_help() {
 
 # Parse command-line arguments
 config_file=""
-country=""
+country="United States"
 create_service_only="false"
 dry_run="false"
 exclude_mirrors=""
@@ -84,10 +83,6 @@ while [[ "$#" -gt 0 ]]; do
         -m|--mirrors)
             num_mirrors="$2"
             shift 2
-            ;;
-        -v|--verbose)
-            verbose=true
-            shift
             ;;
         -p|--protocol)
             protocol="$2"
@@ -188,14 +183,15 @@ if ! "$create_service_only"; then
     # Update the mirrorlist
     reflector_cmd=(
         reflector
+        --age 24
+        --country "$country"
+        --fastest 10
         --latest "$num_mirrors"
+        --protocol "$protocol"
+        --save /etc/pacman.d/mirrorlist
         --sort rate
-        --save /etc/pacman.d/mirrorlist.new
+        --verbose
     )
-
-    if "$verbose"; then
-        reflector_cmd+=(--verbose)
-    fi
 
     if [[ "$protocol" != "both" ]]; then
         reflector_cmd+=(--protocol "$protocol")
