@@ -5,6 +5,9 @@ if [[ "$EUID" -eq 0 ]]; then
     exit
 fi
 
+# Install required package paccache through the pacman-contrib package
+sudo pacman -Sy --needed --noconfirm pacman-contrib
+
 update_now() {
     echo
     alias ua-drop-caches='sudo paccache -rk3; yay -Sc --aur --noconfirm'
