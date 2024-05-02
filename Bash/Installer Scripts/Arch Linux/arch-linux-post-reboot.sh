@@ -113,26 +113,6 @@ EOF
     nvidia-xconfig
 }
 
-set_rendering_mode() {
-    echo
-    read -p "Are you running multiple graphics cards in SLI? (y/n): " nvidia_choice
-    case "$nvidia_choice" in
-        [yY]*|[yY][eE][sS]*)
-            nvidia-xconfig --busid=PCI:3:0:0 --sli=AA
-            ;;
-        [nN]*|[nN][oO]*)
-            nvidia-xconfig --busid=PCI:3:0:0 --sli=0
-            ;;
-        *)
-            echo "Bas user input... Re-loading the question."
-            sleep 4
-            unset nvidia_choice
-            clear
-            set_rendering_mode
-            ;;
-    esac
-}
-
 echo
 read -p "Do you want to enable Nvidia related tweaks? (y/n): " nvidia_choice
 case "$nvidia_choice" in
