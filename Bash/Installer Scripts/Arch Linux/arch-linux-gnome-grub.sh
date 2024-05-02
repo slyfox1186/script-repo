@@ -321,6 +321,8 @@ echo "root:$ROOT_PASSWORD" | chpasswd
 echo "" >> /etc/sudoers
 echo '%wheel ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
 
+mkdir -p /boot/efi
+
 # Grub installation and configuration
 grub-install --target=x86_64-efi --bootloader-id=GRUB --efi-directory=/boot/efi
 grub-mkconfig -o /boot/grub/grub.cfg
