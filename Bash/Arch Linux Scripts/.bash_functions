@@ -2123,5 +2123,6 @@ venv() {
 
 function list() {
     clear
-    pacman -Ss $1 | grep -oP '^[a-z]+\/\K[^/]+\s+([^\s]+)(?:\s+[^\[]+)?(\s+\[installed\])?'
+    pacman -Ss $1 | grep -oP '^[a-z]+\/\K([^\s]+)(?:.*)(\[installed\])?' | awk '{print $1, $3}'
 }
+
