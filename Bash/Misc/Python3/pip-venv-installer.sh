@@ -8,28 +8,14 @@ REQUIREMENTS_FILE="$VENV_PATH/requirements.txt"
 
 # Set your default pip packages
 pip_packages=(
-    aiohttp altair ansible appdirs argparse arviz asgiref asttokens async async-lru
-    async-openai async-timeout attr attrs automat avro Babel backcall backoff bcrypt
-    beautifulsoup4 beniget boto3 brotli bs4 celery certifi cffi chardet click colorama
-    constantly contourpy contrib cryptography cssselect cycler Cython "dash >= 2.15.0"
-    dask data dbus2any decorator distro distutils644 django django-rest-framework docker
-    docker-py elasticsearch eval executing fabric fastapi fastparquet feedparser
-    ffpb filelock "Flask >= 3.0.0" flask-restful folium fonttools fs fuzzywuzzy gast
-    gensim google-speech graphene gunicorn h5py html5lib httpx hyperlink identity idna image
-    imageio incremental inline interface invoke ipython itemadapter itemloaders jedi jmespath
-    jsonschema jupyter "jupyterlab-server >= 2.25.0" kafka kafka-python keras kiwisolver
-    learn Levenshtein lib3to6 loguru lxml lz4 mako markdown markupsafe marshmallow
-    matplotlib mechanize minimal modules mpmath nautilus netCDF4 nltk normalizer
-    numba numpy olefile openai opencv-contrib-python opencv-python packaging pandas paramiko
-    parsel parso patsy pexpect pickleshare pillow pip plotly plotnine ply prompt protego
-    ptyprocess pure py pyarrow pyasn1 pydantic pydispatch PyFlakes Pygame PyGithub pygments
-    pymc3 PyOpenGL pyparsing pyppeteer pyproj pyproject pyproject_hooks pyqt5 pyquery pytesseract
-    PyTest pytest pytest-django python-dotenv python-Levenshtein python-whois pythran pyyaml
-    queuelib rabbitmq rasterio redis regex requests requests-html rich scikit-image scikit-learn
-    scipy scrapy seaborn "selenium >= 4.18.0" service setuptools shapely six soupsieve spacy
-    speech sqlalchemy sqlparse starlette statsmodels storage streamlit sympy tabulate tensorflow
-    termcolor terminaltables timeout tk tldextract toml tornado traitlets twisted tz ufolib2
-    urllib3 uvicorn venv_dependencies virtualenv w3lib wcwidth webencodings wheel whl whois
+    argparse async async-lru async-openai async-timeout attr attrs bcrypt
+    beautifulsoup4 brotli bs4 colorama contrib cryptography Cython eval
+    executing fabric ffpb "Flask >= 3.0.0" fuzzywuzzy google-speech Levenshtein
+    modules nltk openai pandas pydantic pygments PyOpenGL pyparsing pyppeteer
+    pyproj pyproject pyproject_hooks pyqt5 pyquery PyTest python-dotenv
+    python-Levenshtein python-whois redis regex requests requests-html
+    "selenium >= 4.18.0" service setuptools soupsieve sqlparse termcolor
+    tk toml urllib3 venv_dependencies virtualenv wheel whois
 )
 
 # Activate the virtual environment
