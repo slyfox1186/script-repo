@@ -5,7 +5,7 @@ if [[ "$EUID" -eq 0 ]]; then
     exit
 fi
 
-# Install required package paccache through the pacman-contrib package
+# Install the required package paccache through the pacman-contrib package
 sudo pacman -Sy --needed --noconfirm pacman-contrib
 
 update_now() {
@@ -29,7 +29,8 @@ sudo mv /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist-backup && \
 sudo mv $TMPFILE /etc/pacman.d/mirrorlist && ua-drop-caches && \
 yay -Syyu --noconfirm'
 EOF
-    } >> "${HOME}/.bashrc"
+    } >> "$HOME/.bashrc"
+    echo
     echo "Aliases added to your .bashrc file."
 }
 
@@ -44,11 +45,10 @@ esac
 echo
 read -p "Do you want to update the mirror list now? (recommended on first use): " choice_run
 case "$choice_run" in
-    [yY])
-        update_now
-        append_aliases_to_bashrc
-        ;;
-    [nN])
-        append_aliases_to_bashrc
-        ;;
+    [yY]) update_now ;;
+    [nN]) ;;
 esac
+
+append_aliases_to_bashrc
+echo
+echo "Script completed."
