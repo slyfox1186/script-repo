@@ -119,6 +119,7 @@ set_rendering_mode() {
     case "$nvidia_choice" in
         [yY]*|[yY][eE][sS]*)
             nvidia-xconfig --busid=PCI:3:0:0 --sli=AA
+            ;;
         [nN]*|[nN][oO]*)
             nvidia-xconfig --busid=PCI:3:0:0 --sli=0
             ;;
