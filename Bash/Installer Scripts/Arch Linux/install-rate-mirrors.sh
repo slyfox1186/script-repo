@@ -9,18 +9,28 @@ fi
 sudo pacman -Sy --needed --noconfirm pacman-contrib
 
 update_now() {
-    echo
-    alias ua-drop-caches='sudo paccache -rk3; yay -Sc --aur --noconfirm'
-    alias ua-update-all='export TMPFILE="$(mktemp)"; sudo true; \
-    rate-mirrors --save=$TMPFILE arch --max-delay=21600 && \
-    sudo mv /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist-backup && \
-    sudo mv $TMPFILE /etc/pacman.d/mirrorlist && ua-drop-caches && \
-    yay -Syyu --noconfirm'
+    echo "Updating the mirror list now..."
     if ua-update-all; then
         printf "\n%s\n\n" "Update successful!"
     else
         printf "\n%s\n\n" "Update failed!"
     fi
+}
+
+# Function to append aliases to .bashrc
+append_aliases_to_bashrc() {
+    {
+        echo
+        cat <<'EOF'
+alias ua-drop-caches='sudo paccache -rk3; yay -Sc --aur --noconfirm'
+alias ua-update-all='export TMPFILE="$(mktemp)"; sudo true; \
+rate-mirrors --save=$TMPFILE arch --max-delay=21600 && \
+sudo mv /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist-backup && \
+sudo mv $TMPFILE /etc/pacman.d/mirrorlist && ua-drop-caches && \
+yay -Syyu --noconfirm'
+EOF
+    } >> "${HOME}/.bashrc"
+    echo "Aliases added to your .bashrc file."
 }
 
 echo
@@ -34,6 +44,11 @@ esac
 echo
 read -p "Do you want to update the mirror list now? (recommended on first use): " choice_run
 case "$choice_run" in
-    [yY]) update_now ;;
-    [nN]) ;;
+    [yY])
+        update_now
+        append_aliases_to_bashrc
+        ;;
+    [nN])
+        append_aliases_to_bashrc
+        ;;
 esac
