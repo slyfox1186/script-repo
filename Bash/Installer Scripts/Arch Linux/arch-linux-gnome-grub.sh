@@ -8,6 +8,8 @@ log() {
     echo -e "${GREEN}[LOG]${NC} $1"
 }
 
+pacman-key --init
+
 # Variables
 USERNAME=""
 USER_PASSWORD=""
