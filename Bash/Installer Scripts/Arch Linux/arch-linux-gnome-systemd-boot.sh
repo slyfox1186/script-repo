@@ -323,6 +323,8 @@ echo '%wheel ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
 cp /boot/vmlinuz-linux /boot/efi/
 cp /boot/initramfs-linux.img /boot/efi/
 
+mkdir -p /boot/efi
+
 # Install and configure bootloader
 bootctl --path=/boot/efi install
 
