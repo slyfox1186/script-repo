@@ -4,7 +4,7 @@
 # Build GNU GCC
 # Versions available:  9|10|11|12|13
 # Features: Automatically sources the latest release of each version.
-# Updated: 04.30.24
+# Updated: 05.03.24
 
 build_dir="/tmp/gcc-build-script"
 workspace="$build_dir/workspace"
@@ -124,7 +124,7 @@ install_deps() {
            )
     if command -v apt-get &>/dev/null; then
         # Loop through the array to find missing packages
-        for pkg in "${pkgs[@]}"; do
+        for pkg in ${pkgs[@]}; do
             if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
                 missing_packages+="$pkg "
             fi
@@ -187,6 +187,12 @@ build_gcc() {
     echo
     log "Configuring GCC $version"
     echo
+
+    if [[ "$languages" == *"ada"* ]]; then
+        CC="gnatgcc"
+    else
+        CC="gcc"
+    fi
 
     ../configure --prefix="/usr/local/gcc-$version" \
                  --enable-languages="$languages" \
