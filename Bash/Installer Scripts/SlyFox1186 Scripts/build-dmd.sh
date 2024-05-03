@@ -1,16 +1,18 @@
 #!/usr/bin/env bash
+set -eo pipefail
 
 ## Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/SlyFox1186%20Scripts/build-dmd
 ## Purpose: Install DLang D Compiler (DMD)
 ## Date: 01.13.24
+## Script version 1.1
 
-clear
-
-printf "Installing DMD -- version latest\n======================================\n"
+echo "Installing DMD -- version latest"
+echo "======================================"
+echo
 
 # Fetch and store the latest dmd version
 echo 'Fetching the latest DMD version.'
-version=$(curl -s https://downloads.dlang.org/releases/LATEST)
+version=$(curl -fsS "https://downloads.dlang.org/releases/LATEST")
 
 # Check if version is captured
 if [ -z "$version" ]; then
@@ -18,42 +20,29 @@ if [ -z "$version" ]; then
     exit 1
 fi
 
-# Define user agents for wget retries
-user_agents=("Mozilla/5.0" "Opera/9.80" "Chrome/41.0.2228.0" "Safari/537.36")
-
 # Download the install script with retries using different user agents
 echo "Downloading the install script for DMD version $version."
-temp_script=$(mktemp)
 download_success=0
 
-for agent in "${user_agents[@]}"; do
-    if wget -U "$agent" -nv --tries=3 --timeout=10 -O "$temp_script" https://dlang.org/install.sh; then
-        download_success=1
-        break
-    else
-        echo "Download failed with user agent: $agent"
-    fi
-done
-
-if [ $download_success -eq 0 ]; then
+clear
+set -x
+if ! wget --show-progress -cqO "$PWD/dmd-installer.sh" "https://dlang.org/install.sh"; then
     printf "Failed to download the install script after retries.\n\n"
-    rm -f "$temp_script"
+    rm -f "$PWD/dmd-installer.sh"
     exit 1
 fi
 
 # Make the script executable
-echo 'Setting script permissions.'
-chmod +x "$temp_script"
+echo "Setting script permissions."
+chmod +x "$PWD/dmd-installer.sh"
 
 # Run the script and redirect verbose output to /dev/null
 echo "Installing DMD version $version"
-if ! "$temp_script" > /dev/null 2>&1; then
+if ! sudo bash "$PWD/dmd-installer.sh" install &>/dev/null; then
     printf "\nInstallation of DMD failed.\n\n"
-    rm -f "$temp_script"
+    rm -f "$PWD/dmd-installer.sh"
     exit 1
 fi
-
-printf "Make sure to star this repository to show your support!\nhttps://github.com/slyfox1186/script-repo\n"
 
 # Add dub to the users .bashrc file
 cat >> "$HOME/.bashrc" <<EOF
@@ -62,8 +51,13 @@ export PATH="\$PATH:\$HOME/dlang/dmd-$version/linux/bin64"
 EOF
 
 # Activate dmd
-source "$HOME"/.bashrc
+source "$HOME/.bashrc"
+source "$HOME/dlang/dmd-$version/activate"
 
 # Delete the install script
-rm -f "$temp_script"
-exit 0
+#rm -f "$PWD/dmd-installer.sh"
+
+echo
+echo "Make sure to star this repository to show your support!"
+echo "https://github.com/slyfox1186/script-repo"
+echo
