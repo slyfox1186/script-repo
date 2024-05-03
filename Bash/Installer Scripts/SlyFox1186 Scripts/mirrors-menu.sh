@@ -15,23 +15,18 @@ NC='\033[0m'
 dir=$(mktemp -d)
 
 execute() {
-    local file flag_args url
+    local file url
     url="$1"
     file="$2"
-    flag_args=""
-    
-    if [[ "$3" == "arch" ]]; then
-        flag_args="-m 30 -f daily -c US"
-    fi
 
     if curl -LSso "$dir/$file" "$url"; then
         if [[ -f "$dir/$file" ]]; then
-            if sudo bash "$dir/$file" $flag_args; then
+            if sudo bash "$dir/$file"; then
                 sudo rm -rf "$dir"
                 echo -e "${GREEN}[SUCCESS]${NC} Execution completed successfully.\n"
                 exit 0
             else
-                echo -e "${RED}[ERROR]${NC} Failed to execute: \"$file $flag_args\"\n"
+                echo -e "${RED}[ERROR]${NC} Failed to execute: \"$file\"\n"
             fi
         else
             echo -e "${RED}[ERROR]${NC} File not found: \"$file\"\n"
@@ -98,7 +93,7 @@ main_menu() {
             2) display_menu "debian" ;;
             3) execute "https://raspi-mirrors.optimizethis.net" "raspi-mirrors.sh" ;;
             4) sudo mkdir -p "/etc/pacman.d"
-               execute "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Arch%20Linux%20Scripts/update_mirrorlist.sh" "update_mirrorlist.sh" "arch"
+               execute "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/Arch%20Linux/reflector-mirror-speed-test.sh" "reflector_mirror_test.sh"
                ;;
             0) rm -rf "$dir"
                exit 0
