@@ -6,8 +6,6 @@
 # Features: Automatically sources the latest release of each version.
 # Updated: 04.30.24
 
-set -eo pipefail
-
 build_dir="/tmp/gcc-build-script"
 workspace="$build_dir/workspace"
 verbose=0
@@ -35,15 +33,17 @@ usage() {
 }
 
 log() {
-    local message="$1"
-    local timestamp=$(date +'%m.%d.%Y %I:%M:%S %p')
+    local message timestamp
+    message="$1"
+    timestamp=$(date +'%m.%d.%Y %I:%M:%S %p')
     [[ "$verbose" -eq 1 ]] && echo -e "\\n${GREEN}[INFO]${NC} $timestamp $message\\n"
     [[ -n "$log_file" ]] && echo "$timestamp $message" >> "$log_file"
 }
 
 warn() {
-    local message="$1"
-    local timestamp=$(date +'%m.%d.%Y %I:%M:%S %p')
+    local timestamp message
+    message="$1"
+    timestamp=$(date +'%m.%d.%Y %I:%M:%S %p')
     echo -e "${YELLOW}[WARN]${NC} $timestamp $message"
     if [[ -n "$log_file" ]]; then
         echo "$timestamp WARNING: $message" >> "$log_file"
@@ -51,8 +51,9 @@ warn() {
 }
 
 fail() {
-    local message="$1"
-    local timestamp=$(date +'%m.%d.%Y %I:%M:%S %p')
+    local timestamp message
+    message="$1"
+    timestamp=$(date +'%m.%d.%Y %I:%M:%S %p')
     echo -e "${RED}[ERROR]${NC} $timestamp $message"
     [[ -n "$log_file" ]] && echo "$timestamp ERROR: $message" >> "$log_file"
     echo "To report a bug, create an issue at: https://github.com/slyfox1186/script-repo/issues"
@@ -115,33 +116,21 @@ set_env_vars() {
 
 install_deps() {
     log "Installing dependencies..."
-    local deps=(
+    local missing_packages pkg pkgs
+        pkgs=(
                 autoconf autoconf-archive automake binutils bison
                 build-essential ccache curl flex gawk gnat libc6-dev
                 libtool make m4 patch texinfo zlib1g-dev
            )
     if command -v apt-get &>/dev/null; then
-        apt update
-        for dep in "${deps[@]}"; do
-            if ! dpkg -s "$dep" &>/dev/null; then
-                apt -y install "$dep"
+        # Loop through the array to find missing packages
+        for pkg in "${pkgs[@]}"; do
+            if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
+                missing_packages+="$pkg "
             fi
         done
-    elif command -v dnf &>/dev/null; then
-        for dep in "${deps[@]}"; do
-            if ! rpm -q "$dep" &>/dev/null; then
-                dnf install -y "$dep"
-            fi
-        done
-    elif command -v pacman &>/dev/null; then
-        for dep in "${deps[@]}"; do
-            if ! pacman -Qs "$dep" &>/dev/null; then
-                pacman -S --needed --noconfirm "$dep"
-            fi
-        done
-    else
-        fail "Unsupported package manager. Please install the required dependencies manually."
     fi
+    [[ -n "$missing_packages" ]] && sudo apt -y install $missing_packages
 }
 
 get_latest_version() {
@@ -179,7 +168,7 @@ build_gcc() {
     download "https://ftp.gnu.org/gnu/gcc/gcc-$version/gcc-$version.tar.xz"
 
     local gcc_dir="$build_dir/gcc-$version"
-    [[ ! -d "$gcc_dir" ]]; then
+    if [[ ! -d "$gcc_dir" ]]; then
         fail "GCC $version source directory not found: $gcc_dir"
     fi
 
@@ -192,7 +181,8 @@ build_gcc() {
     autoreconf -fi
     ./contrib/download_prerequisites
 
-    mkdir -p builddir && cd builddir || fail "Failed to change directory to builddir"
+    mkdir -p builddir
+    cd builddir || fail "Failed to change directory to builddir"
 
     echo
     log "Configuring GCC $version"
@@ -376,6 +366,7 @@ main() {
 
     echo
     log "Build completed successfully!"
+    echo
     echo -e "\\n${GREEN}Make sure to star this repository to show your support!${NC}"
     echo "https://github.com/slyfox1186/script-repo"
 }
