@@ -366,7 +366,6 @@ main() {
 
     echo
     log "Build completed successfully!"
-    echo
     echo -e "\\n${GREEN}Make sure to star this repository to show your support!${NC}"
     echo "https://github.com/slyfox1186/script-repo"
 }
