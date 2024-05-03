@@ -141,8 +141,12 @@ main() {
     build_and_install
     create_symlinks
     cleanup
-    log "Autoconf $program_version build completed successfully!"
-    log "https://github.com/slyfox1186/script-repo"
 }
 
 main "$@"
+
+echo
+log "Build completed successfully."
+echo
+log "Make sure to star this repository to show your support!"
+log "https://github.com/slyfox1186/script-repo"
