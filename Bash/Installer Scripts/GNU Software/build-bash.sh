@@ -200,12 +200,12 @@ main() {
     install_build
     create_symlinks
     cleanup
-
-    echo
-    log "Build completed successfully."
-    echo
-    log "Make sure to star this repository to show your support!"
-    log "https://github.com/slyfox1186/script-repo"
 }
 
 main "$@"
+
+echo
+log "Build completed successfully."
+echo
+log "Make sure to star this repository to show your support!"
+log "https://github.com/slyfox1186/script-repo"
