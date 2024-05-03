@@ -22,13 +22,14 @@ CYAN='\033[0;36m'
 NC='\033[0m'
 
 usage() {
-    echo "Usage: ./build-gcc.sh [OPTIONS]"
+    echo "Usage: $0 [OPTIONS]"
     echo "Options:"
     printf "  %-25s %s\n" "-p, --prefix DIR" "Set the installation prefix (default: /usr/local)"
     printf "  %-25s %s\n" "-v, --verbose" "Enable verbose logging"
     printf "  %-25s %s\n" "-l, --log-file FILE" "Specify a log file for output"
     printf "  %-25s %s\n" "-k, --keep-build-dir" "Keep the temporary build directory after completion"
     printf "  %-25s %s\n" "-h, --help" "Show this help message"
+    echo
     exit 0
 }
 
