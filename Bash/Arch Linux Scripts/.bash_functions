@@ -2138,6 +2138,11 @@ www() {
         keyword="${*// /+}"
         browser="/c/Program Files/Google/Chrome Beta/Application/chrome.exe"
 
+        if [[ ! -f "$browser" ]]; then
+            echo "No supported browser found."
+            exit 1
+        fi
+
         "$browser" -new-tab "https://www.google.com/search?q=$keyword"
     else
         keyword="${*// /+}"
