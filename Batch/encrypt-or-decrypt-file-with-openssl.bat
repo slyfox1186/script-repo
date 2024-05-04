@@ -7,6 +7,8 @@ TITLE Encrypt or Decrypt a File using OpenSSL
 :ABOUT
 :----------------------------------------------------------------------------------------------
 
+REM GitHub: https://github.com/slyfox1186/script-repo/tree/main/Batch
+
 REM SELECT ENCRYPT OR DECRYPT AND ENTER THE INPUT FILE NAME
 
 :----------------------------------------------------------------------------------------------
