@@ -2134,13 +2134,13 @@ www() {
         exit 1
     fi
 
-    if [[ $(grep -iq "microsoft" /proc/version) ]]; then
+    if [[ $(grep -i "microsoft" /proc/version) ]]; then
         keyword="${*// /+}"
         browser="/c/Program Files/Google/Chrome Beta/Application/chrome.exe"
 
         if [[ ! -f "$browser" ]]; then
-            echo "No supported browser found."
-            exit 1
+            echo "No supported WSL browsers found."
+            return 1
         fi
 
         "$browser" -new-tab "https://www.google.com/search?q=$keyword"
@@ -2156,8 +2156,8 @@ www() {
         elif command -v firefox-esr &>/dev/null; then
             browser="firefox-esr"
         else
-            echo "No supported browser found."
-            exit 1
+            echo "No supported Native Linux browsers found."
+            return 1
         fi
 
         "$browser" --new-tab "https://www.google.com/search?q=$keyword"
