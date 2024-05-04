@@ -5,6 +5,8 @@ TITLE INSTALL WINDOWS OPTIONAL FEATURES
 
 :--------------------------------------------------------------------------------------------------
 
+REM GitHub: https://github.com/slyfox1186/script-repo/tree/main/Batch
+
 SET DISM="C:\Windows\System32\Dism.exe"
 SET SD="C:\Windows\System32\shutdown.exe"
 
