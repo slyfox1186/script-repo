@@ -2090,3 +2090,46 @@ script_repo() {
     esac
   done
 }
+
+# Open a browser and search the string passed to the function
+
+www() {
+    if [[ $(grep -iq "microsoft" /proc/version) ]]; then
+
+        if [ "$#" -eq 0 ]; then
+            echo "Usage: www <keywords>"
+            exit 1
+        fi
+
+        keyword="${*// /+}"
+        browser="/c/Program Files/Google/Chrome Beta/Application/chrome.exe"
+
+        "$browser" -new-tab "https://www.google.com/search?q=$keyword"
+        "$browser" -new-tab "https://duckduckgo.com/?q=$keyword"
+    else
+
+        if [ "$#" -eq 0 ]; then
+            echo "Usage: www <keywords>"
+            exit 1
+        fi
+
+        keyword="${*// /+}"
+
+        # Check for browsers in the specified priority order
+        if command -v chrome &>/dev/null; then
+            browser="chrome"
+        elif command -v firefox &>/dev/null; then
+            browser="firefox"
+        elif command -v chromium &>/dev/null; then
+            browser="chromium"
+        elif command -v firefox-esr &>/dev/null; then
+            browser="firefox-esr"
+        else
+            echo "No supported browser found."
+            exit 1
+        fi
+
+        "$browser" --new-tab "https://www.google.com/search?q=$keyword"
+        "$browser" --new-tab "https://duckduckgo.com/?q=$keyword"
+    fi
+}
