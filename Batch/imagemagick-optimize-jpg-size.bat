@@ -6,7 +6,7 @@ TITLE IMAGEMAGICK - OPTIMIZE JPG FILES
 :------------------------------------------------------------------------------------------------
 
 REM Created By: SlyFox1186
-REM https://pastebin.com/u/slyfox1186
+REM GitHub: https://github.com/slyfox1186/script-repo/tree/main/Batch
 
 REM I RECOMMEND USING THE NEW VERSION OF THIS SCRIPT: https://pastebin.com/gLtreVxs
 
