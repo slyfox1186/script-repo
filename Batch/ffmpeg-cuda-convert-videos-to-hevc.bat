@@ -6,7 +6,7 @@ COLOR 0A
 
 REM BY: SlyFox1186
 REM PASTEBIN: https://pastebin.com/u/slyfox1186
-REM GitHub: https://github.com/slyfox1186
+REM GitHub: https://github.com/slyfox1186/script-repo/tree/main/Batch
 
 REM NEED A PROGRAMMER? YOU FOUND A GOOD ONE! CONTACT ME ON GITHUB!
 
