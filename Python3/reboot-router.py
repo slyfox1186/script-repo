@@ -6,11 +6,6 @@ import sys
 import os
 import argparse
 
-# Check if the user has root privileges
-if os.geteuid() != 0:
-    print("You must run this script as root or with sudo.")
-    sys.exit(1)
-
 # Hardcoded default values
 DEFAULT_IP = '192.168.1.1'
 DEFAULT_USERNAME = 'admin'
