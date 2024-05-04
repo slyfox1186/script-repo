@@ -5,6 +5,8 @@ TITLE CHANGING NETWORK SETTINGS
 
 :----------------------------------------------------------------------------------
 
+REM GitHub: https://github.com/slyfox1186/script-repo/tree/main/Batch
+
 REM FOR USE AS A QUICK SWITCH BETWEEN LAN AND WAN DNS SERVERS, OR DHCP.
 REM USE EITHER THE ROUTER'S DNS OR OPENDNS SERVERS.
 REM CHANGE THE VARIABLES AS NEEDED.
