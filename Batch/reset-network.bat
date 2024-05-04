@@ -5,6 +5,8 @@ TITLE RESET NETWORK CONNECTION
 
 :------------------------------------------------------------------------------
 
+REM GitHub: https://github.com/slyfox1186/script-repo/tree/main/Batch
+
 REM SAVE FILE AS "RESET_NETWORK.BAT" TO YOUR DESKTOP
 REM RIGHT CLICK FILE AND SELECT RUN AS ADMINISTRATOR
 
