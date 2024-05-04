@@ -16,6 +16,8 @@ REM MUST CHECK "INSTALL LEGACY UTILITIES".
 
 :----------------------------------------------------------------------------------
 
+REM GitHub: https://github.com/slyfox1186/script-repo/tree/main/Batch
+
 REM CHANGE WORKING DIRECTORY TO THE SCRIPT'S DIRECTORY AND OPEN WINDOW MAXIMIZED
 PUSHD "%~dp0"
 IF NOT "%1"=="MAX" START /MAX CMD /D /C %0 MAX & GOTO :EOF
