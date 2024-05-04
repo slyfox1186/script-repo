@@ -5,6 +5,8 @@ TITLE CREATE AN EFI PARTITION
 
 :----------------------------------------------------------------------------------------------
 
+REM GitHub: https://github.com/slyfox1186/script-repo/tree/main/Batch
+
 REM THIS SCRIPT WILL WALK YOU THROUGH CREATING A NEW EFI
 REM PARTITION BY SHRINKING THE DISK SIZE (RECOMMENDED IS 300)
 REM AND CREATING A NEW EFI BOOT PARTITION. AFTER CREATING
