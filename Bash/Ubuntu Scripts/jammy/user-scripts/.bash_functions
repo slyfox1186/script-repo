@@ -2087,7 +2087,6 @@ www() {
         browser="/c/Program Files/Google/Chrome Beta/Application/chrome.exe"
 
         "$browser" -new-tab "https://www.google.com/search?q=$keyword"
-        "$browser" -new-tab "https://duckduckgo.com/?q=$keyword"
     else
 
         if [ "$#" -eq 0 ]; then
@@ -2112,6 +2111,5 @@ www() {
         fi
 
         "$browser" --new-tab "https://www.google.com/search?q=$keyword"
-        "$browser" --new-tab "https://duckduckgo.com/?q=$keyword"
     fi
 }
