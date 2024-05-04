@@ -2076,27 +2076,24 @@ script_repo() {
 # Open a browser and search the string passed to the function
 
 www() {
+    if [ "$#" -eq 0 ]; then
+        echo "Usage: www <keywords>"
+        exit 1
+    fi
+
     if [[ $(grep -iq "microsoft" /proc/version) ]]; then
-
-        if [ "$#" -eq 0 ]; then
-            echo "Usage: www <keywords>"
-            exit 1
-        fi
-
         keyword="${*// /+}"
         browser="/c/Program Files/Google/Chrome Beta/Application/chrome.exe"
 
-        "$browser" -new-tab "https://www.google.com/search?q=$keyword"
-    else
-
-        if [ "$#" -eq 0 ]; then
-            echo "Usage: www <keywords>"
+        if [[ ! -f "$browser" ]]; then
+            echo "No supported browser found."
             exit 1
         fi
 
+        "$browser" -new-tab "https://www.google.com/search?q=$keyword"
+    else
         keyword="${*// /+}"
 
-        # Check for browsers in the specified priority order
         if command -v chrome &>/dev/null; then
             browser="chrome"
         elif command -v firefox &>/dev/null; then
