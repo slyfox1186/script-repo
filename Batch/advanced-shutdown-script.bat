@@ -3,6 +3,8 @@ SETLOCAL ENABLEEXTENSIONS
 COLOR 0A
 TITLE Shutdown Windows
 
+REM GitHub: https://github.com/slyfox1186/script-repo/tree/main/Batch
+
 SET SD="%windir%\System32\shutdown.exe"
 SET SEC=6
 
