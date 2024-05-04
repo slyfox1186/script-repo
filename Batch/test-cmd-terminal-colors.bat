@@ -8,6 +8,8 @@ REM NICE COLOR FOR ERROR WARNINGS = COLOR 8E
 
 :-----------------------------------------------------------------------------
 
+REM GitHub: https://github.com/slyfox1186/script-repo/tree/main/Batch
+
 IF NOT "%1"=="MAX" START /MAX CMD /D /C %0 MAX & GOTO :EOF
 
 :-----------------------------------------------------------------------------
