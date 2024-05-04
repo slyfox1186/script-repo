@@ -6,7 +6,7 @@ TITLE USE TEMP CACHE FILES TO OPTIMIZE LARGE JPG FILES
 :----------------------------------------------------------------------------------
 
 REM CREATED BY: SLYFOX1186
-REM WEB: https://pastebin.com/u/slyfox1186
+REM GitHub: https://github.com/slyfox1186/script-repo/tree/main/Batch
 
 :----------------------------------------------------------------------------------
 
