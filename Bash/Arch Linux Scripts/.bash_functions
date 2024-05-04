@@ -2129,19 +2129,29 @@ function list() {
 # Open a browser and search the string passed to the function
 
 www() {
-    # Check if an argument is provided
-    if [ "$#" -eq 0 ]; then
-        echo "Usage: www <keywords>"
-        exit 1
+    if [[ $(grep -iq "microsoft" /proc/version) ]]; then
+        if [ "$#" -eq 0 ]; then
+            echo "Usage: www <keywords>"
+            exit 1
+        fi
+
+        keyword="${*// /+}"
+
+        browser="/c/Program Files/Google/Chrome Beta/Application/chrome.exe"
+
+        "$browser" -new-tab "https://www.google.com/search?q=$keyword"
+        "$browser" -new-tab "https://duckduckgo.com/?q=$keyword"
+    else
+        if [ "$#" -eq 0 ]; then
+            echo "Usage: www <keywords>"
+            exit 1
+        fi
+
+        keyword="${*// /+}"
+
+        browser="chrome"
+
+        "$browser" -new-tab "https://www.google.com/search?q=$keyword"
+        "$browser" -new-tab "https://duckduckgo.com/?q=$keyword"
     fi
-
-    # Join all arguments into a single string and replace spaces with '+'
-    keyword="${*// /+}"
-
-    browser="/c/Program Files/Google/Chrome Beta/Application/chrome.exe"
-
-    # Open a new tab in Google with the search query
-    "$browser" -new-tab "https://www.google.com/search?q=$keyword"
-    # Open a new tab in DuckDuckGo with the search query
-    "$browser" -new-tab "https://duckduckgo.com/?q=$keyword"
 }
