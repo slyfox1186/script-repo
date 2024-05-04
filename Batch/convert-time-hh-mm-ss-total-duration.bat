@@ -6,7 +6,7 @@ TITLE CONVERT TOTAL TIME DURATION IN HH:MM:SS FORMAT
 :----------------------------------------------------------------------------------
 
 REM CREATED BY: SLYFOX1186
-REM WEB: https://pastebin.com/u/slyfox1186
+REM GitHub: https://github.com/slyfox1186/script-repo/tree/main/Batch
 
 REM CONVERT START TIME + STOP TIME = TOTAL TIME DURATION
 REM TIME FORMAT: HH:MM:SS
