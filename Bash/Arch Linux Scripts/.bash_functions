@@ -1060,13 +1060,11 @@ EOF
 }
 
 test_clang() {
-    local answer random_dir
-    clear
+    local choice random_dir
 
-    random_dir="$(mktemp -d)"
-    
     # CREATE A TEMPORARY C FILE TO RUN OUR TESTS AGAINST
-    cat > "$random_dir"/hello.c <<'EOF'
+    random_dir=$(mktemp -d)
+    cat > "$random_dir/hello.c" <<'EOF'
 #include <stdio.h>
 int main(void)
 {
@@ -1075,13 +1073,12 @@ int main(void)
 }
 EOF
 
-    if [ -n "$1" ]; then
-        "$1" -Q -v "$random_dir"/hello.c
+    if [[ -n "$1" ]]; then
+        "$1" -v "$random_dir/hello.c" -o "$random_dir/hello" && "$random_dir/hello"
     else
-        clear
-        read -p 'Enter the GCC binary you wish to test (example: gcc-11): ' answer
-        clear
-        "$answer" -Q -v "$random_dir"/hello.c
+        read -p "Enter the Clang binary you wish to test (example: clang-11): " choice
+        echo
+        "$choice" -v "$random_dir/hello.c" -o "$random_dir/hello" && "$random_dir/hello"
     fi
     sudo rm -fr "$random_dir"
 }
