@@ -1,29 +1,12 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2034
 
-##  Script Version: 1.3
-##  Updated: 04.07.24
+##  Script Version: 1.4
+##  Updated: 05.05.24
 ##  GitHub: https://github.com/slyfox1186/imagemagick-build-script
 ##  Purpose: Build ImageMagick 7 from the source code obtained from ImageMagick's official GitHub repository
-##  Function: ImageMagick is the leading open-source command line image processor. It can blur, sharpen, warp,
-##            reduce total file size, ect... The possibilities are vast
-##  Method: The script will search GitHub for the latest released version and upon execution will import the
-##            information into the script.
-##  Added:
-##          - Ubuntu OS support for versions, 22.04 23.04, 23.10, 24.04
-##          - Debian OS support for versions, 11 & 12
-##          - A browser user-agent string to the curl command
-##          - A CPPFLAGS variable to ImageMagick's configure script
-##          - A case command to determine the required libtool version based on the active OS
-##          - Autotrace for Ubuntu (18/20/22).04 and Debian 10/11
-##          - LCMS Support
-##          - Deja-Vu Fonts
-##          - APT package
-##  Fixed:
-##          - error with the pkg-config location when building ImageMagick
-##          - error in the variable PKG_CONFIG_PATH
-##  Removed:
-##          - unnecessary commands in imagemagick's configure script
+##  Function: ImageMagick is the leading open-source command line image processor. It can blur, sharpen, warp, reduce total file size, ect... The possibilities are vast
+##  Method: The script will search GitHub for the latest released version and upon execution will import the information into the script
 
 if [[ "$EUID" -ne 0 ]]; then
     echo "This script must be run with root/sudo"
@@ -31,7 +14,7 @@ if [[ "$EUID" -ne 0 ]]; then
 fi
 
 # SET GLOBAL VARIABLES
-script_ver=1.1
+script_ver=1.4
 cwd="$PWD/magick-build-script"
 packages="$cwd/packages"
 workspace="$cwd/workspace"
