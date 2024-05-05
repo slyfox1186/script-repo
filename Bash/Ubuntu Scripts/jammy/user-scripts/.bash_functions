@@ -974,12 +974,11 @@ int main(void)
 EOF
 
     if [[ -n "$1" ]]; then
-        "$1" -Q -v "$random_dir/hello.c"
+        "$1" -v "$random_dir/hello.c" -o "$random_dir/hello" && "$random_dir/hello"
     else
-        clear
         read -p "Enter the Clang binary you wish to test (example: clang-11): " choice
         echo
-        "$choice" -Q -v "$random_dir/hello.c"
+        "$choice" -v "$random_dir/hello.c" -o "$random_dir/hello" && "$random_dir/hello"
     fi
     sudo rm -fr "$random_dir"
 }
