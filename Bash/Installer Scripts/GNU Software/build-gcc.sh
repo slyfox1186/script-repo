@@ -3,7 +3,7 @@
 
 # GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-gcc.sh
 # Build GNU GCC
-# Versions available:  9|10|11|12|13
+# Versions available:  10|11|12|13
 # Features: Automatically sources the latest release of each version.
 # Updated: 05.05.24
 
@@ -15,7 +15,7 @@ log_file=""
 selected_versions=()
 verbose=0
 version=""
-versions=()
+versions=(10 11 12 13)
 
 # ANSI color codes
 GREEN='\033[1;32m'
@@ -252,15 +252,16 @@ install_gcc() {
         execute autoreconf -fi
         execute ./contrib/download_prerequisites
         mkdir builddir; cd builddir || fail "Failed to change the autoconf directory to build"
-        execute ../configure --program-suffix="-$short_version" \
-                             --with-isl=system \
-                             --with-pkgversion="$os_info GCC $version" \
-                             "$@"
+        ../configure --program-suffix="-$short_version" --with-isl=system \ 
+                          --with-pkgversion="$os_info GCC $version" "$@"
+
         execute make "-j$threads"
-        execute make install
+        execute make install-strip
         execute libtool --finish "/usr/local/gcc-$version/libexec/gcc/x86_64-linux-gnu/$short_version"
         build_done "gcc" "$version"
     fi
+
+    create_symlinks "$version"
 }
 
 build_gcc() {
@@ -320,8 +321,7 @@ build_gcc() {
     short_version="${version%%.*}"
 
     case "$short_version" in
-        10) install_gcc "$version" "$short_version" "$os_info" "${common_options[@]}" "${configure_options[@]}" ;;
-        11) install_gcc "$version" "$short_version" "$os_info" "${common_options[@]}" "${configure_options[@]}" ;;
+        9|10|11) install_gcc "$version" "$short_version" "$os_info" "${common_options[@]}" "${configure_options[@]}" ;;
         12) gcc_12_options=(--enable-lto --enable-offload-defaulted --with-isl=/usr -with-libiconv-prefix=/usr --with-link-serialization=2 --with-zstd="$workspace")
             install_gcc "$version" "$short_version" "$os_info" "${common_options[@]}" "${configure_options[@]}" "${gcc_12_options[@]}"
             ;;
@@ -330,12 +330,6 @@ build_gcc() {
             ;;
         *)  fail "GCC version not found. Line: $LINENO" ;;
     esac
-
-    log "Compiling GCC $version"
-    execute make "-j$(nproc --all)"
-    log "Installing GCC $version"
-    execute make install-strip
-    create_symlinks "$version"
 }
 
 cleanup() {
@@ -354,7 +348,7 @@ install_autoconf() {
         execute autoupdate
         execute autoconf
         mkdir build; cd build || fail "Failed to change the autoconf directory to build"
-        execute ../configure --prefix="$workspace" --disable-nls --enable-c++ --enable-threads=posix
+        execute ../configure --prefix="$workspace"
         execute make "-j$threads"
         execute make install
         build_done "autoconf" "2.69"
@@ -363,7 +357,7 @@ install_autoconf() {
 
 select_versions() {
     local -a selected_versions versions
-    versions=(9 10 11 12 13)
+    versions=(10 11 12 13)  # Updated to exclude version 9
     selected_versions=()
 
     echo -e "\\n${GREEN}Select the GCC version(s) to install:${NC}\n"
@@ -413,17 +407,14 @@ select_versions() {
         fail "No GCC versions selected."
     fi
 
-    # Install GCC's recommended version of autoconf (version 2.69)
-    install_autoconf
-
     for version in "${selected_versions[@]}"; do
         latest_version=$(get_latest_version "$version")
         case "$version" in
             10)
-                build_gcc "$latest_version" "/usr/local/gcc-$latest_version" "--enable-checking=release" "--with-arch-32=i686"
+                build_gcc "$latest_version" "/usr/local/gcc-$latest_version" "--with-arch-32=i686"
                 ;;
             11|12|13)
-                build_gcc "$latest_version" "/usr/local/gcc-$latest_version" "--enable-checking=release"
+                build_gcc "$latest_version" "/usr/local/gcc-$latest_version"
                 ;;
         esac
         create_symlinks "$latest_version"
