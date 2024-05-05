@@ -4,13 +4,12 @@
 # Build GNU GCC
 # Versions available:  9|10|11|12|13
 # Features: Automatically sources the latest release of each version.
-# Updated: 05.03.24
+# Updated: 05.05.24
 
 build_dir="/tmp/gcc-build-script"
 workspace="$build_dir/workspace"
 verbose=0
 log_file=""
-LDFLAGS=""
 version=""
 versions=()
 
@@ -24,40 +23,36 @@ NC='\033[0m'
 usage() {
     echo "Usage: $0 [OPTIONS]"
     echo "Options:"
-    printf "  %-25s %s\n" "-p, --prefix DIR" "Set the installation prefix (default: /usr/local)"
-    printf "  %-25s %s\n" "-v, --verbose" "Enable verbose logging"
-    printf "  %-25s %s\n" "-l, --log-file FILE" "Specify a log file for output"
-    printf "  %-25s %s\n" "-k, --keep-build-dir" "Keep the temporary build directory after completion"
-    printf "  %-25s %s\n" "-h, --help" "Show this help message"
+    printf "  %-25s %s\\n" "-p, --prefix DIR" "Set the installation prefix (default: /usr/local)"
+    printf "  %-25s %s\\n" "-v, --verbose" "Enable verbose logging"
+    printf "  %-25s %s\\n" "-l, --log-file FILE" "Specify a log file for output"
+    printf "  %-25s %s\\n" "-k, --keep-build-dir" "Keep the temporary build directory after completion"
+    printf "  %-25s %s\\n" "-h, --help" "Show this help message"
     echo
     exit 0
 }
 
 log() {
-    local message timestamp
+    local message
     message="$1"
-    timestamp=$(date +'%m.%d.%Y %I:%M:%S %p')
-    [[ "$verbose" -eq 1 ]] && echo -e "\\n${GREEN}[INFO]${NC} $timestamp $message\\n"
-    [[ -n "$log_file" ]] && echo "$timestamp $message" >> "$log_file"
+    [[ "$verbose" -eq 1 ]] && echo -e "\\n${GREEN}[INFO]${NC} $message\\n"
+    [[ -n "$log_file" ]] && echo "$message" >> "$log_file"
 }
 
 warn() {
-    local timestamp message
+    local message
     message="$1"
-    timestamp=$(date +'%m.%d.%Y %I:%M:%S %p')
-    echo -e "${YELLOW}[WARN]${NC} $timestamp $message"
-    if [[ -n "$log_file" ]]; then
-        echo "$timestamp WARNING: $message" >> "$log_file"
-    fi
+    echo -e "${YELLOW}[WARN]${NC} $message"
+    [[ -n "$log_file" ]] && echo "WARNING: $message" >> "$log_file"
 }
 
 fail() {
-    local timestamp message
+    local message
     message="$1"
-    timestamp=$(date +'%m.%d.%Y %I:%M:%S %p')
-    echo -e "${RED}[ERROR]${NC} $timestamp $message"
-    [[ -n "$log_file" ]] && echo "$timestamp ERROR: $message" >> "$log_file"
-    echo "To report a bug, create an issue at: https://github.com/slyfox1186/script-repo/issues"
+    echo -e "${RED}[ERROR]${NC} $message"
+    [[ -n "$log_file" ]] && echo "ERROR: $message" >> "$log_file"
+    echo
+    echo -e "${YELLOW}To report a bug, create an issue at: ${CYAN}https://github.com/slyfox1186/script-repo/issues${NC}"
     exit 1
 }
 
@@ -65,7 +60,7 @@ parse_args() {
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
             -p|--prefix)
-                install_prefix="$2"
+                install_dir="$2"
                 shift 2
                 ;;
             -v|--verbose)
@@ -99,32 +94,27 @@ set_ccache_dir() {
 }
 
 set_env_vars() {
-    echo
     log "Setting environment variables..."
-    echo
-    CC="gcc"
+    CC="gnatgcc"
     CXX="g++"
-    CFLAGS="-O3 -pipe -march=native"
-    CXXFLAGS="-O3 -pipe -march=native"
+    CFLAGS="-O3 -pipe -fstack-protector-strong -march=native -mtune=native"
+    CXXFLAGS="-O3 -pipe -fstack-protector-strong -march=native -mtune=native"
     CPPFLAGS="-D_FORTIFY_SOURCE=2"
-    LDFLAGS="-Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now,"
-    LDFLAGS+="-rpath,/usr/local/gcc-$version/lib64,-rpath,/usr/local/gcc-$version/lib"
-    PATH="$ccache_dir:$workspace/bin:$HOME/perl5/bin:$HOME/.cargo/bin:"
-    PATH+="$HOME/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+    LDFLAGS="-Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now"
+    PATH="$ccache_dir:$workspace/bin:$PATH"
     PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/pkgconfig"
     export CC CFLAGS CPPFLAGS CXX CXXFLAGS LDFLAGS PATH PKG_CONFIG_PATH
 }
 
 install_deps() {
     log "Installing dependencies..."
-    local missing_packages pkg pkgs
+    local missing_packages pkgs
         pkgs=(
                 autoconf autoconf-archive automake binutils bison
                 build-essential ccache curl flex gawk gnat libc6-dev
                 libtool make m4 patch texinfo zlib1g-dev
            )
     if command -v apt-get &>/dev/null; then
-        # Loop through the array to find missing packages
         for pkg in ${pkgs[@]}; do
             if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
                 missing_packages+="$pkg "
@@ -135,8 +125,7 @@ install_deps() {
 }
 
 get_latest_version() {
-    local major_version="$1"
-    curl -fsS "https://ftp.gnu.org/gnu/gcc/" | grep -Eo "gcc-$major_version\.[0-9]+\.[0-9]+" | sort -rV | head -n1 | cut -d- -f2
+    curl -fsS "https://ftp.gnu.org/gnu/gcc/" | grep -Eo "gcc-$1\.[0-9]+\.[0-9]+" | sort -rV | head -n1 | cut -d- -f2
 }
 
 download() {
@@ -150,75 +139,69 @@ download() {
     local extract_dir="${filename%.tar.xz}"
     if [[ ! -d "$build_dir/$extract_dir" ]]; then
         log "Extracting $filename"
-        if ! tar -xf "$build_dir/$filename" -C "$build_dir"; then
-            fail "Failed to extract $filename"
-        fi
+        tar -xf "$build_dir/$filename" -C "$build_dir" || fail "Failed to extract $filename"
     else
         log "Source directory $build_dir/$extract_dir already exists"
     fi
 }
 
 build_gcc() {
-    local version="$1"
-    local languages="$2"
-    local configure_options="$3"
+    local configure_options gcc_dir install_dir languages version 
+    version="$1"
+    languages="$2"
+    install_dir="$3"
+    configure_options="$4"
 
-    echo
     log "Building GCC $version"
-    echo
     download "https://ftp.gnu.org/gnu/gcc/gcc-$version/gcc-$version.tar.xz"
 
-    local gcc_dir="$build_dir/gcc-$version"
+    gcc_dir="$build_dir/gcc-$version"
+
     if [[ ! -d "$gcc_dir" ]]; then
         fail "GCC $version source directory not found: $gcc_dir"
     fi
 
     cd "$gcc_dir" || fail "Failed to change directory to $gcc_dir"
 
-    echo
     log "Running autoreconf and downloading prerequisites"
-    echo
-
     autoreconf -fi
     ./contrib/download_prerequisites
 
     mkdir -p builddir
     cd builddir || fail "Failed to change directory to builddir"
 
-    echo
     log "Configuring GCC $version"
-    echo
-
-    if [[ "$languages" == *"ada"* ]]; then
-        CC="gnatgcc"
-    else
-        CC="gcc"
-    fi
-
-    ../configure --prefix="/usr/local/gcc-$version" \
+    ../configure --prefix="$install_dir" \
                  --enable-languages="$languages" \
-                 --disable-multilib --with-system-zlib \
+                 --enable-multilib \
+                 --with-system-zlib \
+                 --enable-checking=release \
+                 --enable-lto \
+                 --enable-link-time-optimization \
+                 --enable-hardening \
+                 --enable-linker-build-id \
+                 --with-linker-hash-style=gnu \
+                 --enable-plugin \
+                 --enable-default-pie \
+                 --enable-default-ssp \
+                 --enable-cet \
+                 --with-pkgversion="$(lsb_release -is)-$(lsb_release -rs)" \
+                 --target="$(dpkg-architecture --query DEB_HOST_GNU_TYPE)" \
+                 --with-build-config=bootstrap-lto-lean \
+                 LDFLAGS="-Wl,-rpath,/usr/local/gcc-$version/lib64 -Wl,-rpath,/usr/local/gcc-$version/lib" \
                  "$configure_options"
 
-    echo
     log "Compiling GCC $version"
-    echo
-
     make "-j$(nproc --all)"
     
-    echo
     log "Installing GCC $version"
-    echo
-
     make install-strip
 }
 
 create_symlinks() {
     local bin_dir major_version programs source_path symlink_path target_dir version
 
-    echo
     log "Creating symlinks for GCC $version..."
-    echo
 
     version="$1"
     bin_dir="/usr/local/gcc-$version/bin"
@@ -237,9 +220,7 @@ create_symlinks() {
             major_version="${version%%.*}"
             symlink_path="$target_dir/$program-$major_version"
             ln -sfn "$source_path" "$symlink_path"
-            echo
             log "Created symlink: $symlink_path -> $source_path"
-            echo
         fi
     done
 }
@@ -248,38 +229,44 @@ cleanup() {
     if [[ "$keep_build_dir" -ne 1 ]]; then
         log "Cleaning up..."
         rm -fr "$build_dir"
-
-        echo
         log "Removed temporary build directory: $build_dir"
-        echo
     else
-        echo
         log "Temporary build directory retained: $build_dir"
-        echo
     fi
 }
 
+install_autoconf() {
+    log "Installing autoconf 2.69"
+    curl -fsSLo "$build_dir/autoconf-2.69.tar.xz" "https://ftp.gnu.org/gnu/autoconf/autoconf-2.69.tar.xz"
+    mkdir -p "$build_dir/autoconf-2.69/build" "$workspace"
+    tar -xf "$build_dir/autoconf-2.69.tar.xz" -C "$build_dir/autoconf-2.69" --strip-components 1
+    cd "$build_dir/autoconf-2.69" || fail "Failed to change directory to autoconf-2.69"
+    autoupdate
+    autoconf
+    cd build || fail "Failed to change directory to build"
+    ../configure --prefix="$build_dir/workspace"
+    make "-j$(nproc --all)"
+    make install
+}
+
 select_versions() {
-    local -a selected_versions versions
+    local -a versions
     versions=(9 10 11 12 13)
     selected_versions=()
 
-    echo -e "\\n${GREEN}Select the GCC version(s) to install:${NC}\n"
+    echo -e "\\n${GREEN}Select the GCC version(s) to install:${NC}\\n"
     echo -e "${CYAN}1. Single version${NC}"
     echo -e "${CYAN}2. All versions${NC}"
     echo -e "${CYAN}3. Custom versions${NC}"
 
-    echo
     read -p "Enter your choice: " choice
-    echo
 
     case "$choice" in
         1)
-            echo -e "\\n${GREEN}Select a single GCC version to install:${NC}\n"
+            echo -e "\\n${GREEN}Select a single GCC version to install:${NC}\\n"
             for ((i=0; i<${#versions[@]}; i++)); do
                 echo -e "${CYAN}$((i+1)). GCC ${versions[i]}${NC}"
             done
-            echo
             read -p "Enter your choice: " single_choice
             selected_versions+=("${versions[$((single_choice-1))]}")
             ;;
@@ -308,9 +295,7 @@ select_versions() {
             ;;
     esac
 
-    if [[ "${#selected_versions[@]}" -eq 0 ]]; then
-        fail "No GCC versions selected."
-    fi
+    [[ "${#selected_versions[@]}" -eq 0 ]] && fail "No GCC versions selected."
 
     # Install GCC's recommended version of autoconf (version 2.69)
     install_autoconf
@@ -319,36 +304,25 @@ select_versions() {
         latest_version=$(get_latest_version "$version")
         case "$version" in
             10)
-                build_gcc "$latest_version" "c,c++,fortran,objc,obj-c++,ada" "--enable-checking=release --with-arch-32=i686"
+                build_gcc "$latest_version" "c,c++,fortran,objc,obj-c++,ada" "/usr/local/gcc-$latest_version" "--with-arch-32=i686"
                 ;;
             11|12|13)
-                build_gcc "$latest_version" "c,c++,fortran,objc,obj-c++,ada" "--enable-checking=release"
+                build_gcc "$latest_version" "c,c++,fortran,objc,obj-c++,ada" "/usr/local/gcc-$latest_version"
                 ;;
         esac
         create_symlinks "$latest_version"
     done
 }
 
-install_autoconf() {
-    echo
-    log "Installing autoconf 2.69"
-    echo
-    curl -fsSLo "$build_dir/autoconf-2.69.tar.xz" "https://ftp.gnu.org/gnu/autoconf/autoconf-2.69.tar.xz"
-    mkdir -p "$build_dir/autoconf-2.69/build" "$workspace"
-    tar -xf "$build_dir/autoconf-2.69.tar.xz" -C "$build_dir/autoconf-2.69" --strip-components 1
-    cd "$build_dir/autoconf-2.69" || exit 1
-    autoupdate
-    autoconf
-    cd build || exit 1
-    ../configure --prefix="$build_dir/workspace"
-    make "-j$(nproc --all)" && \
-    make install
-}
-
 summary() {
-    echo -e "\\n${GREEN}Summary:${NC}"
-    echo -e "  Installed GCC version(s): ${CYAN}${selected_versions[*]}${NC}"
-    echo -e "  Installation prefix: ${CYAN}$install_prefix${NC}"
+    echo
+    echo -e "${GREEN}Summary:${NC}"
+    echo -e "  Installed GCC version(s):"
+    for version in "${selected_versions[@]}"; do
+        latest_version=$(get_latest_version "$version")
+        echo -e "    ${CYAN}$latest_version${NC}"
+    done
+    echo -e "  Installation prefix: ${CYAN}$install_dir${NC}"
     echo -e "  Build directory: ${CYAN}$build_dir${NC}"
     echo -e "  Temporary build directory retained: ${CYAN}$([[ "$keep_build_dir" -eq 1 ]] && echo "Yes" || echo "No")${NC}"
     echo -e "  Log file: ${CYAN}$log_file${NC}"
@@ -358,10 +332,14 @@ main() {
     parse_args "$@"
 
     if [[ "$EUID" -ne 0 ]]; then
-        fail "This script must be run as root or with sudo."
+        echo "This script must be run as root or with sudo."
+        exit 1
     fi
 
-    [[ -d "$build_dir" ]] && rm -fr "$build_dir"
+    if [[ -d "$build_dir" ]]; then
+        rm -fr "$build_dir"
+    fi
+
     mkdir -p "$build_dir"
 
     set_ccache_dir
@@ -371,9 +349,9 @@ main() {
     cleanup
     summary
 
-    echo
     log "Build completed successfully!"
-    echo -e "\\n${GREEN}Make sure to star this repository to show your support!${NC}"
+    echo
+    echo -e "${GREEN}Make sure to star this repository to show your support!${NC}"
     echo "https://github.com/slyfox1186/script-repo"
 }
 
