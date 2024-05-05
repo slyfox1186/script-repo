@@ -8,51 +8,48 @@
 # Updated: 05.05.24
 
 build_dir="/tmp/gcc-build-script"
+packages="$build_dir/packages"
 workspace="$build_dir/workspace"
-verbose=0
+keep_build_dir=0
 log_file=""
+selected_versions=()
+verbose=0
 version=""
 versions=()
-keep_build_dir=0
 
 # ANSI color codes
-RED='\033[0;31m'
 GREEN='\033[1;32m'
+RED='\033[0;31m'
 YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
 usage() {
     echo "Usage: $0 [OPTIONS]"
+    echo
     echo "Options:"
-    printf "  %-25s %s\\n" "-p, --prefix DIR" "Set the installation prefix (default: /usr/local)"
-    printf "  %-25s %s\\n" "-v, --verbose" "Enable verbose logging"
-    printf "  %-25s %s\\n" "-l, --log-file FILE" "Specify a log file for output"
-    printf "  %-25s %s\\n" "-k, --keep-build-dir" "Keep the temporary build directory after completion"
-    printf "  %-25s %s\\n" "-h, --help" "Show this help message"
+    echo "  -h, --help                 Show this help message"
+    echo "  -k, --keep-build-dir       Keep the temporary build directory after completion"
+    echo "  -l, --log-file FILE        Specify a log file for output"
+    echo "  -p, --prefix DIR           Set the installation prefix (default: /usr/local/gcc-<version>)"
+    echo "  -v, --verbose              Enable verbose logging"
     echo
     exit 0
 }
 
 log() {
-    local message
-    message="[INFO $(date +"%I:%M:%S %p")] $1"
-    [[ "$verbose" -eq 1 ]] && echo -e "\\n${GREEN}[INFO $(date +"%I:%M:%S %p")]${NC} $message\\n"
-    [[ -n "$log_file" ]] && echo "INFO: $message" >> "$log_file"
+    [[ "$verbose" -eq 1 ]] && echo -e "\\n${GREEN}[INFO $(date +"%I:%M:%S %p")]${NC} $1\\n"
+    [[ -n "$log_file" ]] && echo "[INFO $(date +"%I:%M:%S %p")] $1" >> "$log_file"
 }
 
 warn() {
-    local message
-    message="[WARNING $(date +"%I:%M:%S %p")] $1"
-    [[ "$verbose" -eq 1 ]] && echo -e "\\n${YELLOW}[WARNING $(date +"%I:%M:%S %p")]${NC} $message\\n"
-    [[ -n "$log_file" ]] && echo "WARNING: $message" >> "$log_file"
+    [[ "$verbose" -eq 1 ]] && echo -e "\\n${YELLOW}[WARNING $(date +"%I:%M:%S %p")]${NC} $1\\n"
+    [[ -n "$log_file" ]] && echo "[WARNING $(date +"%I:%M:%S %p")] $1" >> "$log_file"
 }
 
 fail() {
-    local message
-    message="[ERROR $(date +"%I:%M:%S %p")] $1"
-    [[ "$verbose" -eq 1 ]] && echo -e "\\n${RED}[ERROR $(date +"%I:%M:%S %p")]${NC} $message\\n"
-    [[ -n "$log_file" ]] && echo "ERROR: $message" >> "$log_file"
+    [[ "$verbose" -eq 1 ]] && echo -e "\\n${RED}[ERROR $(date +"%I:%M:%S %p")]${NC} $1\\n"
+    [[ -n "$log_file" ]] && echo "[ERROR $(date +"%I:%M:%S %p")] $1" >> "$log_file"
     echo -e "\\nTo report a bug, create an issue at: ${CYAN}https://github.com/slyfox1186/script-repo/issues${NC}"
     exit 1
 }
@@ -84,7 +81,23 @@ parse_args() {
     done
 }
 
-# Remove leftover log files from previous runs
+execute() {
+    echo "$ $*"
+
+    if [[ "$verbose" -eq 1 ]]; then
+        if ! output=$("$@"); then
+            notify-send -t 5000 "Failed to execute $*" 2>/dev/null
+            fail "Failed to execute $*"
+        fi
+    else
+        if ! output=$("$@" 2>/dev/null); then
+            notify-send -t 5000 "Failed to execute $*" 2>/dev/null
+            fail "Failed to execute $*"
+        fi
+    fi
+}
+
+# Initialize log file removal
 [[ -f "$log_file" ]] && rm -f "$log_file"
 
 set_ccache_dir() {
@@ -93,7 +106,7 @@ set_ccache_dir() {
     else
         ccache_dir="/usr/lib/ccache"
     fi
-    PATH="$ccache_dir:$PATH"
+    PATH="$ccache_dir:$workspace/bin:$PATH"
     export PATH
 }
 
@@ -115,7 +128,7 @@ install_deps() {
     pkgs=(
         autoconf autoconf-archive automake binutils bison
         build-essential ccache curl flex gawk gnat libc6-dev
-        libtool make m4 patch texinfo zlib1g-dev
+        libisl-dev libtool make m4 patch texinfo zlib1g-dev
     )
     missing_pkgs=()
     for pkg in "${pkgs[@]}"; do
@@ -138,26 +151,86 @@ get_latest_version() {
     echo "$store_version"
 }
 
-download() {
-    local extract_dir filename url
-    url="$1"
-    filename="${url##*/}"
-    if [[ ! -f "$build_dir/$filename" ]]; then
-        log "Downloading $url"
-        if ! curl -fsSLo "$build_dir/$filename" "$url"; then
-            fail "Failed to download $url"
+create_symlinks() {
+    local bin_dir file prefix source_path symlink_path target_dir
+    version="$1"
+    log "Creating symlinks for GCC $version..."
+    bin_dir="/usr/local/gcc-$version/bin"
+    target_dir="/usr/local/bin"
+
+    local file gcc_long_name gcc_short_name
+
+    gcc_long_name="$(sudo find $bin_dir -type f -name 'x86_64-linux-gnu-*' | grep -oP 'x86_64-linux-gnu-[a-z+-]+-[1-3]+$')"
+    for file in ${gcc_long_name[@]}; do
+        gcc_short_name="$(echo "$file" | sed 's/^x86_64-linux-gnu-\(.*\)$/\1/')"
+        sudo ln -sf "$bin_dir/$file" "$target_dir/$gcc_short_name"
+        sudo chmod 755 -R "$bin_dir/$file" "$target_dir/$gcc_short_name"
+    done
+}
+
+build() {
+    echo
+    echo -e "${GREEN}Building${NC} ${YELLOW}$1${NC} - ${GREEN}version ${YELLOW}$2${NC}"
+    echo "========================================================"
+
+    if [[ -f "$packages/$1.done" ]]; then
+        if grep -Fx "$2" "$packages/$1.done" >/dev/null; then
+            echo "$1 version $2 already built. Remove $packages/$1.done lockfile to rebuild it."
+            return 1
+        else
+            echo "$1 is outdated and will be rebuilt with latest version $2"
+            return 0
         fi
     fi
 
-    extract_dir="${filename%.tar.xz}"
-    if [[ ! -d "$build_dir/$extract_dir" ]]; then
-        log "Extracting $filename"
-        if ! tar -xf "$build_dir/$filename" -C "$build_dir"; then
-            fail "Failed to extract $filename"
-        fi
+    return 0
+}
+
+build_done() {
+    echo "$2" > "$packages/$1.done"
+}
+
+download() {
+    local download_file download_path download_url output_directory target_directory target_file
+    download_path="$packages"
+    download_url="$1"
+    download_file="${2:-"${1##*/}"}"
+
+    if [[ "$download_file" =~ tar. ]]; then
+        output_directory="${download_file%.*}"
+        output_directory="${3:-"${output_directory%.*}"}"
     else
-        log "Source directory $build_dir/$extract_dir already exists"
+        output_directory="${3:-"${download_file%.*}"}"
     fi
+
+    target_file="$download_path/$download_file"
+    target_directory="$download_path/$output_directory"
+
+    if [[ -f "$target_file" ]]; then
+        echo "$download_file is already downloaded."
+    else
+        echo "Downloading \"$download_url\" saving as \"$download_file\""
+        if ! curl -LSso "$target_file" "$download_url"; then
+            warn "Failed to download \"$download_file\". Second attempt in 3 seconds..."
+            sleep 3
+            if ! curl -LSso "$target_file" "$download_url"; then
+                fail "Failed to download \"$download_file\". Exiting... Line: $LINENO"
+            fi
+        fi
+        echo "Download Completed"
+    fi
+
+    [[ -d "$target_directory" ]] && rm -fr "$target_directory"
+    mkdir -p "$target_directory"
+
+    if ! tar -xf "$target_file" -C "$target_directory" --strip-components 1; then
+        rm "$target_file"
+        fail "Failed to extract the tarball \"$download_file\" and was deleted. Re-run the script to try again. Line: $LINENO"
+    fi
+
+    printf "%s\n\n" "File extracted: $download_file"
+
+    cd "$target_directory" || fail "Failed to cd into \"$target_directory\". Line: $LINENO"
 }
 
 iscuda=$(sudo find /usr/local/ /opt/ -type f -name nvcc)
@@ -167,32 +240,41 @@ else
     cuda_check="--without-cuda-driver"
 fi
 
+install_gcc() {
+    local version short_version os_info
+    version="$1"
+    short_version="$2"
+    os_info="$3"
+    shift 3
+
+    if build "gcc" "$version"; then
+        download "https://ftp.gnu.org/gnu/gcc/gcc-$version/gcc-$version.tar.xz"
+        execute autoreconf -fi
+        execute ./contrib/download_prerequisites
+        mkdir builddir; cd builddir || fail "Failed to change the autoconf directory to build"
+        execute ../configure --program-suffix="-$short_version" \
+                             --with-isl=system \
+                             --with-pkgversion="$os_info GCC $version" \
+                             "$@"
+        execute make "-j$threads"
+        execute make install
+        execute libtool --finish "/usr/local/gcc-$version/libexec/gcc/x86_64-linux-gnu/$short_version"
+        build_done "gcc" "$version"
+    fi
+}
+
 build_gcc() {
     local -a common_options configure_options
-    local cuda_check gcc_dir languages os_info pc_type version
+    local cuda_check os_info pc_type version
     version="$1"
-    languages="$2"
-    install_dir="$3"
-    shift 3
+    install_dir="$2"
+    shift 2
     configure_options=("$@")
 
     pc_type="$(gcc -dumpmachine)"
     os_info="$(lsb_release -si) $(lsb_release -sr)"
 
-    log "Building GCC $version"
-    download "https://ftp.gnu.org/gnu/gcc/gcc-$version/gcc-$version.tar.xz"
-
-    gcc_dir="$build_dir/gcc-$version"
-
-    cd "$gcc_dir" || fail "Failed to change directory to $gcc_dir"
-
-    log "Running autoreconf and downloading prerequisites"
-
-    autoreconf -fi
-    ./contrib/download_prerequisites
-
-    mkdir -p builddir
-    cd builddir || fail "Failed to change directory to builddir"
+    log "Begin building GCC $version"
 
     common_options=(
         --prefix="$install_dir"
@@ -238,86 +320,22 @@ build_gcc() {
     short_version="${version%%.*}"
 
     case "$short_version" in
-        10)
-            ../configure --program-suffix=-10 \
-                         --with-pkgversion="$os_info GCC $version" \
-                         "${common_options[@]}" \
-                         "${configure_options[@]}"
+        10) install_gcc "$version" "$short_version" "$os_info" "${common_options[@]}" "${configure_options[@]}" ;;
+        11) install_gcc "$version" "$short_version" "$os_info" "${common_options[@]}" "${configure_options[@]}" ;;
+        12) gcc_12_options=(--enable-lto --enable-offload-defaulted --with-isl=/usr -with-libiconv-prefix=/usr --with-link-serialization=2 --with-zstd="$workspace")
+            install_gcc "$version" "$short_version" "$os_info" "${common_options[@]}" "${configure_options[@]}" "${gcc_12_options[@]}"
             ;;
-        11)
-            ../configure --program-suffix=-11 \
-                         --with-pkgversion="$os_info GCC $version" \
-                         "${common_options[@]}" \
-                         "${configure_options[@]}"
+        13) gcc_13_options=(--enable-cet --enable-lto --enable-link-serialization=2 --enable-offload-defaulted --with-arch-32=i686 --with-isl=/usr --with-libiconv-prefix=/usr --with-zstd="$workspace")
+            install_gcc "$version" "$short_version" "$os_info" "${common_options[@]}" "${configure_options[@]}" "${gcc_13_options[@]}"
             ;;
-        12)
-            ../configure --enable-lto \
-                         --enable-offload-defaulted \
-                         --program-suffix=-12 \
-                         --with-pkgversion="$os_info GCC $version" \
-                         --with-isl=/usr \
-                         --with-libiconv-prefix=/usr \
-                         --with-link-serialization=2 \
-                         --with-zstd="$workspace" \
-                         "${common_options[@]}" \
-                         "${configure_options[@]}"
-            ;;
-        13)
-            ../configure --enable-cet \
-                         --enable-lto \
-                         --enable-link-serialization=2 \
-                         --enable-offload-defaulted \
-                         --program-suffix=-13 \
-                         --with-arch-32=i686 \
-                         --with-pkgversion="$os_info GCC $version" \
-                         --with-isl=/usr \
-                         --with-libiconv-prefix=/usr \
-                         --with-zstd="$workspace" \
-                         "${common_options[@]}" \
-                         "${configure_options[@]}"
-            ;;
-        *) clear; echo "VERSION NOT FOUND!"; exit ;;
+        *)  fail "GCC version not found. Line: $LINENO" ;;
     esac
 
     log "Compiling GCC $version"
-    if ! make "-j$(nproc)"; then
-        fail "Failed to compile GCC $version"
-    fi
+    execute make "-j$(nproc --all)"
     log "Installing GCC $version"
-    if ! make install-strip; then
-        fail "Failed to install GCC $version"
-    fi
-
+    execute make install-strip
     create_symlinks "$version"
-}
-
-create_symlinks() {
-    local bin_dir major_version prefix_regex programs source_path symlink_path target_dir 
-    version="$1"
-    log "Creating symlinks for GCC $version..."
-    bin_dir="/usr/local/gcc-$version/bin"
-    target_dir="/usr/local/bin"
-    prefix_regex='^x86_64-linux-gnu-'
-
-    programs=(
-        c++ cpp g++ gcc gcc-ar gcc-nm gcc-ranlib
-        gcov gcov-dump gcov-tool gfortran gnat gnatbind
-        gnatchop gnatclean gnatkr gnatlink gnatls gnatmake
-        gnatname gnatprep lto-dump
-    )
-
-    for program in ${programs[@]}; do
-        source_path="$bin_dir/$program"
-        if [[ -x "$source_path" && ! "$program" =~ $prefix_regex ]]; then
-            major_version="${version%%.*}"
-            symlink_path="$target_dir/$program-$major_version"
-            if ln -sfn "$source_path" "$symlink_path"; then
-                log "Created symlink: $symlink_path -> $source_path"
-            else
-                warn "Failed to create symlink: $symlink_path -> $source_path"
-            fi
-        fi
-    done
 }
 
 cleanup() {
@@ -331,23 +349,20 @@ cleanup() {
 }
 
 install_autoconf() {
-    log "Installing autoconf 2.69"
-    curl -fsSLo "$build_dir/autoconf-2.69.tar.xz" "https://ftp.gnu.org/gnu/autoconf/autoconf-2.69.tar.xz"
-    mkdir -p "$build_dir/autoconf-2.69/build" "$workspace"
-    tar -xf "$build_dir/autoconf-2.69.tar.xz" -C "$build_dir/autoconf-2.69" --strip-components 1
-    cd "$build_dir/autoconf-2.69" || fail "Failed to change directory to autoconf-2.69"
-    autoupdate
-    autoconf
-    cd build || fail "Failed to change directory to build"
-    ../configure --prefix="$build_dir/workspace"
-    make "-j$(nproc)"
-    make install
+    if build "autoconf" "2.69"; then
+        download "https://ftp.gnu.org/gnu/autoconf/autoconf-2.69.tar.xz" "autoconf-2.69.tar.xz"
+        execute autoupdate
+        execute autoconf
+        mkdir build; cd build || fail "Failed to change the autoconf directory to build"
+        execute ../configure --prefix="$workspace" --disable-nls --enable-c++ --enable-threads=posix
+        execute make "-j$threads"
+        execute make install
+        build_done "autoconf" "2.69"
+    fi
 }
 
-selected_versions=()
-
 select_versions() {
-    local -a selected_versions versions 
+    local -a selected_versions versions
     versions=(9 10 11 12 13)
     selected_versions=()
 
@@ -405,20 +420,14 @@ select_versions() {
         latest_version=$(get_latest_version "$version")
         case "$version" in
             10)
-                build_gcc "$latest_version" "c,c++,fortran,objc,obj-c++,ada" "/usr/local/gcc-$latest_version" "--enable-checking=release --with-arch-32=i686"
+                build_gcc "$latest_version" "/usr/local/gcc-$latest_version" "--enable-checking=release" "--with-arch-32=i686"
                 ;;
             11|12|13)
-                build_gcc "$latest_version" "c,c++,fortran,objc,obj-c++,ada" "/usr/local/gcc-$latest_version" "--enable-checking=release"
+                build_gcc "$latest_version" "/usr/local/gcc-$latest_version" "--enable-checking=release"
                 ;;
         esac
         create_symlinks "$latest_version"
     done
-}
-
-ensure_root() {
-    if [[ "$EUID" -ne 0 ]]; then
-        fail "This script must be run as root or with sudo."
-    fi
 }
 
 check_requirements() {
@@ -454,8 +463,13 @@ main() {
 
     [[ "$EUID" -ne 0 ]] && fail "This script must be run as root or with sudo."
 
-    [[ -d "$build_dir" ]] && rm -rf "$build_dir"
-    mkdir -p "$build_dir"
+    mkdir -p "$packages" "$workspace"
+
+    if [[ -f /proc/cpuinfo ]]; then
+        threads=$(grep -c ^processor /proc/cpuinfo)
+    else
+        threads=$(nproc --all)
+    fi
 
     set_ccache_dir
     set_environment
