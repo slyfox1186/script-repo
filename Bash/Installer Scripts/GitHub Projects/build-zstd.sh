@@ -116,28 +116,23 @@ install_build() {
     sudo ninja -C build install || fail "Failed execute: ninja install. Line: $LINENO"
 }
 
-create_symlinks() {
-    local file files zstd_library zstd_library_trim
-    zstd_library=$(sudo find "$install_dir/" -type f -name 'libzstd.so.*' | sort -ruV)
-    zstd_library_trim="${zstd_library##*/}"
-    if [[ ! -f "/usr/lib/x86_64-linux-gnu/$zstd_library_trim" ]]; then
-        log "Moving the library file \"$zstd_library_trim\" to the required folder. (bug fixing)"
-        sudo cp -f "$zstd_library" "/usr/lib/x86_64-linux-gnu/$zstd_library_trim"
-        log "Creating the required soft link \"libzstd.so.1\" from \"libzstd.so.1.5.5\". (bug fixing)"
-        sudo ln -sf "/usr/lib/x86_64-linux-gnu/$zstd_library_trim" "/usr/lib/x86_64-linux-gnu/libzstd.so.1"
-    fi
-
+create_soft_links() {
+    local file files
     files=(zstd zstdgrep zstdless zstd-frugal)
-        for file in ${files[@]}; do
-            sudo ln -sf "$install_dir/bin/$file" "/usr/local/bin/"
-        done
+    for file in ${files[@]}; do
+        sudo ln -sf "$install_dir/bin/$file" "/usr/local/bin/"
+    done
+
+    sudo ln -sf "$install_dir/lib/pkgconfig/zlib.pc" "/usr/local/lib/pkgconfig/"
+    sudo ln -sf "$install_dir/include/"* "/usr/local/include/"
 }
 
-remove_file_conflicts() {
-    echo
-    log "Removing conflicting library files. (bug fixing)"
-    [[ -f "/usr/local/lib/x86_64-linux-gnu/libzstd.so.1" ]] && sudo rm "/usr/local/lib/x86_64-linux-gnu/libzstd.so.1"
-    [[ -f "/usr/local/lib/x86_64-linux-gnu/libzstd.so" ]] && sudo rm "/usr/local/lib/x86_64-linux-gnu/libzstd.so"
+create_linker_config_file() {
+    zstd_library=$(sudo find "$install_dir/lib/" -type f -name 'libzstd.so.*' | sort -ruV)
+    zstd_library_trim="${zstd_library##*/}"
+    echo "$install_dir/lib/x86_64-linux-gnu" | sudo tee /etc/ld.so.conf.d/custom_zstd.conf >/dev/null
+    sudo ln -sf "$install_dir/lib/x86_64-linux-gnu/libzstd.so.1" "/usr/lib/x86_64-linux-gnu/libzstd.so"
+    sudo ldconfig
 }
 
 main_menu() {
@@ -154,8 +149,8 @@ main_menu() {
     configure_build
     compile_build
     install_build
-    create_symlinks
-    remove_file_conflicts
+    create_soft_links
+    create_linker_config_file
     cleanup
     exit_fn
 }
