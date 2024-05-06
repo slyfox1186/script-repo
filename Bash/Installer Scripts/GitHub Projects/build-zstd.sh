@@ -59,8 +59,8 @@ cleanup() {
 }
 
 install_required_packages() {
-    local -a missing_pkgs
-    local pkg pkgs
+    local -a missing_pkgs pkgs
+    local pkg
     pkgs=(
         autoconf autoconf-archive automake build-essential ccache
         cmake curl git libdmalloc-dev libjemalloc-dev liblz4-dev
