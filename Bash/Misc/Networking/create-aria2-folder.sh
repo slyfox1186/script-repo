@@ -8,6 +8,7 @@ fi
 DIR="$HOME/.aria2"
 file="$DIR/aria2.conf"
 
+[[ -d "$DIR" ]] && sudo rm -fr "$DIR"
 mkdir -p "$DIR"
 
 touch "$DIR/dht.dat"
@@ -36,7 +37,7 @@ trackers=(
         udp://tracker.t-rb.org:6969/announce udp://tracker.theoks.net:6969/announce udp://tracker.therarbg.com:6969/announce udp://tracker.therarbg.to:6969/announce
         udp://tracker.tiny-vps.com:6969/announce udp://tracker.torrent.eu.org:451/announce udp://tracker.tryhackx.org:6969/announce udp://tracker1.bt.moack.co.kr:80/announce
         udp://tracker1.myporn.club:9337/announce udp://tracker2.dler.org:80/announce udp://ttk2.nbaonlineservice.com:6969/announce udp://uploads.gamecoast.net:6969/announce
-        udp://wepzone.net:6969/announce wss://wstracker.online
+        udp://wepzone.net:6969/announce
 )
 
 cat > $file <<EOF
@@ -78,5 +79,7 @@ split=32
 user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36
 EOF
 
-chmod -R +rwx "$DIR"
-chown -R "$USER":"$USER" "$DIR"
+sed -i -e 's/ http/,http/g' -i -e 's/ https/,https/g' -i -e 's/ udp/,udp/g' $file
+
+sudo chmod -R 700 "$DIR"
+sudo chown -R "$USER:$USER" "$DIR"
