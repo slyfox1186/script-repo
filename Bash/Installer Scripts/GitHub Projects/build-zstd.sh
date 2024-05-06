@@ -4,188 +4,159 @@
 ##  Purpose: Build zstd compression software
 ##  Features: Static and shared build
 ##  Changed: Static build to both
-##  Updated: 12.03.23
-##  Script version: 1.2
+##  Updated: 05.06.24
+##  Script version: 1.3
 
-clear
-
-if [ "$EUID" -eq 0 ]; then
+if [[ "$EUID" -eq 0 ]]; then
     echo "You must run this script without root or sudo."
     exit 1
 fi
 
+CYAN='\033[0;36m'
+GREEN='\033[0;32m'
+MAGENTA='\033[0;35m'
+RED='\033[0;31m'
+YELLOW='\033[0;33m'
+NC='\033[0m' # No Color
+
 # Set the variables
-
-script_ver=1.2
-archive_ver=1.5.5
-archive_dir="zstd-$archive_ver"
-archive_url="https://github.com/facebook/zstd/releases/download/v$archive_ver/$archive_dir.tar.gz"
+script_ver=1.3
+version=$(curl -fsS "https://github.com/facebook/zstd/tags/" | grep -oP 'href="[^"]*/tag/v?\K([0-9.])+' | sort -ruV | head -n1)
+archive_name="zstd-$version"
+archive_url="https://github.com/facebook/zstd/archive/refs/tags/v$version.tar.gz"
 archive_ext="${archive_url//*.}"
-archive_name="$archive_dir.tar.${archive_ext}"
-install_dir=/usr/local
-cwd="$PWD/zstd-build-script"
+tar_file="$archive_name.tar.$archive_ext"
+install_dir="/usr/local/$archive_name"
+cwd="$PWD/$archive_name-build-script"
 
-printf "%s\n%s\n\n" \
-    "ZStd Build Script - v$script_ver" \
-    '==============================================='
-sleep 2
 
-# Create output directory
-
-if [ -d "$cwd" ]; then
-    sudo rm -fr "$cwd"
-fi
-mkdir -p "$cwd"
-
-# Set the c+cpp compilers
-
-export CC=gcc CXX=g++
-
-# Export compiler optimization flags
-
-export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -fno-plt -march=native'
-
-# Set the path variable
-
-PATH="\
-/usr/lib/ccache:\
-$HOME/perl5/bin:\
-$HOME/.cargo/bin:\
-$HOME/.local/bin:\
-/usr/local/sbin:\
-/usr/local/cuda/bin:\
-/usr/local/x86_64-linux-gnu/bin:\
-/usr/local/bin:\
-/usr/sbin:\
-/usr/bin:\
-/sbin:\
-/bin:\
-/usr/local/games:\
-/usr/games:\
-/snap/bin\
-"
-export PATH
-
-# Set the pkg_config_path variable
-
-PKG_CONFIG_PATH="\
-/usr/share/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/local/lib/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/lib/pkgconfig:\
-/lib/pkgconfig\
-"
-export PKG_CONFIG_PATH
-
-# Create functions
-
-exit_fn()
-{
-    printf "\n%s\n\n%s\n%s\n\n" \
-        'The script has completed' \
-        'Make sure to star this repository to show your support!' \
-        "https://github.com/slyfox1186/script-repo"
-    exit 0
+# Enhanced logging and error handling
+log() {
+    echo -e "${GREEN}[INFO]${NC} $1"
 }
 
-fail_fn()
-{
-    printf "\n\n%s\n\n%s\n\n%s\n\n" \
-        "$1" \
-        'Please create a support ticket so I can work on a fix.' \
-        "https://github.com/slyfox1186/script-repo/issues"
+fail() {
+    echo -e "${RED}[ERROR]${NC} $1"
+    echo -e "To report a bug, create an issue at: https://github.com/slyfox1186/script-repo/issues"
     exit 1
 }
 
-cleanup_fn()
-{
-    local choice
+echo "Zstd Build Script - v$script_ver"
+echo "==============================================="
+echo
 
-    printf "\n%s\n\n%s\n%s\n\n" \
-        'Do you want to remove the build files?' \
-        '[1] Yes' \
-        '[2] No'
-    read -p 'Your choices are (1 or 2): ' choice
-    clear
-
-    case "${choice}" in
-        1)      sudo rm -fr "$cwd" "${0}";;
-        2)      return 0;;
-        *)
-                unset choice
-                cleanup_fn
-                ;;
-    esac
+# Create functions
+exit_fn() {
+    echo
+    log "The script has completed"
+    log "${GREEN}Make sure to ${YELLOW}star ${GREEN}this repository to show your support!${NC}"
+    log "${CYAN}https://github.com/slyfox1186/script-repo${NC}"
+    exit 0
 }
 
-# Install required apt packages
+cleanup() {
+    sudo rm -fr "$cwd"
+}
 
-pkgs=(autoconf autogen automake build-essential ccache clang cmake curl git libdmalloc-dev
-      libjemalloc-dev liblz4-dev liblzma-dev libtool libtool-bin m4 meson ninja-build
-      pkg-config zlib1g-dev)
+install_required_packages() {
+    local -a missing_pkgs
+    local pkg pkgs
+    pkgs=(
+        autoconf autoconf-archive automake build-essential ccache
+        cmake curl git libdmalloc-dev libjemalloc-dev liblz4-dev
+        liblzma-dev libtool m4 meson ninja-build
+        pkg-config zlib1g-dev
+    )
 
-for pkg in ${pkgs[@]}
-do
-    missing_pkg="$(sudo dpkg -l | grep -o "$pkg")"
+    missing_pkgs=()
+    for pkg in "${pkgs[@]}"; do
+        if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
+            missing_pkgs+=("$pkg")
+        fi
+    done
 
-    if [ -z "$missing_pkg" ]; then
-        missing_pkgs+="$pkg "
+    if [ ${#missing_pkgs[@]} -gt 0 ]; then
+        sudo apt update
+        sudo apt install "${missing_pkgs[@]}"
     fi
-done
+}
 
-if [ -n "$missing_pkgs" ]; then
-    sudo apt install $missing_pkgs
-    sudo apt -y autoremove
-    clear
-fi
+set_compiler_flags() {
+    CC="gcc"
+    CXX="g++"
+    CFLAGS="-O2 -fPIC -fPIE -mtune=native -DNDEBUG -fstack-protector-strong -Wno-unused-parameter"
+    CXXFLAGS="$CFLAGS"
+    CPPFLAGS="-D_FORTIFY_SOURCE=2"
+    LDFLAGS="-Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now,-rpath,$install_dir/lib"
+    PATH="/usr/lib/ccache:$HOME/perl5/bin:$HOME/.cargo/bin:$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin"
+    PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/lib/pkgconfig"
+    export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS PATH PKG_CONFIG_PATH
+}
 
-# Download the archive file
+download_archive() {
+    wget --show-progress -cqO "$cwd/$tar_file" "$archive_url" || fail "Failed to download archive with WGET. Line: $LINENO"
+}
 
-if [ ! -f "$cwd/$archive_name" ]; then
-    wget --show-progress -cqO "$cwd/$archive_name" "$archive_url"
-fi
+extract_archive() {
+    [[ -d "$cwd/$archive_name" ]] && sudo rm -fr "$cwd/$archive_name"
+    mkdir -p "$cwd/$archive_name"
+    tar -zxf "$cwd/$tar_file" -C "$cwd/$archive_name" --strip-components 1 || fail "Failed to extract: $cwd/$tar_file"
+}
 
-# Create the output directory
+configure_build() {
+    cd "$cwd/$archive_name/build/meson" || fail "cd into $cwd/$archive_name/build/meson. Line: $LINENO"
+    meson setup build --prefix="$install_dir" --buildtype=release --default-library=both --strip -Dbin_tests=false || fail "Failed to execute: meson setup. Line: $LINENO"
+}
 
-if [ -d "$cwd/$archive_dir" ]; then
-    sudo rm -fr "$cwd/$archive_dir"
-fi
-mkdir -p "$cwd/$archive_dir"
+compile_build() {
+    ninja "-j$(nproc --all)" -C build || fail "Failed to execute: ninja build. Line: $LINENO"
+}
 
-# Extract the archive file
+install_build() {
+    sudo ninja -C build install || fail "Failed execute: ninja install. Line: $LINENO"
+}
+create_symlinks() {
+    local file files zstd_library zstd_library_trim
+    zstd_library=$(sudo find "$install_dir/" -type f -name 'libzstd.so.*' | sort -ruV)
+    zstd_library_trim="${zstd_library##*/}"
+    if [[ ! -f "/usr/lib/x86_64-linux-gnu/$zstd_library_trim" ]]; then
+        log "Moving the library file \"$zstd_library_trim\" to the required folder. (bug fixing)"
+        sudo cp -f "$zstd_library" "/usr/lib/x86_64-linux-gnu/$zstd_library_trim"
+        log "Creating the required soft link \"libzstd.so.1\" from \"libzstd.so.1.5.5\". (bug fixing)"
+        sudo ln -sf "/usr/lib/x86_64-linux-gnu/$zstd_library_trim" "/usr/lib/x86_64-linux-gnu/libzstd.so.1"
+    fi
 
-if ! tar -zxf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; then
-    fail_fn "Failed to extract: $cwd/$archive_name"
-fi
+    files=(zstd zstdgrep zstdless zstd-frugal)
+        for file in ${files[@]}; do
+            sudo ln -sf "$install_dir/bin/$file" "/usr/local/bin/"
+        done
+}
 
-# Build the program from source code
+remove_file_conflicts() {
+    echo
+    log "Removing conflicting library files. (bug fixing)"
+    [[ -f "/usr/local/lib/x86_64-linux-gnu/libzstd.so.1" ]] && sudo rm "/usr/local/lib/x86_64-linux-gnu/libzstd.so.1"
+    [[ -f "/usr/local/lib/x86_64-linux-gnu/libzstd.so" ]] && sudo rm "/usr/local/lib/x86_64-linux-gnu/libzstd.so"
+}
 
-cd "$cwd/$archive_dir/build/meson" || exit 1
-meson setup build --prefix="$install_dir" \
-                  --buildtype=release \
-                  --default-library=both \
-                  --strip \
-                  -Dbin_tests=false
-echo
-if ! ninja "-j$(nproc --all)" -C build; then
-    fail_fn "Failed to execute: ninja -j$(nproc --all) -C build install. Line: $LINENO"
-fi
-echo
-if ! sudo ninja -C build install; then
-    fail_fn "Failed to execute: sudo ninja -C build install. Line: $LINENO"
-fi
+main_menu() {
+    # Create output directory
+    if [[ -d "$cwd" ]]; then
+        sudo rm -fr "$cwd"
+    fi
+    mkdir -p "$cwd"
 
-if [[ ! -f "/usr/lib/x86_64-linux-gnu/libzstd.so.1.5.5" ]]; then
-    sudo cp -f "$install_dir/lib/x86_64-linux-gnu/libzstd.so.1.5.5" "/usr/lib/x86_64-linux-gnu/libzstd.so.1.5.5"
-    sudo ln -sf "/usr/lib/x86_64-linux-gnu/libzstd.so.1.5.5" "/usr/lib/x86_64-linux-gnu/libzstd.so.1"
-fi
+    install_required_packages
+    set_compiler_flags
+    download_archive
+    extract_archive
+    configure_build
+    compile_build
+    install_build
+    create_symlinks
+    remove_file_conflicts
+    cleanup
+    exit_fn
+}
 
-[[ -f "/usr/local/lib/x86_64-linux-gnu/libzstd.so.1" ]] && sudo rm "/usr/local/lib/x86_64-linux-gnu/libzstd.so.1"
-[[ -f "/usr/local/lib/x86_64-linux-gnu/libzstd.so" ]] && sudo rm "/usr/local/lib/x86_64-linux-gnu/libzstd.so"
-
-# Prompt user to clean up files
-cleanup_fn
-
-# Show exit message
-exit_fn
+main_menu "$@"
