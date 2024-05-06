@@ -43,10 +43,10 @@ mkdir -p "$cwd"
 set_env_vars() {
     CC="gcc"
     CXX="g++"
-    CFLAGS="-O2 -pipe -march=native -mtune=native -fstack-protector-strong"
+    CFLAGS="-O2 -pipe -march=native -fstack-protector-strong"
     CXXFLAGS="$CFLAGS"
-    CPPFLAGS="-I/usr/include/openssl -I/usr/local/include -I/usr/include/libxml2 -I/usr/include -D_FORTIFY_SOURCE=2"
-    LDFLAGS="-Wl,-rpath,$install_dir/lib -Wl,-z,relro,-z,now"
+    CPPFLAGS="-I/usr/include/openssl -I/usr/include/libxml2 -D_FORTIFY_SOURCE=2"
+    LDFLAGS="-Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now,-rpath,$install_dir/lib"
     PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/share/pkgconfig:/usr/lib/pkgconfig:/lib/pkgconfig"
     export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS PKG_CONFIG_PATH
 }
