@@ -10,14 +10,30 @@
 #  -  Added SSL certificate information, including its validity period.
 #  -  Usage: python3 domain_lookup.py reddit.com google.com -o output.txt
 
-import whois
+import os
 import sys
 import socket
-import requests
 import ssl
 from datetime import datetime
+import requests
+import whois
+import certifi
+
+def safe_open_write(path, default_path='/default/path'):
+    """ Safely open a file for writing, avoiding path traversal vulnerabilities. """
+    if os.path.commonpath([os.path.abspath(path), default_path]) != default_path:
+        raise ValueError("Unauthorized file path")
+    return open(path, 'w')
+
+def validate_domain(domain):
+    """ Validate the domain to ensure it does not contain any unexpected characters that could lead to SSRF. """
+    import re
+    if not re.match(r"^[a-zA-Z0-9-\.]+$", domain):
+        raise ValueError("Invalid domain name")
+    return domain
 
 def format_dates(dates):
+    """ Format date objects for output. """
     if isinstance(dates, list):
         return dates[0].strftime('%m-%d-%Y %H:%M:%S UTC')
     elif dates:
@@ -26,6 +42,7 @@ def format_dates(dates):
         return "N/A"
 
 def get_reverse_ip(ip_address):
+    """ Get the reverse DNS record for an IP address. """
     try:
         return socket.gethostbyaddr(ip_address)[0]
     except socket.herror:
@@ -34,28 +51,42 @@ def get_reverse_ip(ip_address):
         return f"Error retrieving hostname - {e}"
 
 def get_geolocation(ip_address):
+    """ Fetch geolocation information for an IP address. """
     try:
-        response = requests.get(f"http://ip-api.com/json/{ip_address}")
+        response = requests.get(f"http://ip-api.com/json/{validate_domain(ip_address)}")
         data = response.json()
         return f"Country: {data['country']}, City: {data['city']}, ISP: {data['isp']}"
     except Exception as e:
         return "Error retrieving geolocation"
 
 def get_ssl_info(domain_name):
+    """ Retrieve SSL certificate information for a domain using specified CA bundle. """
     try:
+        # Create a default SSL context with higher security settings
         context = ssl.create_default_context()
+        # Load CA certificates from certifi
+        context.load_verify_locations(certifi.where())
+
+        # Create a secure socket connection
         with socket.create_connection((domain_name, 443), timeout=10) as sock:
             with context.wrap_socket(sock, server_hostname=domain_name) as ssock:
-                cert = ssock.getpeercert()
-                valid_from = datetime.strptime(cert['notBefore'], '%b %d %H:%M:%S %Y %Z').strftime('%m-%d-%Y %H:%M:%S UTC')
-                valid_until = datetime.strptime(cert['notAfter'], '%b %d %H:%M:%S %Y %Z').strftime('%m-%d-%Y %H:%M:%S UTC')
-                return f"SSL Valid:\n  - From:  {valid_from}\n  - Until: {valid_until}"
+                cert = ssock.getpeercert()  # Retrieve the peer's certificate
+                if 'notBefore' in cert and 'notAfter' in cert:
+                    # Parse and format the validity dates
+                    valid_from = datetime.strptime(cert['notBefore'], '%b %d %H:%M:%S %Y %Z').strftime('%m-%d-%Y %H:%M:%S UTC')
+                    valid_until = datetime.strptime(cert['notAfter'], '%b %d %H:%M:%S %Y %Z').strftime('%m-%d-%Y %H:%M:%S UTC')
+                    return f"SSL Valid from: {valid_from}, until: {valid_until}"
+                else:
+                    return "SSL Information: Validity dates not available"
+    except ssl.CertificateError as e:
+        return f"SSL Information: Error - {e}"
     except Exception as e:
-        return f"Error retrieving SSL certificate"
+        return f"SSL Information: Error - {e}"
 
 def get_http_headers(domain_name):
+    """ Fetch HTTP headers for a domain. """
     try:
-        response = requests.get(f"http://{domain_name}", timeout=10)
+        response = requests.get(f"http://{validate_domain(domain_name)}", timeout=10)
         headers = response.headers
         key_headers = ['Server', 'Content-Type', 'Last-Modified']
         header_info = "\n".join([f"  - {header}: {headers.get(header, 'Not Available')}" for header in key_headers])
@@ -68,14 +99,16 @@ def get_http_headers(domain_name):
         return f"Error: {e}"
 
 def get_alexa_rank(domain_name):
+    """ Retrieve Alexa rank for a domain. """
     try:
-        response = requests.get(f"http://data.alexa.com/data?cli=10&url={domain_name}")
+        response = requests.get(f"http://data.alexa.com/data?cli=10&url={validate_domain(domain_name)}")
         rank = response.text.split('<POPULARITY URL')[1].split('TEXT="')[1].split('"')[0]
         return f"Alexa Traffic Rank: {rank}"
     except Exception:
         return "Alexa Traffic Rank: N/A"
 
 def calculate_domain_age(creation_date):
+    """ Calculate the age of a domain from its creation date. """
     if isinstance(creation_date, list):
         creation_date = creation_date[0]
     if creation_date:
@@ -84,12 +117,15 @@ def calculate_domain_age(creation_date):
     return "Domain Age: N/A"
 
 def display_info(domain_info, domain_name, verbose=False):
+    """ Compile detailed domain information for display. """
     output = [f"\n{'=' * 40}\n\nDomain: {domain_name}"]
 
+    # Additional domain info like registrant and registrar
     output.append(f"Registrant Name: {domain_info.name}")
     output.append(f"Registrant Organization: {domain_info.org}")
     output.append(f"Registrar: {domain_info.registrar}")
 
+    # Date formatting and name servers
     output.append(f"\nCreation Date: {format_dates(domain_info.creation_date)}")
     output.append(f"Expiration Date: {format_dates(domain_info.expiration_date)}")
     output.append(f"Updated Date: {format_dates(domain_info.updated_date)}")
@@ -111,7 +147,7 @@ def display_info(domain_info, domain_name, verbose=False):
             output.append(f"  - {domain_info.emails}")
 
     try:
-        ip_address = socket.gethostbyname(domain_name)
+        ip_address = socket.gethostbyname(validate_domain(domain_name))
         output.append(f"\nIP Address: {ip_address}")
         output.append(f"Reverse IP: {get_reverse_ip(ip_address)}")
     except Exception as e:
@@ -142,6 +178,7 @@ def display_info(domain_info, domain_name, verbose=False):
     return "\n".join(output)
 
 def is_domain_available(domain):
+    """ Check if a domain is available for registration. """
     try:
         whois_result = whois.whois(domain)
         return not whois_result.domain_name
@@ -149,6 +186,7 @@ def is_domain_available(domain):
         return True
 
 def process_domains(domains, verbose=False, output_file=None):
+    """ Process a list of domains and compile information. """
     results = []
     for domain in domains:
         try:
@@ -167,7 +205,7 @@ def process_domains(domains, verbose=False, output_file=None):
     print(final_output)
 
     if output_file:
-        with open(output_file, "w") as file:
+        with safe_open_write(output_file) as file:
             file.write(final_output)
 
 if __name__ == "__main__":
@@ -178,6 +216,6 @@ if __name__ == "__main__":
     verbose = "-v" in sys.argv
     output_file_flag = "-o" in sys.argv
     output_file = sys.argv[sys.argv.index("-o") + 1] if output_file_flag and sys.argv.index("-o") + 1 < len(sys.argv) else None
-    domain_list = [arg for arg in sys.argv[1:] if arg != "-v" and arg != "-o"]
+    domain_list = [validate_domain(arg) for arg in sys.argv[1:] if arg != "-v" and arg != "-o"]
 
     process_domains(domain_list, verbose, output_file)
