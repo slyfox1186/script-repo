@@ -33,40 +33,59 @@ MICROCODE_PACKAGE=""
 if [[ "$CPU_VENDOR" == "GenuineIntel" ]]; then
     MICROCODE_PACKAGE="intel-ucode"
     log "Intel CPU detected, adding Intel microcode package to installation..." "info"
+    echo
 elif [[ "$CPU_VENDOR" == "AuthenticAMD" ]]; then
     MICROCODE_PACKAGE="amd-ucode"
     log "AMD CPU detected, adding AMD microcode package to installation..." "info"
+    echo
 else
     log "Unknown CPU vendor, proceeding without microcode package..." "warning"
+    echo
 fi
 
 # Installation list of packages
-PACKAGES="base-devel gdm gedit gedit-plugins git gnome gnome-terminal gnome-text-editor gnome-tweaks"
-PACKAGES+=" less nvidia os-prober pulseaudio pulseaudio-alsa reflector trash-cli xorg xorg-server xorg-xinit"
+PACKAGES=(
+    base-devel gdm gedit gedit-plugins git gnome gnome-terminal gnome-text-editor gnome-tweaks
+    less nvidia os-prober pulseaudio pulseaudio-alsa reflector trash-cli xorg xorg-server xorg-xinit
+)
 
 # Append microcode package if detected
 if [[ -n "$MICROCODE_PACKAGE" ]]; then
-    PACKAGES+=" $MICROCODE_PACKAGE"
+    PACKAGES+=("$MICROCODE_PACKAGE")
 fi
 
-printf "\n%s\n\n" "The default packages set to be installed: $PACKAGES"
+echo "The default packages set to be installed:"
+echo
+for pkg in "${PACKAGES[@]}"; do
+    echo "$pkg"
+done
 
 # Prompt the user to add or remove packages
+echo
 read -p "Enter additional packages to install (space-separated) or press Enter to continue: " ADDITIONAL_PACKAGES
 read -p "Enter packages to remove from the list (space-separated) or press Enter to continue: " REMOVE_PACKAGES
+echo
 
 # Add additional packages to the list
 if [[ -n "$ADDITIONAL_PACKAGES" ]]; then
-    PACKAGES="$PACKAGES $ADDITIONAL_PACKAGES"
+    IFS=' ' read -r -a ADDITIONAL_PACKAGES_ARRAY <<< "$ADDITIONAL_PACKAGES"
+    PACKAGES+=("${ADDITIONAL_PACKAGES_ARRAY[@]}")
 fi
 
 # Remove packages from the list
-for pkg in $REMOVE_PACKAGES; do
-    PACKAGES=$(echo "$PACKAGES" | sed "s/\b$(echo $pkg | sed 's/[.[\]*^$/]/\\&/g')\b//g")
-done
+if [[ -n "$REMOVE_PACKAGES" ]]; then
+    IFS=' ' read -r -a REMOVE_PACKAGES_ARRAY <<< "$REMOVE_PACKAGES"
+    for pkg in "${REMOVE_PACKAGES_ARRAY[@]}"; do
+        for i in "${!PACKAGES[@]}"; do
+            if [[ "${PACKAGES[$i]}" == "$pkg" ]]; then
+                unset 'PACKAGES[$i]'
+            fi
+        done
+    done
+fi
 
 # Install the packages
-pacman -Sy --needed --noconfirm $PACKAGES
+pacman -Sy --needed --noconfirm "${PACKAGES[@]}"
 
 # Check if a graphics driver is installed
 echo
@@ -88,7 +107,7 @@ enable_nvidia_tweaks() {
 
     # Enable Nvidia Driver update pacman hook using tee with a here-doc
     [[ ! -d "/etc/pacman.d/hooks/" ]] && mkdir -p "/etc/pacman.d/hooks/"
-    tee em/etc/pacman.d/hooks/nvidia.hook >/dev/null <<'EOF'
+    tee /etc/pacman.d/hooks/nvidia.hook >/dev/null <<'EOF'
 [Trigger]
 Operation=Install
 Operation=Upgrade

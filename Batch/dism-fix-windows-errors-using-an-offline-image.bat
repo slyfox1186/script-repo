@@ -6,7 +6,7 @@ TITLE Repair Windows Using an Offline Image
 :------------------------------------------------------------------------------------------------------------------------
 
 REM Created by: SlyFox1186
-REM Pastebin: https://pastebin.com/u/slyfox1186
+REM GitHub: https://github.com/slyfox1186/script-repo/blob/main/Batch/dism-fix-windows-errors-using-an-offline-image.bat
 
 REM This script will help you repair Windows while limiting internet access by using an offline mounted image of Windows.
 

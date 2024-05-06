@@ -5,6 +5,8 @@ TITLE SIMPLE DISM AND SFC REPAIR
 
 :----------------------------------------------------------------------------------
 
+REM GitHub: https://github.com/slyfox1186/script-repo/tree/main/Batch
+
 REM USE THIS TO FIX AND REPAIR CORRUPTED WINDOWS 10 AND 11 IMAGES
 
 :----------------------------------------------------------------------------------

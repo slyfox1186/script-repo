@@ -2,6 +2,11 @@
 SETLOCAL ENABLEEXTENSIONS
 COLOR 0A
 
+REM GitHub: https://github.com/slyfox1186/script-repo/tree/main/Batch
+
+REM Once installed you must hold the "shift" key and right click on a file or folder to access the context menu item.
+REM The reason for this is because the context menu is in "hidden mode" which is why the "shift" key is required.
+
 CLS
 ECHO Select an option: & ECHO=
 ECHO [1] Add "Copy Linux Path" to the context menu

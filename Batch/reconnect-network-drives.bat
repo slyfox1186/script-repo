@@ -5,6 +5,8 @@ TITLE RECONNECT NETWORK DRIVES
 
 :----------------------------------------------------------------------------------------------
 
+REM GitHub: https://github.com/slyfox1186/script-repo/tree/main/Batch
+
 REM OPEN THE CMD WINDOW IN THE SCRIPT'S DIRECTORY MAXIMIZED
 PUSHD "%~dp0"
 IF NOT "%1"=="MAX" START /MAX CMD /D /C %0 MAX & GOTO :EOF

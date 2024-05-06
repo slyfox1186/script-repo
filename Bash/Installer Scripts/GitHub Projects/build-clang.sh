@@ -1,11 +1,9 @@
 #!/usr/bin/env bash
 
 # Script to build LLVM Clang
-# Updated: 05.29.24
-# Script version: 2.1
+# Updated: 05.05.24
+# Script version: 2.2
 # Added multiple script arguments including the ability to set the version of Clang to install.
-
-set -euo pipefail
 
 # ANSI color codes
 RED='\033[0;31m'
@@ -14,11 +12,8 @@ YELLOW='\033[0;33m'
 NC='\033[0m'
 
 # Bind variables
-cleanup="false"
+cleanup=true
 custom_version=""
-
-# Set PATH to include ccache directory
-export PATH="/usr/lib/ccache:$PATH"
 
 fail() {
     echo -e "${RED}[ERROR]${NC} $1"
@@ -41,7 +36,9 @@ check_root() {
 }
 
 install_required_packages() {
-    local pkgs=(
+    local -a missing_packages
+    local pkg pkgs
+    pkgs=(
         autoconf autoconf-archive automake autopoint binutils binutils-dev
         build-essential ccache cmake curl doxygen jq libc6-dev libedit-dev
         libffi-dev libgmp-dev libomp-dev libpfm4-dev librust-atom-dev
@@ -49,7 +46,7 @@ install_required_packages() {
         swig zlib1g-dev
     )
 
-    local missing_packages=()
+    missing_packages=()
     for pkg in ${pkgs[@]}; do
         if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
             missing_packages+=("$pkg")
@@ -66,12 +63,13 @@ install_required_packages() {
 }
 
 set_highest_clang_version() {
-    local available_versions=($(apt-cache search --names-only '^clang-[0-9]+$' | cut -d' ' -f1 | sort -rV))
+    local available_versions highest_version
+    available_versions=($(apt-cache search --names-only '^clang-[0-9]+$' | cut -d' ' -f1 | sort -rV))
     if [[ ${#available_versions[@]} -eq 0 ]]; then
         fail "No clang versions found in the package manager."
     fi
 
-    local highest_version=${available_versions[0]}
+    highest_version=${available_versions[0]}
     if ! dpkg-query -W -f='${Status}' "$highest_version" 2>/dev/null | grep -q "ok installed"; then
         log "Installing $highest_version..."
         apt-get -y install "$highest_version"
@@ -98,9 +96,10 @@ set_compiler_flags() {
 }
 
 build_llvm_clang() {
-    local llvm_tar_url="https://github.com/llvm/llvm-project/archive/refs/tags/llvmorg-$llvm_version.tar.gz"
+    local llvm_tar_filename llvm_tar_url system_triplet
+    llvm_tar_url="https://github.com/llvm/llvm-project/archive/refs/tags/llvmorg-$llvm_version.tar.gz"
 
-    local llvm_tar_filename="$cwd/llvmorg-$llvm_version.tar.gz"
+    llvm_tar_filename="$cwd/llvmorg-$llvm_version.tar.gz"
 
     if [[ -f "$llvm_tar_filename" ]]; then
         log "The LLVM source file $llvm_tar_filename is already downloaded."
@@ -116,7 +115,7 @@ build_llvm_clang() {
     log "LLVM source code extracted to $workspace"
     echo
 
-    local system_triplet=$(curl -fsS "https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess" | bash)
+    system_triplet=$(curl -fsS "https://raw.githubusercontent.com/gcc-mirror/gcc/master/config.guess" | bash)
 
     cd "$workspace" || fail "Failed to change directory to $workspace"
 
@@ -161,11 +160,12 @@ build_llvm_clang() {
 }
 
 create_symlinks() {
-    local llvm_version_trim="${llvm_version%%.*}"
-    local versioned_clang="clang-$llvm_version_trim"
-    local versioned_clangpp="clang++-$llvm_version_trim"
+    local llvm_version_trim non_versioned_tool tool tools versioned_clang versioned_clangpp 
+    llvm_version_trim="${llvm_version%%.*}"
+    versioned_clang="clang-$llvm_version_trim"
+    versioned_clangpp="clang++-$llvm_version_trim"
 
-    local tools=(
+    tools=(
         clang-$llvm_version_trim clang++-$llvm_version_trim clang-format
         clang-tidy clangd llvm-ar llvm-nm llvm-objdump llvm-dis llc lli opt
     )
@@ -175,7 +175,7 @@ create_symlinks() {
             ln -sf "$install_prefix/bin/clang++" "/usr/local/bin/$tool"
         else
             ln -sf "$install_prefix/bin/$tool" "/usr/local/bin/$tool"
-            local non_versioned_tool="${tool%-*}"
+            non_versioned_tool="${tool%-*}"
             if [[ ! "$tool" == "$non_versioned_tool" ]]; then
                 ln -sf "$install_prefix/bin/$tool" "/usr/local/bin/$non_versioned_tool"
             fi
@@ -183,7 +183,7 @@ create_symlinks() {
     done
 }
 
-cleanup_build_files() {
+cleanup_build() {
     rm -fr "$cwd"
 }
 
@@ -196,12 +196,21 @@ list_llvm_versions() {
     exit 0
 }
 
+set_ccache_dir() {
+    if [[ -d "/usr/lib/ccache/bin" ]]; then
+        ccache_dir="/usr/lib/ccache/bin"
+    else
+        ccache_dir="/usr/lib/ccache"
+    fi
+    echo "$ccache_dir"
+}
+
 display_help() {
     echo "Usage: $0 [OPTIONS]"
     echo
     echo "Options:"
     echo "  -h, --help             Display this help message"
-    echo "  -c, --cleanup          Remove build files after installation"
+    echo "  -k, --keep             Keep the build files after installation"
     echo "  -l, --list             List available LLVM versions"
     echo "  -v, --version <ver>    Specify a custom version of Clang to download and build"
     echo
@@ -212,7 +221,7 @@ display_help() {
     echo
     echo "Examples:"
     echo "  $0                 # Build the latest release version of LLVM Clang available"
-    echo "  $0 -c -v 17.0.6    # Build LLVM Clang version 17.0.6 and then clean up the build files"
+    echo "  $0 -k -v 17.0.6    # Build LLVM Clang version 17.0.6 and then clean up the build files"
     echo "  $0 -l              # List available LLVM versions"
     echo
     exit 0
@@ -225,8 +234,8 @@ main() {
             -h|--help)
                 display_help
                 ;;
-            -c|--cleanup)
-                cleanup=true
+            -k|--keep)
+                cleanup=false
                 ;;
             -v|--version)
                 if [[ -n "$2" ]]; then
@@ -248,6 +257,10 @@ main() {
         shift
     done
 
+    # Set PATH to include ccache directory
+    PATH="$(set_ccache_dir):$PATH"
+    export PATH
+
     cwd="$PWD/llvm-build-script"
     workspace="$cwd/workspace"
 
@@ -264,11 +277,12 @@ main() {
     set_compiler_flags
     build_llvm_clang
     create_symlinks
-
-    [[ "$cleanup" == "true" ]] && cleanup_build_files
+    
+    [[ "$cleanup" == "true" ]] && cleanup_build
 
     echo
     log "The script has completed"
+    echo
     log "Make sure to star this repository to show your support:"
     log "https://github.com/slyfox1186/script-repo"
 }

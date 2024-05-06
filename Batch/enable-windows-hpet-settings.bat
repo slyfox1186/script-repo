@@ -5,6 +5,8 @@ TITLE ENABLE HPET IN WINDOWS
 
 :-------------------------------------------------------------
 
+REM GitHub: https://github.com/slyfox1186/script-repo/tree/main/Batch
+
 REM THIS SCRIPT ONLY ENABLES WINDOWS TIMER (HPET)
 REM TO [ ENABLE OR DISABLE ] HPET VISIT: https://pastebin.com/rqMrZmr2
 

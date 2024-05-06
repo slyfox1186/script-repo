@@ -5,6 +5,8 @@ TITLE DISKPART FORMAT DRIVE
 
 :----------------------------------------------------------------------------------------------
 
+REM GitHub: https://github.com/slyfox1186/script-repo/tree/main/Batch
+
 REM OPEN CMD WINDOW MAXIMIZED
 IF NOT "%1"=="MAX" START /MAX CMD /D /C %0 MAX & GOTO :EOF
 

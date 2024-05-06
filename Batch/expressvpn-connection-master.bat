@@ -6,7 +6,7 @@ TITLE ExpressVPN Client Command Line Script
 :----------------------------------------------------------------------------------
 
 REM Created by: SlyFox1186
-REM Web: https://pastebin.com/u/slyfox1186
+REM GitHub: https://github.com/slyfox1186/script-repo/tree/main/Batch
 
 REM Command line to connect to an ExpressVPN server by
 REM using the 3rd party app "expresso.exe".
