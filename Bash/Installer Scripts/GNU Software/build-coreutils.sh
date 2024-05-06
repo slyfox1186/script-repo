@@ -2,8 +2,8 @@
 
 ##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-coreutils.sh
 ##  Purpose: build gnu coreutils
-##  Updated: 03.17.24
-##  Script version: 1.2
+##  Updated: 05.06.24
+##  Script version: 1.3
 ##  Execution: ./build-coreutils.sh --help
 
 # ANSI color codes
