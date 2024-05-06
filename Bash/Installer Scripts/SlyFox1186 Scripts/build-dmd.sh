@@ -27,7 +27,7 @@ download_success=0
 
 if ! wget --show-progress -cqO "$PWD/dmd-installer.sh" "https://dlang.org/install.sh"; then
     printf "Failed to download the install script after retries.\n\n"
-    rm -f "$PWD/dmd-installer.sh"
+    rm -f "$PWD/dmd-installer.sh" >2/dev/null
     exit 1
 fi
 
@@ -37,7 +37,7 @@ chmod +x "$PWD/dmd-installer.sh"
 
 # Run the script and redirect verbose output to /dev/null
 echo "Installing DMD version $version"
-if ! sudo bash "$PWD/dmd-installer.sh" install &>/dev/null; then
+if ! bash "$PWD/dmd-installer.sh" install &>/dev/null; then
     printf "\nInstallation of DMD failed.\n\n"
     rm -f "$PWD/dmd-installer.sh"
     exit 1
@@ -46,6 +46,7 @@ fi
 # Add dub to the users .bashrc file
 cat >> "$HOME/.bashrc" <<EOF
 
+# DLANG BIN PATH
 export PATH="\$PATH:\$HOME/dlang/dmd-$version/linux/bin64"
 EOF
 
@@ -54,7 +55,7 @@ source "$HOME/.bashrc"
 source "$HOME/dlang/dmd-$version/activate"
 
 # Delete the install script
-#rm -f "$PWD/dmd-installer.sh"
+rm -f "$PWD/dmd-installer.sh"
 
 echo
 echo "Make sure to star this repository to show your support!"
