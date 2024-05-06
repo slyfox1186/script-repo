@@ -25,8 +25,6 @@ fi
 echo "Downloading the install script for DMD version $version."
 download_success=0
 
-clear
-set -x
 if ! wget --show-progress -cqO "$PWD/dmd-installer.sh" "https://dlang.org/install.sh"; then
     printf "Failed to download the install script after retries.\n\n"
     rm -f "$PWD/dmd-installer.sh"
