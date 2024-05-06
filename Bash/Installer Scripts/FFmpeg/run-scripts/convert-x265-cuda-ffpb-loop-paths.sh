@@ -42,6 +42,15 @@ check_dependencies() {
     fi
 }
 
+# Function to remove a video path from the heredoc
+remove_video_path() {
+    local video_path
+    video_path="$1"
+    
+    # Remove the video path from the heredoc using awk
+    awk -v path="$video_path" '!index($0, path)' "$0" > "$0.tmp" && mv "$0.tmp" "$0"
+}
+
 # Main video conversion function
 convert_videos() {
     local aspect_ratio bitrate bufsize file_out height length maxrate original_bitrate
@@ -101,7 +110,7 @@ convert_videos() {
         printf "${YELLOW}Resolution:${NC}         ${PURPLE}%sx%s${NC}\\n" "$width" "$height"
         printf "${YELLOW}Duration:${NC}           ${PURPLE}%s mins${NC}\\n" "$length"
 
-        printf "\\n${YELLOW}Output File:${NC}        ${CYAN}%s${NC}\\n" "$output_file"
+        printf "\\n${YELLOW}Output File:${NC}        ${CYAN}%s${NC}\\n" "$output_file"
 
         printf "\\n${BLUE}::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::${NC}\\n"
 
@@ -136,12 +145,8 @@ convert_videos() {
 
             rm -f "$video"
 
-            # Remove the video path from the script itself using sed
-            if ! sed -i "\|^$video\$|d" "$0"; then
-                echo "Failed to remove the processed video from the input text file."
-                google_speech "The sed command failed." &>/dev/null
-                exit 1
-            fi
+            # Remove the video path from the script itself using awk
+            remove_video_path "$video"
         else
             google_speech "Video conversion failed." &>/dev/null
             fail "Video conversion failed for: $video"

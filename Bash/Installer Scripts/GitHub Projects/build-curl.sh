@@ -30,7 +30,7 @@ log() {
 # Define program variables
 program="curl"
 cwd="$PWD/curl-build-script"
-version=$(curl -s "https://github.com/curl/curl/tags" | grep -oP 'curl-[0-9]+_[0-9]+_[0-9]+' | head -n1)
+version=$(curl -fsS "https://github.com/curl/curl/tags" | grep -oP 'curl-([0-9_])+' | head -n1)
 formatted_version=$(echo "$version" | sed "s/curl-//" | sed "s/_/\./g")
 download_url="https://github.com/curl/curl/archive/refs/tags/$version.tar.gz"
 tar_file="$cwd/$program-$formatted_version.tar.gz"
@@ -39,9 +39,6 @@ install_dir="/usr/local/$program-$formatted_version"
 certs_dir="/etc/ssl/certs"
 pem_file="cacert.pem"
 pem_out="$certs_dir/$pem_file"
-cleanup_flag="false"
-
-mkdir -p "$cwd"
 
 # Define environment variables
 set_env_vars() {
@@ -73,7 +70,7 @@ apt_pkgs() {
         fi
     done
 
-    if [ ${#missing_pkgs[@]} -gt 0 ]; then
+    if [ "${#missing_pkgs[@]}" -gt 0 ]; then
         sudo apt update
         sudo apt install "${missing_pkgs[@]}"
     fi
@@ -97,9 +94,12 @@ get_source() {
     mkdir -p "$extract_dir"
 
     log "Extracting $tar_file"
-    tar -zxf "$tar_file" -C "$extract_dir" --strip-components=1
+    if ! tar -zxf "$tar_file" -C "$extract_dir" --strip-components=1; then
+        sudo rm -f "$tar_file"
+        fail "The tar command was unable to extract the archive so it was deleted. Re-run the script."
+    fi
 
-    cd "$extract_dir"
+    cd "$extract_dir" || exit 1
 }
 
 # Install ca certs from curl's official website
@@ -152,7 +152,8 @@ build_and_install() {
 
 # Display the installed version
 display_version() {
-    local version=$("$install_dir/bin/$program" --version | head -n1 | awk '{print $2}')
+    local version
+    version=$("$install_dir/bin/$program" --version | head -n1 | awk '{print $2}')
     log "The installed version of $program is: $version"
 }
 
@@ -189,7 +190,6 @@ parse_args() {
                 exit 1
                 ;;
         esac
-        shift
     done
 }
 
@@ -198,6 +198,8 @@ main() {
     if [[ "$EUID" -eq 0 ]]; then
         fail "You must run this script without root or sudo. Line: $LINENO"
     fi
+
+    mkdir -p "$cwd"
 
     parse_args "$@"
     set_env_vars
