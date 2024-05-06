@@ -1,22 +1,34 @@
 #!/usr/bin/env bash
 
-##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-git/
-##  Purpose: Build git from source code
-##  Script updated on: 05.02.24
-##  Script version: 1.4
+# Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-git.sh
+# Purpose: Build Git
+# Updated: 05.06.24
+# Script version: 1.5
 
-# Default values for arguments
-compiler="gcc"
-git_version=""
-keep_build="false"
-prefix="/usr/local/git-"
-verbose="true"
+if [[ "$EUID" -eq 0 ]]; then
+    echo "You must run this script without root or sudo."
+    exit 1
+fi
 
-# Colors for logging
+CYAN='\033[0;36m'
 GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
 RED='\033[0;31m'
-NC='\033[0m'
+YELLOW='\033[0;33m'
+NC='\033[0m' # No Color
+
+# Set the variables
+script_ver=1.5
+prog_name="git"
+version=$(curl -fsS "https://github.com/git/git/tags/" | grep -oP 'href="[^"]*/tag/v?\K([0-9.])+' | sort -ruV | head -n1)
+dir_name="$prog_name-$version"
+archive_url="https://github.com/git/git/archive/refs/tags/v$version.tar.gz"
+archive_ext="${archive_url//*.}"
+tar_file="$dir_name.tar.$archive_ext"
+install_dir="/usr/local/$dir_name"
+cwd="$PWD/$dir_name-build-script"
+keep_build="false"
+compiler="gcc"
+verbose="true"
 
 # Function to display help menu
 display_help() {
@@ -36,15 +48,19 @@ parse_arguments() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
             -v|--version)
-                git_version="$2"
+                version="$2"
                 shift 2
                 ;;
             -k|--keep)
-                keep_build=true
+                keep_build="true"
                 shift
                 ;;
             -c|--compiler)
-                compiler="$2"
+                if [[ ! "$2" == "clang" ]]; then
+                    fail "The alternative compiler must be \"clang\" if you pass the --compiler argument, otherwise \"gcc\" is enabled by default. Please re-run the script and modify your agruments accordingly."
+                else
+                    compiler="$2"
+                fi
                 shift 2
                 ;;
             -p|--prefix)
@@ -52,7 +68,7 @@ parse_arguments() {
                 shift 2
                 ;;
             -n|--no-verbose)
-                verbose=false
+                verbose="false"
                 shift
                 ;;
             -l|--list)
@@ -63,8 +79,7 @@ parse_arguments() {
                 display_help
                 exit 0
                 ;;
-            *)
-                echo -e "${RED}[fail]${NC} Invalid argument: $1"
+            *)  echo -e "${RED}[fail]${NC} Invalid argument: $1"
                 display_help
                 exit 1
                 ;;
@@ -79,125 +94,120 @@ log() {
     fi
 }
 
-# Function to log warnings
-warn() {
-    if [[ "$verbose" == true ]]; then
-        echo -e "${YELLOW}[WARN]${NC} $1"
-    fi
-}
-
-# Function to log errors
 fail() {
-    echo -e "${RED}[fail]${NC} $1"
+    echo -e "${RED}[ERROR]${NC} $1"
+    echo -e "To report a bug, create an issue at: https://github.com/slyfox1186/script-repo/issues"
     exit 1
 }
 
-# Function to retrieve the latest Git version number
-get_latest_git_version() {
-    if [[ -z "$git_version" ]]; then
-        log "Retrieving the latest Git version number..."
-        git_version=$(curl -fsSL "https://github.com/git/git/tags/" | grep -oP 'v\d+\.\d+\.\d+' | head -n1 | tr -d 'v')
-        log "Latest Git version: $git_version"
-    fi
-}
+echo "$prog_name build script - v$script_ver"
+echo "==============================================="
+echo
 
-# Function to list all available Git versions
-list_git_versions() {
-    log "Listing all available Git versions..."
+# Create functions
+exit_fn() {
     echo
-    curl -fsSL "https://github.com/git/git/tags/" | grep -oP 'v\d+\.\d+\.\d+' | sort -ruV | sed 's/^v//'
-}
-
-# Function to install necessary dependencies for building Git
-install_dependencies() {
-    local missing_packages pkg pkgs
-    log "Installing dependencies necessary for building Git from source..."
-    echo
-    pkgs=(cmake gettext libcurl4-gnutls-dev libexpat1-dev libssl-dev libz-dev "$compiler")
-    for pkg in ${pkgs[@]}; do
-        if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
-            missing_packages+="$pkg "
-        fi
-    done
-    if [[ -n "$missing_packages" ]]; then
-        sudo apt update
-        sudo apt -y install $missing_packages
-        log "Successfully installed build dependencies."
-    fi
-}
-
-# Function to download, compile, and install Git from source
-install_git() {
-    log "Fetching Git source code (version: $git_version)..."
-    cd /tmp || exit 1
-    if [[ ! -f "git-$git_version.tar.gz" ]]; then
-        sudo wget --show-progress -cqO "git-$git_version.tar.gz" "https://github.com/git/git/archive/refs/tags/v$git_version.tar.gz" || fail "Failed to download Git source code."
-    else
-        log "The source files have already been downloaded."
-    fi
-
-    log "Extracting Git source code..."
-    if ! sudo tar -zxf "git-$git_version.tar.gz"; then
-        sudo rm -f "git-$git_version.tar.gz"
-        fail "Tar failed to extract the archive so it was deleted. Line: $LINENO"
-    fi
-
-    cd "git-$git_version" || exit 1
-    
-    log "Compiling Git from source. This may take a while..."
-    prefix="$prefix$git_version"
-    sudo make "-j$(nproc --all)" prefix="$prefix" all || fail "Compilation of Git failed. Line: $LINENO"
-    
-    log "Installing Git..."
-    sudo make prefix="$prefix" install || fail "Failed to install Git. Line: $LINENO"
-    echo
-    log "Git has been successfully installed from source."
-    echo
-    log "Creating soft links from $prefix/bin to /usr/local/bin..."
-    sudo ln -sf "$prefix/bin/git" /usr/local/bin/git
-    sudo ln -sf "$prefix/bin/git-shell" /usr/local/bin/git-shell
-    sudo ln -sf "$prefix/bin/git-upload-pack" /usr/local/bin/git-upload-pack
-    sudo ln -sf "$prefix/bin/git-receive-pack" /usr/local/bin/git-receive-pack
+    log "The script has completed"
+    log "${GREEN}Make sure to ${YELLOW}star ${GREEN}this repository to show your support!${NC}"
+    log "${CYAN}https://github.com/slyfox1186/script-repo${NC}"
+    exit 0
 }
 
 # Function to clean up build files
-clean_up() {
-    if [[ $keep_build == false ]]; then
-        log "Cleaning up build files..."
-        sudo rm -rf "/tmp/git-$git_version" "/tmp/git-$git_version.tar.gz"
-    else
+cleanup() {
+    if [[ "$keep_build" == "true" ]]; then
         log "Keeping the build files as requested."
+    else
+        log "Cleaning up build files..."
+        sudo rm -rf "$cwd"
     fi
 }
 
-# Function to optimize the script
-optimize_script() {
+install_required_packages() {
+    local -a missing_pkgs pkgs
+    local pkg
+    pkgs=(
+        autoconf autoconf-archive build-essential gettext libcurl4-gnutls-dev libexpat1-dev
+        libpcre2-dev libssl-dev libticonv-dev libtool m4 perl "$compiler" zlib1g-dev
+   )
+
+    missing_pkgs=()
+    for pkg in "${pkgs[@]}"; do
+        if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
+            missing_pkgs+=("$pkg")
+        fi
+    done
+
+    if [ "${#missing_pkgs[@]}" -gt 0 ]; then
+        sudo apt update
+        sudo apt install "${missing_pkgs[@]}"
+    fi
+}
+
+set_compiler_flags() {
     CC="$compiler"
     CXX="$compiler++"
-    CFLAGS="-O3 -pipe -fstack-protector-strong -fPIC -fPIE -D_FORTIFY_SOURCE=2 -march=native"
+    CFLAGS="-O2 -fPIC -fPIE -mtune=native -DNDEBUG -fstack-protector-strong -Wno-unused-parameter"
     CXXFLAGS="$CFLAGS"
     CPPFLAGS="-D_FORTIFY_SOURCE=2"
-    LDFLAGS="-Wl,-z,relro,-z,now,-rpath,$prefix/lib"
-    export CC CFLAGS CXX CXXFLAGS CPPFLAGS LDFLAGS
+    LDFLAGS="-Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now,-rpath,$install_dir/lib"
+    PATH="/usr/lib/ccache:$HOME/perl5/bin:$HOME/.cargo/bin:$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin"
+    PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/lib/pkgconfig"
+    export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS PATH PKG_CONFIG_PATH
 }
 
-# Main function to control the flow of the script
-main() {
-    log "Starting the script to install Git from source."
-    echo
+download_archive() {
+    wget --show-progress -cqO "$cwd/$tar_file" "$archive_url" || fail "Failed to download archive with WGET. Line: $LINENO"
+}
+
+extract_archive() {
+    [[ -d "$cwd/$dir_name" ]] && sudo rm -fr "$cwd/$dir_name"
+    mkdir -p "$cwd/$dir_name"
+    tar -zxf "$cwd/$tar_file" -C "$cwd/$dir_name" --strip-components 1 || fail "Failed to extract: $cwd/$tar_file"
+}
+
+configure_build() {
+    cd "$cwd/$dir_name" || fail "Failed to cd into \"$cwd/$dir_name\". Line: $LINENO"
+    autoreconf -fi
+    curl_prefix=$(find /usr/ -type f -name curl 2>/dev/null | sort -ruV | head -n1 | awk -F'/bin/curl' '{print $1}' | grep -oP '^/usr(/local)?')
+    ./configure --prefix="$install_dir" --with-libpcre2 --with-curl="$curl_prefix" \
+                 --with-iconv=/usr --with-editor="$(type -P nano)" --with-shell="$(type -P sh)" \
+                 --with-perl="$(type -P perl)" --with-python="$(type -P python3)" || fail "Failed to execute: meson setup. Line: $LINENO"
+}
+
+compile_build() {
+    make "-j$(nproc --all)" || fail "Failed to execute: make build. Line: $LINENO"
+}
+
+install_build() {
+    sudo make install || fail "Failed execute: sudo make install. Line: $LINENO"
+}
+
+create_soft_links() {
+    sudo ln -sf "$install_dir/bin/"* "/usr/local/bin/"
+    sudo ln -sf "$install_dir/lib/pkgconfig/"*.pc "/usr/local/lib/pkgconfig/"
+    sudo ln -sf "$install_dir/include/"* "/usr/local/include/"
+}
+
+main_menu() {
+    # Create output directory
+    if [[ -d "$cwd" ]]; then
+        sudo rm -fr "$cwd/$dir_name"
+    fi
+    mkdir -p "$cwd"
+
     parse_arguments "$@"
-    get_latest_git_version
-    optimize_script
-    install_dependencies
-    install_git
-    clean_up
+    install_required_packages
+    set_compiler_flags
+    download_archive
+    extract_archive
+    configure_build
+    compile_build
+    install_build
+    create_soft_links
+    cleanup
+    exit_fn
 }
 
-# Calling the main function with command-line arguments
-main "$@"
+main_menu "$@"
 
-echo
-log "Build completed successfully."
-echo
-log "Make sure to star this repository to show your support!"
-log "https://github.com/slyfox1186/script-repo"
