@@ -1,301 +1,150 @@
 #!/usr/bin/env bash
 
-########################################################################################################################################
-##
-##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-zlib
-##
-##  Purpose: Build zlib
-##
-##  Updated: 09.13.23
-##
-##  Added: -fPIC to CFLAGS & CXXFLAGS to avoid other programs not compiling when attempting to use the libz.a file while linking
-##
-##  Script version: 1.2
-##
-########################################################################################################################################
+# Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-zlib.sh
+# Purpose: Build zlib compression software
+# Features: Static and shared build
+# Changed: Static build to both
+# Updated: 05.06.24
+# Script version: 1.3
 
-clear
-
-if [ "${EUID}" -eq '0' ]; then
+if [[ "$EUID" -eq 0 ]]; then
     echo "You must run this script without root or sudo."
     exit 1
 fi
 
-# Set variables
+CYAN='\033[0;36m'
+GREEN='\033[0;32m'
+MAGENTA='\033[0;35m'
+RED='\033[0;31m'
+YELLOW='\033[0;33m'
+NC='\033[0m' # No Color
 
-script_ver=1.2
-install_dir=/usr/local
-cwd="$PWD"/zlib-build-script
-packages="$cwd"/packages
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
-web_repo=https://github.com/slyfox1186/script-repo
-debug=OFF
+# Set the variables
+script_ver=1.3
+version=$(curl -fsS "https://github.com/madler/zlib/tags" | grep -oP 'href="[^"]*/tag/v?\K([0-9.])+' | sort -ruV | head -n1)
+archive_name="zlib-$version"
+archive_url="https://github.com/madler/zlib/archive/refs/tags/v$version.tar.gz"
+archive_ext="${archive_url//*.}"
+tar_file="$archive_name.tar.$archive_ext"
+install_dir="/usr/local/$archive_name"
+cwd="$PWD/$archive_name-build-script"
 
-printf "\n%s\n%s\n\n" \
-    "zlib build script - v${script_ver}" \
-    '==============================================='
 
-# Create output directory
-
-if [ -d "$cwd" ]; then
-    sudo rm -fr "$cwd"
-fi
-mkdir -p "$cwd"
-
-# Set the c+cpp compilers
-
-export CC=gcc CXX=g++
-
-# Set compiler optimization flags
-
-export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -fno-plt -march=native'
-
-# Set the path variable
-
-PATH="\
-/usr/lib/ccache:\
-${HOME}/perl5/bin:\
-${HOME}/.cargo/bin:\
-${HOME}/.local/bin:\
-/usr/local/sbin:\
-/usr/local/cuda/bin:\
-/usr/local/x86_64-linux-gnu/bin:\
-/usr/local/bin:\
-/usr/sbin:\
-/usr/bin:\
-/sbin:\
-/bin:\
-/usr/local/games:\
-/usr/games:\
-/snap/bin\
-"
-export PATH
-
-# Set the pkg_config_path variable
-
-PKG_CONFIG_PATH="\
-/usr/local/lib64/pkgconfig:\
-/usr/local/lib/pkgconfig:\
-/usr/local/lib/usr/local/pkgconfig:\
-/usr/local/share/pkgconfig:\
-/usr/lib64/pkgconfig:\
-/usr/lib/pkgconfig:\
-/usr/lib/usr/local/pkgconfig:\
-/usr/share/pkgconfig:\
-/lib64/pkgconfig:\
-/lib/pkgconfig:\
-/lib/usr/local/pkgconfig\
-"
-export PKG_CONFIG_PATH
-
-# Create functions
-
-exit_fn()
-{
-    printf "\n%s\n\n%s\n\n" \
-        'Make sure to star this repository to show your support!' \
-        "$web_repo"
-    exit 0
+# Enhanced logging and error handling
+log() {
+    echo -e "${GREEN}[INFO]${NC} $1"
 }
 
-fail_fn()
-{
-    printf "\n%s\n\n%s\n\n" \
-        "$1" \
-        "To report a bug create an issue at: $web_repo/issues"
+fail() {
+    echo -e "${RED}[ERROR]${NC} $1"
+    echo -e "To report a bug, create an issue at: https://github.com/slyfox1186/script-repo/issues"
     exit 1
 }
 
-cleanup_fn()
-{
-    local choice
+echo "zlib build script - v$script_ver"
+echo "==============================================="
+echo
 
-    printf "\n%s\n%s\n%s\n\n%s\n%s\n\n" \
-        '============================================' \
-        '  Do you want to clean up the build files?  ' \
-        '============================================' \
-        '[1] Yes' \
-        '[2] No'
-    read -p 'Your choices are (1 or 2): ' choice
-
-    case "${choice}" in
-        1)      sudo rm -fr "$cwd";;
-        2)      echo;;
-        *)
-                clear
-                printf "%s\n\n" 'Bad user input. Reverting script...'
-                sleep 3
-                unset choice
-                clear
-                cleanup_fn
-                ;;
-    esac
+# Create functions
+exit_fn() {
+    echo
+    log "The script has completed"
+    log "${GREEN}Make sure to ${YELLOW}star ${GREEN}this repository to show your support!${NC}"
+    log "${CYAN}https://github.com/slyfox1186/script-repo${NC}"
+    exit 0
 }
 
-build()
-{
-    printf "\n%s\n%s\n" \
-        "building $1 - version $2" \
-        '===================================='
-
-    if [ -f "$packages/$1.done" ]; then
-        if grep -Fx "$2" "$packages/$1.done" >/dev/null; then
-            echo "$1 version $2 already built. Remove $packages/$1.done lockfile to rebuild it."
-            return 1
-        else
-            echo "$1 is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove $packages/$1.done lockfile."
-            return 1
-        fi
-    fi
-    return 0
+cleanup() {
+    sudo rm -fr "$cwd"
 }
 
-execute()
-{
-    echo "$ ${*}"
+install_required_packages() {
+    local -a missing_pkgs
+    local pkg pkgs
+    pkgs=(binutils build-essential ccache curl coreutils libc6-dev)
 
-    if [ "${debug}" = 'ON' ]; then
-        if ! output=$("$@"); then
-            notify-send 5000 "Failed to execute: ${*}"
-            fail_fn "Failed to execute: ${*}"
+    missing_pkgs=()
+    for pkg in "${pkgs[@]}"; do
+        if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
+            missing_pkgs+=("$pkg")
         fi
-    else
-        if ! output=$("$@" 2>&1); then
-            notify-send 5000 "Failed to execute: ${*}"
-            fail_fn "Failed to execute: ${*}"
-        fi
+    done
+
+    if [ ${#missing_pkgs[@]} -gt 0 ]; then
+        sudo apt update
+        sudo apt install "${missing_pkgs[@]}"
     fi
 }
 
-download()
-{
-    dl_path="$packages"
-    dl_url="$1"
-    dl_file="${2:-"${1##*/}"}"
-
-    if [[ "$dl_file" =~ tar. ]]; then
-        output_dir="${dl_file%.*}"
-        output_dir="${3:-"${output_dir%.*}"}"
-    else
-        output_dir="${3:-"${dl_file%.*}"}"
-    fi
-
-    target_file="$dl_path/$dl_file"
-    target_dir="$dl_path/$output_dir"
-
-    if [ ! -d "$dl_path" ]; then
-        mkdir -p "$dl_path"
-    fi
-    cd "$dl_path" || exit 1
-
-    if [ -f "${target_file}" ]; then
-        echo "The file \"$dl_file\" is already downloaded."
-    else
-        echo "Downloading \"${dl_url}\" saving as \"$dl_file\""
-        if ! curl -A "$user_agent" -Lso "$dl_file" "${dl_url}"; then
-            printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 10 seconds..."
-            sleep 10
-            if ! curl -A "$user_agent" -Lso "$dl_file" "${dl_url}"; then
-                fail_fn "The script failed to download \"$dl_file\" twice and will now exit:Line ${LINENO}"
-            fi
-        fi
-        echo 'Download Completed'
-    fi
-
-    if [ -d "$target_dir" ]; then
-        sudo rm -fr "$target_dir"
-    fi
-    mkdir -p "$target_dir"
-
-    if [ -n "$3" ]; then
-        if ! tar -xf "$dl_file" -C "$target_dir" 2>/dev/null >/dev/null; then
-            sudo rm "$dl_file"
-            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script:Line ${LINENO}"
-        fi
-    else
-        if ! tar -xf "$dl_file" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
-            sudo rm "$dl_file"
-            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script:Line ${LINENO}"
-        fi
-    fi
-
-    printf "%s\n\n" "File extracted: $dl_file"
-
-    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir:Line ${LINENO}"
+set_compiler_flags() {
+    CC="gcc"
+    CXX="g++"
+    CFLAGS="-O2 -fPIC -fPIE -mtune=native -DNDEBUG -fstack-protector-strong -Wno-unused-parameter"
+    CXXFLAGS="$CFLAGS"
+    CPPFLAGS="-D_FORTIFY_SOURCE=2"
+    LDFLAGS="-Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now,-rpath,$install_dir/lib"
+    PATH="/usr/lib/ccache:$HOME/perl5/bin:$HOME/.cargo/bin:$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin"
+    PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/lib/pkgconfig"
+    export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS PATH PKG_CONFIG_PATH
 }
 
-git_1_fn()
-{
-    local curl_cmd github_repo github_url
-
-# Scrape github website for the latest repo version
-    github_repo="$1"
-    github_url="$2"
-
-    if curl_cmd="$(curl -A "$user_agent" -m 10 -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
-        g_ver="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
-        g_ver="${g_ver#V}"
-    fi
+download_archive() {
+    wget --show-progress -cqO "$cwd/$tar_file" "$archive_url" || fail "Failed to download archive with WGET. Line: $LINENO"
 }
 
-git_ver_fn()
-{
-    local t_flag v_tag v_url
-
-    v_url="$1"
-    v_flag="$2"
-
-    case "${v_flag}" in
-            B)      t_flag=branches;;
-            R)      t_flag=releases;;
-            T)      t_flag=tags;;
-    esac
-
-    git_1_fn "${v_url}" "${t_flag}" 2>/dev/null
+extract_archive() {
+    [[ -d "$cwd/$archive_name" ]] && sudo rm -fr "$cwd/$archive_name"
+    mkdir -p "$cwd/$archive_name"
+    tar -zxf "$cwd/$tar_file" -C "$cwd/$archive_name" --strip-components 1 || fail "Failed to extract: $cwd/$tar_file"
 }
 
-build_done() { echo "$2" > "$packages/$1.done"; }
+configure_build() {
+    mkdir -p "$cwd/$archive_name/build" && cd "$cwd/$archive_name/build" || fail "cd into $cwd/$archive_name/build/meson. Line: $LINENO"
+    ../configure --prefix="$install_dir" \
+                 --includedir="$install_dir/include" \
+                 --libdir="$install_dir/lib" \
+                 --sharedlibdir="$install_dir/lib" \
+                 --64 || fail "Failed to execute: configure. Line: $LINENO"
+}
 
-# Install required apt packages
+compile_build() {
+    make "-j$(nproc --all)" || fail "Failed to execute: make build. Line: $LINENO"
+}
 
-pkgs=(libtool autogen automake binutils bison build-essential bzip2 ccache curl
-      libc6-dev libintl-perl libpth-dev libtool libtool-bin lzip lzma-dev libtool
-      nasm texinfo zlib1g-dev yasm)
+install_build() {
+    sudo make install || fail "Failed execute: make install. Line: $LINENO"
+}
 
-for i in ${pkgs[@]}
-do
-    missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
+create_linker_config_file() {
+    echo "$install_dir/lib" | sudo tee /etc/ld.so.conf.d/custom_zlib.conf >/dev/null
+    sudo ldconfig
+}
 
-    if [ -z "${missing_pkg}" ]; then
-        missing_pkgs+=" ${i}"
+create_soft_links() {
+    sudo ln -sf "$install_dir/lib/"* "/usr/local/lib/"
+    sudo ln -sf "$install_dir/lib/pkgconfig/zlib.pc" "/usr/local/lib/pkgconfig/"
+    sudo ln -sf "$install_dir/include/"* "/usr/local/include/"
+}
+
+
+main_menu() {
+    # Create output directory
+    if [[ -d "$cwd" ]]; then
+        sudo rm -fr "$cwd"
     fi
-done
+    mkdir -p "$cwd"
 
-if [ -n "$missing_pkgs" ]; then
-    sudo apt install $missing_pkgs
-    sudo apt -y autoremove
-    clear
-fi
+    install_required_packages
+    set_compiler_flags
+    download_archive
+    extract_archive
+    configure_build
+    compile_build
+    install_build
+    create_linker_config_file
+    create_soft_links
+    cleanup
+    exit_fn
+}
 
-# Build program from source
-
-git_ver_fn 'madler/zlib' 'T'
-if build 'zlib' "$g_ver"; then
-    download "https://github.com/madler/zlib/releases/download/v$g_ver/zlib-$g_ver.tar.xz"
-    mkdir build
-    cd build || exit 1
-    execute ../configure --prefix="$install_dir"             \
-                         --includedir="$install_dir"/include \
-                         --libdir="$install_dir"/lib         \
-                         --sharedlibdir="$install_dir"/lib   \
-                         --64
-    execute make "-j$(nproc --all)"
-    execute sudo make install
-    build_done 'zlib' "$g_ver"
-fi
-
-# Prompt user to clean up files
-cleanup_fn
-
-# Show exit message
-exit_fn
+main_menu "$@"
