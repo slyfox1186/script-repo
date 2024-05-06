@@ -146,11 +146,8 @@ build_and_install() {
 
     # Create soft links
     sudo ln -sf "$install_dir/bin/$program" "/usr/local/bin/"
-}
-
-create_linker_config_file() {
-    echo "$install_dir/lib" | sudo tee "/etc/ld.so.conf.d/custom_curl_$version.conf" >/dev/null
-    sudo ldconfig
+    [[ ! -d "/usr/local/lib64/pkgconfig" ]] && sudo mkdir -p "/usr/local/lib64/pkgconfig"
+    sudo ln -sf "$install_dir/lib/pkgconfig/"*.pc "/usr/local/lib64/pkgconfig"
 }
 
 # Display the installed version
@@ -208,7 +205,6 @@ main() {
     get_source
     install_ca_certs
     build_and_install
-    create_linker_config_file
     display_version
     cleanup
 }
