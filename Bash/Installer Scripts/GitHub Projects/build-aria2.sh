@@ -2,11 +2,14 @@
 
 ##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-aria2.sh
 ##  Purpose: Build aria2 from source code with hardening options
-##  Updated: 04.29.24
-##  Script version: 2.3
+##  Updated: 05.06.24
+##  Script version: 2.4
 
-script_ver="2.3"
-echo "GitHub Script for building aria2 from source with hardening options. Version: $script_ver"
+script_ver="2.4"
+
+echo "aria2 build script - version $script_ver"
+echo "==============================================="
+echo
 
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -30,7 +33,6 @@ display_help() {
     echo "Options:"
     echo "  -s, --service       Create aria2 service"
     echo "  -d, --debug         Enable debug mode for more detailed output"
-    echo "  -c, --cleanup       Clean up build files after compilation"
     echo "  -S, --static        Set aria2 as statically linked (ARIA2_STATIC=yes)"
     echo "  -h, --help          Display this help message and exit"
     echo
@@ -44,12 +46,15 @@ display_help() {
 }
 
 set_compiler_options() {
-    CC="ccache gcc"
-    CXX="ccache g++"
-    CFLAGS="-O3 -march=native -flto -fPIC -fPIE -mtune=native -pipe -fstack-protector-strong -D_FORTIFY_SOURCE=2"
+    CC="gcc"
+    CXX="g++"
+    CFLAGS="-O2 -fPIC -fPIE -mtune=native -DNDEBUG -fstack-protector-strong -Wno-unused-parameter"
     CXXFLAGS="$CFLAGS"
-    LDFLAGS="-Wl,-z,relro,-z,now -pie"
-    export CC CXX CFLAGS CXXFLAGS LDFLAGS
+    CPPFLAGS="-D_FORTIFY_SOURCE=2"
+    LDFLAGS="-Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now"
+    PATH="/usr/lib/ccache:$HOME/perl5/bin:$HOME/.cargo/bin:$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin"
+    PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/lib/pkgconfig"
+    export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS PATH PKG_CONFIG_PATH
 }
 
 PATH="\
@@ -99,7 +104,7 @@ install_packages() {
     echo
 }
 
-github_latest_release_version() {
+source_the_latest_version() {
     curl -sSL "https://gitver.optimizethis.net" | bash -s "$1"
 }
 
@@ -115,7 +120,7 @@ libgpg_latest_release_version() {
 }
 
 prepare_build_environment() {
-    build_dir="$PWD/aria2-build"
+    build_dir="$cwd/aria2-build"
     temp_dir="/tmp/aria2-temp-$(date +%s)"
     log "Creating build directory: $build_dir"
     mkdir -p "$build_dir"
@@ -133,9 +138,9 @@ build_libgpg_error() {
     libgpg_error_url="https://gnupg.org/ftp/gcrypt/libgpg-error/libgpg-error-$libgpg_error_version.tar.bz2"
     curl -sSL "$libgpg_error_url" | tar -jx
     cd "libgpg-error-$libgpg_error_version" || exit 1
-    ./configure --prefix="$temp_dir/libgpg-error" --enable-static --disable-shared
-    make "-j$(nproc --all)" && \
-    sudo make install
+    ./configure --prefix="$temp_dir/libgpg-error" --enable-static --disable-shared || fail "Failed to configure libgpg-error. Line $LINENO"
+    make "-j$(nproc --all)" || fail "Failed to build libgpg-error. Line $LINENO"
+    sudo make install || fail "Failed to install libgpg-error. Line $LINENO"
     cd ../
 }
 
@@ -144,14 +149,14 @@ build_c_ares() {
     echo
     log "Compiling c-ares..."
     echo
-    c_ares_version=$(github_latest_release_version "https://github.com/c-ares/c-ares.git")
+    c_ares_version=$(source_the_latest_version "https://github.com/c-ares/c-ares.git")
     c_ares_url="https://github.com/c-ares/c-ares/archive/refs/tags/cares-${c_ares_version//./_}.tar.gz"
     curl -sSL "$c_ares_url" | tar -zx
     cd "c-ares-cares-$c_ares_version" || exit 1
     autoreconf -fi
-    ./configure --prefix="$temp_dir/c-ares" --enable-static --disable-shared
-    make "-j$(nproc --all)" && \
-    sudo make install
+    ./configure --prefix="$temp_dir/c-ares" --enable-static --disable-shared || fail "Failed to configure c-ares. Line $LINENO"
+    make "-j$(nproc --all)" || fail "Failed to build c-ares. Line $LINENO"
+    sudo make install || fail "Failed to install c-ares. Line $LINENO"
     cd ../
 }
 
@@ -160,14 +165,26 @@ build_sqlite3() {
     echo
     log "Compiling sqlite3..."
     echo
-    sqlite_version=$(github_latest_release_version "https://github.com/sqlite/sqlite.git")
+    sqlite_version=$(source_the_latest_version "https://github.com/sqlite/sqlite.git")
     sqlite_url="https://github.com/sqlite/sqlite/archive/refs/tags/version-$sqlite_version.tar.gz"
     curl -sSL "https://github.com/sqlite/sqlite/archive/refs/tags/version-3.45.3.tar.gz" | tar -zx
     cd "sqlite-version-$sqlite_version" || exit 1
-    ./configure --prefix="$temp_dir/sqlite3" --enable-static --disable-shared
-    make "-j$(nproc --all)" && \
-    sudo make install
+    ./configure --prefix="$temp_dir/sqlite3" --enable-static --disable-shared || fail "Failed to configure sqlite. Line $LINENO"
+    make "-j$(nproc --all)" || fail "Failed to build sqlite. Line $LINENO"
+    sudo make install || fail "Failed to install sqlite. Line $LINENO"
     cd ../
+}
+
+# Install ca certs from curl's official website
+install_ca_certs() {
+    if [[ ! -f "/etc/ssl/certs/cacert.pem" ]]; then
+        curl -LSso "cacert.pem" "https://curl.se/ca/cacert.pem"
+        sudo cp -f "cacert.pem" "/etc/ssl/certs/cacert.pem"
+    fi
+
+    if type -P update-ca-certificates &>/dev/null; then
+        sudo update-ca-certificates
+    fi
 }
 
 build_aria2() {
@@ -175,20 +192,20 @@ build_aria2() {
     echo
     log "Compiling Aria2..."
     echo
-    aria2_version=$(github_latest_release_version "https://github.com/aria2/aria2.git")
+    aria2_version=$(source_the_latest_version "https://github.com/aria2/aria2.git")
     aria2_url="https://github.com/aria2/aria2/releases/download/release-$aria2_version/aria2-$aria2_version.tar.xz"
     curl -sSL "$aria2_url" | tar -Jx
     cd "aria2-$aria2_version" || exit 1
     sed -i "s/1, 16/1, 128/g" "src/OptionHandlerFactory.cc"
     ./configure --prefix=/usr/local --enable-static --disable-shared \
                 --without-gnutls --with-openssl \
-                --with-ca-bundle=$(sudo find /etc/ -type f -name ca-certificates.crt) \
+                --with-ca-bundle="/etc/ssl/certs/cacert.pem" \
                 --with-tcmalloc --with-libcares="$temp_dir/c-ares" \
                 --with-sqlite3="$temp_dir/sqlite3" --enable-lto --enable-profile-guided-optimization \
                 LDFLAGS="-L$temp_dir/libgpg-error/lib -L$temp_dir/c-ares/lib -L$temp_dir/sqlite3/lib $LDFLAGS" \
-                CPPFLAGS="-I$temp_dir/libgpg-error/include -I$temp_dir/c-ares/include -I$temp_dir/sqlite3/include"
-    make "-j$(nproc --all)" && \
-    sudo make install
+                CPPFLAGS="-I$temp_dir/libgpg-error/include -I$temp_dir/c-ares/include -I$temp_dir/sqlite3/include $CPPFLAGS" || fail "Failed to configure aria2. Line $LINENO"
+    make "-j$(nproc --all)" || fail "Failed to build aria2. Line $LINENO"
+    sudo make install || fail "Failed to install aria2. Line $LINENO"
     cd ../
 }
 
@@ -259,9 +276,6 @@ main() {
             -d|--debug)
                 set -x
                 ;;
-            -c|--cleanup)
-                cleanup="true"
-                ;;
             -S|--static)
                 export ARIA2_STATIC="yes"
                 ;;
@@ -276,6 +290,8 @@ main() {
         shift
     done
 
+    cwd="$PWD"
+
     echo
     log "Starting aria2 build process with ARIA2_STATIC set to $ARIA2_STATIC..."
     echo
@@ -287,10 +303,11 @@ main() {
     build_libgpg_error
     build_c_ares
     build_sqlite3
+    install_ca_certs
     build_aria2
-    
+    cleanup
+
     [[ "$create_service" = true ]] && create_aria2_service    
-    [[ "$cleanup" = true ]] && cleanup
     
     echo
     log "Aria2 build process completed successfully."
