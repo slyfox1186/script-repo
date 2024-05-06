@@ -1,5 +1,8 @@
-
 #!/usr/bin/env bash
+
+# GitHub: 
+# Purpose: Build the latest release version of cURL from source code
+# Updated: 05.06.24
 
 # Set strict mode for bash
 set -euo pipefail
