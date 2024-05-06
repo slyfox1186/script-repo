@@ -45,25 +45,35 @@ show_help() {
     echo "  -c,                   Cleanup the build directory and its contents."
 }
 
+set_compiler_flags() {
+    CC="gcc"
+    CXX="g++"
+    CFLAGS="-O2 -pipe -march=native"
+    CXXFLAGS="$CFLAGS"
+    CPPFLAGS="-D_FORTIFY_SOURCE=2"
+    LDFLAGS="-Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now,-rpath,$install_dir/lib"
+    PATH="/usr/lib/ccache:$HOME/perl5/bin:$HOME/.cargo/bin:$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin"
+    PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/lib/pkgconfig"
+    export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS PATH PKG_CONFIG_PATH
+}
+
 # Function to install dependencies
 install_dependencies() {
     log "Checking and installing necessary dependencies..."
-    local missing_packages=()
-    for package in wget build-essential autoconf autoconf-archive; do
-        if ! dpkg -l "$package" &>/dev/null; then
-            missing_packages+=("$package")
+    local -a missing_pkgs pkgs
+    local pkg
+    pkgs=(autoconf autoconf-archive build-essential libtool m4 wget)
+
+    missing_pkgs=()
+    for pkg in "${pkgs[@]}"; do
+        if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
+            missing_pkgs+=("$pkg")
         fi
     done
 
-    if [[ ${#missing_packages[@]} -gt 0 ]]; then
-        if command -v apt-get >/dev/null; then
-            apt-get update
-            apt-get install -y "${missing_packages[@]}"
-        else
-            fail "Unsupported package manager. Please install dependencies manually. Line: $LINENO"
-        fi
-    else
-        log "All dependencies are already installed."
+    if [ "${#missing_pkgs[@]}" -gt 0 ]; then
+        sudo apt update
+        sudo apt install "${missing_pkgs[@]}"
     fi
 }
 
@@ -71,7 +81,7 @@ install_dependencies() {
 download_coreutils() {
     log "Fetching the latest version of GNU Core Utilities..."
     local latest_version
-    latest_version=$(wget -qO- "https://ftp.gnu.org/gnu/coreutils/" | grep -oP 'coreutils-\K[0-9.]+(?=\.tar\.xz)' | sort -rV | head -n1)
+    latest_version=$(curl -fsS "https://ftp.gnu.org/gnu/coreutils/" | grep -oP 'coreutils-\K([0-9.]{3})' | sort -ruV | head -n1)
     if [[ -z "$latest_version" ]]; then
         fail "Failed to fetch the latest version of GNU Core Utilities. Line: $LINENO"
     fi
@@ -100,7 +110,7 @@ build_and_install() {
     else
         systemd_switch="--disable-systemd"
     fi
-    ../configure --prefix=/usr/local/coreutils \
+    ../configure --prefix="$install_dir" \
                  --disable-nls --disable-year2038 \
                  --enable-gcc-warnings=no --enable-threads=posix \
                  --with-libiconv-prefix=/usr --with-openssl=auto "$systemd_switch" || (
@@ -114,11 +124,9 @@ build_and_install() {
 # Links the installed binaries to a directory in the path
 link_coreutils() {
     log "Linking installed binaries to /usr/local/bin..."
-    if ! sudo ln -sf "/usr/local/coreutils/bin/"* "/usr/local/bin/"; then
-        warn "Failed to link binaries."
-    else
-        log "Binaries linked successfully."
-    fi
+    sudo ln -sf "/usr/local/coreutils/bin/"* "/usr/local/bin/"
+    sudo ln -sf "/usr/local/coreutils/lib/"* "/usr/local/lib/"
+    sudo ln -sf "/usr/local/coreutils/include/"* "/usr/local/include/"
 }
 
 # Cleans up the build directory and its contents
@@ -149,6 +157,8 @@ main() {
         shift
     done
 
+    set_compiler_flags
+
     # If no specific option is provided, proceed with these actions
     if $set_deps; then
         install_dependencies
@@ -170,11 +180,12 @@ main() {
 cwd="$PWD"
 working="$cwd/build-coreutils-script"
 
+install_dir="/usr/local/coreutils"
+
 set_deps=false
 set_links=false
 set_cleanup=false
 
-mkdir -p "$working"
-cd "$working" || exit 1
+mkdir -p "$working"; cd "$working" || exit 1
 
 main "$@"
