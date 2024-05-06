@@ -80,18 +80,18 @@ install_dependencies() {
 # Dynamically determines and downloads the latest version of GNU Core Utilities
 download_coreutils() {
     log "Fetching the latest version of GNU Core Utilities..."
-    local latest_version
-    latest_version=$(curl -fsS "https://ftp.gnu.org/gnu/coreutils/" | grep -oP 'coreutils-\K([0-9.]{3})' | sort -ruV | head -n1)
-    if [[ -z "$latest_version" ]]; then
+    local version
+    version=$(curl -fsS "https://ftp.gnu.org/gnu/coreutils/" | grep -oP 'coreutils-\K([0-9.]{3})' | sort -ruV | head -n1)
+    if [[ -z "$version" ]]; then
         fail "Failed to fetch the latest version of GNU Core Utilities. Line: $LINENO"
     fi
-    local tarball="coreutils-$latest_version.tar.xz"
+    local tarball="coreutils-$version.tar.xz"
     local url="https://ftp.gnu.org/gnu/coreutils/$tarball"
-    log "Downloading GNU Core Utilities version $latest_version..."
+    log "Downloading GNU Core Utilities version $version..."
     if wget --show-progress -cqO "$working/$tarball" "$url"; then
-        mkdir -p "$working/coreutils-$latest_version/build"
-        tar -xf "$working/$tarball" -C "$working/coreutils-$latest_version" --strip-components=1
-        cd "$working/coreutils-$latest_version" || fail "Failed to enter the coreutils directory. Line: $LINENO"
+        mkdir -p "$working/coreutils-$version/build"
+        tar -xf "$working/$tarball" -C "$working/coreutils-$version" --strip-components=1
+        cd "$working/coreutils-$version" || fail "Failed to enter the coreutils directory. Line: $LINENO"
     else
         fail "Failed to download GNU Core Utilities. Line: $LINENO"
     fi
@@ -110,6 +110,7 @@ build_and_install() {
     else
         systemd_switch="--disable-systemd"
     fi
+    install_dir="$install_dir-$version"
     ../configure --prefix="$install_dir" \
                  --disable-nls --disable-year2038 \
                  --enable-gcc-warnings=no --enable-threads=posix \
@@ -123,10 +124,7 @@ build_and_install() {
 
 # Links the installed binaries to a directory in the path
 link_coreutils() {
-    log "Linking installed binaries to /usr/local/bin..."
-    sudo ln -sf "/usr/local/coreutils/bin/"* "/usr/local/bin/"
-    sudo ln -sf "/usr/local/coreutils/lib/"* "/usr/local/lib/"
-    sudo ln -sf "/usr/local/coreutils/include/"* "/usr/local/include/"
+    sudo ln -sf "$install_dir/bin/"* "/usr/local/bin/"
 }
 
 # Cleans up the build directory and its contents
@@ -142,38 +140,12 @@ cleanup() {
 # Main logic flow
 main() {
     check_root
-
-    while [[ "$#" -gt 0 ]]; do
-        case "$1" in
-            -h|--help)
-                show_help
-                exit 0
-                ;;
-            -d) set_deps=true ;;
-            -l) set_links=true ;;
-            -c) set_cleanup=true ;;
-             *) show_help; exit 1 ;;
-        esac
-        shift
-    done
-
     set_compiler_flags
-
-    # If no specific option is provided, proceed with these actions
-    if $set_deps; then
-        install_dependencies
-    fi
-
+    install_dependencies
     download_coreutils
     build_and_install
-
-    if $set_links; then
-        link_coreutils
-    fi
-
-    if $set_cleanup; then
-        cleanup
-    fi
+    link_coreutils
+    cleanup
 }
 
 # Setup working directory and execute main function
