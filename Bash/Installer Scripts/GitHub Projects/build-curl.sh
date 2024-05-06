@@ -1,3 +1,4 @@
+
 #!/usr/bin/env bash
 
 # Set strict mode for bash
@@ -145,7 +146,7 @@ build_and_install() {
 }
 
 create_linker_config_file() {
-    echo "$install_dir/lib" | sudo tee "/etc/ld.so.conf.d/custom_curl_$llvm_version.conf" >/dev/null
+    echo "$install_dir/lib" | sudo tee "/etc/ld.so.conf.d/custom_curl_$version.conf" >/dev/null
     sudo ldconfig
 }
 
