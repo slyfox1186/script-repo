@@ -5,8 +5,6 @@
 # Script version: 2.2
 # Added multiple script arguments including the ability to set the version of Clang to install.
 
-set -euo pipefail
-
 # ANSI color codes
 RED='\033[0;31m'
 GREEN='\033[0;32m'
