@@ -1,93 +1,140 @@
 #!/usr/bin/env bash
 
-##  Github Script: https://github.com/slyfox1186/script-repo/edit/main/util-linux/Installer%20Scripts/GNU%20Software/build-jq
+##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-jq.sh
 ##  Purpose: Build jq
-##  Updated: 12.04.23
-##  Script version: 1.0
+##  Updated: 05.06.24
+##  Script version: 1.2
 
 if [[ "$EUID" -eq 0 ]]; then
     echo "You must run this script without root or sudo."
     exit 1
 fi
 
-# Set the variables
-script_ver=1.1
-jq_ver=1.7.1
-archive_dir="jq-$jq_ver"
-archive_url="https://github.com/jqlang/jq/releases/download/$archive_dir/$archive_dir.tar.gz"
-cwd="$PWD/jq-build-script"
-install_dir="/usr/local/$archive_dir"
-
 GREEN='\033[32m'
 RED='\033[31m'
 NC='\033[0m'
 
+# Set the variables
+script_ver=1.3
+prog_name="jq"
+version=$(curl -fsSL "https://gitver.optimizethis.net" | bash -s "https://github.com/jqlang/jq.git")
+dir_name="$prog_name-$version"
+archive_url="https://github.com/jqlang/jq/releases/download/$prog_name-$version/$prog_name-$version.tar.gz"
+archive_ext="${archive_url//*.}"
+tar_file="$dir_name.tar.$archive_ext"
+install_dir="/usr/local/$dir_name"
+cwd="$PWD/$dir_name-build-script"
+
+# Enhanced logging and error handling
 log() {
     echo -e "${GREEN}[INFO]${NC} $1"
 }
 
 fail() {
     echo -e "${RED}[ERROR]${NC} $1"
+    echo -e "To report a bug, create an issue at: https://github.com/slyfox1186/script-repo/issues"
+    exit 1
+}
+
+echo "$prog_name build script - version $script_ver"
+echo "==============================================="
+echo
+
+# Create functions
+exit_fn() {
+    echo
+    log "The script has completed"
+    log "${GREEN}Make sure to ${YELLOW}star ${GREEN}this repository to show your support!${NC}"
+    log "${CYAN}https://github.com/slyfox1186/script-repo${NC}"
+    exit 0
+}
+
+cleanup() {
+    sudo rm -fr "$cwd"
+}
+
+install_required_packages() {
+    local -a missing_pkgs pkgs
+    local pkg
+    pkgs=(autoconf autoconf-archive build-essential ccache curl git libtool m4 pkg-config)
+
+    missing_pkgs=()
+    for pkg in "${pkgs[@]}"; do
+        if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
+            missing_pkgs+=("$pkg")
+        fi
+    done
+
+    if [ "${#missing_pkgs[@]}" -gt 0 ]; then
+        sudo apt update
+        sudo apt install "${missing_pkgs[@]}"
+    fi
 }
 
 set_compiler_flags() {
     CC="gcc"
     CXX="g++"
-    CFLAGS="-O3 -pipe -fno-plt -march=native"
-    CXXFLAGS="-O3 -pipe -fno-plt -march=native"
+    CFLAGS="-O2 -fPIC -fPIE -flto -mtune=native -DNDEBUG -fstack-protector-strong -Wno-unused-parameter"
+    CXXFLAGS="$CFLAGS"
     CPPFLAGS="-D_FORTIFY_SOURCE=2"
     LDFLAGS="-Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now,-rpath,$install_dir/lib"
-    export CC CFLAGS CPPFLAGS CXX CXXFLAGS LDFLAGS
-
+    PATH="/usr/lib/ccache:$HOME/perl5/bin:$HOME/.cargo/bin:$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin"
+    PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/lib/pkgconfig"
+    export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS PATH PKG_CONFIG_PATH
 }
 
-# Create output directory jemalloc
-log "Creating output directories"
-echo
-[[ -d "$cwd/$archive_dir" ]] && sudo rm -fr "$cwd/$archive_dir" "$install_dir"
-mkdir -p "$cwd/$archive_dir/build"
-sudo mkdir -p "$install_dir/bin"
+download_archive() {
+    wget --show-progress -cqO "$cwd/$tar_file" "$archive_url" || fail "Failed to download archive with WGET. Line: $LINENO"
+}
 
-# Change into the working directory
-cd "$cwd" || exit 1
+extract_archive() {
+    tar -zxf "$cwd/$tar_file" -C "$cwd/$dir_name" --strip-components 1 || fail "Failed to extract: $cwd/$tar_file"
+}
 
-# Download the archive file
-if [[ ! -f "$cwd/$archive_dir.tar.gz" ]]; then
-    log "Downloading the source code"
-    wget -cqO "$cwd/$archive_dir.tar.gz" "$archive_url"
-    echo
-else
-    log "Source code already downloaded"
-    echo
-fi
+configure_build() {
+    cd "$cwd/$dir_name" || fail "cd into $cwd/$dir_name. Line: $LINENO"
+    autoreconf -fi
+    cd build || exit 1
+    ../configure --prefix="$install_dir" || fail "Failed to configure $prog_name. Line: $LINENO"
+}
 
-# Extract the archive file
-log "Extacting archive file"
-tar -zxf "$cwd/$archive_dir.tar.gz" -C "$cwd/$archive_dir" --strip-components 1
-echo
+compile_build() {
+    make "-j$(nproc --all)" || fail "Failed to build $prog_name. Line: $LINENO"
+}
 
-cd "$cwd/$archive_dir" || exit 1
-log "Configuring JQ"
-echo
-set_compiler_flags
-autoreconf -fi
-cd build || exit 1
-../configure --prefix="$install_dir" || fail "Failed to configure JQ"
-log "Building JQ"
-make "-j$(nproc --all)" || fail "Failed to build JQ"
-log "Installing JQ"
-sudo make install || fail "Failed to install JQ"
+install_build() {
+    sudo make install || fail "Failed to install $prog_name. Line: $LINENO"
+}
 
-# Create soft links to a common path
-echo
-log "Creating soft links"
-sudo ln -sf "$install_dir/bin/jq" /usr/local/bin/ || fail "Failed to create soft links"
+create_soft_links() {
+    sudo ln -sf "$install_dir/bin/"* "/usr/local/bin/" || fail "Failed to create soft links. Line: $LINENO"
+    sudo ln -sf "$install_dir/lib/pkgconfig/"*.pc "/usr/local/lib/pkgconfig/"
+    sudo ln -sf "$install_dir/include/"* "/usr/local/include/"
+}
 
-# Print the updated jq version
-echo
-log "The updated jq file is located at: $(type -P jq)"
-echo
+create_linker_config_file() {
+    echo "$install_dir/lib" | sudo tee "/etc/ld.so.conf.d/custom_$prog_name.conf" >/dev/null
+    sudo ldconfig
+}
 
-log "Removing leftover files"
-echo
-sudo rm -fr "$cwd" || fail "Failed to remove leftover files"
+main_menu() {
+    # Create output directory
+    if [[ -d "$dir_name" ]]; then
+        sudo rm -fr "$dir_name"
+    fi
+    mkdir -p "$cwd/$dir_name/build"
+
+    install_required_packages
+    set_compiler_flags
+    download_archive
+    extract_archive
+    configure_build
+    compile_build
+    install_build
+    create_soft_links
+    create_linker_config_file
+    cleanup
+    exit_fn
+}
+
+main_menu "$@"
