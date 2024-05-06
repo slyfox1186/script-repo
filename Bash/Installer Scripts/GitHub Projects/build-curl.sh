@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# GitHub: 
+# GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-curl.sh
 # Purpose: Build the latest release version of cURL from source code
 # Updated: 05.06.24
 
