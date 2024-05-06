@@ -115,6 +115,7 @@ compile_build() {
 install_build() {
     sudo ninja -C build install || fail "Failed execute: ninja install. Line: $LINENO"
 }
+
 create_symlinks() {
     local file files zstd_library zstd_library_trim
     zstd_library=$(sudo find "$install_dir/" -type f -name 'libzstd.so.*' | sort -ruV)
