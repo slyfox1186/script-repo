@@ -156,6 +156,11 @@ create_pkgconfig_softlinks() {
     done
 }
 
+create_linker_config_file()
+    echo "$install_dir/lib64" | sudo tee "/etc/ld.so.conf.d/custom_openssl_$version.conf" >/dev/null
+    sudo ldconfig
+}
+
 # Function to list available OpenSSL versions
 list_versions() {
     echo "Available OpenSSL versions:"
@@ -375,6 +380,7 @@ main() {
         add_openssl_to_path
         update_shared_library_cache
         create_pkgconfig_softlinks
+        create_linker_config_file
     else
         fail "OpenSSL source directory $src_dir does not exist. Line: $LINENO"
     fi
