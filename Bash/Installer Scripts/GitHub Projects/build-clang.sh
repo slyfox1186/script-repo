@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 # Script to build LLVM Clang
-# Updated: 05.06.24
-# Script version: 2.3
+# Updated: 05.05.24
+# Script version: 2.2
 # Added multiple script arguments including the ability to set the version of Clang to install.
 
 # ANSI color codes
@@ -159,8 +159,8 @@ build_llvm_clang() {
     ninja -C build install || fail "Failed to execute ninja -C build install"
 }
 
-create_soft_links() {
-    local llvm_version_trim non_versioned_tool tool tools versioned_clang versioned_clangpp 
+create_symlinks() {
+    local llvm_version_trim non_versioned_tool tool tools versioned_clang versioned_clangpp
     llvm_version_trim="${llvm_version%%.*}"
     versioned_clang="clang-$llvm_version_trim"
     versioned_clangpp="clang++-$llvm_version_trim"
@@ -184,7 +184,7 @@ create_soft_links() {
 }
 
 create_linker_config_file() {
-    echo "$install_prefix/lib" | sudo tee /etc/ld.so.conf.d/custom_clang_$llvm_version.conf >/dev/null
+    echo "$install_dir/lib" | sudo tee "/etc/ld.so.conf.d/custom_clang_$llvm_version.conf" >/dev/null
     sudo ldconfig
 }
 
@@ -276,11 +276,12 @@ main() {
     install_required_packages
     set_highest_clang_version
     get_llvm_release_version
+
     install_prefix="/usr/local/llvm-$llvm_version"
 
     set_compiler_flags
     build_llvm_clang
-    create_soft_links
+    create_symlinks
     create_linker_config_file
 
     [[ "$cleanup" == "true" ]] && cleanup_build
