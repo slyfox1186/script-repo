@@ -104,8 +104,8 @@ cleanup_fn() {
         echo "  Do you want to clean up the build files?  "
         echo "============================================"
         echo
-        echo "[[1]] Yes"
-        echo "[[2]] No"
+        echo "[1] Yes"
+        echo "[2] No"
         echo
         read -rp "Your choices are (1 or 2): " choice
         case "$choice" in
@@ -232,14 +232,14 @@ check_dependencies() {
     pkgs=(asciidoc binutils bison build-essential cmake curl ninja-build)
 
     missing_pkgs=()
-    for pkg in ${pkgs[[@]]}; do
+    for pkg in ${pkgs[@]}; do
         if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
             missing_pkgs+=("$pkg")
         fi
     done
 
-    if [[ ${#missing_pkgs[[@]]} -gt 0 ]]; then
-        sudo apt-get install -y "${missing_pkgs[[@]]}"
+    if [[ ${#missing_pkgs[@]} -gt 0 ]]; then
+        sudo apt-get install -y "${missing_pkgs[@]}"
         sudo apt-get autoremove -y
     fi
 }
