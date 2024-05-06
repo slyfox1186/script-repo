@@ -28,10 +28,10 @@ program="curl"
 cwd="$PWD/curl-build-script"
 version=$(curl -s "https://github.com/curl/curl/tags" | grep -oP 'curl-[0-9]+_[0-9]+_[0-9]+' | head -n1)
 formatted_version=$(echo "$version" | sed "s/curl-//" | sed "s/_/\./g")
-download_url="https://github.com/curl/curl/archive/refs/tags/${version}.tar.gz"
-tar_file="$cwd/${program}-${formatted_version}.tar.gz"
-extract_dir="$cwd/${program}-${formatted_version}"
-install_dir="/usr/local/${program}-${formatted_version}"
+download_url="https://github.com/curl/curl/archive/refs/tags/$version.tar.gz"
+tar_file="$cwd/$program-$formatted_version.tar.gz"
+extract_dir="$cwd/$program-$formatted_version"
+install_dir="/usr/local/$program-$formatted_version"
 certs_dir="/etc/ssl/certs"
 pem_file="cacert.pem"
 pem_out="$certs_dir/$pem_file"
@@ -47,30 +47,31 @@ set_env_vars() {
     CXXFLAGS="$CFLAGS"
     CPPFLAGS="-I/usr/include/openssl -I/usr/include/libxml2 -D_FORTIFY_SOURCE=2"
     LDFLAGS="-Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now,-rpath,$install_dir/lib"
-    PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/share/pkgconfig:/usr/lib/pkgconfig:/lib/pkgconfig"
+    PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/pkgconfig"
     export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS PKG_CONFIG_PATH
 }
 
 # Check and install dependencies
-install_deps() {
-    local pkgs=(
-        autoconf automake autotools-dev build-essential curl libcurl4 libcurl4-openssl-dev
-        libc-ares-dev libnghttp2-dev libpsl-dev libssh2-1-dev libssl-dev libtool libzstd-dev
-        make pkg-config zlib1g-dev
+apt_pkgs() {
+    local -a missing_pkgs pkgs
+    local pkg
+    pkgs=(
+        autoconf autoconf-archive autotools-dev build-essential curl
+        libcurl4 libcurl4-openssl-dev libc-ares-dev libnghttp2-dev
+        libpsl-dev libssh2-1-dev libssl-dev libtool libzstd-dev
+        pkg-config zlib1g-dev
     )
 
-    local missing_pkgs=()
+    missing_pkgs=()
     for pkg in "${pkgs[@]}"; do
-        if ! dpkg -s "$pkg" >/dev/null 2>&1; then
+        if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
             missing_pkgs+=("$pkg")
         fi
     done
 
-    if [[ ${#missing_pkgs[@]} -gt 0 ]]; then
-        log "Installing missing dependencies: ${missing_pkgs[*]}"
-        sudo apt-get install -y "${missing_pkgs[@]}"
-    else
-        log "All dependencies are already installed"
+    if [ ${#missing_pkgs[@]} -gt 0 ]; then
+        sudo apt update
+        sudo apt install "${missing_pkgs[@]}"
     fi
 }
 
@@ -124,24 +125,28 @@ build_and_install() {
     autoreconf -fi
 
     # Create a build directory
-    mkdir -p build
-    cd build
+    mkdir -p build; cd build || fail "Failed to change into the build directory. Line: $LINENO"
 
     # Run the configure script
     ../configure --prefix="$install_dir" \
-                "${dopts[@]}" \
-                "${eopts[@]}" \
-                "${wopts[@]}" \
-                CPPFLAGS="$CPPFLAGS" || fail "Configuration failed"
+                 "${dopts[@]}" \
+                 "${eopts[@]}" \
+                 "${wopts[@]}" \
+                 CPPFLAGS="$CPPFLAGS" || fail "Configuration failed. Line: $LINENO"
 
     log "Compiling $program"
-    make "-j$(nproc --all)" || fail "Compilation failed"
+    make "-j$(nproc --all)" || fail "Compilation failed. Line: $LINENO"
 
     log "Installing $program"
-    sudo make install || fail "Installation failed"
+    sudo make install || fail "Installation failed. Line: $LINENO"
 
     # Create soft links
-    sudo ln -sf "$install_dir/bin/$program" "/usr/local/bin/$program"
+    sudo ln -sf "$install_dir/bin/$program" "/usr/local/bin/"
+}
+
+create_linker_config_file() {
+    echo "$install_dir/lib" | sudo tee "/etc/ld.so.conf.d/custom_curl_$llvm_version.conf" >/dev/null
+    sudo ldconfig
 }
 
 # Display the installed version
@@ -158,10 +163,13 @@ cleanup() {
 
 # Parse command line arguments
 usage() {
-    echo "Usage: $0 [OPTIONS]"
+    echo "Usage: ./$0 [OPTIONS]"
     echo "  -h, --help       Display this help message"
     echo "  -v, --version    Display the installed version of $program"
-    echo "  -c, --cleanup    Cleanup the build directory after installation"
+    echo
+    echo "./$0"
+    echo "./$0 -v"
+    echo
 }
 
 parse_args() {
@@ -175,11 +183,7 @@ parse_args() {
                 display_version
                 exit 0
                 ;;
-            -c|--cleanup)
-                cleanup_flag="true"
-                ;;
-            *)
-                warn "Unknown argument: $1"
+            *)  warn "Unknown argument: $1"
                 usage
                 exit 1
                 ;;
@@ -191,17 +195,18 @@ parse_args() {
 # Main script
 main() {
     if [[ "$EUID" -eq 0 ]]; then
-        fail "You must run this script without root or sudo."
+        fail "You must run this script without root or sudo. Line: $LINENO"
     fi
 
     parse_args "$@"
     set_env_vars
-    install_deps
+    apt_pkgs
     get_source
     install_ca_certs
     build_and_install
+    create_linker_config_file
     display_version
-    [[ "$cleanup_flag" == "true" ]] && cleanup
+    cleanup
 }
 
 main "$@"
