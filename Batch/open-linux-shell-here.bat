@@ -5,6 +5,8 @@ TITLE OPEN WINDOWS WSL HERE
 
 :------------------------------------------------------------------------------------------------------------------------------------
 
+REM GitHub: https://github.com/slyfox1186/script-repo/tree/main/Batch
+
 PUSHD "%~dp0"
 IF NOT "%1"=="MAX" START /MAX CMD /D /C %0 MAX & GOTO :EOF
 

@@ -1227,7 +1227,7 @@ get_os_version
 
 # Check if running Windows WSL2
 get_wsl_version() {
-    if [[ $(grep -iq "microsoft" /proc/version) ]]; then
+    if [[ $(grep -i "microsoft" /proc/version) ]]; then
         wsl_flag="yes_wsl"
         OS="WSL2"
         wsl_common_pkgs="cppcheck libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev libyuv-utils"

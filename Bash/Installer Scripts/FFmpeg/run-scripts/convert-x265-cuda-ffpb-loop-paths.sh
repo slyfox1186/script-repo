@@ -54,9 +54,10 @@ convert_videos() {
     while read -u 9 video; do
         aspect_ratio=$(ffprobe -v error -select_streams v:0 -show_entries stream=display_aspect_ratio -of default=nk=1:nw=1 "$video")
         height=$(ffprobe -v error -select_streams v:0 -show_entries stream=height -of csv=s=x:p=0 "$video")
-        width=$(ffprobe -v error -select_streams v:0 -show_entries stream=width -of csv=s=x:p=0 "$video")
+        input_size_bytes=$(ffprobe -v error -show_entries format=size -of default=noprint_wrappers=1:nokey=1 "$video")
         length=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$video")
         original_bitrate=$(ffprobe -v error -show_entries format=bit_rate -of default=nk=1:nw=1 "$video")
+        width=$(ffprobe -v error -select_streams v:0 -show_entries stream=width -of csv=s=x:p=0 "$video")
 
         file_out="${video%.*} (x265).${video##*.}"
 
@@ -82,19 +83,27 @@ convert_videos() {
         threads=$(nproc --all)
         threads=$((threads>16 ? 16 : threads)) # Cap at 16 threads for efficiency
 
+        # Extract the file name from the full path using variable substitution
+        input_file="${video##*/}"
+        output_file="${file_out##*/}"
+        input_size_mb=$(echo "scale=2; $input_size_bytes / 1024 / 1024" | bc)
+
         # Print video stats in the terminal
-        printf "\\n${BLUE}::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::${NC}\\n"
-        printf "${YELLOW}Working Dir:${NC}     ${PURPLE}%s${NC}\\n" "$PWD"
-        printf "${YELLOW}Input File:${NC}      ${CYAN}%s${NC}\\n" "$video"
-        printf "${YELLOW}Output File:${NC}     ${CYAN}%s${NC}\\n" "$file_out"
-        printf "${YELLOW}Aspect Ratio:${NC}    ${PURPLE}%s${NC}\\n" "$aspect_ratio"
-        printf "${YELLOW}Dimensions:${NC}      ${PURPLE}%sx%s${NC}\\n" "$width" "$height"
-        printf "${YELLOW}Maxrate:${NC}         ${PURPLE}%sk${NC}\\n" "$maxrate"
-        printf "${YELLOW}Bufsize:${NC}         ${PURPLE}%sk${NC}\\n" "$bufsize"
-        printf "${YELLOW}Bitrate:${NC}         ${PURPLE}%sk${NC}\\n" "$bitrate"
-        printf "${YELLOW}Length:${NC}          ${PURPLE}%s mins${NC}\\n" "$length"
-        printf "${YELLOW}Threads:${NC}         ${PURPLE}%s${NC}\\n" "$threads"
-        printf "${BLUE}::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::${NC}\\n"
+        printf "\\n${BLUE}::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::${NC}\\n\\n"
+
+        printf "${YELLOW}Working Directory:${NC}  ${PURPLE}%s${NC}\\n\\n" "$PWD"
+
+        printf "${YELLOW}Input File:${NC}         ${CYAN}%s${NC}\\n\\n" "$input_file"
+
+        printf "${YELLOW}Size:${NC}               ${PURPLE}%.2f MB${NC}\\n" "$input_size_mb"
+        printf "${YELLOW}Bitrate:${NC}            ${PURPLE}%s kbps${NC}\\n" "$bitrate"
+        printf "${YELLOW}Aspect Ratio:${NC}       ${PURPLE}%s${NC}\\n" "$aspect_ratio"
+        printf "${YELLOW}Resolution:${NC}         ${PURPLE}%sx%s${NC}\\n" "$width" "$height"
+        printf "${YELLOW}Duration:${NC}           ${PURPLE}%s mins${NC}\\n" "$length"
+
+        printf "\\n${YELLOW}Output File:${NC}        ${CYAN}%s${NC}\\n" "$output_file"
+
+        printf "\\n${BLUE}::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::${NC}\\n"
 
         log "Converting${NC}" "$video"
 
@@ -125,9 +134,14 @@ convert_videos() {
             echo -e "${YELLOW}Total space savings for \"$video_name\": ${PURPLE}$space_saved MB${NC}"
             echo -e "${YELLOW}Total cumulative space saved: ${PURPLE}$total_space_saved MB${NC}"
 
-            rm "$video"
+            rm -f "$video"
 
-            sed -i "\|^$video\$|d" "$temp_file"
+            # Remove the video path from the script itself using sed
+            if ! sed -i "\|^$video\$|d" "$0"; then
+                echo "Failed to remove the processed video from the input text file."
+                google_speech "The sed command failed." &>/dev/null
+                exit 1
+            fi
         else
             google_speech "Video conversion failed." &>/dev/null
             fail "Video conversion failed for: $video"

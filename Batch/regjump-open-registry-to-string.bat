@@ -5,6 +5,8 @@ TITLE REGJUMP TO EXPLORER SHELL FOLDERS
 
 :-----------------------------------------------------------------------------
 
+REM GitHub: https://github.com/slyfox1186/script-repo/tree/main/Batch
+
 REM REGJUMP.EXE DOWNLOAD LINK: https://download.sysinternals.com/files/regjump.zip
 
 :-----------------------------------------------------------------------------
