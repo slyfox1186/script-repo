@@ -156,7 +156,7 @@ create_pkgconfig_softlinks() {
     done
 }
 
-create_linker_config_file()
+create_linker_config_file() {
     echo "$install_dir/lib64" | sudo tee "/etc/ld.so.conf.d/custom_openssl_$version.conf" >/dev/null
     sudo ldconfig
 }
