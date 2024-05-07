@@ -13,7 +13,7 @@ DEFAULT_AI_MODEL = "gpt-4-turbo"
 BACKUP_AI_MODEL = "gpt-3.5-turbo"  # Backup AI model
 DEFAULT_MAX_TOKENS = 4096
 DEFAULT_TEMPERATURE = 0.5
-DEFAULT_SCRIPT_PATH = "/path/to/script/for/analysis/script.{sh,py,pl,bat,whatever}"
+DEFAULT_SCRIPT_PATH = "/path/to/script/for/analysis/file.{sh,py,pl,bat,whatever}"
 
 # Default user instructions
 DEFAULT_USER_INSTRUCTIONS = """
