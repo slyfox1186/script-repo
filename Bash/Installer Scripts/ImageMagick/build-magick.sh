@@ -494,7 +494,7 @@ if build "magick-libs" "$version"; then
         mkdir -p "$packages/deb-files"
     fi
     cd "$packages/deb-files" || exit 1
-    if ! curl -LsSo "magick-libs-$version.rpm" "https://imagemagick.org/archive/linux/CentOS/x86_64/ImageMagick-$version.x86_64.rpm"; then
+    if ! curl -LsSo "magick-libs-$version.rpm" "https://imagemagick.org/archive/linux/CentOS/x86_64/ImageMagick-libs-$version.x86_64.rpm"; then
         fail "Failed to download the magick-libs file. Line: $LINENO"
     fi
     execute alien -d ./*.rpm || fail "Error: alien -d ./*.rpm Line: $LINENO"
