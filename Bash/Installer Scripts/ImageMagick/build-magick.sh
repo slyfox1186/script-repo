@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2034
 
-##  Script Version: 1.4
-##  Updated: 05.05.24
-##  GitHub: https://github.com/slyfox1186/imagemagick-build-script
-##  Purpose: Build ImageMagick 7 from the source code obtained from ImageMagick's official GitHub repository
-##  Function: ImageMagick is the leading open-source command line image processor. It can blur, sharpen, warp, reduce total file size, ect... The possibilities are vast
-##  Method: The script will search GitHub for the latest released version and upon execution will import the information into the script
+# Script Version: 1.5
+# Updated: 05.07.24
+# GitHub: https://github.com/slyfox1186/imagemagick-build-script
+# Purpose: Build ImageMagick 7 from the source code obtained from ImageMagick's official GitHub repository
+# Function: ImageMagick is the leading open-source command line image processor. It can blur, sharpen, warp, reduce total file size, ect... The possibilities are vast
+# Method: The script will search GitHub for the latest released version and upon execution will import the information into the script
+# Supported OS: Debian 11/12 | Ubuntu 20.04/22.04/23.04/23.10/24.04
 
 if [[ "$EUID" -ne 0 ]]; then
     echo "This script must be run with root/sudo"
@@ -14,7 +15,7 @@ if [[ "$EUID" -ne 0 ]]; then
 fi
 
 # SET GLOBAL VARIABLES
-script_ver=1.4
+script_ver=1.5
 cwd="$PWD/magick-build-script"
 packages="$cwd/packages"
 workspace="$cwd/workspace"
@@ -398,31 +399,57 @@ apt_pkgs() {
         $1 alien autoconf autoconf-archive binutils bison build-essential
         cmake curl dbus-x11 flex fontforge git gperf imagemagick jq intltool libc6
         libcamd2 libcpu-features-dev libdmalloc-dev libdmalloc5 libfont-ttf-perl
-        libfontconfig-dev libgc-dev libgc1 libgegl-0.4-0 libgegl-common libgimp2.0
-        libgimp2.0-dev libgl2ps-dev libglib2.0-dev libgs-dev libheif-dev libhwy-dev
-        libjemalloc-dev libjxl-dev libnotify-bin libpstoedit-dev librust-jpeg-decoder-dev
-        librust-malloc-buf-dev libsharp-dev libticonv-dev libtool libtool-bin libyuv-dev
-        libyuv-utils libyuv0 lsb-release m4 meson nasm ninja-build php-dev pkg-config
-        python3-dev yasm zlib1g-dev lzip
+        libfontconfig-dev libgc-dev libgc1 libgegl-0.4-0 libgegl-common libgimp2.0-dev
+        libgl2ps-dev libglib2.0-dev libgs-dev libheif-dev libhwy-dev libjemalloc-dev
+        libjxl-dev libnotify-bin libpstoedit-dev librust-jpeg-decoder-dev librust-malloc-buf-dev
+        libsharp-dev libticonv-dev libtool libtool-bin libyuv-dev libyuv-utils libyuv0
+        lsb-release m4 meson nasm ninja-build php-dev pkg-config python3-dev yasm zlib1g-dev
+        lzip
     )
 
+    # Initialize arrays for missing, available, and unavailable packages
     missing_packages=()
+    available_packages=()
+    unavailable_packages=()
 
+    log "Checking package installation status..."
+
+    # Loop through the array to find missing packages
     for pkg in "${pkgs[@]}"; do
         if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
-            if apt-cache show "$pkg" >/dev/null 2>&1; then
-                missing_packages+=("$pkg")
-            else
-                log "Package '$pkg' is not available in the repositories"
-            fi
+            missing_packages+=("$pkg")
         fi
     done
 
-    if [[ "${#missing_packages[@]}" -gt 0 ]]; then
-        log "Installing missing packages: ${missing_packages[*]}"
-        apt install "${missing_packages[@]}"
+    # Check availability of missing packages and categorize them
+    for pkg in "${missing_packages[@]}"; do
+        if apt-cache show "$pkg" >/dev/null 2>&1; then
+            available_packages+=("$pkg")
+        else
+            unavailable_packages+=("$pkg")
+        fi
+    done
+
+    # Print unavailable packages
+    if [[ "${#unavailable_packages[@]}" -gt 0 ]]; then
+        echo
+        warn "Unavailable packages:"
+        printf "          %s\n" "${unavailable_packages[@]}"
+    fi
+
+    # Install available missing packages
+    if [[ "${#available_packages[@]}" -gt 0 ]]; then
+        echo
+        log "Installing available missing packages:"
+        printf "       %s\n" "${available_packages[@]}"
+        echo
+        apt update
+        apt install "${available_packages[@]}"
+        apt -y autoremove
+        echo
     else
-        log "No missing packages to install"
+        log "No missing packages to install or all missing packages are unavailable."
+        echo
     fi
 }
 
@@ -519,11 +546,11 @@ if [[ ! -f "/usr/bin/composer" ]]; then
     rm "composer-setup.php"
 fi
 
-case "$OS" in
-    Ubuntu)
+case "$VER" in
+    20.04|22.04|23.04|23.10)
         version="2.4.6"
         ;;
-    *)
+    11|12|24.04)
         version="2.4.7"
         ;;
 esac
