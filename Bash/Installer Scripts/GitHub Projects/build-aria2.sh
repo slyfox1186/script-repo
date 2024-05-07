@@ -2,16 +2,17 @@
 
 ##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-aria2.sh
 ##  Purpose: Build aria2 from source code with hardening options
-##  Updated: 05.06.24
-##  Script version: 2.4
+##  Updated: 05.07.24
+##  Script version: 2.5
 
-script_ver="2.4"
+script_ver="2.5"
 
 echo "aria2 build script - version $script_ver"
 echo "==============================================="
 echo
 
 GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
 RED='\033[0;31m'
 NC='\033[0m'
 
@@ -19,6 +20,10 @@ export ARIA2_STATIC="no"
 
 log() {
     echo -e "${GREEN}[LOG]${NC} $*"
+}
+
+warn() {
+    echo -e "${YELLOW}[WARNING]${NC} $*"
 }
 
 fail() {
@@ -37,10 +42,10 @@ display_help() {
     echo "  -h, --help          Display this help message and exit"
     echo
     echo "Examples:"
-    echo "  $0                     # Build aria2 from source with hardening options"
-    echo "  $0 --static            # Build aria2 from source with hardening options and set as statically linked"
-    echo "  $0 -s --static         # Build aria2 with hardening options, create a systemd service, and set as statically linked"
-    echo "  $0 -d -c --static      # Build aria2 with debug mode, cleanup enabled, and set as statically linked"
+    echo "  $0                     # Build aria2 from source"
+    echo "  $0 --static            # Build aria2 from source and set as statically linked"
+    echo "  $0 -s --static         # Build aria2 and create a systemd service, and set as statically linked"
+    echo "  $0 -d --static         # Build aria2 with debug mode, and set as statically linked"
     echo
     exit 0
 }
@@ -62,13 +67,10 @@ PATH="\
 $HOME/perl5/bin:\
 $HOME/.cargo/bin:\
 $HOME/.local/bin:\
-/usr/local/sbin:\
 /usr/local/cuda/bin:\
 /usr/local/x86_64-linux-gnu/bin:\
 /usr/local/bin:\
-/usr/sbin:\
 /usr/bin:\
-/sbin:\
 /bin\
 "
 export PATH
@@ -87,9 +89,9 @@ export PKG_CONFIG_PATH
 
 install_packages() {
     local pkgs=(
-                autoconf autoconf-archive automake build-essential
-                ca-certificates ccache curl libgoogle-perftools-dev
-                libssl-dev libtool m4 pkg-config zlib1g-dev
+                autoconf autoconf-archive automake build-essential ca-certificates
+                ccache curl google-perftools libgoogle-perftools-dev libssl-dev
+                libtool m4 pkg-config zlib1g-dev
             )
     log "Attempting to install required packages..."
     echo
@@ -184,6 +186,19 @@ install_ca_certs() {
 
     if type -P update-ca-certificates &>/dev/null; then
         sudo update-ca-certificates
+    fi
+}
+
+fix_tcmalloc_lib() {
+    local lib_file
+
+    lib_path=$(find /usr/lib/x86_64-linux-gnu -regextype posix-extended -regex '.*/libtcmalloc_minimal\.so\.[4-9]$')
+
+    if [[ -n "$lib_path" ]] && [[ ! -L "/usr/lib/x86_64-linux-gnu/libtcmalloc_minimal.so" ]]; then
+        sudo ln -s "$lib_path" "/usr/lib/x86_64-linux-gnu/libtcmalloc_minimal.so"
+        log "Created a link for the broken tcmalloc_minimal library file."
+    else
+        warn "Failed to create a link for the broken tcmalloc_minimal file."
     fi
 }
 
@@ -304,6 +319,7 @@ main() {
     build_c_ares
     build_sqlite3
     install_ca_certs
+    fix_tcmalloc_lib
     build_aria2
     cleanup
 
