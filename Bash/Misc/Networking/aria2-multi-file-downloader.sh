@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# Set the output file extension
+ext="mp4"
+
 # Define the arrays
 filenames=(
     ""
@@ -25,7 +28,7 @@ output_file="${random}.sh"
 cat > "$output_file" <<EOL
 for i in {0..2}; do
     cd "${paths[i]}" || exit 1
-    aria2c --conf-path="$HOME/.aria2/aria2.conf" --out="${filenames[i]}.mp4" '${urls[i]}'
+    aria2c --conf-path="$HOME/.aria2/aria2.conf" --out="${filenames[i]}.${ext}" '${urls[i]}'
 done
 EOL
 
