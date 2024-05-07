@@ -9,13 +9,13 @@ import openai
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # AI Model Configuration Defaults
-DEFAULT_AI_MODEL = "gpt-4-turbo"   # Primary AI model
+DEFAULT_AI_MODEL = "gpt-4-turbo"
 BACKUP_AI_MODEL = "gpt-3.5-turbo"  # Backup AI model
-DEFAULT_MAX_TOKENS = 4096  # The script will tell you if you have exceeded this and let you know what the max cap it. Useful for not destroing your wallet by setting a max cap.
-DEFAULT_TEMPERATURE = 0.5  # Lower number are less creative, higher number are more. Careful with how high you crank this. AI can get pretty schwiggity in it's responses.
+DEFAULT_MAX_TOKENS = 4096
+DEFAULT_TEMPERATURE = 0.5
 DEFAULT_SCRIPT_PATH = "/path/to/script/for/analysis/script.{sh,py,pl,bat,whatever}"
 
-# Default user instructions. This is where you talk to the AI about the script you have attached.
+# Default user instructions
 DEFAULT_USER_INSTRUCTIONS = """
 HI AI AREN'T YOU PRETTY SHNEAT.
 DO LIKE ME?
@@ -98,13 +98,13 @@ def get_optimization_suggestion(script_content, user_instructions, model, max_to
         message_content = script_content + "\n" + user_instructions
         if verbose:
             print(f"Sending request to AI model: {model}")
-        response = openai.ChatCompletion.create(
-            model=model,
-            messages=[{"role": "user", "content": message_content.strip()}],
+        response = openai.Completion.create(
+            engine=model,
+            prompt=message_content.strip(),
             max_tokens=max_tokens,
             temperature=temperature
         )
-        suggestion = response['choices'][0]['message']['content'].strip()
+        suggestion = response['choices'][0]['text'].strip()
         return suggestion if suggestion else None
     except Exception as e:
         print(f"Error: Failed to obtain optimization suggestions from the AI: {e}")
