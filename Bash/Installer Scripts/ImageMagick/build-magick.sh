@@ -489,17 +489,17 @@ esac
 
 # INSTALL OFFICIAL IMAGEMAGICK LIBS
 find_git_repo "imagemagick/imagemagick" "1" "T"
-if build "magick-libs" "7.1.1-30"; then
+if build "magick-libs" "$version"; then
     if [[ ! -d "$packages/deb-files" ]]; then
         mkdir -p "$packages/deb-files"
     fi
     cd "$packages/deb-files" || exit 1
-    if ! curl -LsSo "magick-libs-7.1.1-30.rpm" "https://web.archive.org/web/20240408031327/https://imagemagick.org/archive/linux/CentOS/x86_64/ImageMagick-7.1.1-30.x86_64.rpm"; then
+    if ! curl -LsSo "magick-libs-$version.rpm" "https://imagemagick.org/archive/linux/CentOS/x86_64/ImageMagick-$version.x86_64.rpm"; then
         fail "Failed to download the magick-libs file. Line: $LINENO"
     fi
     execute alien -d ./*.rpm || fail "Error: alien -d ./*.rpm Line: $LINENO"
     execute dpkg -i ./*.deb || fail "Error: dpkg -i ./*.deb Line: $LINENO"
-    build_done "magick-libs" "7.1.1-30"
+    build_done "magick-libs" "$version"
 fi
 
 # INSTALL COMPOSER TO COMPILE GRAPHVIZ
