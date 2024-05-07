@@ -98,13 +98,13 @@ def get_optimization_suggestion(script_content, user_instructions, model, max_to
         message_content = script_content + "\n" + user_instructions
         if verbose:
             print(f"Sending request to AI model: {model}")
-        response = openai.Completion.create(
-            engine=model,
-            prompt=message_content.strip(),
+        response = openai.ChatCompletion.create(
+            model=model,
+            messages=[{"role": "user", "content": message_content.strip()}],
             max_tokens=max_tokens,
             temperature=temperature
         )
-        suggestion = response['choices'][0]['text'].strip()
+        suggestion = response['choices'][0]['message']['content'].strip()
         return suggestion if suggestion else None
     except Exception as e:
         print(f"Error: Failed to obtain optimization suggestions from the AI: {e}")
