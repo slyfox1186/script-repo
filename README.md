@@ -74,7 +74,7 @@ Source the latest ImageMagick release directly from the official repository. Inc
 - **Supported OS:** Debian 11/12, Ubuntu 20.04/22.04/23.04, and possibly other Debian-based distros.
 ```bash
 curl -LSso build-magick.sh https://imagick.optimizethis.net
-sudo bash build-magick. sh
+sudo bash build-magick.sh
 ```
 
 ### Compile [FFmpeg](https://ffmpeg.org/) from Source
