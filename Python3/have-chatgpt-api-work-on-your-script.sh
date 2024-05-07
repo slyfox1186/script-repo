@@ -38,7 +38,7 @@ def main(file_path, temperature, max_tokens, model, instructions, verbose, outpu
     It allows customization of the AI's behavior and uses user-provided instructions to tailor the AI's analysis.
 
     Examples:
-      python script.py -p /path/to/script.py -M davinci -t 0.7 -m 500 -i "Optimize this script" -v -o output.txt
+      python script.py -p /path/to/script.py -M gpt-4-turbo -t 0.2 -m 1200 -i "Optimize this script" -v -o output.txt
       python script.py --help
     """
     if verbose:
