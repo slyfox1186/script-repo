@@ -253,7 +253,7 @@ main() {
         if [[ -n "$version_gcc" ]]; then
             install_and_configure_gcc "$version_gcc"
         else
-            for version in 12 11 10 9; do
+            for version in 13 12 11 10; do
                 paths=$(find_gcc_binaries $version)
                 if [[ -n "$paths" ]]; then
                     install_and_configure_gcc "$version"
@@ -266,4 +266,5 @@ main() {
 
 main
 
+echo
 echo "Setup completed based on selected options."
