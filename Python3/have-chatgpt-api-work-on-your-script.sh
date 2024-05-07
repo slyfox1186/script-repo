@@ -9,13 +9,13 @@ import openai
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # AI Model Configuration Defaults
-DEFAULT_AI_MODEL = "gpt-4-turbo"
+DEFAULT_AI_MODEL = "gpt-4-turbo"   # Primary AI model
 BACKUP_AI_MODEL = "gpt-3.5-turbo"  # Backup AI model
-DEFAULT_MAX_TOKENS = 4096
-DEFAULT_TEMPERATURE = 0.5
+DEFAULT_MAX_TOKENS = 4096  # The script will tell you if you have exceeded this and let you know what the max cap it. Useful for not destroing your wallet by setting a max cap.
+DEFAULT_TEMPERATURE = 0.5  # Lower number are less creative, higher number are more. Careful with how high you crank this. AI can get pretty schwiggity in it's responses.
 DEFAULT_SCRIPT_PATH = "/path/to/script/for/analysis/script.{sh,py,pl,bat,whatever}"
 
-# Default user instructions
+# Default user instructions. This is where you talk to the AI about the script you have attached.
 DEFAULT_USER_INSTRUCTIONS = """
 HI AI AREN'T YOU PRETTY SHNEAT.
 DO LIKE ME?
