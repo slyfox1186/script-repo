@@ -2,7 +2,7 @@
 SETLOCAL ENABLEEXTENSIONS
 COLOR 0A
 
-REM GitHub: https://github.com/slyfox1186/script-repo/tree/main/Batch
+REM GitHub: https://github.com/slyfox1186/script-repo/blob/main/Batch/copy-windows-path-as-linux.bat
 REM Updated: 05.07.24
 REM Changes: Removed a new line character at the end of the copied string that was most noticable when pasting.
 
