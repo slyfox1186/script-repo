@@ -6,7 +6,7 @@ REM GitHub: https://github.com/slyfox1186/script-repo/blob/main/Batch/copy-windo
 REM Updated: 05.07.24
 REM Changes:
 REM   - Removed a new line character at the end of the copied string that was most noticable when pasting.
-REM   - Added separators aboe and below the context menu entrues to help find them quicker.
+REM   - Added separators above and below the context menu entries to help find them quicker.
 
 REM Imporant Information
 REM Once installed you must hold the "shift" key and right click on a file or folder to access the context menu item.
