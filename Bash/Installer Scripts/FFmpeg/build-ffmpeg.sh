@@ -2,8 +2,8 @@
 # shellcheck disable=SC2068,SC2162,SC2317 source=/dev/null
 
 # GitHub: https://github.com/slyfox1186/ffmpeg-build-script
-# Script version: 3.6.4
-# Updated: 04.28.24
+# Script version: 3.6.5
+# Updated: 04.07.24
 # Purpose: build ffmpeg from source code with addon development libraries
 #          also compiled from source to help ensure the latest functionality
 # Supported Distros: Arch Linux
@@ -19,7 +19,7 @@ fi
 
 # Define global variables
 script_name="${0}"
-script_version="3.6.4"
+script_version="3.6.5"
 cwd="$PWD/ffmpeg-build-script"
 mkdir -p "$cwd" && cd "$cwd" || exit 1
 if [[ "$PWD" =~ ffmpeg-build-script\/ffmpeg-build-script ]]; then
@@ -31,7 +31,7 @@ packages="$cwd/packages"
 workspace="$cwd/workspace"
 # Set a regex string to match and then exclude any found release candidate versions of a program. Utilize stable releases only.
 git_regex='(Rc|rc|rC|RC|alpha|beta|early|init|next|pending|pre|tentative)+[0-9]*$'
-debug=OFF
+debug=ON
 
 # Pre-defined color variables
 GREEN='\033[0;32m'
@@ -217,11 +217,11 @@ check_ffmpeg_version() {
 }
 
 download() {
-    local download_file download_path download_url output_directory target_directory target_file 
+    local download_file download_path download_url output_directory target_directory target_file
     download_path="$packages"
     download_url="$1"
     download_file="${2:-"${1##*/}"}"
-    
+
     if [[ "$download_file" =~ tar. ]]; then
         output_directory="${download_file%.*}"
         output_directory="${3:-"${output_directory%.*}"}"
@@ -374,13 +374,14 @@ github_repo() {
 }
 
 fetch_repo_version() {
-    local base_url="$1"
-    local project="$2"
-    local api_path="$3"
-    local version_jq_filter="$4"
-    local short_id_jq_filter="$5"
-    local commit_id_jq_filter="$6"
-    local count=0
+    local api_path base_url commit_id_jq_filter count project short_id_jq_filter version_jq_filter
+    base_url="$1"
+    project="$2"
+    api_path="$3"
+    version_jq_filter="$4"
+    short_id_jq_filter="$5"
+    commit_id_jq_filter="$6"
+    count=0
 
     response=$(curl -fsS "$base_url/$project/$api_path") || fail "Failed to fetch data from $base_url/$project/$api_path in the function \"fetch_repo_version\". Line: $LINENO"
 
@@ -399,10 +400,11 @@ fetch_repo_version() {
 }
 
 find_git_repo() {
-    local url="$1"
-    local git_repo="$2"
-    local url_action="$3"
-    local url_flag="$4"
+    local git_repo url url_action url_flag
+    url="$1"
+    git_repo="$2"
+    url_action="$3"
+    url_flag="$4"
 
     case "$url_flag" in
         enabled) set_url_flag=1 ;;
@@ -479,8 +481,9 @@ library_exists() {
 # Function to setup a python virtual environment and install packages with pip
 setup_python_venv_and_install_packages() {
     local parse_path="$1"
+    local -a parse_package
     shift
-    local parse_package=("$@")
+    parse_package=("$@")
 
     echo "Creating a Python virtual environment at $parse_path..."
     python3 -m venv "$parse_path" || fail "Failed to create virtual environment"
@@ -734,11 +737,12 @@ nvidia_architecture() {
     fi
 }
 
-cuda_download() {
-    local choice distro installer_path pin_file pkg_ext version version_serial
-    local cuda_version_number="$remote_cuda_version"
-    local cuda_pin_url="https://developer.download.nvidia.com/compute/cuda/repos"
-    local cuda_url="https://developer.download.nvidia.com/compute/cuda/$cuda_version_number"
+download_cuda() {
+    local -a options
+    local choice cuda_pin_url cuda_url cuda_version_number distro installer_path pin_file pkg_ext version version_serial
+    cuda_version_number="$remote_cuda_version"
+    cuda_pin_url="https://developer.download.nvidia.com/compute/cuda/repos"
+    cuda_url="https://developer.download.nvidia.com/compute/cuda/$cuda_version_number"
 
     echo
     echo "Pick your Linux version from the list below:"
@@ -750,6 +754,7 @@ cuda_download() {
         "Debian 12"
         "Ubuntu 20.04"
         "Ubuntu 22.04"
+        "Ubuntu 24.04"
         "Ubuntu WSL"
         "Arch Linux"
         "Exit"
@@ -763,6 +768,13 @@ cuda_download() {
             "Debian 12") distro="debian12"; version="12-12-4"; pkg_ext="deb"; installer_path="local_installers/cuda-repo-debian${version}-local_${version_serial}_amd64.deb" ;;
             "Ubuntu 20.04") distro="ubuntu2004"; version="12-4"; pkg_ext="pin"; pin_file="$distro/x86_64/cuda-ubuntu2004.pin"; installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_serial}_amd64.deb" ;;
             "Ubuntu 22.04") distro="ubuntu2204"; version="12-4"; pkg_ext="pin"; pin_file="$distro/x86_64/cuda-ubuntu2204.pin"; installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_serial}_amd64.deb" ;;
+            "Ubuntu 24.04")
+                echo "deb http://security.ubuntu.com/ubuntu jammy-security main universe" | sudo tee "/etc/apt/sources.list.d/install-cuda-on-noble.list" >/dev/null
+                sudo apt update
+                sudo apt -y upgrade
+                echo "export PATH=/usr/local/cuda-12.4/bin\${PATH:+:\${PATH}}" | tee -a "$HOME/.bashrc" >/dev/null
+                distro="ubuntu2204"; version="12-4"; pkg_ext="pin"; pin_file="$distro/x86_64/cuda-ubuntu2204.pin"; installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_serial}_amd64.deb" ;;
+                ;;
             "Ubuntu WSL") distro="wsl-ubuntu"; version="12-4"; version_ext="12.4.1-1"; pkg_ext="pin"; pin_file="$distro/x86_64/cuda-wsl-ubuntu.pin"; installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_ext}_amd64.deb" ;;
             "Arch Linux")
                 git clone -q "https://gitlab.archlinux.org/archlinux/packaging/packages/cuda.git" || fail "Failed to clone Arch Linux CUDA repository"
@@ -805,14 +817,37 @@ cuda_download() {
 
 # Function to detect the environment and check for an NVIDIA GPU
 check_nvidia_gpu() {
-    local path_exists=0 found=0 gpu_info=""
+    local found gpu_infopath_exists
+    path_exists=0
+    found=0
+    gpu_info=""
+
     if ! grep -Eiq '(microsoft|slyfox1186)' /proc/version; then
-        lspci | grep -qi nvidia && is_nvidia_gpu_present="NVIDIA GPU detected" || is_nvidia_gpu_present="NVIDIA GPU not detected"
+        if lspci | grep -qi nvidia; then
+            is_nvidia_gpu_present="NVIDIA GPU detected"
+        else
+            is_nvidia_gpu_present="NVIDIA GPU not detected"
+        fi
     else
         for dir in "/mnt/c" "/c"; do
-            [[ -d "$dir/Windows/System32" ]] && { path_exists=1; [[ -f "$dir/Windows/System32/cmd.exe" ]] && { gpu_info=$("$dir/Windows/System32/cmd.exe" /d /c "wmic path win32_VideoController get name | findstr /i nvidia" 2>/dev/null); [[ -n "$gpu_info" ]] && { found=1; is_nvidia_gpu_present="NVIDIA GPU detected"; break; }; }; }
+            if [[ -d "$dir/Windows/System32" ]]; then
+                path_exists=1
+                if [[ -f "$dir/Windows/System32/cmd.exe" ]]; then
+                    gpu_info=$("$dir/Windows/System32/cmd.exe" /d /c "wmic path win32_VideoController get name | findstr /i nvidia" 2>/dev/null)
+                    if [[ -n "$gpu_info" ]]; then
+                        found=1
+                        is_nvidia_gpu_present="NVIDIA GPU detected"
+                        break
+                    fi
+                fi
+            fi
         done
-        [[ "$path_exists" -eq 0 ]] && is_nvidia_gpu_present="C drive paths '/mnt/c/' and '/c/' do not exist." || [[ "$found" -eq 0 ]] && is_nvidia_gpu_present="NVIDIA GPU not detected"
+
+        if [[ "$path_exists" -eq 0 ]]; then
+            is_nvidia_gpu_present="C drive paths '/mnt/c/' and '/c/' do not exist."
+        elif [[ "$found" -eq 0 ]]; then
+            is_nvidia_gpu_present="NVIDIA GPU not detected"
+        fi
     fi
 }
 
@@ -823,12 +858,13 @@ get_local_cuda_version() {
 # Required Geforce CUDA development packages
 install_cuda() {
     local choice
+
     echo "Checking GPU Status"
     echo "========================================================"
     amd_gpu_test=$(check_amd_gpu)
     check_nvidia_gpu
 
-    if [[ -n "$amd_gpu_test" && "$is_nvidia_gpu_present" == "NVIDIA GPU not detected" ]]; then
+    if [[ -n "$amd_gpu_test" ]] && [[ "$is_nvidia_gpu_present" == "NVIDIA GPU not detected" ]]; then
         return 0
     elif [[ "$is_nvidia_gpu_present" == "NVIDIA GPU detected" ]]; then
         log "Nvidia GPU detected"
@@ -841,7 +877,7 @@ install_cuda() {
             echo "CUDA is not currently installed."
             echo
             read -p "Do you want to install the latest CUDA version? (yes/no): " choice
-            [[ "$choice" =~ ^(yes|y)$ ]] && cuda_download
+            [[ "$choice" =~ ^(yes|y)$ ]] && download_cuda
         elif [[ "$local_cuda_version" == "$remote_cuda_version" ]]; then
             log "CUDA is already installed and up to date."
             return 0
@@ -849,7 +885,7 @@ install_cuda() {
             echo "The installed CUDA version is: $local_cuda_version"
             echo "The latest CUDA version available is: $remote_cuda_version"
             read -p "Do you want to update/reinstall CUDA to the latest version? (yes/no): " choice
-            [[ "$choice" =~ ^(yes|y)$ ]] && cuda_download || return 0
+            [[ "$choice" =~ ^(yes|y)$ ]] && download_cuda || return 0
         fi
 
         [[ "$OS" == "Arch" ]] && cuda_path=$(find /opt/cuda/ -type f -name "nvcc")
@@ -862,22 +898,22 @@ install_cuda() {
 
 # Required build packages
 apt_pkgs() {
-    local pkg available_packages unavailable_packages
-    local openjdk_pkg libcpp_pkg libcppabi_pkg libunwind_pkg
+    local -a available_packages missing_packages pkgs unavailable_packages
+    local libcpp_pkg libcppabi_pkg libunwind_pkg openjdk_pkg pkg reboot_choice
 
     # Function to find the latest version of a package by pattern
-    find_latest_pkg_version() {
-        apt-cache search --names-only "$1" 2>/dev/null | awk '{print $1}' | grep -Eo "$2" | sort -ruV | head -n1
+    find_latest_version() {
+        apt-cache search "$1" | sort -ruV | head -n1 | awk '{print $1}'
     }
 
     # Use the function to find the latest versions of specific packages
-    nvidia_driver=$(find_latest_pkg_version 'nvidia-driver-[0-9]+$' 'nvidia-driver-[0-9]+$')
-    nvidia_utils=$(find_latest_pkg_version 'nvidia-utils-[0-9]+$' 'nvidia-utils-[0-9]+$')
-    openjdk_pkg=$(find_latest_pkg_version '^openjdk-[0-9]+-jdk$' '^openjdk-[0-9]+-jdk')
-    libcpp_pkg=$(find_latest_pkg_version 'libc++*' 'libc\+\+-[0-9\-]+-dev')
-    libcppabi_pkg=$(find_latest_pkg_version 'libc++abi*' 'libc\+\+abi-[0-9]+-dev')
-    libunwind_pkg=$(find_latest_pkg_version 'libunwind*' 'libunwind-[0-9]+-dev')
-    gcc_plugin_pkg=$(find_latest_pkg_version 'gcc-1*-plugin-dev'  'gcc-1[0-9]+-plugin-dev')
+    nvidia_driver=$(find_latest_version '^nvidia-driver-[0-9]+$')
+    nvidia_utils=$(find_latest_version '^nvidia-utils-[0-9]+$')
+    openjdk_pkg=$(find_latest_version '^openjdk-[0-9]+-jdk$')
+    libcpp_pkg=$(find_latest_version '^libc\+\+-[0-9]+-dev$')
+    libcppabi_pkg=$(find_latest_version '^libc\+\+abi-[0-9]+-dev$')
+    libunwind_pkg=$(find_latest_version '^libunwind-[0-9]+-dev$')
+    gcc_plugin_pkg=$(find_latest_version '^gcc-[1-3]*-plugin-dev$')
 
     # Define an array of apt package names
     pkgs=(
@@ -888,27 +924,26 @@ apt_pkgs() {
         libass-dev libaudio-dev libavfilter-dev libbabl-0.1-0 libbluray-dev libbpf-dev libbs2b-dev libbz2-dev libc6 libc6-dev
         libcaca-dev libcairo2-dev libcdio-dev libcdio-paranoia-dev libcdparanoia-dev libchromaprint-dev libcjson-dev
         libcodec2-dev libcrypto++-dev libcurl4-openssl-dev libdav1d-dev libdbus-1-dev libde265-dev libdevil-dev libdmalloc-dev
-        libdrm-dev libdvbpsi-dev libebml-dev libegl1-mesa-dev libffi-dev libgbm-dev libgdbm-dev libgegl-0.4-0 libgegl-common
-        libgimp2.0 libgl1-mesa-dev libgles2-mesa-dev libglib2.0-dev libgme-dev libgmock-dev libgnutls28-dev libgnutls30
-        libgoogle-perftools-dev libgoogle-perftools4 libgsm1-dev libgtest-dev libgvc6 libibus-1.0-dev libintl-perl
-        libladspa-ocaml-dev libldap2-dev libleptonica-dev liblilv-dev liblz-dev liblzma-dev liblzo2-dev libmp3lame-dev
-        libmathic-dev libmatroska-dev libmbedtls-dev libmetis5 libmfx-dev libmodplug-dev libmusicbrainz5-dev libnuma-dev
+        libdrm-dev libdvbpsi-dev libebml-dev libegl1-mesa-dev libffi-dev libflac-dev libgbm-dev libgdbm-dev libgegl-0.4-0
+        libgegl-common libgl1-mesa-dev libgles2-mesa-dev libglfw3-dev libglib2.0-dev libglu1-mesa-dev libgme-dev libgmock-dev
+        libgnutls28-dev libgoogle-perftools4 libgoogle-perftools-dev libgsm1-dev libgtest-dev libgvc6 libibus-1.0-dev libintl-perl
+        libladspa-ocaml-dev libldap2-dev libleptonica-dev liblilv-dev liblz-dev liblzma-dev liblzo2-dev libmathic-dev
+        libmatroska-dev libmbedtls-dev libmetis5 libmfx-dev libmodplug-dev libmp3lame-dev libmusicbrainz5-dev libnuma-dev
         libpango1.0-dev libperl-dev libplacebo-dev libpocketsphinx-dev libportaudio-ocaml-dev libpsl-dev libpstoedit-dev
         libpulse-dev librabbitmq-dev libraw-dev librsvg2-dev librtmp-dev librubberband-dev librust-gstreamer-base-sys-dev
-        libserd-dev libshine-dev libsmbclient-dev libsnappy-dev libsndio-dev libsoxr-dev libspeex-dev libsphinxbase-dev
-        libsqlite3-dev libsratom-dev libssh-dev libssl-dev libsystemd-dev libtalloc-dev libtesseract-dev libticonv-dev
-        libtool libtwolame-dev libudev-dev libv4l-dev libva-dev libvdpau-dev libvidstab-dev libvlccore-dev libvo-amrwbenc-dev
-        libx11-dev libxcursor-dev libxext-dev libxfixes-dev libxi-dev libxkbcommon-dev libxrandr-dev libxss-dev libxvidcore-dev
-        libzmq3-dev libzvbi-dev libzzip-dev lsb-release lshw lzma-dev m4 mesa-utils pandoc python3 python3-pip python3-venv
-        ragel re2c scons texi2html texinfo tk-dev unzip valgrind wget xmlto libsctp-dev libflac-dev libglfw3-dev libgl1-mesa-dev
-        libglu1-mesa-dev
+        libsctp-dev libserd-dev libshine-dev libsmbclient-dev libsnappy-dev libsndio-dev libsoxr-dev libspeex-dev libsphinxbase-dev
+        libsqlite3-dev libsratom-dev libssh-dev libssl-dev libsystemd-dev libtalloc-dev libtesseract-dev libticonv-dev libtool
+        libtwolame-dev libudev-dev libv4l-dev libva-dev libvdpau-dev libvidstab-dev libvlccore-dev libvo-amrwbenc-dev libx11-dev
+        libxcursor-dev libxext-dev libxfixes-dev libxi-dev libxkbcommon-dev libxrandr-dev libxss-dev libxvidcore-dev libzmq3-dev
+        libzvbi-dev libzzip-dev lsb-release lshw lzma-dev m4 mesa-utils pandoc python3 python3-pip python3-venv ragel re2c scons
+        texi2html texinfo tk-dev unzip valgrind wget xmlto
     )
 
     [[ "$OS" == "Debian" ]] && pkgs+=("nvidia-smi")
 
     # Initialize arrays for missing, available, and unavailable packages
-    missing_packages=()
     available_packages=()
+    missing_packages=()
     unavailable_packages=()
 
     log "Checking package installation status..."
@@ -950,17 +985,37 @@ apt_pkgs() {
         log "No missing packages to install or all missing packages are unavailable."
         echo
     fi
+
+    if [[ -n "$amd_gpu_test" ]] && [[ "$is_nvidia_gpu_present" == "NVIDIA GPU not detected" ]]; then
+        return 0
+    else
+        if ! nvidia-smi &>/dev/null; then
+            echo
+            echo "You most likely just updated your nvidia-driver version because the \"nvidia-smi\" command is no longer working and won't until you reboot your PC."
+            echo "This is imporant because it is required for the script to complete. My (recommendation) is you for you to reboot your PC now and then re-run this script."
+            echo
+            read -p "Do you want to reboot now? (y/n): " reboot_choice
+            echo
+            case "$reboot_choice" in
+                [yY]*|[yY][eE][sS]*)
+                    reboot
+                    ;;
+                [nN]*|[nN][oO]*)
+                    ;;
+            esac
+        fi
+    fi
 }
 
 check_avx512() {
     # Checking if /proc/cpuinfo exists on the system
     if [[ ! -f "/proc/cpuinfo" ]]; then
-        echo "Error: /proc/cpuinfo does not exist on this system." >&2
+        echo "Error: /proc/cpuinfo does not exist on this system."
         return 2
     fi
 
     # Search for AVX512 flag in cpuinfo
-    if grep -qo "avx512" "/proc/cpuinfo"; then
+    if grep -q "avx512" "/proc/cpuinfo"; then
         echo "ON"
     else
         echo "OFF"
@@ -971,7 +1026,6 @@ fix_libstd_libs() {
     local libstdc_path
     libstdc_path=$(find /usr/lib/x86_64-linux-gnu/ -type f -name 'libstdc++.so.6.0.*' | sort -ruV | head -n1)
     if [[ ! -f "/usr/lib/x86_64-linux-gnu/libstdc++.so" ]] && [[ -f "$libstdc_path" ]]; then
-
         exec ln -sf "$libstdc_path" "/usr/lib/x86_64-linux-gnu/libstdc++.so"
     fi
 }
@@ -1047,11 +1101,11 @@ find_latest_nasm_version() {
 latest_nasm_version=$(find_latest_nasm_version)
 
 get_openssl_version() {
-    repo_version=$(curl -fsS "https://www.openssl.org/source/" |
-                   grep -oP 'openssl-3.1.[0-9]+.tar.gz' |
-                   sort -ruV |
-                   head -n1 |
-                   grep -oP '3.1.[0-9]+')
+    repo_version=$(
+                curl -fsS "https://www.openssl.org/source/" |
+                grep -oP 'openssl-3.1.[0-9]+.tar.gz' |
+                sort -ruV head -n1 grep -oP '3.1.[0-9]+'
+            )
 }
 
 # Patch functions
@@ -1064,7 +1118,7 @@ patch_ffmpeg() {
 apache_ant() {
     if build "apache-ant" "git"; then
         git_clone "https://aur.archlinux.org/apache-ant-contrib.git" "apache-ant-AUR"
-        execute makepkg -sif --cleanbuild --noconfirm --needed
+        execute makepkg -Csif --needed --noconfirm
         build_done "apache-ant" "git"
     fi
 }
@@ -1072,13 +1126,13 @@ apache_ant() {
 librist_arch() {
     if build "librist" "git"; then
         git_clone "https://aur.archlinux.org/librist.git" "librist-AUR"
-        execute makepkg -sif --cleanbuild --noconfirm --needed
+        execute makepkg -Csif --needed --noconfirm
         build_done "librist" "git"
     fi
 }
 
 arch_os_ver() {
-    local arch_pkgs pkg
+    local arch_pkgs pkg python_packages venv_path
 
     arch_pkgs=(av1an bluez-libs clang cmake dav1d devil docbook5-xml
                flite gdb gettext git gperf gperftools jdk17-openjdk
@@ -1089,7 +1143,7 @@ arch_os_ver() {
                yasm)
 
     # Check for Pacman lock file and if Pacman is running
-    if [[ -f /var/lib/pacman/db.lck ]]; then
+    if [[ -f "/var/lib/pacman/db.lck" ]]; then
         echo "Pacman lock file found. Checking if Pacman is running..."
         while pgrep -x pacman >/dev/null; do
             echo "Pacman is currently running. Waiting for it to finish..."
@@ -1104,14 +1158,14 @@ arch_os_ver() {
 
     for pkg in "${arch_pkgs[@]}"; do
         echo "Installing $pkg..."
-        pacman -Sq --needed --noconfirm $pkg 2>&1
+        execute pacman -Sq --needed --noconfirm
     done
 
     # Set the path for the Python virtual environment
-    local venv_path="$workspace/python_virtual_environment/arch_os"
+    venv_path="$workspace/python_virtual_environment/arch_os"
 
     # Python packages to install
-    local python_packages=(DateTime Sphinx wheel)
+    python_packages=(DateTime Sphinx wheel)
 
     # Call the function to setup Python venv and install packages
     setup_python_venv_and_install_packages "$venv_path" "${python_packages[@]}"
@@ -1303,7 +1357,8 @@ source_compiler_flags
 if build "m4" "latest"; then
     download "https://ftp.gnu.org/gnu/m4/m4-latest.tar.xz"
     execute ./configure --prefix="$workspace" \
-                        --disable-nls \
+
+               --disable-nls \
                         --enable-c++ \
                         --enable-threads=posix
     execute make "-j$threads"
@@ -1332,8 +1387,12 @@ else
     else
         get_os_version
         case "$VER" in
-            12|23.10|23.04) gnu_repo "https://ftp.gnu.org/gnu/libtool/" ;;
-            *)              version=2.4.6 ;;
+            20.04|22.04|23.04|23.10)
+                version="2.4.6"
+                ;;
+            11|12|24.04)
+                version="2.4.7"
+                ;;
         esac
     fi
     if build "libtool" "$version"; then
@@ -1484,12 +1543,12 @@ if build "nasm" "$latest_nasm_version"; then
     build_done "nasm" "$latest_nasm_version"
 fi
 
-if build "giflib" "5.2.1"; then
-    download "https://cfhcable.dl.sourceforge.net/project/giflib/giflib-5.2.1.tar.gz"
+if build "giflib" "5.2.2"; then
+    download "https://cytranet-dal.dl.sourceforge.net/project/giflib/giflib-5.2.2.tar.gz?viasf=1"
     # Parellel building not available for this library
     execute make
     execute make PREFIX="$workspace" install
-    build_done "giflib" "5.2.1"
+    build_done "giflib" "5.2.2"
 fi
 
 # UBUNTU BIONIC FAILS TO BUILD XML2
@@ -1615,7 +1674,7 @@ if build "$repo_name" "${version//\$ /}"; then
                         -D gcc="/usr/bin/gcc" \
                         -D installmansrc="$workspace/share/man" \
                         -D ldflags="$LDFLAGS" \
-                        -D libpth="/usr/lib64 /usr/lib /lib64 /lib" \
+                        -D libpth="/usr/lib64 /usr/lib" \
                         -D locincpth="$workspace/include /usr/local/include /usr/include" \
                         -D loclibpth="$workspace/lib64 $workspace/lib /usr/local/lib64 /usr/local/lib" \
                         -D osname="$OS" \
@@ -1806,12 +1865,14 @@ repo_version_trim="${repo_version//_/\.}"
 if build "c-ares" "$repo_version_trim"; then
     download "https://github.com/c-ares/c-ares/archive/refs/tags/cares-$repo_version.tar.gz" "c-ares-$repo_version_trim.tar.gz"
     execute autoreconf -fi
-    execute ./configure --prefix="$workspace" \
-                        --disable-{debug,shared,warnings} \
-                        --enable-static \
-                        --with-pic
-    execute make "-j$threads"
-    execute make install
+    execute cmake -B build -DCMAKE_INSTALL_PREFIX="$workspace" \
+                           -DCMAKE_BUILD_TYPE=Release \
+                           -DCARES_{BUILD_CONTAINER_TESTS,BUILD_TESTS}=OFF \
+                           -DCARES_{SHARED,SYMBOL_HIDING}=OFF \
+                           -DCARES_{BUILD_TOOLS,STATIC,STATIC_PIC,THREADS}=ON \
+                           -G Ninja -Wno-dev
+    execute ninja "-j$threads" -C build
+    execute ninja -C build install
     build_done "c-ares" "$repo_version_trim"
 fi
 
@@ -1820,8 +1881,8 @@ if build "$repo_name" "${version//\$ /}"; then
     echo "Cloning \"$repo_name\" saving version \"$version\""
     git_clone "$git_url"
     case "$VER" in
-        10|11) lv2_switch=enabled ;;
-        *)     lv2_switch=disabled ;;
+        11) lv2_switch=enabled ;;
+        *)  lv2_switch=disabled ;;
     esac
 
     venv_path="$workspace/python_virtual_environment/lv2-git"
@@ -1842,7 +1903,7 @@ if build "$repo_name" "${version//\$ /}"; then
                               --default-library=static \
                               --strip \
                               -D{docs,tests}=disabled \
-                              -Donline_docs="false" \
+                              -Donline_docs=false \
                               -Dplugins="$lv2_switch"
     execute ninja "-j$threads" -C build
     execute ninja -C build install
@@ -2214,7 +2275,7 @@ box_out_banner_video() {
 }
 box_out_banner_video "Installing Video Tools"
 
-git_caller "https://aomedia.googlesource.com/aom" "av1-git" "av1"
+git_caller "https://aomedia.googlesource.com/aom" "av1-git"
 if build "$repo_name" "${version//\$ /}"; then
     echo "Cloning \"$repo_name\" saving version \"$version\""
     git_clone "$git_url"
@@ -2800,10 +2861,10 @@ ffmpeg_version_output=$(ffmpeg -version 2>/dev/null)
 if [ "$?" -eq 0 ]; then
     # Extract the version number using grep and awk
     ffmpeg_version=$(echo "$ffmpeg_version_output" | grep -oP 'ffmpeg version \K\d+\.\d+')
-    
+
     # Format the version number with the desired prefix
     ffmpeg_version_formatted="n$ffmpeg_version"
-    
+
     echo
     log_update "The installed FFmpeg version is: $ffmpeg_version_formatted"
     log_update "The latest FFmpeg release version available: $ffmpeg_version_formatted"
@@ -2818,7 +2879,7 @@ fi
 # We must stick with the latest version that works
 find_git_repo "FFmpeg/FFmpeg" "1" "T"
 if build "ffmpeg" "n${repo_version}"; then
-    CFLAGS+=" -flto -DCL_TARGET_OPENCL_VERSION=300 -DX265_DEPTH=12 -DENABLE_LIBVMAF=0"
+    CFLAGS="$CFLAGS -flto -DCL_TARGET_OPENCL_VERSION=300 -DX265_DEPTH=12 -DENABLE_LIBVMAF=0"
     download "https://ffmpeg.org/releases/ffmpeg-$repo_version.tar.xz" "ffmpeg-n${repo_version}.tar.xz"
     [[ "$OS" == "Arch" ]] && patch_ffmpeg
     mkdir build; cd build || exit 1
@@ -2837,6 +2898,7 @@ if build "ffmpeg" "n${repo_version}"; then
                  --extra-cflags="$CFLAGS" \
                  --extra-cxxflags="$CFLAGS" \
                  --extra-libs="$EXTRALIBS" \
+                 --extra-ldflags="$LDFLAGS" \
                  --pkg-config-flags="--static" \
                  --pkg-config="$workspace/bin/pkg-config" \
                  --pkgconfigdir="$workspace/lib/pkgconfig" \
