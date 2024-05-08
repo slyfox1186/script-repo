@@ -773,7 +773,7 @@ download_cuda() {
                 sudo apt update
                 sudo apt -y upgrade
                 echo "export PATH=/usr/local/cuda-12.4/bin\${PATH:+:\${PATH}}" | tee -a "$HOME/.bashrc" >/dev/null
-                distro="ubuntu2204"; version="12-4"; pkg_ext="pin"; pin_file="$distro/x86_64/cuda-ubuntu2204.pin"; installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_serial}_amd64.deb" ;;
+                distro="ubuntu2204"; version="12-4"; pkg_ext="pin"; pin_file="$distro/x86_64/cuda-ubuntu2204.pin"; installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_serial}_amd64.deb"
                 ;;
             "Ubuntu WSL") distro="wsl-ubuntu"; version="12-4"; version_ext="12.4.1-1"; pkg_ext="pin"; pin_file="$distro/x86_64/cuda-wsl-ubuntu.pin"; installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_ext}_amd64.deb" ;;
             "Arch Linux")
