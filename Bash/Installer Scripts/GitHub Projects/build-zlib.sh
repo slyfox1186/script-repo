@@ -14,16 +14,16 @@ fi
 
 CYAN='\033[0;36m'
 GREEN='\033[0;32m'
-MAGENTA='\033[0;35m'
 RED='\033[0;31m'
 YELLOW='\033[0;33m'
 NC='\033[0m' # No Color
 
 # Set the variables
 script_ver=1.3
-version=$(curl -fsS "https://github.com/madler/zlib/tags" | grep -oP 'href="[^"]*/tag/v?\K([0-9.])+' | sort -ruV | head -n1)
-archive_name="zlib-$version"
-archive_url="https://github.com/madler/zlib/archive/refs/tags/v$version.tar.gz"
+prog_name="zlib"
+version=$(curl -fsS "https://github.com/madler/$prog_name/tags/" | grep -oP 'href="[^"]*/tag/v?\K([0-9.])+' | sort -ruV | head -n1)
+archive_name="$prog_name-$version"
+archive_url="https://github.com/madler/$prog_name/archive/refs/tags/v$version.tar.gz"
 archive_ext="${archive_url//*.}"
 tar_file="$archive_name.tar.$archive_ext"
 install_dir="/usr/local/$archive_name"
@@ -41,7 +41,7 @@ fail() {
     exit 1
 }
 
-echo "zlib build script - v$script_ver"
+echo "$prog_name build script - v$script_ver"
 echo "==============================================="
 echo
 
@@ -58,10 +58,10 @@ cleanup() {
     sudo rm -fr "$cwd"
 }
 
-install_required_packages() {
-    local -a missing_pkgs
-    local pkg pkgs
-    pkgs=(binutils build-essential ccache curl coreutils libc6-dev)
+required_packages() {
+    local -a missing_pkgs pkgs
+    local pkg
+    pkgs=(build-essential ccache zlib1g-dev)
 
     missing_pkgs=()
     for pkg in "${pkgs[@]}"; do
@@ -93,13 +93,11 @@ download_archive() {
 }
 
 extract_archive() {
-    [[ -d "$cwd/$archive_name" ]] && sudo rm -fr "$cwd/$archive_name"
-    mkdir -p "$cwd/$archive_name"
     tar -zxf "$cwd/$tar_file" -C "$cwd/$archive_name" --strip-components 1 || fail "Failed to extract: $cwd/$tar_file"
 }
 
 configure_build() {
-    mkdir -p "$cwd/$archive_name/build" && cd "$cwd/$archive_name/build" || fail "cd into $cwd/$archive_name/build/meson. Line: $LINENO"
+    cd "$cwd/$archive_name/build" || fail "cd into $cwd/$archive_name/build/meson. Line: $LINENO"
     ../configure --prefix="$install_dir" \
                  --includedir="$install_dir/include" \
                  --libdir="$install_dir/lib" \
@@ -115,33 +113,30 @@ install_build() {
     sudo make install || fail "Failed execute: make install. Line: $LINENO"
 }
 
-create_linker_config_file() {
-    echo "$install_dir/lib" | sudo tee /etc/ld.so.conf.d/custom_zlib.conf >/dev/null
+ld_linker_path() {
+    echo "$install_dir/lib" | sudo tee "/etc/ld.so.conf.d/custom_$prog_name.conf" >/dev/null
     sudo ldconfig
 }
 
 create_soft_links() {
-    sudo ln -sf "$install_dir/lib/"* "/usr/local/lib/"
-    sudo ln -sf "$install_dir/lib/pkgconfig/zlib.pc" "/usr/local/lib/pkgconfig/"
+    sudo ln -sf "$install_dir/lib/pkgconfig/"*.pc "/usr/local/lib/pkgconfig/"
     sudo ln -sf "$install_dir/include/"* "/usr/local/include/"
 }
 
 
 main_menu() {
     # Create output directory
-    if [[ -d "$cwd" ]]; then
-        sudo rm -fr "$cwd"
-    fi
-    mkdir -p "$cwd"
+    [[ -d "$cwd/$archive_name" ]] && sudo rm -fr "$cwd/$archive_name"
+    mkdir -p "$cwd/$archive_name/build"
 
-    install_required_packages
+    required_packages
     set_compiler_flags
     download_archive
     extract_archive
     configure_build
     compile_build
     install_build
-    create_linker_config_file
+    ld_linker_path
     create_soft_links
     cleanup
     exit_fn

@@ -1,59 +1,35 @@
 #!/usr/bin/env bash
 
-# Build GNU Bash
-# Updated: 04.11.24
 # GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-bash.sh
-# Script Version: 2.0
+# Purpose: build gnu bash from source.
+# Updated: 05.08.24
+# Script version: 2.1
 
-trap 'fail "Error occurred on line: $LINENO".' ERR
+if [[ "$EUID" -eq 0 ]]; then
+    echo "You must run this script without root or sudo."
+    exit 1
+fi
 
-version="5.2.15"
-program_name="bash"
-install_dir="/usr/local"
-build_dir="/tmp/$program_name-$version-build"
-workspace="$build_dir/workspace"
-gnu_ftp="https://ftp.gnu.org/gnu/bash/"
-verbose=0
+CYAN='\033[0;36m'
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[0;33m'
+NC='\033[0m'
 
-GREEN='\033[32m'
-RED='\033[31m'
-RESET='\033[0m'
-
-usage() {
-    echo "Usage: ./build-bash.sh [OPTIONS]"
-    echo "Options:"
-    printf "  %-25s %s\n" "-p, --prefix DIR" "Set the installation prefix (default: $install_dir)"
-    printf "  %-25s %s\n" "-v, --verbose" "Enable verbose logging"
-    printf "  %-25s %s\n" "-h, --help" "Show this help message"
-    exit 0
-}
-
-parse_args() {
-    while [[ "$#" -gt 0 ]]; do
-        case "$1" in
-            -p|--prefix)
-                install_dir="$2"
-                shift 2
-                ;;
-            -v|--verbose)
-                verbose=1
-                shift
-                ;;
-            -h|--help)
-                usage
-                ;;
-            *)  fail "Unknown option: $1. Use -h or --help for usage information." ;;
-        esac
-    done
-}
+# Set the variables
+script_ver=2.1
+prog_name="bash"
+version=$(curl -fsS "https://ftp.gnu.org/gnu/$prog_name/" | grep -oP 'bash-\K([0-9.]{3,6})[a-z-]*' | grep -Eiv 'alpha|beta|rc|patches' | sort -ruV |head -n1)
+archive_name="$prog_name-$version"
+archive_url="https://ftp.gnu.org/gnu/$prog_name/$prog_name-$version.tar.gz"
+archive_ext="${archive_url//*.}"
+tar_file="$archive_name.tar.$archive_ext"
+install_dir="/usr/local/$archive_name"
+cwd="$PWD/$archive_name-build-script"
 
 # Enhanced logging and error handling
 log() {
     echo -e "${GREEN}[INFO]${NC} $1"
-}
-
-warn() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
 }
 
 fail() {
@@ -62,150 +38,112 @@ fail() {
     exit 1
 }
 
-install_deps() {
-    log "Checking and installing missing packages..."
-    local apt_pkgs arch_pkgs
-    apt_pkgs=(
-            autoconf autoconf-archive binutils build-essential ccache
-            curl gettext libpth-dev libticonv-dev libtool lzip m4 tar
-        )
-    arch_pkgs=(
-            autoconf autoconf-archive binutils base-devel ccache
-            curl gettext npth libiconv libtool lzip m4 tar
-        )
-    if command -v apt &>/dev/null; then
+echo "$prog_name build script - version $script_ver"
+echo "================================================="
+echo
+
+# Create functions
+exit_fn() {
+    echo
+    log "The script has completed"
+    log "${GREEN}Make sure to ${YELLOW}star ${GREEN}this repository to show your support!${NC}"
+    log "${CYAN}https://github.com/slyfox1186/script-repo${NC}"
+    exit 0
+}
+
+cleanup() {
+    sudo rm -fr "$cwd"
+}
+
+required_packages() {
+    local -a missing_pkgs pkgs
+    local pkg
+    pkgs=(
+        autoconf autoconf-archive automake binutils bison build-essential
+        ccache curl gettext libncursesw5-dev libpth-dev libreadline-dev
+        libticonv-dev libtool lzip m4 tar
+    )
+
+    missing_pkgs=()
+    for pkg in "${pkgs[@]}"; do
+        if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
+            missing_pkgs+=("$pkg")
+        fi
+    done
+
+    if [ ${#missing_pkgs[@]} -gt 0 ]; then
         sudo apt update
-        sudo apt -y install "${apt_pkgs[@]}"
-    elif command -v dnf &>/dev/null; then
-        sudo dnf install -y "${apt_pkgs[@]}"
-    elif command -v zypper &>/dev/null; then
-        sudo zypper install -y "${apt_pkgs[@]}"
-    elif command -v pacman &>/dev/null; then
-        sudo pacman -Syu
-        sudo pacman -Sy --needed --noconfirm "${arch_pkgs[@]}"
-    else
-        fail "Unsupported package manager. Please install the required dependencies manually."
+        sudo apt install "${missing_pkgs[@]}"
     fi
 }
 
-find_latest_release() {
-    log "Finding the latest release..."
-    local tarball=$(curl -fsS "$gnu_ftp" | grep -oP 'bash-[0-9\.]*\.tar\.gz' | sort -rV | head -n1)
-    if [[ -z "$tarball" ]]; then
-        fail "Failed to find the latest release."
-    fi
-    archive_url="${gnu_ftp}${tarball}"
-    archive_name="${tarball}"
-    version=$(echo "$tarball" | grep -oP 'bash-[0-9.]{5,6}')
+set_compiler_flags() {
+    CC="gcc"
+    CXX="g++"
+    CFLAGS="-O2 -pipe -march=native"
+    CXXFLAGS="$CFLAGS"
+    CPPFLAGS="-D_FORTIFY_SOURCE=2"
+    LDFLAGS="-Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now,-rpath,$install_dir/lib"
+    PATH="/usr/lib/ccache:$HOME/perl5/bin:$HOME/.cargo/bin:$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin"
+    PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/lib/pkgconfig"
+    export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS PATH PKG_CONFIG_PATH
 }
 
 download_archive() {
-    log "Downloading archive..."
-    if [[ ! -f "$build_dir/$archive_name" ]]; then
-        curl -LSso "$build_dir/$archive_name" "$archive_url"
-    fi
+    wget --show-progress -cqO "$cwd/$tar_file" "$archive_url" || fail "Failed to download archive with WGET. Line: $LINENO"
 }
 
 extract_archive() {
-    echo
-    log "Extracting archive..."
-    tar -zxf "$build_dir/$archive_name" -C "$workspace" --strip-components 1
-}
-
-set_env_vars() {
-    echo
-    log "Setting environment variables..."
-    CC="ccache gcc"
-    CXX="ccache g++"
-    CFLAGS="-O2 -pipe -fno-plt -march=native -mtune=native -D_FORTIFY_SOURCE=2"
-    CXXFLAGS="$CFLAGS"
-    LDFLAGS="-Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now,-rpath,$install_dir/$program_name-$version/lib"
-    PATH="/usr/lib/ccache:$HOME/perl5/bin:$HOME/.cargo/bin:$HOME/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-    PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/pkgconfig:/lib64/pkgconfig:/lib/pkgconfig"
-    export CC CFLAGS CXX CXXFLAGS LDFLAGS PATH PKG_CONFIG_PATH
+    tar -zxf "$cwd/$tar_file" -C "$cwd/$archive_name" --strip-components 1 || fail "Failed to extract: $cwd/$tar_file"
 }
 
 configure_build() {
-    echo
-    log "Configuring build..."
-    cd "$workspace" || exit 1
+    local libiconv_prefix
+
+    # Locate the latest installed libiconv prefix
+    libiconv_prefix=$(sudo find /usr/local -maxdepth 1 -type d -name "libiconv-*" -print -quit 2>/dev/null || echo /usr)
+
+    cd "$cwd/$archive_name" || fail "Failed to cd into $cwd/$archive_name. Line: $LINENO"
+
     autoreconf -fi
     cd build || exit 1
-    echo
-    log "Configuring..."
-    ../configure --prefix="$install_dir/$program_name-$version" \
-                 --disable-nls \
-                 --disable-profiling \
-                 --enable-brace-expansion \
-                 --enable-history \
-                 --enable-separate-helpfiles \
-                 --enable-threads=posix \
-                 --with-bash-malloc \
-                 --with-libiconv-prefix=/usr \
-                 --with-libintl-prefix=/usr \
-                 --with-libpth-prefix=/usr \
-                 --without-included-gettext
+    ../configure --prefix="$install_dir" --disable-nls --disable-profiling --enable-brace-expansion \
+                 --enable-history --enable-separate-helpfiles --enable-threads=posix --with-bash-malloc \
+                 --with-libiconv-prefix="$libiconv_prefix" --with-libintl-prefix=/usr --with-libpth-prefix=/usr \
+                 --without-included-gettext || fail "Failed to execute: configure. Line: $LINENO"
 }
 
 compile_build() {
-    echo
-    log "Compiling..."
-    make "-j$(nproc --all)"
+    make "-j$(nproc --all)" || fail "Failed to execute: make build. Line: $LINENO"
 }
 
 install_build() {
-    echo
-    log "Installing..."
-    sudo make install
+    sudo make install || fail "Failed execute: make install. Line: $LINENO"
 }
 
-create_symlinks() {
-    echo
-    log "Creating symlinks..."
-    for file in "$install_dir/$program_name-$version"/bin/*; do
-        sudo ln -sfn "$file" "$install_dir/bin/$(basename "$file" | sed 's/^\w*-//')"
-    done
+create_soft_links() {
+    sudo ln -sf "$install_dir/bin/"* "/usr/local/bin/"
+    sudo ln -sf "$install_dir/lib/pkgconfig/"*.pc "/usr/local/lib/pkgconfig/"
+    sudo ln -sf "$install_dir/include/bash/"* "/usr/local/include/"
+    sudo ln -sf "$install_dir/include/bash/include/"* "/usr/local/include/"
+    sudo ln -sf "$install_dir/include/bash/builtins/"* "/usr/local/include/"
 }
 
-# Cleanup resources  
-cleanup() {
-    echo
-    read -p "Remove temporary build directory '$build_dir'? [y/N] " response
-    case "$response" in
-        [yY]*|"")
-        sudo rm -rf "$build_dir"
-        log_msg "Build directory removed."
-        ;;
-        [nN]*) ;;
-    esac
-}
+main_menu() {
+    # Create output directory
+    [[ -d "$cwd/$archive_name" ]] && sudo rm -fr "$cwd/$archive_name"
+    mkdir -p "$cwd/$archive_name/build"
 
-main() {
-    parse_args "$@"
-
-    if [[ "$EUID" -eq 0 ]]; then
-        fail "This script must be without run root or with sudo."
-    fi
-
-    [[ -d "$workspace" ]] && sudo rm -rf "$workspace"
-    mkdir -p "$workspace/build"
-
-    install_deps
-    find_latest_release
+    required_packages
+    set_compiler_flags
     download_archive
     extract_archive
-    set_env_vars
     configure_build
     compile_build
     install_build
-    create_symlinks
+    create_soft_links
     cleanup
+    exit_fn
 }
 
-main "$@"
-
-echo
-log "Build completed successfully."
-echo
-log "Make sure to star this repository to show your support!"
-log "https://github.com/slyfox1186/script-repo"
+main_menu "$@"

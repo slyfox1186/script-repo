@@ -17,7 +17,6 @@ RED='\033[0;31m'
 YELLOW='\033[0;33m'
 NC='\033[0m'
 
-
 script_ver="2.1"
 prog_name1="libiconv"
 prog_name2="gettext"
