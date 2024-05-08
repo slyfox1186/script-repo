@@ -14,8 +14,8 @@ YELLOW='\033[0;33m'
 NC='\033[0m'
 
 # Ensure running as root
-if [ "$EUID" -eq 0 ]; then
-    echo -e "${RED}This script must be run as root. Exiting.${NC}" >&2
+if [[ "$EUID" -eq 0 ]]; then
+    echo "This script must be without root or with sudo."
     exit 1
 fi
 
@@ -54,8 +54,8 @@ warn() {
 }
 
 check_dependencies() {
-    apt update
-    apt install autoconf automake bzip2 curl gfortran libcurl4-openssl-dev \
+    sudo apt update
+    sudo apt install autoconf automake bzip2 curl gfortran libcurl4-openssl-dev \
                 libexpat1-dev libgcrypt20-dev libgpgme-dev libssl-dev \
                 libunistring-dev pkg-config zlib1g-dev
 }
@@ -73,6 +73,7 @@ build_libmetalink() {
     local libmetalink_dir="$cwd/libmetalink"
     mkdir -p "$libmetalink_dir" && cd "$libmetalink_dir"
     curl -fsSL "https://github.com/metalink-dev/libmetalink/releases/download/release-0.1.3/libmetalink-0.1.3.tar.xz" | tar -Jxf - --strip-components 1
+    make distclean
     ./configure --prefix="$install_dir" || error "Failed to configure libmetalink."
     make "-j$(nproc)" || error "Failed to build libmetalink."
     sudo make install || error "Failed to install libmetalink."
@@ -84,16 +85,18 @@ build_wget() {
     local wget_dir="$cwd/wget"
     mkdir -p "$wget_dir" && cd "$wget_dir"
     curl -fsSL "https://ftp.gnu.org/gnu/wget/$archive_dir.tar.lz" | tar --lzip -xf - --strip-components=1
-    ./configure --prefix="$install_dir" \
-                --with-ssl=openssl \
-                --with-libssl-prefix="$install_dir" \
-                --with-metalink \
-                --with-libunistring-prefix=/usr \
-                --with-libcares \
-                --without-ipv6 \
-                --disable-nls || error "Failed to configure wget."
-                make "-j$(nproc --all)" || error "Failed to build wget."
-                sudo make install || error "Failed to install wget."
+    mkdir build; cd build || exit 1
+    make distclean
+    ../configure --prefix="$install_dir" \
+                 --with-ssl=openssl \
+                 --with-libssl-prefix="$install_dir" \
+                 --with-metalink \
+                 --with-libunistring-prefix=/usr \
+                 --with-libcares \
+                 --without-ipv6 \
+                 --disable-nls || error "Failed to configure wget."
+                 make "-j$(nproc --all)" || error "Failed to build wget."
+                 sudo make install || error "Failed to install wget."
     log "wget built and installed successfully."
 }
 
@@ -108,7 +111,7 @@ fix_libmetalink_libs() {
 
 cleanup() {
     log "Cleaning up build directories..."
-    rm -rf "$cwd"
+    sudo rm -rf "$cwd"
     log "Cleanup complete."
 }
 
@@ -133,6 +136,7 @@ parse_args() {
 
 # Main execution flow
 main() {
+    [[ -d "$cwd" ]] && sudo rm -rf "$cwd"
     parse_args "$@"
     check_dependencies
     source_flags
@@ -140,7 +144,7 @@ main() {
     build_wget
     fix_libmetalink_libs
     cleanup
-    ldconfig
+    sudo ldconfig
 }
 
 main "$@"

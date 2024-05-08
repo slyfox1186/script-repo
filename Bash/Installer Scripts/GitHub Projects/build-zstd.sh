@@ -21,9 +21,10 @@ NC='\033[0m' # No Color
 
 # Set the variables
 script_ver=1.3
-version=$(curl -fsS "https://github.com/facebook/zstd/tags/" | grep -oP 'href="[^"]*/tag/v?\K([0-9.])+' | sort -ruV | head -n1)
-archive_name="zstd-$version"
-archive_url="https://github.com/facebook/zstd/archive/refs/tags/v$version.tar.gz"
+prog_name="zstd"
+version=$(curl -fsS "https://github.com/facebook/$prog_name/tags/" | grep -oP 'href="[^"]*/tag/v?\K([0-9.])+' | sort -ruV | head -n1)
+archive_name="$prog_name-$version"
+archive_url="https://github.com/facebook/$prog_name/archive/refs/tags/v$version.tar.gz"
 archive_ext="${archive_url//*.}"
 tar_file="$archive_name.tar.$archive_ext"
 install_dir="/usr/local/$archive_name"
@@ -41,8 +42,8 @@ fail() {
     exit 1
 }
 
-echo "Zstd Build Script - v$script_ver"
-echo "==============================================="
+echo "$prog_name build script - version $script_ver"
+echo "================================================="
 echo
 
 # Create functions
@@ -58,7 +59,7 @@ cleanup() {
     sudo rm -fr "$cwd"
 }
 
-install_required_packages() {
+required_packages() {
     local -a missing_pkgs pkgs
     local pkg
     pkgs=(
@@ -98,14 +99,12 @@ download_archive() {
 }
 
 extract_archive() {
-    [[ -d "$cwd/$archive_name" ]] && sudo rm -fr "$cwd/$archive_name"
-    mkdir -p "$cwd/$archive_name"
     tar -zxf "$cwd/$tar_file" -C "$cwd/$archive_name" --strip-components 1 || fail "Failed to extract: $cwd/$tar_file"
 }
 
 configure_build() {
     cd "$cwd/$archive_name/build/meson" || fail "cd into $cwd/$archive_name/build/meson. Line: $LINENO"
-    meson setup build --prefix="$install_dir" --buildtype=release --default-library=both --strip -Dbin_tests=false || fail "Failed to execute: meson setup. Line: $LINENO"
+    meson setup build --prefix="$install_dir" --buildtype=release --default-library=both -Dbin_tests=false || fail "Failed to execute: meson setup. Line: $LINENO"
 }
 
 compile_build() {
@@ -117,32 +116,28 @@ install_build() {
 }
 
 create_soft_links() {
-    local file files
+    local -a files
+    local file
     files=(zstd zstdgrep zstdless zstd-frugal)
     for file in ${files[@]}; do
         sudo ln -sf "$install_dir/bin/$file" "/usr/local/bin/"
     done
 
-    sudo ln -sf "$install_dir/lib/pkgconfig/zlib.pc" "/usr/local/lib/pkgconfig/"
+    sudo ln -sf "$install_dir/lib/pkgconfig/"*.pc "/usr/local/lib/pkgconfig/"
     sudo ln -sf "$install_dir/include/"* "/usr/local/include/"
 }
 
-create_linker_config_file() {
-    zstd_library=$(sudo find "$install_dir/lib/" -type f -name 'libzstd.so.*' | sort -ruV)
-    zstd_library_trim="${zstd_library##*/}"
-    echo "$install_dir/lib/x86_64-linux-gnu" | sudo tee /etc/ld.so.conf.d/custom_zstd.conf >/dev/null
-    sudo ln -sf "$install_dir/lib/x86_64-linux-gnu/libzstd.so.1" "/usr/lib/x86_64-linux-gnu/libzstd.so"
+ld_linker_path() {
+    echo "$install_dir/lib/x86_64-linux-gnu" | sudo tee "/etc/ld.so.conf.d/custom_$prog_name.conf" >/dev/null
     sudo ldconfig
 }
 
 main_menu() {
     # Create output directory
-    if [[ -d "$cwd" ]]; then
-        sudo rm -fr "$cwd"
-    fi
-    mkdir -p "$cwd"
+    [[ -d "$cwd" ]] && sudo rm -fr "$cwd/$archive_name"
+    mkdir -p "$cwd/$archive_name"
 
-    install_required_packages
+    required_packages
     set_compiler_flags
     download_archive
     extract_archive
@@ -150,7 +145,7 @@ main_menu() {
     compile_build
     install_build
     create_soft_links
-    create_linker_config_file
+    ld_linker_path
     cleanup
     exit_fn
 }
