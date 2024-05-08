@@ -2342,15 +2342,14 @@ if build "avif" "$repo_version"; then
     build_done "avif" "$repo_version"
 fi
 
-git_caller "https://github.com/ultravideo/kvazaar.git" "kvazaar-git"
-if build "$repo_name" "${version//\$ /}"; then
-    echo "Cloning \"$repo_name\" saving version \"$version\""
-    git_clone "$git_url"
-    execute ./autogen.sh
-    execute ./configure --prefix="$workspace" --disable-shared
-    execute make "-j$threads"
-    execute make install
-    build_done "$repo_name" "$version"
+find_git_repo "ultravideo/kvazaar" "1" "T"
+if build "kvazaar" "$repo_version"; then
+    download "https://github.com/ultravideo/kvazaar/releases/download/v$repo_version/kvazaar-$repo_version.tar.xz"
+    execute cmake -B build -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_BUILD_TYPE=Release \
+                           -DBUILD_SHARED_LIBS=OFF -G Ninja -Wno-dev
+    execute ninja "-j$threads" -C build
+    execute ninja -C build install
+    build_done "kvazaar" "$repo_version"
 fi
 CONFIGURE_OPTIONS+=("--enable-libkvazaar")
 
