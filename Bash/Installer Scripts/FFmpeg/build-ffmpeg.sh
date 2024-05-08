@@ -1104,7 +1104,7 @@ get_openssl_version() {
     repo_version=$(
                 curl -fsS "https://www.openssl.org/source/" |
                 grep -oP 'openssl-3.1.[0-9]+.tar.gz' |
-                sort -ruV head -n1 grep -oP '3.1.[0-9]+'
+                sort -ruV | head -n1 | grep -oP '3.1.[0-9]+'
             )
 }
 
