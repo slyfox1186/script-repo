@@ -2,7 +2,7 @@
 # shellcheck disable=SC2068,SC2162,SC2317 source=/dev/null
 
 # GitHub: https://github.com/slyfox1186/ffmpeg-build-script
-# Script version: 3.6.7
+# Script version: 3.6.8
 # Updated: 05.10.24
 # Purpose: build ffmpeg from source code with addon development libraries
 #          also compiled from source to help ensure the latest functionality
@@ -19,7 +19,7 @@ fi
 
 # Define global variables
 script_name="${0}"
-script_version="3.6.7"
+script_version="3.6.8"
 cwd="$PWD/ffmpeg-build-script"
 mkdir -p "$cwd" && cd "$cwd" || exit 1
 if [[ "$PWD" =~ ffmpeg-build-script\/ffmpeg-build-script ]]; then
@@ -520,8 +520,8 @@ determine_libtool_version() {
 
 # Function to setup a python virtual environment and install packages with pip
 setup_python_venv_and_install_packages() {
-    local parse_path="$1"
     local -a parse_package
+    local parse_path="$1"
     shift
     parse_package=("$@")
 
@@ -660,25 +660,35 @@ if [[ -n "$LDEXEFLAGS" ]]; then
     echo
 fi
 
-# Set the path variable
-if [[ -d "/usr/local/bin" ]]; then
-    cuda_bin_path="/usr/local/bin"
-elif [[ -d  "/opt/cuda/bin" ]]; then
-    cuda_bin_path="/opt/cuda/bin"
-fi
-
-if [[ -d /usr/lib/ccache/bin ]]; then
-    ccache_dir="/usr/lib/ccache/bin"
-else
-    ccache_dir="/usr/lib/ccache"
-fi
-
 source_path() {
-    PATH="$ccache_dir:$cuda_bin_path:$workspace/bin:$HOME/.local/bin:/usr/local/ant/bin"
-    PATH+=":/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+    ccache_dir="/usr/lib/ccache"
+    PATH="$ccache_dir:/usr/local/cuda/bin:$workspace/bin:$HOME/.local/bin:$PATH"
     export PATH
 }
 source_path
+
+remove_duplicate_paths() {
+    local -a path_array
+    local IFS new_path seen
+    IFS=':'
+    path_array=($PATH)
+
+    declare -A seen
+
+    for path in "${path_array[@]}"; do
+        if [[ -n "$path" && ! -v seen[$path] ]]; then
+            seen[$path]=1
+            if [[ -z "$new_path" ]]; then
+                new_path="$path"
+            else
+                new_path="$new_path:$path"
+            fi
+        fi
+    done
+
+    PATH="$new_path"
+    export PATH
+}
 
 # Set the pkg_config_path variable
 PKG_CONFIG_PATH="$workspace/lib64/pkgconfig:$workspace/lib/x86_64-linux-gnu/pkgconfig:$workspace/lib/pkgconfig:$workspace/share/pkgconfig"
@@ -722,19 +732,21 @@ check_remote_cuda_version() {
 
 set_java_variables() {
     source_path
-    locate_java=$(find /usr/lib/jvm/ -type d -name "java-*-openjdk*" |
-                  sort -ruV |
-                  head -n1)
-    java_include=$(find /usr/lib/jvm/ -type f -name "javac" |
-                   sort -ruV |
-                   head -n1 |
-                   xargs dirname |
-                   sed 's/bin/include/')
+    locate_java=$(
+                 find /usr/lib/jvm/ -type d -name "java-*-openjdk*" |
+                 sort -ruV | head -n1
+              )
+    java_include=$(
+                  find /usr/lib/jvm/ -type f -name "javac" |
+                  sort -ruV | head -n1 | xargs dirname |
+                  sed 's/bin/include/'
+              )
     CPPFLAGS+=" -I$java_include"
-    export CPPFLAGS
-    export JDK_HOME="$locate_java"
-    export JAVA_HOME="$locate_java"
-    export PATH="$PATH:$JAVA_HOME/bin"
+    JDK_HOME="$locate_java"
+    JAVA_HOME="$locate_java"
+    PATH="$PATH:$JAVA_HOME/bin"
+    export CPPFLAGS JDK_HOME JAVA_HOME PATH
+    remove_duplicate_paths
 }
 
 set_ant_path() {
@@ -808,9 +820,9 @@ download_cuda() {
             "Ubuntu 20.04") distro="ubuntu2004"; version="12-4"; pkg_ext="pin"; pin_file="$distro/x86_64/cuda-ubuntu2004.pin"; installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_serial}_amd64.deb" ;;
             "Ubuntu 22.04") distro="ubuntu2204"; version="12-4"; pkg_ext="pin"; pin_file="$distro/x86_64/cuda-ubuntu2204.pin"; installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_serial}_amd64.deb" ;;
             "Ubuntu 24.04")
-                echo "deb http://security.ubuntu.com/ubuntu jammy-security main universe" | sudo tee "/etc/apt/sources.list.d/install-cuda-on-noble.list" >/dev/null
-                sudo apt update
-                sudo apt -y upgrade
+                echo "deb http://security.ubuntu.com/ubuntu jammy-security main universe" | tee "/etc/apt/sources.list.d/install-cuda-on-noble.list" >/dev/null
+                apt update
+                apt -y upgrade
                 echo "export PATH=/usr/local/cuda-12.4/bin\${PATH:+:\${PATH}}" | tee -a "$HOME/.bashrc" >/dev/null
                 distro="ubuntu2204"; version="12-4"; pkg_ext="pin"; pin_file="$distro/x86_64/cuda-ubuntu2204.pin"; installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_serial}_amd64.deb"
                 ;;
@@ -1313,11 +1325,7 @@ source_compiler_flags
 
 if build "m4" "latest"; then
     download "https://ftp.gnu.org/gnu/m4/m4-latest.tar.xz"
-    execute ./configure --prefix="$workspace" \
-
-               --disable-nls \
-                        --enable-c++ \
-                        --enable-threads=posix
+    execute ./configure --prefix="$workspace" --enable-c++ --enable-threads=posix
     execute make "-j$threads"
     execute make install
     build_done "m4" "latest"
@@ -1325,6 +1333,7 @@ fi
 
 if build "autoconf" "2.71"; then
     download "https://ftp.gnu.org/gnu/autoconf/autoconf-2.71.tar.xz"
+    execute autoupdate
     execute autoreconf -fi
     execute ./configure --prefix="$workspace" M4="$workspace/bin/m4"
     execute make "-j$threads"
@@ -1335,7 +1344,7 @@ fi
 determine_libtool_version
 if build "libtool" "$libtool_version"; then
     download "https://ftp.gnu.org/gnu/libtool/libtool-$libtool_version.tar.xz"
-    execute ./configure --prefix="$workspace" --with-libiconv-prefix=/usr --with-pic M4="$workspace/bin/m4"
+    execute ./configure --prefix="$workspace" --with-pic M4="$workspace/bin/m4"
     execute make "-j$threads"
     execute make install
     build_done "libtool" "$libtool_version"
@@ -1354,9 +1363,18 @@ fi
 find_git_repo "mesonbuild/meson" "1" "T"
 if build "meson" "$repo_version"; then
     download "https://github.com/mesonbuild/meson/archive/refs/tags/$repo_version.tar.gz" "meson-$repo_version.tar.gz"
-    execute python3 setup.py build
-    execute python3 setup.py install --prefix="$workspace"
+
+    # Set up a Python virtual environment for Meson
+    setup_python_venv_and_install_packages "$workspace/python_virtual_environment/meson" "meson"
+
+    PATH="$ccache_dir:$workspace/python_virtual_environment/meson/bin:$PATH"
+    export PATH
+    remove_duplicate_paths
     build_done "meson" "$repo_version"
+else
+    PATH="$ccache_dir:$workspace/python_virtual_environment/meson/bin:$PATH"
+    export PATH
+    remove_duplicate_paths
 fi
 
 find_git_repo "facebook/zstd" "1" "T"
@@ -1469,6 +1487,7 @@ find_latest_nasm_version
 if build "nasm" "$latest_nasm_version"; then
     find_latest_nasm_version
     download "https://www.nasm.us/pub/nasm/stable/nasm-$latest_nasm_version.tar.xz"
+    execute autoupdate
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" --disable-pedantic --enable-ccache
     execute make "-j$threads"
@@ -1564,8 +1583,8 @@ if build "fontconfig" "$repo_version"; then
     extracmds=("--disable-"{docbook,docs,nls,shared})
     LDFLAGS+=" -DLIBXML_STATIC"
     sed -i "s|Cflags:|& -DLIBXML_STATIC|" "fontconfig.pc.in"
-    execute ./autogen.sh --noconf
     execute autoupdate
+    execute ./autogen.sh --noconf
     execute ./configure --prefix="$workspace" \
                         "${extracmds[@]}" \
                         --enable-{iconv,static} \
@@ -1584,11 +1603,11 @@ if [[ "$VER" != "18.04" ]]; then
         download "https://github.com/harfbuzz/harfbuzz/archive/refs/tags/$repo_version.tar.gz" "harfbuzz-$repo_version.tar.gz"
         extracmds=("-D"{benchmark,cairo,docs,glib,gobject,icu,introspection,tests}"=disabled")
         execute ./autogen.sh
-    execute meson setup build --prefix="$workspace" \
-                              --buildtype=release \
-                              --default-library=static \
-                              --strip \
-                              "${extracmds[@]}"
+        execute meson setup build --prefix="$workspace" \
+                                  --buildtype=release \
+                                  --default-library=static \
+                                  --strip \
+                                  "${extracmds[@]}"
         execute ninja "-j$threads" -C build
         execute ninja -C build install
         build_done "harfbuzz" "$repo_version"
@@ -1639,6 +1658,7 @@ CONFIGURE_OPTIONS+=("--enable-libfribidi")
 find_git_repo "libass/libass" "1" "T"
 if build "libass" "$repo_version"; then
     download "https://github.com/libass/libass/archive/refs/tags/$repo_version.tar.gz" "libass-$repo_version.tar.gz"
+    execute autoupdate
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" --disable-shared
     execute make "-j$threads"
@@ -1655,7 +1675,7 @@ if build "freeglut" "$repo_version"; then
                   -DCMAKE_INSTALL_PREFIX="$workspace" \
                   -DCMAKE_BUILD_TYPE="Release" \
                   -DBUILD_SHARED_LIBS=OFF \
-                  -DFREEGLUT_BUILD_{DEMOS,SHARED_LIBS,ERRORS,WARNINGS,TESTS}=OFF \
+                  -DFREEGLUT_BUILD_{DEMOS,SHARED_LIBS}=OFF \
                   -G Ninja -Wno-dev
     execute ninja "-j$threads" -C build
     execute ninja -C build install
@@ -1813,22 +1833,22 @@ git_caller "https://github.com/lv2/lv2.git" "lv2-git"
 if build "$repo_name" "${version//\$ /}"; then
     echo "Cloning \"$repo_name\" saving version \"$version\""
     git_clone "$git_url"
+    get_os_version
     case "$VER" in
         11) lv2_switch=enabled ;;
         *)  lv2_switch=disabled ;;
     esac
 
-    venv_path="$workspace/python_virtual_environment/lv2-git"
     venv_packages=("lxml" "Markdown" "Pygments" "rdflib")
-    setup_python_venv_and_install_packages "$venv_path" "${venv_packages[@]}"
+    setup_python_venv_and_install_packages "$workspace/python_virtual_environment/lv2-git" "${venv_packages[@]}"
 
     # Set PYTHONPATH to include the virtual environment's site-packages directory
-    PYTHONPATH="$venv_path/lib/python$(python3 -c 'import sys; print(".".join(map(str, sys.version_info[:2])))')/site-packages"
+    PYTHONPATH="$workspace/python_virtual_environment/lv2-git/lib/python$(python3 -c 'import sys; print(".".join(map(str, sys.version_info[:2])))')/site-packages"
     export PYTHONPATH
 
-    # Optionally, ensure the virtual environment's Python is the first in PATH
-    PATH="$venv_path/bin:$PATH"
+    PATH="$ccache_dir:$workspace/python_virtual_environment/lv2-git/bin:$PATH"
     export PATH
+    remove_duplicate_paths
 
     # Assuming the build process continues here with Meson and Ninja
     execute meson setup build --prefix="$workspace" \
@@ -1841,6 +1861,13 @@ if build "$repo_name" "${version//\$ /}"; then
     execute ninja "-j$threads" -C build
     execute ninja -C build install
     build_done "$repo_name" "$version"
+else
+    # Set PYTHONPATH to include the virtual environment's site-packages directory
+    PYTHONPATH="$workspace/python_virtual_environment/lv2-git/lib/python$(python3 -c 'import sys; print(".".join(map(str, sys.version_info[:2])))')/site-packages"
+    export PYTHONPATH
+    PATH="$ccache_dir:$workspace/python_virtual_environment/lv2-git/bin:$PATH"
+    export PATH
+    remove_duplicate_paths
 fi
 
 find_git_repo "7131569" "3" "T"
@@ -1869,6 +1896,7 @@ find_git_repo "pcre2project/pcre2" "1" "T"
 repo_version="${repo_version//2-/}"
 if build "pcre2" "$repo_version"; then
     download "https://github.com/PCRE2Project/pcre2/archive/refs/tags/pcre2-$repo_version.tar.gz" "pcre2-$repo_version.tar.gz"
+    execute autoupdate
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" \
                         --enable-{jit,valgrind} \
@@ -1955,6 +1983,7 @@ fi
 find_git_repo "akheron/jansson" "1" "T"
 if build "jansson" "$repo_version"; then
     download "https://github.com/akheron/jansson/archive/refs/tags/v$repo_version.tar.gz" "jansson-$repo_version.tar.gz"
+    execute autoupdate
     execute autoreconf -fi
     execute ./configure --prefix="$workspace" --disable-shared
     execute make "-j$threads"
@@ -1967,6 +1996,7 @@ if build "jemalloc" "$repo_version"; then
     download "https://github.com/jemalloc/jemalloc/archive/refs/tags/$repo_version.tar.gz" "jemalloc-$repo_version.tar.gz"
     extracmds1=("--disable-"{debug,doc,fill,log,shared,prof,stats})
     extracmds2=("--enable-"{autogen,static,xmalloc})
+    execute autoupdate
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" "${extracmds1[@]}" "${extracmds2[@]}"
     execute make "-j$threads"
@@ -1978,6 +2008,7 @@ git_caller "https://github.com/jacklicn/cunit.git" "cunit-git"
 if build "$repo_name" "${version//\$ /}"; then
     echo "Cloning \"$repo_name\" saving version \"$version\""
     git_clone "$git_url"
+    execute autoupdate
     execute autoreconf -fi
     execute ./configure --prefix="$workspace" --disable-shared
     execute make "-j$threads"
@@ -2009,13 +2040,14 @@ git_caller "https://github.com/libsdl-org/SDL.git" "sdl2-git"
 if build "$repo_name" "${version//\$ /}"; then
     echo "Cloning \"$repo_name\" saving version \"$version\""
     git_clone "$git_url"
-    execute cmake -S . -B build \
-                       -DCMAKE_INSTALL_PREFIX="$workspace" \
-                       -DCMAKE_BUILD_TYPE=Release \
-                       -DBUILD_SHARED_LIBS=OFF \
-                       -DSDL_ALSA_SHARED=OFF \
-                       -DSDL_{CCACHE,DISABLE_INSTALL_DOCS}=ON \
-                       -G Ninja -Wno-dev
+    execute cmake -S . \
+                  -B build \
+                  -DCMAKE_INSTALL_PREFIX="$workspace" \
+                  -DCMAKE_BUILD_TYPE=Release \
+                  -DBUILD_SHARED_LIBS=OFF \
+                  -DSDL_ALSA_SHARED=OFF \
+                  -DSDL_{CCACHE,DISABLE_INSTALL_DOCS}=ON \
+                  -G Ninja -Wno-dev
     execute ninja "-j$threads" -C build
     execute ninja -C build install
     build_done "$repo_name" "$version"
@@ -2068,6 +2100,7 @@ if "$NONFREE_AND_GPL"; then
     find_git_repo "mstorsjo/fdk-aac" "1" "T"
     if build "libfdk-aac" "$repo_version"; then
         download "https://github.com/mstorsjo/fdk-aac/archive/refs/tags/v$repo_version.tar.gz" "libfdk-aac-$repo_version.tar.gz"
+        execute autoupdate
         execute ./autogen.sh
         execute ./configure --prefix="$workspace" --disable-shared
         execute make "-j$threads"
@@ -2165,6 +2198,7 @@ CONFIGURE_OPTIONS+=("--enable-libmp3lame")
 # find_git_repo "xiph/theora" "1" "T"
 if build "libtheora" "1.1.1"; then
     download "https://github.com/xiph/theora/archive/refs/tags/v1.1.1.tar.gz" "libtheora-1.1.1.tar.gz"
+    execute autoupdate
     execute ./autogen.sh
     sed "s/-fforce-addr//g" "configure" > "configure.patched"
     chmod +x "configure.patched"
@@ -2221,8 +2255,7 @@ if build "$repo_name" "${version//\$ /}"; then
                   -DCONFIG_DISABLE_FULL_PIXEL_SPLIT_8X8=1 \
                   -DENABLE_CCACHE=1 \
                   -DENABLE_{EXAMPLES,TESTS}=0 \
-                  -G Ninja -Wno-dev \
-                  "$packages/av1"
+                  -G Ninja -Wno-dev
     execute ninja "-j$threads" -C build
     execute ninja -C build install
     build_done "$repo_name" "$version"
@@ -2250,6 +2283,7 @@ git_caller "https://github.com/sekrit-twc/zimg.git" "zimg-git"
 if build "$repo_name" "${version//\$ /}"; then
     echo "Cloning \"$repo_name\" saving version \"$version\""
     git_clone "$git_url" "zimg-git"
+    execute autoupdate
     execute ./autogen.sh
     execute git submodule update --init --recursive
     execute ./configure --prefix="$workspace" --with-pic
@@ -2290,7 +2324,7 @@ find_git_repo "76" "2" "T"
 if build "libdvdread" "$repo_version"; then
     download "https://code.videolan.org/videolan/libdvdread/-/archive/$repo_version/libdvdread-$repo_version.tar.bz2"
     execute autoreconf -fi
-    execute ./configure --prefix="$workspace" --disable-apidoc --disable-shared
+    execute ./configure --prefix="$workspace" --disable-{apidoc,shared}
     execute make "-j$threads"
     execute make install
     build_done "libdvdread" "$repo_version"
@@ -2299,6 +2333,7 @@ fi
 find_git_repo "363" "2" "T"
 if build "udfread" "$repo_version"; then
     download "https://code.videolan.org/videolan/libudfread/-/archive/$repo_version/libudfread-$repo_version.tar.bz2"
+    execute autoupdate
     execute autoreconf -fi
     execute ./configure --prefix="$workspace" --disable-shared
     execute make "-j$threads"
@@ -2315,7 +2350,9 @@ if build "$repo_name" "${version//\$ /}"; then
     execute sh build.sh install-lite
     build_done "$repo_name" "$version"
 fi
-export PATH="$PATH:$workspace/ant/bin"
+PATH="$PATH:$workspace/ant/bin"
+export PATH
+remove_duplicate_paths
 
 # Ubuntu Jammy gives an error so use the APT version instead
 if [[ ! "$OS" == "Ubuntu" ]]; then
@@ -2323,6 +2360,7 @@ if [[ ! "$OS" == "Ubuntu" ]]; then
     if build "libbluray" "$repo_version"; then
         download "https://code.videolan.org/videolan/libbluray/-/archive/$repo_version/$repo_version.tar.gz" "libbluray-$repo_version.tar.gz"
         extracmds=("--disable-"{doxygen-doc,doxygen-dot,doxygen-html,doxygen-pdf,doxygen-ps,examples,extra-warnings,shared})
+        execute autoupdate
         execute autoreconf -fi
         execute ./configure --prefix="$workspace" "${extracmds[@]}" --without-libxml2 --with-pic
         execute make "-j$threads"
@@ -2336,6 +2374,7 @@ find_git_repo "mediaarea/zenLib" "1" "T"
 if build "zenlib" "$repo_version"; then
     download "https://github.com/MediaArea/ZenLib/archive/refs/tags/v$repo_version.tar.gz" "zenlib-$repo_version.tar.gz"
     cd Project/GNU/Library || exit 1
+    execute autoupdate
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" --disable-shared
     execute make "-j$threads"
@@ -2347,6 +2386,7 @@ find_git_repo "MediaArea/MediaInfoLib" "1" "T"
 if build "mediainfo-lib" "$repo_version"; then
     download "https://github.com/MediaArea/MediaInfoLib/archive/refs/tags/v$repo_version.tar.gz" "mediainfo-lib-$repo_version.tar.gz"
     cd "Project/GNU/Library" || exit 1
+    execute autoupdate
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" --disable-shared
     execute make "-j$threads"
@@ -2358,6 +2398,7 @@ find_git_repo "MediaArea/MediaInfo" "1" "T"
 if build "mediainfo-cli" "$repo_version"; then
     download "https://github.com/MediaArea/MediaInfo/archive/refs/tags/v$repo_version.tar.gz" "mediainfo-cli-$repo_version.tar.gz"
     cd "Project/GNU/CLI" || exit 1
+    execute autoupdate
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" --enable-staticlibs --disable-shared
     execute make "-j$threads"
@@ -2453,8 +2494,7 @@ if "$NONFREE_AND_GPL"; then
                             CFLAGS="$CFLAGS" \
                             CXXFLAGS="$CXXFLAGS"
         execute make "-j$threads"
-        execute make install
-        execute make install-lib-static
+        execute make install-lib-static install
         build_done "x264" "$repo_short_version_1"
     fi
     CONFIGURE_OPTIONS+=("--enable-libx264")
@@ -2560,6 +2600,7 @@ if "$NONFREE_AND_GPL"; then
 
         PATH+=":$cuda_path"
         export PATH
+        remove_duplicate_paths
 
         # Get the Nvidia GPU architecture to build CUDA
         # https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards
@@ -2612,17 +2653,21 @@ fi
 if build "vapoursynth" "R65"; then
     download "https://github.com/vapoursynth/vapoursynth/archive/refs/tags/R65.tar.gz" "vapoursynth-R65.tar.gz"
 
-    venv_path="$workspace/python_virtual_environment/vapoursynth"
     venv_packages=("Cython==0.29.36")
-    setup_python_venv_and_install_packages "$venv_path" "${venv_packages[@]}"
+    setup_python_venv_and_install_packages "$workspace/python_virtual_environment/vapoursynth" "${venv_packages[@]}"
 
     # Activate the virtual environment for the build process
-    source "$venv_path/bin/activate" || fail "Failed to re-activate virtual environment"
+    source "$workspace/python_virtual_environment/vapoursynth/bin/activate" || fail "Failed to re-activate virtual environment"
 
     # Explicitly set the PYTHON environment variable to the virtual environment's Python
-    export PYTHON="$venv_path/bin/python"
+    export PYTHON="$workspace/python_virtual_environment/vapoursynth/bin/python"
+
+    PATH="$ccache_dir:$workspace/python_virtual_environment/vapoursynth/bin:$PATH"
+    export PATH
+    remove_duplicate_paths
 
     # Assuming autogen, configure, make, and install steps for VapourSynth
+    execute autoupdate
     execute ./autogen.sh || fail "Failed to execute autogen.sh"
     execute ./configure --prefix="$workspace" --disable-shared || fail "Failed to configure"
     execute make -j"$threads" || fail "Failed to make"
@@ -2632,6 +2677,13 @@ if build "vapoursynth" "R65"; then
     deactivate
 
     build_done "vapoursynth" "R65"
+else
+    # Explicitly set the PYTHON environment variable to the virtual environment's Python
+    PYTHON="$workspace/python_virtual_environment/vapoursynth/bin/python"
+    export PYTHON
+    PATH="$ccache_dir:$workspace/python_virtual_environment/vapoursynth/bin:$PATH"
+    export PATH
+    remove_duplicate_paths
 fi
 CONFIGURE_OPTIONS+=("--enable-vapoursynth")
 
