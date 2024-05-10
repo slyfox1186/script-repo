@@ -116,6 +116,29 @@ cleanup() {
     esac
 }
 
+disk_space_requirements() {
+    # Set the required install directory size in megabytes
+    INSTALL_DIR_SIZE=7001
+    log "Required install directory size: $(echo "$INSTALL_DIR_SIZE / 1024" | bc -l | awk '{printf "%.2f", $1}')G"
+
+    # Calculate the minimum required disk space with a 20% buffer
+    MIN_DISK_SPACE=$(echo "$INSTALL_DIR_SIZE * 1.2" | bc -l | awk '{print int($1)}')
+    warn "Minimum required disk space (including 20% buffer): $(echo "$MIN_DISK_SPACE / 1024" | bc -l | awk '{printf "%.2f", $1}')G"
+
+    # Get the available disk space in megabytes
+    AVAILABLE_DISK_SPACE=$(df -BM . | awk '{print $4}' | tail -n1 | sed 's/M//')
+    warn "Available disk space: $(echo "$AVAILABLE_DISK_SPACE / 1024" | bc -l | awk '{printf "%.2f", $1}')G"
+
+    # Compare the available disk space with the minimum required
+    if (( $(echo "$AVAILABLE_DISK_SPACE < $MIN_DISK_SPACE" | bc -l) )); then
+        warn "Insufficient disk space."
+        warn "Minimum required (including 20% buffer): $(echo "$MIN_DISK_SPACE / 1024" | bc -l | awk '{printf "%.2f", $1}')G"
+        fail "Available disk space: $(echo "$AVAILABLE_DISK_SPACE / 1024" | bc -l | awk '{printf "%.2f", $1}')G"
+    else
+        log "Sufficient disk space available."
+    fi
+}
+
 display_ffmpeg_versions() {
     local file files
     files=( [0]=ffmpeg [1]=ffprobe [2]=ffplay )
@@ -925,7 +948,7 @@ apt_pkgs() {
     # Define an array of apt package names
     pkgs=(
         $1 $libcppabi_pkg $libcpp_pkg $libunwind_pkg $nvidia_driver $nvidia_utils $openjdk_pkg $gcc_plugin_pkg
-        asciidoc autoconf autoconf-archive automake autopoint binutils bison build-essential cargo ccache checkinstall
+        asciidoc autoconf autoconf-archive automake autopoint bc binutils bison build-essential cargo ccache checkinstall
         curl doxygen fcitx-libs-dev flex flite1-dev gawk gcc gettext gimp-data git gnome-desktop-testing gnustep-gui-runtime
         google-perftools gperf gtk-doc-tools guile-3.0-dev help2man jq junit ladspa-sdk lib32stdc++6 libamd2 libasound2-dev
         libass-dev libaudio-dev libavfilter-dev libbabl-0.1-0 libbluray-dev libbpf-dev libbs2b-dev libbz2-dev libc6 libc6-dev
@@ -1239,6 +1262,13 @@ case "$OS" in
     Debian|n/a) debian_os_version "$nvidia_encode_version" "$nvidia_utils_version" ;;
     Ubuntu)     ubuntu_os_version "$nvidia_encode_version" "$nvidia_utils_version" ;;
 esac
+
+# Check minimum disk space-requirements
+log "Checking disk space requirements..."
+echo "========================================================"
+disk_space_requirements
+log "Disk space check completed."
+echo
 
 # Set the JAVA variables
 set_java_variables
