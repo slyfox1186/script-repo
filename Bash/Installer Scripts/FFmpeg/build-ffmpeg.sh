@@ -2,8 +2,8 @@
 # shellcheck disable=SC2068,SC2162,SC2317 source=/dev/null
 
 # GitHub: https://github.com/slyfox1186/ffmpeg-build-script
-# Script version: 3.6.5
-# Updated: 04.07.24
+# Script version: 3.6.6
+# Updated: 05.10.24
 # Purpose: build ffmpeg from source code with addon development libraries
 #          also compiled from source to help ensure the latest functionality
 # Supported Distros: Arch Linux
@@ -1285,7 +1285,7 @@ get_wsl_version() {
         wsl_flag="yes_wsl"
         OS="WSL2"
         wsl_common_pkgs="cppcheck libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev libyuv-utils"
-        wsl_common_pkgs+=" libyuv0 libsharp-dev libdmalloc5 libnvidia-encode1 nvidia-smi"
+        wsl_common_pkgs+=" libyuv0 libsharp-dev libdmalloc5 libnvidia-encode-550"
     fi
 }
 get_wsl_version
