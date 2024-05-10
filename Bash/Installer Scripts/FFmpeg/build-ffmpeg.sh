@@ -2,7 +2,7 @@
 # shellcheck disable=SC2068,SC2162,SC2317 source=/dev/null
 
 # GitHub: https://github.com/slyfox1186/ffmpeg-build-script
-# Script version: 3.6.8
+# Script version: 3.6.9
 # Updated: 05.10.24
 # Purpose: build ffmpeg from source code with addon development libraries
 #          also compiled from source to help ensure the latest functionality
@@ -19,7 +19,7 @@ fi
 
 # Define global variables
 script_name="${0}"
-script_version="3.6.8"
+script_version="3.6.9"
 cwd="$PWD/ffmpeg-build-script"
 mkdir -p "$cwd" && cd "$cwd" || exit 1
 if [[ "$PWD" =~ ffmpeg-build-script\/ffmpeg-build-script ]]; then
@@ -689,6 +689,7 @@ remove_duplicate_paths() {
     PATH="$new_path"
     export PATH
 }
+remove_duplicate_paths
 
 # Set the pkg_config_path variable
 PKG_CONFIG_PATH="$workspace/lib64/pkgconfig:$workspace/lib/x86_64-linux-gnu/pkgconfig:$workspace/lib/pkgconfig:$workspace/share/pkgconfig"
@@ -962,7 +963,7 @@ apt_pkgs() {
         $1 $libcppabi_pkg $libcpp_pkg $libunwind_pkg $nvidia_driver $nvidia_utils $openjdk_pkg $gcc_plugin_pkg
         asciidoc autoconf autoconf-archive automake autopoint bc binutils bison build-essential cargo ccache checkinstall
         curl doxygen fcitx-libs-dev flex flite1-dev gawk gcc gettext gimp-data git gnome-desktop-testing gnustep-gui-runtime
-        google-perftools gperf gtk-doc-tools guile-3.0-dev help2man jq junit ladspa-sdk lib32stdc++6 libamd2 libasound2-dev
+        google-perftools gperf gtk-doc-tools guile-3.0-dev help2man jq junit ladspa-sdk lib32stdc++6 libasound2-dev
         libass-dev libaudio-dev libavfilter-dev libbabl-0.1-0 libbluray-dev libbpf-dev libbs2b-dev libbz2-dev libc6 libc6-dev
         libcaca-dev libcairo2-dev libcdio-dev libcdio-paranoia-dev libcdparanoia-dev libchromaprint-dev libcjson-dev
         libcodec2-dev libcrypto++-dev libcurl4-openssl-dev libdav1d-dev libdbus-1-dev libde265-dev libdevil-dev libdmalloc-dev
@@ -1175,18 +1176,18 @@ ubuntu_os_version() {
         ubuntu_wsl_pkgs="$3"
     fi
 
-    ubuntu_common_pkgs="cppcheck libamd2"
+    ubuntu_common_pkgs="cppcheck"
     focal_pkgs="libcunit1 libcunit1-dev libcunit1-doc libdmalloc5 libhwy-dev libreadline-dev librust-jemalloc-sys-dev librust-malloc-buf-dev"
     focal_pkgs+=" libsrt-doc libsrt-gnutls-dev libvmmalloc-dev libvmmalloc1 libyuv-dev nvidia-utils-535 libcamd2 libccolamd2 libcholmod3"
-    focal_pkgs+=" libcolamd2 libsuitesparseconfig5 libumfpack5"
+    focal_pkgs+=" libcolamd2 libsuitesparseconfig5 libumfpack5 libamd2"
     jammy_pkgs="libacl1-dev libdecor-0-dev liblz4-dev libmimalloc-dev libpipewire-0.3-dev libpsl-dev libreadline-dev librust-jemalloc-sys-dev"
     jammy_pkgs+=" librust-malloc-buf-dev libsrt-doc libsvtav1-dev libsvtav1dec-dev libsvtav1enc-dev libtbbmalloc2 libwayland-dev libclang1-15"
-    jammy_pkgs+=" libcamd2 libccolamd2 libcholmod3 libcolamd2 libsuitesparseconfig5 libumfpack5"
+    jammy_pkgs+=" libcamd2 libccolamd2 libcholmod3 libcolamd2 libsuitesparseconfig5 libumfpack5 libamd2"
     lunar_kenetic_pkgs="libhwy-dev libjxl-dev librist-dev libsrt-gnutls-dev libsvtav1-dev libsvtav1dec-dev libsvtav1enc-dev libyuv-dev"
-    lunar_kenetic_pkgs+=" cargo-c libcamd2 libccolamd2 libcholmod3 libcolamd2 libsuitesparseconfig5 libumfpack5"
+    lunar_kenetic_pkgs+=" cargo-c libcamd2 libccolamd2 libcholmod3 libcolamd2 libsuitesparseconfig5 libumfpack5 libamd2"
     mantic_pkgs="libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev libhwy-dev libsrt-gnutls-dev libyuv-dev libcamd2"
-    mantic_pkgs+=" libccolamd2 libcholmod3 cargo-c libsuitesparseconfig5 libumfpack5 libjxl-dev"
-    noble_pkgs="cargo-c libcamd3 libccolamd3 libcholmod5 libcolamd3 libsuitesparseconfig7 libumfpack6 libjxl-dev"
+    mantic_pkgs+=" libccolamd2 libcholmod3 cargo-c libsuitesparseconfig5 libumfpack5 libjxl-dev libamd2"
+    noble_pkgs="cargo-c libcamd3 libccolamd3 libcholmod5 libcolamd3 libsuitesparseconfig7 libumfpack6 libjxl-dev libamd3"
     case "$VER" in
         msft)
             ubuntu_msft
@@ -1368,12 +1369,10 @@ if build "meson" "$repo_version"; then
     setup_python_venv_and_install_packages "$workspace/python_virtual_environment/meson" "meson"
 
     PATH="$ccache_dir:$workspace/python_virtual_environment/meson/bin:$PATH"
-    export PATH
     remove_duplicate_paths
     build_done "meson" "$repo_version"
 else
     PATH="$ccache_dir:$workspace/python_virtual_environment/meson/bin:$PATH"
-    export PATH
     remove_duplicate_paths
 fi
 
@@ -1847,7 +1846,6 @@ if build "$repo_name" "${version//\$ /}"; then
     export PYTHONPATH
 
     PATH="$ccache_dir:$workspace/python_virtual_environment/lv2-git/bin:$PATH"
-    export PATH
     remove_duplicate_paths
 
     # Assuming the build process continues here with Meson and Ninja
@@ -1866,7 +1864,6 @@ else
     PYTHONPATH="$workspace/python_virtual_environment/lv2-git/lib/python$(python3 -c 'import sys; print(".".join(map(str, sys.version_info[:2])))')/site-packages"
     export PYTHONPATH
     PATH="$ccache_dir:$workspace/python_virtual_environment/lv2-git/bin:$PATH"
-    export PATH
     remove_duplicate_paths
 fi
 
@@ -2351,7 +2348,6 @@ if build "$repo_name" "${version//\$ /}"; then
     build_done "$repo_name" "$version"
 fi
 PATH="$PATH:$workspace/ant/bin"
-export PATH
 remove_duplicate_paths
 
 # Ubuntu Jammy gives an error so use the APT version instead
@@ -2599,7 +2595,6 @@ if "$NONFREE_AND_GPL"; then
         fi
 
         PATH+=":$cuda_path"
-        export PATH
         remove_duplicate_paths
 
         # Get the Nvidia GPU architecture to build CUDA
@@ -2663,7 +2658,6 @@ if build "vapoursynth" "R65"; then
     export PYTHON="$workspace/python_virtual_environment/vapoursynth/bin/python"
 
     PATH="$ccache_dir:$workspace/python_virtual_environment/vapoursynth/bin:$PATH"
-    export PATH
     remove_duplicate_paths
 
     # Assuming autogen, configure, make, and install steps for VapourSynth
@@ -2682,7 +2676,6 @@ else
     PYTHON="$workspace/python_virtual_environment/vapoursynth/bin/python"
     export PYTHON
     PATH="$ccache_dir:$workspace/python_virtual_environment/vapoursynth/bin:$PATH"
-    export PATH
     remove_duplicate_paths
 fi
 CONFIGURE_OPTIONS+=("--enable-vapoursynth")
