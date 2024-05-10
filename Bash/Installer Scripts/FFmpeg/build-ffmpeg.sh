@@ -2890,9 +2890,6 @@ else
     log_update "The latest FFmpeg release version available is: Unknown"
 fi
 
-# Build FFmpeg from source using the latest git clone
-# FFmpeg release version 7 does not build as it has too many bugs and is too new.
-# We must stick with the latest version that works
 find_git_repo "FFmpeg/FFmpeg" "1" "T"
 if build "ffmpeg" "n${repo_version}"; then
     CFLAGS="$CFLAGS -flto -DCL_TARGET_OPENCL_VERSION=300 -DX265_DEPTH=12 -DENABLE_LIBVMAF=0"
