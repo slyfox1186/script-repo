@@ -2,13 +2,13 @@
 # shellcheck disable=SC2068,SC2162,SC2317 source=/dev/null
 
 # GitHub: https://github.com/slyfox1186/ffmpeg-build-script
-# Script version: 3.6.6
+# Script version: 3.6.7
 # Updated: 05.10.24
 # Purpose: build ffmpeg from source code with addon development libraries
 #          also compiled from source to help ensure the latest functionality
-# Supported Distros: Arch Linux
-#                    Debian 11|12
-#                    Ubuntu (20|22|23).04 & 23.10
+# Supported Distros: Debian 11|12
+#                    Ubuntu (20|22|23|24).04 & 23.10
+#                    Arch Linux (No longer supported due to the low need.)
 # Supported architecture: x86_64
 # CUDA SDK Toolkit: Updated to version 12.4.1
 
@@ -19,7 +19,7 @@ fi
 
 # Define global variables
 script_name="${0}"
-script_version="3.6.5"
+script_version="3.6.7"
 cwd="$PWD/ffmpeg-build-script"
 mkdir -p "$cwd" && cd "$cwd" || exit 1
 if [[ "$PWD" =~ ffmpeg-build-script\/ffmpeg-build-script ]]; then
@@ -478,6 +478,23 @@ library_exists() {
     return 0
 }
 
+determine_libtool_version() {
+    get_wsl_version
+    if [[ "$VER" = "WSL2" ]]; then
+        libtool_version="2.4.6"
+    else
+        get_os_version
+        case "$VER" in
+            20.04|22.04|23.04|23.10)
+                libtool_version="2.4.6"
+                ;;
+            11|12|24.04)
+                libtool_version="2.4.7"
+                ;;
+        esac
+    fi
+}
+
 # Function to setup a python virtual environment and install packages with pip
 setup_python_venv_and_install_packages() {
     local parse_path="$1"
@@ -531,9 +548,9 @@ usage() {
 
 COMPILER_FLAG=""
 CONFIGURE_OPTIONS=()
-LATEST="false"
+LATEST=false
 LDEXEFLAGS=""
-NONFREE_AND_GPL="false"
+NONFREE_AND_GPL=false
 
 while (("$#" > 0)); do
     case "$1" in
@@ -548,7 +565,7 @@ while (("$#" > 0)); do
             ;;
         -n|--enable-gpl-and-non-free)
             CONFIGURE_OPTIONS+=("--enable-"{gpl,libsmbclient,libcdio,nonfree})
-            NONFREE_AND_GPL="true"
+            NONFREE_AND_GPL=true
             ;;
         -b|--build)
             bflag="-b"
@@ -558,7 +575,7 @@ while (("$#" > 0)); do
             cleanup
             ;;
         -l|--latest)
-            LATEST="true"
+            LATEST=true
             ;;
         --compiler=gcc|--compiler=clang)
             COMPILER_FLAG="${1#*=}"
@@ -756,7 +773,6 @@ download_cuda() {
         "Ubuntu 22.04"
         "Ubuntu 24.04"
         "Ubuntu WSL"
-        "Arch Linux"
         "Exit"
     )
 
@@ -776,12 +792,6 @@ download_cuda() {
                 distro="ubuntu2204"; version="12-4"; pkg_ext="pin"; pin_file="$distro/x86_64/cuda-ubuntu2204.pin"; installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_serial}_amd64.deb"
                 ;;
             "Ubuntu WSL") distro="wsl-ubuntu"; version="12-4"; version_ext="12.4.1-1"; pkg_ext="pin"; pin_file="$distro/x86_64/cuda-wsl-ubuntu.pin"; installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_ext}_amd64.deb" ;;
-            "Arch Linux")
-                git clone -q "https://gitlab.archlinux.org/archlinux/packaging/packages/cuda.git" || fail "Failed to clone Arch Linux CUDA repository"
-                cd cuda || fail "Unable to cd into the Arch Linux cuda directory"
-                makepkg -sif -C --needed --noconfirm || fail "The command makepkg failed to execute"
-                return
-                ;;
             "Exit") return ;;
             *) echo "Invalid choice. Please try again."; continue ;;
         esac
@@ -852,7 +862,7 @@ check_nvidia_gpu() {
 }
 
 get_local_cuda_version() {
-    [[ -f /usr/local/cuda/version.json ]] && jq -r '.cuda.version' < /usr/local/cuda/version.json
+    [[ -f "/usr/local/cuda/version.json" ]] && jq -r '.cuda.version' < "/usr/local/cuda/version.json"
 }
 
 # Required Geforce CUDA development packages
@@ -887,9 +897,6 @@ install_cuda() {
             read -p "Do you want to update/reinstall CUDA to the latest version? (yes/no): " choice
             [[ "$choice" =~ ^(yes|y)$ ]] && download_cuda || return 0
         fi
-
-        [[ "$OS" == "Arch" ]] && cuda_path=$(find /opt/cuda/ -type f -name "nvcc")
-        PATH+="$cuda_path:"
     else
         gpu_flag=1
     fi
@@ -1035,16 +1042,8 @@ fix_x265_libs() {
     x265_libs=$(find "$workspace"/lib/ -type f -name 'libx265.so.*' | sort -rV | head -n1)
     x265_libs_trim=$(echo "$x265_libs" | sed "s:.*/::" | head -n1)
 
-    case "$OS" in
-        Arch)
-            cp -f "$x265_libs" "/usr/lib/$x265_libs_trim"
-            ln -sf "/usr/lib/$x265_libs_trim" "/usr/lib/libx265.so"
-            ;;
-        *)
-            cp -f "$x265_libs" "/usr/lib/x86_64-linux-gnu"
-            ln -sf "/usr/lib/x86_64-linux-gnu/$x265_libs_trim" "/usr/lib/x86_64-linux-gnu/libx265.so"
-            ;;
-    esac
+    cp -f "$x265_libs" "/usr/lib/x86_64-linux-gnu"
+    ln -sf "/usr/lib/x86_64-linux-gnu/$x265_libs_trim" "/usr/lib/x86_64-linux-gnu/libx265.so"
 }
 
 fix_pulse_meson_build_file() {
@@ -1065,110 +1064,28 @@ libpulse_fix_libs() {
     pulse_version="$1"
     libpulse_lib=$(find "$workspace/lib/" -type f -name "libpulsecommon-*.so" | head -n1)
 
-    if [[ "$OS" == "Arch" ]]; then
-        mkdir -p "/usr/lib/pulseaudio"
-    else
-        mkdir -p "/usr/lib/x86_64-linux-gnu/pulseaudio"
-    fi
+    mkdir -p "/usr/lib/x86_64-linux-gnu/pulseaudio"
 
     if [[ -n "$libpulse_lib" ]]; then
-        if [[ "$OS" == "Arch" ]]; then
-            execute cp -f "$libpulse_lib" "/usr/lib/pulseaudio/libpulsecommon-$pulse_version.so"
-            execute ln -sf "/usr/lib/pulseaudio/libpulsecommon-$pulse_version.so" "/usr/lib"
-        else
-            execute cp -f "$libpulse_lib" "/usr/lib/x86_64-linux-gnu/pulseaudio/libpulsecommon-$pulse_version.so"
-            execute ln -sf "/usr/lib/x86_64-linux-gnu/pulseaudio/libpulsecommon-$pulse_version.so" "/usr/lib/x86_64-linux-gnu"
-        fi
+        execute cp -f "$libpulse_lib" "/usr/lib/x86_64-linux-gnu/pulseaudio/libpulsecommon-$pulse_version.so"
+        execute ln -sf "/usr/lib/x86_64-linux-gnu/pulseaudio/libpulsecommon-$pulse_version.so" "/usr/lib/x86_64-linux-gnu"
     fi
 }
 
 find_latest_nasm_version() {
-    local latest_version
-    latest_version=$(curl -fsS "https://www.nasm.us/pub/nasm/stable/" |
-                           grep -oP 'nasm-\K[0-9]+\.[0-9]+\.[0-9]+(?=\.tar\.xz)' |
-                           sort -ruV |
-                           head -n1)
-
-    if [[ -z "$latest_version" ]]; then
-        fail "Failed to find the latest NASM version."
-    fi
-
-    # Print the version and download link without additional messages
-    echo "$latest_version"
+    latest_nasm_version=$(
+                    curl -fsS "https://www.nasm.us/pub/nasm/stable/" |
+                    grep -oP 'nasm-\K[0-9]+\.[0-9]+\.[0-9]+(?=\.tar\.xz)' |
+                    sort -ruV | head -n1
+                )
 }
-
-# To use the function and store its result in a variable:
-latest_nasm_version=$(find_latest_nasm_version)
 
 get_openssl_version() {
-    repo_version=$(
+    openssl_version=$(
                 curl -fsS "https://www.openssl.org/source/" |
-                grep -oP 'openssl-3.1.[0-9]+.tar.gz' |
-                sort -ruV | head -n1 | grep -oP '3.1.[0-9]+'
+                grep -oP 'openssl-\K3\.0\.[0-9]+' | sort -ruV |
+                head -n1
             )
-}
-
-# Patch functions
-patch_ffmpeg() {
-    execute curl -LSso "mathops.patch" "https://raw.githubusercontent.com/slyfox1186/ffmpeg-build-script/main/patches/mathops.patch"
-    execute patch -d "libavcodec/x86" -i "../../mathops.patch"
-}
-
-# Arch Linux function section
-apache_ant() {
-    if build "apache-ant" "git"; then
-        git_clone "https://aur.archlinux.org/apache-ant-contrib.git" "apache-ant-AUR"
-        execute makepkg -Csif --needed --noconfirm
-        build_done "apache-ant" "git"
-    fi
-}
-
-librist_arch() {
-    if build "librist" "git"; then
-        git_clone "https://aur.archlinux.org/librist.git" "librist-AUR"
-        execute makepkg -Csif --needed --noconfirm
-        build_done "librist" "git"
-    fi
-}
-
-arch_os_ver() {
-    local arch_pkgs pkg python_packages venv_path
-
-    arch_pkgs=(av1an bluez-libs clang cmake dav1d devil docbook5-xml
-               flite gdb gettext git gperf gperftools jdk17-openjdk
-               ladspa jq libde265 libjpeg-turbo libjxl libjpeg6-turbo
-               libmusicbrainz5 libnghttp2 libwebp libyuv meson nasm
-               ninja numactl opencv pd perl-datetime texlive-basic
-               texlive-binextra tk valgrind webp-pixbuf-loader xterm
-               yasm)
-
-    # Check for Pacman lock file and if Pacman is running
-    if [[ -f "/var/lib/pacman/db.lck" ]]; then
-        echo "Pacman lock file found. Checking if Pacman is running..."
-        while pgrep -x pacman >/dev/null; do
-            echo "Pacman is currently running. Waiting for it to finish..."
-            sleep 3
-        done
-
-        if ! pgrep -x pacman >/dev/null; then
-            echo "Pacman is not running. Removing stale lock file..."
-            rm "/var/lib/pacman/db.lck"
-        fi
-    fi
-
-    for pkg in "${arch_pkgs[@]}"; do
-        echo "Installing $pkg..."
-        execute pacman -Sq --needed --noconfirm
-    done
-
-    # Set the path for the Python virtual environment
-    venv_path="$workspace/python_virtual_environment/arch_os"
-
-    # Python packages to install
-    python_packages=(DateTime Sphinx wheel)
-
-    # Call the function to setup Python venv and install packages
-    setup_python_venv_and_install_packages "$venv_path" "${python_packages[@]}"
 }
 
 debian_msft() {
@@ -1308,9 +1225,9 @@ get_wsl_version() {
 get_wsl_version
 
 # Install required APT packages
-    echo "Installing the required APT packages"
-    echo "========================================================"
-    log "Checking installation status of each package..."
+echo "Installing the required APT packages"
+echo "========================================================"
+log "Checking installation status of each package..."
 
 case "$OS" in
     WSL2)       get_os_version
@@ -1319,7 +1236,6 @@ case "$OS" in
                     Ubuntu)     ubuntu_os_version "$nvidia_encode_version $nvidia_utils_version" "$wsl_flag" "$wsl_common_pkgs" ;;
                 esac
                 ;;
-    Arch)       arch_os_ver ;;
     Debian|n/a) debian_os_version "$nvidia_encode_version" "$nvidia_utils_version" ;;
     Ubuntu)     ubuntu_os_version "$nvidia_encode_version" "$nvidia_utils_version" ;;
 esac
@@ -1328,14 +1244,8 @@ esac
 set_java_variables
 
 # Check if the cuda folder exists to determine installation status
-case "$OS" in
-    Arch) iscuda=$(find /opt/cuda/ -type f -name nvcc 2>/dev/null)
-          cuda_path=$(find /opt/cuda/ -type f -name nvcc 2>/dev/null | grep -oP '^.*/bin?')
-          ;;
-    *)    iscuda=$(find /usr/local/cuda/ -type f -name nvcc 2>/dev/null | sort -ruV | head -n1)
-          cuda_path=$(find /usr/local/cuda/ -type f -name nvcc 2>/dev/null | sort -ruV | head -n1 | grep -oP '^.*/bin?')
-          ;;
-esac
+iscuda=$(find /usr/local/cuda/ -type f -name nvcc 2>/dev/null | sort -ruV | head -n1)
+cuda_path=$(find /usr/local/cuda/ -type f -name nvcc 2>/dev/null | sort -ruV | head -n1 | grep -oP '^.*/bin?')
 
 # Prompt the user to install the geforce cuda sdk-toolkit
 install_cuda
@@ -1344,7 +1254,7 @@ install_cuda
 ldconfig
 
 #
-# Install the global tools
+# Install the Global Tools
 #
 
 echo
@@ -1392,33 +1302,13 @@ if build "autoconf" "2.71"; then
     build_done "autoconf" "2.71"
 fi
 
-if [[ "$OS" == "Arch" ]]; then
-    if build "libtool" "$version"; then
-        pacman -Sq --needed --noconfirm libtool
-        build_done "libtool" "$version"
-    fi
-else
-    get_wsl_version
-    if [[ "$VER" = "WSL2" ]]; then
-        version=2.4.6
-    else
-        get_os_version
-        case "$VER" in
-            20.04|22.04|23.04|23.10)
-                version="2.4.6"
-                ;;
-            11|12|24.04)
-                version="2.4.7"
-                ;;
-        esac
-    fi
-    if build "libtool" "$version"; then
-        download "https://ftp.gnu.org/gnu/libtool/libtool-$version.tar.xz"
-        execute ./configure --prefix="$workspace" --with-libiconv-prefix=/usr --with-pic M4="$workspace/bin/m4"
-        execute make "-j$threads"
-        execute make install
-        build_done "libtool" "$version"
-    fi
+determine_libtool_version
+if build "libtool" "$libtool_version"; then
+    download "https://ftp.gnu.org/gnu/libtool/libtool-$libtool_version.tar.xz"
+    execute ./configure --prefix="$workspace" --with-libiconv-prefix=/usr --with-pic M4="$workspace/bin/m4"
+    execute make "-j$threads"
+    execute make install
+    build_done "libtool" "$libtool_version"
 fi
 
 gnu_repo "https://pkgconfig.freedesktop.org/releases/"
@@ -1442,7 +1332,7 @@ fi
 find_git_repo "facebook/zstd" "1" "T"
 if build "libzstd" "$repo_version"; then
     download "https://github.com/facebook/zstd/archive/refs/tags/v$repo_version.tar.gz" "libzstd-$repo_version.tar.gz"
-    cd build/meson || exit 1
+    cd "build/meson" || exit 1
     execute meson setup build --prefix="$workspace" \
                               --buildtype=release \
                               --default-library=both \
@@ -1453,24 +1343,19 @@ if build "libzstd" "$repo_version"; then
     build_done "libzstd" "$repo_version"
 fi
 
-if [[ "$OS" == "Arch" ]]; then
-    librist_arch
-else
-    find_git_repo "816" "2" "T"
-    if build "librist" "$repo_version"; then
-        download "https://code.videolan.org/rist/librist/-/archive/v$repo_version/librist-v$repo_version.tar.bz2" "librist-$repo_version.tar.bz2"
-        execute meson setup build --prefix="$workspace" \
-                                  --buildtype=release \
-                                  --default-library=static \
-                                  --strip \
-                                  -Dbuilt_tools="false" \
-                                  -Dtest="false"
-        execute ninja "-j$threads" -C build
-        execute ninja -C build install
-        build_done "librist" "$repo_version"
-    fi
-    CONFIGURE_OPTIONS+=("--enable-librist")
+find_git_repo "816" "2" "T"
+if build "librist" "$repo_version"; then
+    download "https://code.videolan.org/rist/librist/-/archive/v$repo_version/librist-v$repo_version.tar.bz2" "librist-$repo_version.tar.bz2"
+    execute meson setup build --prefix="$workspace" \
+                              --buildtype=release \
+                              --default-library=static \
+                              --strip \
+                              -D{built_tools,test}=false
+    execute ninja "-j$threads" -C build
+    execute ninja -C build install
+    build_done "librist" "$repo_version"
 fi
+CONFIGURE_OPTIONS+=("--enable-librist")
 
 find_git_repo "madler/zlib" "1" "T"
 if build "zlib" "$repo_version"; then
@@ -1483,17 +1368,17 @@ fi
 
 if "$NONFREE_AND_GPL"; then
     get_openssl_version
-    if build "openssl" "$repo_version"; then
-        download "https://www.openssl.org/source/openssl-$repo_version.tar.gz"
+    if build "openssl" "$openssl_version"; then
+        download "https://www.openssl.org/source/openssl-$openssl_version.tar.gz"
         execute ./Configure --prefix="$workspace" \
-                            enable-{egd,fips,md2,rc5,trace} \
+                            enable-{egd,md2,rc5,trace} \
                             threads zlib \
                             --with-rand-seed=os \
                             --with-zlib-include="$workspace/include" \
                             --with-zlib-lib="$workspace/lib"
         execute make "-j$threads"
-        execute make install_sw install_fips
-        build_done "openssl" "$repo_version"
+        execute make install_sw
+        build_done "openssl" "$openssl_version"
     fi
     CONFIGURE_OPTIONS+=("--enable-openssl")
 else
@@ -1550,6 +1435,7 @@ if build "yasm" "$repo_version"; then
     build_done "yasm" "$repo_version"
 fi
 
+find_latest_nasm_version
 if build "nasm" "$latest_nasm_version"; then
     find_latest_nasm_version
     download "https://www.nasm.us/pub/nasm/stable/nasm-$latest_nasm_version.tar.xz"
@@ -1942,7 +1828,7 @@ if build "serd" "$repo_version"; then
                               --buildtype=release \
                               --default-library=static \
                               --strip \
-                              -Dstatic="true" \
+                              -Dstatic=true \
                               "${extracmds[@]}"
     execute ninja "-j$threads" -C build
     execute ninja -C build install
@@ -2070,7 +1956,7 @@ if build "$repo_name" "${version//\$ /}"; then
 fi
 
 #
-# Install audio tools
+# Install the Audio Tools
 #
 
 echo
@@ -2150,13 +2036,13 @@ fi
 
 if "$NONFREE_AND_GPL"; then
     find_git_repo "mstorsjo/fdk-aac" "1" "T"
-    if build "libfdk-aac" "2.0.3"; then
-        download "https://phoenixnap.dl.sourceforge.net/project/opencore-amr/fdk-aac/fdk-aac-2.0.3.tar.gz" "libfdk-aac-2.0.3.tar.gz"
+    if build "libfdk-aac" "$repo_version"; then
+        download "https://github.com/mstorsjo/fdk-aac/archive/refs/tags/v$repo_version.tar.gz" "libfdk-aac-$repo_version.tar.gz"
         execute ./autogen.sh
         execute ./configure --prefix="$workspace" --disable-shared
         execute make "-j$threads"
         execute make install
-        build_done "libfdk-aac" "2.0.3"
+        build_done "libfdk-aac" "$repo_version"
     fi
     CONFIGURE_OPTIONS+=("--enable-libfdk-aac")
 fi
@@ -2246,7 +2132,7 @@ if build "liblame" "3.100"; then
 fi
 CONFIGURE_OPTIONS+=("--enable-libmp3lame")
 
-find_git_repo "xiph/theora" "1" "T"
+# find_git_repo "xiph/theora" "1" "T"
 if build "libtheora" "1.1.1"; then
     download "https://github.com/xiph/theora/archive/refs/tags/v1.1.1.tar.gz" "libtheora-1.1.1.tar.gz"
     execute ./autogen.sh
@@ -2273,7 +2159,7 @@ fi
 CONFIGURE_OPTIONS+=("--enable-libtheora")
 
 #
-# Install video tools
+# Install the Video Tools
 #
 
 echo
@@ -2390,18 +2276,14 @@ if build "udfread" "$repo_version"; then
     build_done "udfread" "$repo_version"
 fi
 
-if [[ "$OS" == "Arch" ]]; then
-    apache_ant
-else
-    set_ant_path
-    git_caller "https://github.com/apache/ant.git" "ant-git" "ant"
-    if build "$repo_name" "${version//\$ /}"; then
-        echo "Cloning \"$repo_name\" saving version \"$version\""
-        git_clone "$git_url"
-        chmod 777 -R "$workspace/ant"
-        execute sh build.sh install-lite
-        build_done "$repo_name" "$version"
-    fi
+set_ant_path
+git_caller "https://github.com/apache/ant.git" "ant-git" "ant"
+if build "$repo_name" "${version//\$ /}"; then
+    echo "Cloning \"$repo_name\" saving version \"$version\""
+    git_clone "$git_url"
+    chmod 777 -R "$workspace/ant"
+    execute sh build.sh install-lite
+    build_done "$repo_name" "$version"
 fi
 export PATH="$PATH:$workspace/ant/bin"
 
@@ -2488,31 +2370,23 @@ if "$NONFREE_AND_GPL"; then
     CONFIGURE_OPTIONS+=("--enable-frei0r")
 fi
 
-if [[ "$OS" == "Arch" ]]; then
-    find_git_repo "gpac/gpac" "1" "T"
-    if build "gpac" "$repo_version"; then
-        pacman -Sq --needed --noconfirm gpac
-        build_done "gpac" "$repo_version"
-    fi
-else
-    git_caller "https://github.com/gpac/gpac.git" "gpac-git"
-    if build "$repo_name" "${version//\$ /}"; then
-        echo "Cloning \"$repo_name\" saving version \"$version\""
-        git_clone "$git_url"
-        execute ./configure --prefix="$workspace" \
-                            --static-{bin,modules} \
-                            --use-{a52,faad,freetype,mad}=local \
-                            --sdl-cfg="$workspace/include/SDL3"
-        execute make "-j$threads"
-        execute make install
-        execute cp -f bin/gcc/MP4Box /usr/local/bin
-        build_done "$repo_name" "$version"
-    fi
+git_caller "https://github.com/gpac/gpac.git" "gpac-git"
+if build "$repo_name" "${version//\$ /}"; then
+    echo "Cloning \"$repo_name\" saving version \"$version\""
+    git_clone "$git_url"
+    execute ./configure --prefix="$workspace" \
+                        --static-{bin,modules} \
+                        --use-{a52,faad,freetype,mad}=local \
+                        --sdl-cfg="$workspace/include/SDL3"
+    execute make "-j$threads"
+    execute make install
+    execute cp -f bin/gcc/MP4Box /usr/local/bin
+    build_done "$repo_name" "$version"
 fi
 
 find_git_repo "24327400" "3" "T"
-if build "svt-av1" "1.8.0"; then
-    download "https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/v1.8.0/SVT-AV1-v1.8.0.tar.bz2" "svt-av1-1.8.0.tar.bz2"
+if build "svt-av1" "$repo_version"; then
+    download "https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/v$repo_version/SVT-AV1-v$repo_version.tar.bz2" "svt-av1-$repo_version.tar.bz2"
     execute cmake -S . \
                   -B Build/linux \
                   -DCMAKE_INSTALL_PREFIX="$workspace" \
@@ -2529,7 +2403,7 @@ if build "svt-av1" "1.8.0"; then
     execute ninja "-j$threads" -C Build/linux install
     cp -f "Build/linux/SvtAv1Enc.pc" "$workspace/lib/pkgconfig"
     cp -f "Build/linux/SvtAv1Dec.pc" "$workspace/lib/pkgconfig"
-    build_done "svt-av1" "1.8.0"
+    build_done "svt-av1" "$repo_version"
 fi
 CONFIGURE_OPTIONS+=("--enable-libsvtav1")
 
@@ -2858,12 +2732,6 @@ box_out_banner_ffmpeg() {
 }
 box_out_banner_ffmpeg "Building FFmpeg"
 
-if [[ "$OS" == "Arch" ]]; then
-    ladspa_switch="--disable-ladspa"
-else
-    ladspa_switch="--enable-ladspa"
-fi
-
 # Get DXVA2 and other essential windows header files
 get_wsl_version
 if [[ "$wsl_flag" == "yes_wsl" ]]; then
@@ -2894,22 +2762,18 @@ find_git_repo "FFmpeg/FFmpeg" "1" "T"
 if build "ffmpeg" "n${repo_version}"; then
     CFLAGS="$CFLAGS -flto -DCL_TARGET_OPENCL_VERSION=300 -DX265_DEPTH=12 -DENABLE_LIBVMAF=0"
     download "https://ffmpeg.org/releases/ffmpeg-$repo_version.tar.xz" "ffmpeg-n${repo_version}.tar.xz"
-    [[ "$OS" == "Arch" ]] && patch_ffmpeg
     mkdir build; cd build || exit 1
     ../configure --prefix=/usr/local \
                  --arch="$(uname -m)" \
                  --cc="$CC" \
                  --cxx="$CXX" \
                  --disable-{debug,doc,large-tests,shared} \
-                 "$ladspa_switch" \
                  "${CONFIGURE_OPTIONS[@]}" \
-                 --enable-{chromaprint,libbs2b,libcaca,libgme,libmodplug} \
-                 --enable-{libshine,libsnappy,libsoxr,libspeex,libssh} \
-                 --enable-{libtesseract,libtwolame,libv4l2,libvo-amrwbenc,libzimg} \
-                 --enable-{libzvbi,lto,opengl,pic,pthreads,rpath,small} \
-                 --enable-{static,version3} \
-                 --extra-cflags="$CFLAGS" \
-                 --extra-cxxflags="$CFLAGS" \
+                 --enable-{chromaprint,ladspa,libbs2b,libcaca,libgme,libmodplug} \
+                 --enable-{libshine,libsnappy,libsoxr,libspeex,libssh,libtesseract} \
+                 --enable-{libtwolame,libv4l2,libvo-amrwbenc,libzimg,libzvbi} \
+                 --enable-{lto,opengl,pic,pthreads,rpath,small,static,version3} \
+                 --extra-{cflags,cxxflags}="$CFLAGS" \
                  --extra-libs="$EXTRALIBS" \
                  --extra-ldflags="$LDFLAGS" \
                  --pkg-config-flags="--static" \
