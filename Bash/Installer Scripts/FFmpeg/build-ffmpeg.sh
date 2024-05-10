@@ -1264,7 +1264,7 @@ case "$OS" in
 esac
 
 # Check minimum disk space-requirements
-log "Checking disk space requirements..."
+echo "Checking disk space requirements..."
 echo "========================================================"
 disk_space_requirements
 log "Disk space check completed."
