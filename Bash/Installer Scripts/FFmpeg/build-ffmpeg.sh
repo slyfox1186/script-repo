@@ -1186,7 +1186,15 @@ debian_os_version() {
         debian_wsl_pkgs="$3"
     fi
 
-    debian_pkgs=(cppcheck libnvidia-encode1 libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev
+    # Function to find the latest version of a package by pattern
+    find_latest_version_debian() {
+        apt-cache search "^libnvidia-encode-[0-9]+$" | sort -ruV | head -n1 | awk '{print $1}'
+    }
+
+    # Use the function to find the latest versions of specific packages
+    libnvidia_encode_debian=$(find_latest_version_debian '^libnvidia-encode-[0-9]+$')
+
+    debian_pkgs=(cppcheck $libnvidia_encode_debian libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev
                  libyuv-utils libyuv0 libhwy-dev libsrt-gnutls-dev libyuv-dev libsharp-dev
                  libdmalloc5 libumfpack5 libsuitesparseconfig5 libcolamd2 libcholmod3 libccolamd2
                  libcamd2 libamd2 software-properties-common libclang-16-dev)
@@ -1284,8 +1292,17 @@ get_wsl_version() {
     if [[ $(grep -i "microsoft" /proc/version) ]]; then
         wsl_flag="yes_wsl"
         OS="WSL2"
+
+        # Function to find the latest version of a package by pattern
+        find_latest_version_wsl() {
+            apt-cache search "^libnvidia-encode-[0-9]+$" | sort -ruV | head -n1 | awk '{print $1}'
+        }
+
+        # Use the function to find the latest versions of specific packages
+        libnvidia_encode_wsl=$(find_latest_version_wsl '^libnvidia-encode-[0-9]+$')
+
         wsl_common_pkgs="cppcheck libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev libyuv-utils"
-        wsl_common_pkgs+=" libyuv0 libsharp-dev libdmalloc5 libnvidia-encode-550"
+        wsl_common_pkgs+=" libyuv0 libsharp-dev libdmalloc5 $libnvidia_encode_wsl"
     fi
 }
 get_wsl_version
