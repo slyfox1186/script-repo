@@ -1562,7 +1562,7 @@ if [[ "$VER" != "18.04" ]]; then
         download "https://github.com/harfbuzz/harfbuzz/archive/refs/tags/$repo_version.tar.gz" "harfbuzz-$repo_version.tar.gz"
         extracmds=("-D"{benchmark,cairo,docs,glib,gobject,icu,introspection,tests}"=disabled")
         execute ./autogen.sh
-        execute meson setup build --prefix="$workspace" --buildtype=releasex --default-library=static --strip "${extracmds[@]}"
+        execute meson setup build --prefix="$workspace" --buildtype=release --default-library=static --strip "${extracmds[@]}"
         execute ninja "-j$threads" -C build
         execute ninja -C build install
         build_done "harfbuzz" "$repo_version"
