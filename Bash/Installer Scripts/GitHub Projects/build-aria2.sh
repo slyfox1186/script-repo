@@ -53,7 +53,7 @@ set_compiler_options() {
 
 install_packages() {
     local pkgs missing_pkgs
-    pkgs=(autoconf autoconf-archive automake build-essential ca-certificates ccache curl google-perftools libgoogle-perftools-dev libssl-dev libtool m4 pkg-config zlib1g-dev)
+    pkgs=(autoconf autoconf-archive automake build-essential ca-certificates ccache curl google-perftools libgoogle-perftools-dev libssl-dev libxml2-dev libtool m4 pkg-config zlib1g-dev)
     log "Attempting to install required packages..."
     missing_pkgs=($(comm -23 <(printf "%s\n" "${pkgs[@]}" | sort) <(dpkg-query -W -f='${Package}\n' | sort) | tr '\n' ' '))
     [[ ${#missing_pkgs[@]} -gt 0 ]] && sudo apt-get install -y "${missing_pkgs[@]}"
