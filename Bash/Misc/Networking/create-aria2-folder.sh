@@ -122,6 +122,7 @@ always-resume=true
 auto-file-renaming=true
 auto-save-interval=0
 bt-tracker=$trackers
+console-log-level=warn
 content-disposition-default-utf8=true
 continue=true
 dht-entry-point=dht.transmissionbt.com:6881
