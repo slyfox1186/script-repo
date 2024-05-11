@@ -46,7 +46,7 @@ set_compiler_options() {
     CXX="g++"
     CFLAGS="-O2 -fPIC -fPIE -mtune=native -DNDEBUG -fstack-protector-strong -Wno-unused-parameter"
     CXXFLAGS="$CFLAGS"
-    CPPFLAGS="-D_FORTIFY_SOURCE=2"
+    CPPFLAGS="-I/usr/local/include -I/usr/include -D_FORTIFY_SOURCE=2"
     LDFLAGS="-Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now -Wl,-rpath,/usr/local/lib"
     export CC CXX CFLAGS CXXFLAGS CPPFLAGS LDFLAGS
 }
@@ -83,12 +83,13 @@ build_library() {
     cd "${name}-${version}" || exit 1
     if [[ "${name}" == "aria2" ]]; then
         autoreconf -fi
+        TCMALLOC_CFLAGS="-I/usr/include"
+        TCMALLOC_LIBS="-L/usr/lib/x86_64-linux-gnu -ltcmalloc_minimal"
         CPPFLAGS="-I${temp_dir}/include $CPPFLAGS"
         LDFLAGS="-L${temp_dir}/lib $LDFLAGS"
         PKG_CONFIG="$(command -v pkg-config)"
-        export PKG_CONFIG
         PKG_CONFIG_PATH="${temp_dir}/lib/pkgconfig:/usr/local/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/pkgconfig:$PKG_CONFIG_PATH"
-        export PKG_CONFIG_PATH
+        export CPPFLAGS LDFLAGS PKG_CONFIG PKG_CONFIG_PATH TCMALLOC_CFLAGS TCMALLOC_LIBS
     fi
     ./configure $configure_args || fail "Failed to configure ${name}. Line ${LINENO}"
     make -j$(nproc) || fail "Failed to build ${name}. Line ${LINENO}"
