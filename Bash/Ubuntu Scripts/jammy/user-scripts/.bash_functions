@@ -553,7 +553,7 @@ imow() {
     }
 
     # Find the policy.xml file dynamically in /usr/local and /usr
-    policy_file=$(find /usr/local /usr -type f -path "*/etc/ImageMagick-7/policy.xml" -print -quit)
+    policy_file=$(find /usr/local /usr /etc -type f -path "*/etc/ImageMagick-7/policy.xml" -print -quit)
 
     if [ -n "$policy_file" ]; then
         replace_lines "$policy_file"
@@ -563,11 +563,11 @@ imow() {
         return 1
     fi
 
-    wget -cqO "optimize-jpg.sh" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.sh"
-    sudo chmod +x "optimize-jpg.sh"
-    LD_PRELOAD=libtcmalloc.so; ./optimize-jpg.sh --dir "$PWD" --overwrite
+    wget -cqO "optimize-jpg.sh" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.py"
+    sudo chmod +x "optimize-jpg.py"
+    LD_PRELOAD=libtcmalloc.so; python3 optimize-jpg.py
 
-    [[ -f "optimize-jpg.sh" ]] && sudo rm "optimize-jpg.sh"
+    [[ -f "optimize-jpg.sh" ]] && sudo rm "optimize-jpg.py"
 }
 
 # Downsample image to 50% of the original dimensions using sharper settings
