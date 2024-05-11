@@ -11,6 +11,7 @@ random=$(mkdtemp -d)
 readonly script_version="3.3"
 readonly working="$PWD/7zip-install-script"
 readonly install_dir="/usr/local/bin"
+readonly no_cleanup=false
 
 # Ansi escape codes for colors
 RED='\033[0;31m'
@@ -259,3 +260,6 @@ if [[ -z "$no_cleanup" ]]; then
 else
     log "Skipping cleanup of install files as requested."
 fi
+
+# Delete the installer script itself
+[[ -f "#0" ]] && sudo rm "$0"
