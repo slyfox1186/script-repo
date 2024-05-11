@@ -1234,8 +1234,8 @@ echo "Installing the required APT packages"
 echo "========================================================"
 log "Checking installation status of each package..."
 
+nvidia_encode_utils_version
 case "$STATIC_OS" in
-    nvidia_encode_utils_version
     WSL2) case "$STATIC_OS" in
               Debian|n/a) debian_os_version "$nvidia_encode_version $nvidia_utils_version" "$wsl_flag" "$wsl_common_pkgs" ;;
               Ubuntu)     ubuntu_os_version "$nvidia_encode_version $nvidia_utils_version" "$wsl_flag" "$wsl_common_pkgs" ;;
