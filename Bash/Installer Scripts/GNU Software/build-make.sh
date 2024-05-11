@@ -1,76 +1,119 @@
 #!/usr/bin/env bash
 
-##  Github Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GNU%20Software/build-make
+##  Github: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-make.sh
 ##  Purpose: build gnu make
-##  Updated: 04.11.24
-##  Script version: 2.1
+##  Updated: 05.11.24
+##  Script version: 2.2
 
-# Colors
-RED='\033[0;31m'
+if [[ "$EUID" -eq 0 ]]; then
+    echo "You must run this script without root or sudo."
+    exit 1
+fi
+
+CYAN='\033[0;36m'
 GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
+RED='\033[0;31m'
+YELLOW='\033[0;33m'
 NC='\033[0m'
 
-# Variables
-script_ver="2.1"
-archive_dir="make-4.4.1"
-archive_url="https://ftp.gnu.org/gnu/make/make-4.4.1.tar.lz"
-archive_ext="${archive_url##*.}"
-archive_name="$archive_dir.tar.$archive_ext"
-cwd="$PWD/make-build-script"
-install_dir="/usr/local/$archive_dir"
-make_version=""
-
-# Functions
+# Enhanced logging and error handling
 log() {
     echo -e "${GREEN}[INFO]${NC} $1"
 }
 
-warn() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
-}
-
 fail() {
     echo -e "${RED}[ERROR]${NC} $1"
-    echo -e "${GREEN}[INFO]${NC} To report a bug, create an issue at: https://github.com/slyfox1186/script-repo/issues"
+    echo -e "To report a bug, create an issue at: https://github.com/slyfox1186/script-repo/issues"
     exit 1
 }
 
-cleanup() {
-    local choice
+echo "$prog_name build script - version $script_ver"
+echo "================================================="
+echo
+
+# Create functions
+exit_function() {
     echo
-    read -p "Remove temporary build directory '$cwd'? [y/N] " response
-    case "$response" in
-        [yY]*|"")
-        sudo rm -rf "$cwd"
-        log_msg "Build directory removed."
-        ;;
-        [nN]*) ;;
-    esac
+    log "The script has completed"
+    log "${GREEN}Make sure to ${YELLOW}star ${GREEN}this repository to show your support!${NC}"
+    log "${CYAN}https://github.com/slyfox1186/script-repo${NC}"
+    exit 0
 }
 
-install_dependencies() {
+cleanup() {
+    sudo rm -fr "$cwd"
+}
+
+required_packages() {
+    local -a missing_pkgs pkgs
+    local pkg
     log "Installing dependencies..."
-    local pkgs=(
-            autoconf autoconf-archive autogen automake binutils build-essential ccache cmake curl git
-            guile-3.0-dev libdmalloc-dev libgmp-dev libtool libtool-bin lzip m4 nasm ninja-build texinfo
-            zlib1g-dev yasm
-        )
+    pkgs=(
+         autoconf automake build-essential gettext libdmalloc-dev
+         libintl-perl libsigsegv2 libticonv9 libtool lzip texinfo
+    )
 
-    local missing_pkgs=()
-
+    missing_pkgs=()
     for pkg in "${pkgs[@]}"; do
-        if ! dpkg -s "$pkg"; then
+        if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
             missing_pkgs+=("$pkg")
         fi
     done
 
-    if [ ${#missing_pkgs[@]} -gt 0 ]; then
-        sudo apt-get update
-        sudo apt-get install -y "${missing_pkgs[@]}"
-        sudo apt-get -y autoremove
+    if [[ "${#missing_pkgs[@]}" -gt 0 ]]; then
+        sudo apt update
+        sudo apt install "${missing_pkgs[@]}"
     fi
+}
+
+set_compiler_flags() {
+    CC="gcc"
+    CXX="g++"
+    CFLAGS="-O2 -pipe -march=native"
+    CXXFLAGS="$CFLAGS"
+    CPPFLAGS="-D_FORTIFY_SOURCE=2"
+    LDFLAGS="-Wl,-rpath=$install_dir/lib64:$install_dir/lib"
+    PATH="/usr/lib/ccache:$PATH"
+    PKG_CONFIG="$(command -v pkg-config)"
+    PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/pkgconfig"
+    export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS PATH PKG_CONFIG PKG_CONFIG_PATH
+}
+
+download_archive() {
+    wget --show-progress -cqO "$cwd/$tar_file" "$archive_url" || fail "Failed to download archive with WGET. Line: $LINENO"
+}
+
+extract_archive() {
+    tar -xf "$cwd/$tar_file" -C "$cwd/$archive_name" --strip-components 1 || fail "Failed to extract: $cwd/$tar_file"
+}
+
+configure_build() {
+    cd "$cwd/$archive_name" || fail "Failed to cd into $cwd/$archive_name. Line: $LINENO"
+    autoreconf -fi -I /usr/share/aclocal
+    cd build || fail "Failed to cd into the build directory. Line: $LINENO"
+    ../configure --prefix="$install_dir" --disable-nls --enable-year2038 --with-dmalloc \
+             --with-libsigsegv-prefix=/usr --with-libiconv-prefix=/usr --with-libintl-prefix=/usr || (
+                fail "Failed to execute: configure. Line: $LINENO"
+            )
+}
+
+compile_build() {
+    make "-j$(nproc --all)" || fail "Failed to execute: make build. Line: $LINENO"
+}
+
+install_build() {
+    sudo make install || fail "Failed execute: make install. Line: $LINENO"
+}
+
+ld_linker_path() {
+    echo -e "$install_dir/lib64\\n$install_dir/lib" | sudo tee "/etc/ld.so.conf.d/custom_$prog_name.conf" >/dev/null
+    sudo ldconfig
+}
+
+create_soft_links() {
+    sudo ln -sf "$install_dir/bin/"* "/usr/local/bin/"
+    sudo ln -sf "$install_dir/lib/pkgconfig/"*.pc "/usr/local/lib/pkgconfig/"
+    sudo ln -sf "$install_dir/include/"* "/usr/local/include/"
 }
 
 show_usage() {
@@ -105,75 +148,39 @@ while [[ "$#" -gt 0 ]]; do
     shift
 done
 
-# Update variables based on make version
-if [ -n "$make_version" ]; then
-    archive_dir="make-$make_version"
-    archive_url="https://ftp.gnu.org/gnu/make/make-$make_version.tar.lz"
-    archive_name="$archive_dir.tar.$archive_ext"
-    install_dir="/usr/local/$archive_dir"
-fi
+main_menu() {
 
-# Set compiler and flags
-CC="ccache gcc"
-CXX="ccache g++"
-CFLAGS="-O2 -pipe -fno-plt -march=native -mtune=native -D_FORTIFY_SOURCE=2"
-CXXFLAGS="$CFLAGS"
-LDFLAGS="-Wl,-rpath=/usr/local/lib64:/usr/local/lib"
-export CC CXX CFLAGS CXXFLAGS LDFLAGS
+    script_ver=2.2
+    prog_name="make"
+    version=$(curl -fsS "https://ftp.gnu.org/gnu/$prog_name/" | grep -oP 'make-\K([0-9.])+(?=\.tar\..*)' | sort -ruV | head -n1)
+    archive_name="$prog_name-$version"
+    install_dir="/usr/local/$archive_name"
+    cwd="$PWD/$archive_name-build-script"
 
-# Set PATH and PKG_CONFIG_PATH
-PATH="/usr/lib/ccache:$HOME/perl5/bin:$HOME/.cargo/bin:$HOME/.local/bin:/usr/local/sbin:\
-/usr/local/cuda/bin:/usr/local/x86_64-linux-gnu/bin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:\
-/bin:/usr/local/games:/usr/games:/snap/bin"
-export PATH
+    # Create output directory
+    [[ -d "$cwd/$archive_name" ]] && sudo rm -fr "$cwd/$archive_name"
+    mkdir -p "$cwd/$archive_name/build"
 
-PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/local/share/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/share/pkgconfig:/lib64/pkgconfig:/lib/pkgconfig:/lib/x86_64-linux-gnu/pkgconfig"
-export PKG_CONFIG_PATH
+    if [[ -n "$make_version" ]]; then
+        archive_url="https://ftp.gnu.org/gnu/$prog_name/$prog_name-$make_version.tar.lz"
+        archive_ext="${archive_url//*.}"
+    else
+        archive_url="https://ftp.gnu.org/gnu/$prog_name/$prog_name-$version.tar.lz"
+        archive_ext="${archive_url//*.}"
+    fi
+    tar_file="$archive_name.tar.$archive_ext"
 
-# Install dependencies
-install_dependencies
+    required_packages
+    set_compiler_flags
+    download_archive
+    extract_archive
+    configure_build
+    compile_build
+    install_build
+    ld_linker_path
+    create_soft_links
+    cleanup
+    exit_function
+}
 
-# Create working directory
-mkdir -p "$cwd/$archive_dir/build"
-
-# Download archive
-if [ ! -f "$cwd/$archive_name" ]; then
-    curl -LSso "$cwd/$archive_name" "$archive_url"
-else
-    log "Archive already exists: $cwd/$archive_name"
-fi
-
-# Extract archive
-tar -xf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1 || fail "Failed to extract archive"
-
-# Build and install
-cd "$cwd/$archive_dir" || fail "Failed to change directory to $cwd/$archive_dir"
-autoreconf -fi -I /usr/share/aclocal
-cd build || fail "Failed to change directory to build"
-../configure --prefix="$install_dir" \
-             --disable-nls \
-             --enable-year2038 \
-             --with-dmalloc \
-             --with-libsigsegv-prefix=/usr \
-             --with-libiconv-prefix=/usr \
-             --with-libintl-prefix=/usr \
-             PKG_CONFIG="$(type -P pkg-config)"
-make "-j$(nproc --all)" || fail "Failed to build make"
-sudo make install || fail "Failed to install make"
-
-# Create symlinks
-for dir in bin include; do
-    for file in "$install_dir"/$dir/*; do
-        filename="${file##*/}"
-        sudo ln -sf "$file" "/usr/local/$dir/$filename" || warn "Failed to create symlink for $filename"
-    done
-done
-
-# Cleanup files
-cleanup
-
-echo
-log "make build script completed successfully!"
-log "Make sure to star this repository to show your support: https://github.com/slyfox1186/script-repo"
+main_menu "$@"
