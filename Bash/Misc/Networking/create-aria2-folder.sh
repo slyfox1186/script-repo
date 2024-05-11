@@ -11,7 +11,7 @@ file="$DIR/aria2.conf"
 [[ -d "$DIR" ]] && sudo rm -fr "$DIR"
 mkdir -p "$DIR"
 
-touch "$DIR/dht.dat"
+touch "$DIR/dht.dat" "$DIR/cookies.txt"
 
 trackers=(
         http://bittorrent-tracker.e-n-c-r-y-p-t.net:1337/announce
