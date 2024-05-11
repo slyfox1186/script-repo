@@ -567,7 +567,7 @@ imow() {
     sudo chmod +x "optimize-jpg.py"
     LD_PRELOAD=libtcmalloc.so; python3 optimize-jpg.py
 
-    [[ -f "optimize-jpg.sh" ]] && sudo rm "optimize-jpg.py"
+    [[ -f "optimize-jpg.py" ]] && sudo rm "optimize-jpg.py"
 }
 
 # Downsample image to 50% of the original dimensions using sharper settings
