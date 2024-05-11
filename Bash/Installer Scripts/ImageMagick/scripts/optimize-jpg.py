@@ -11,40 +11,36 @@ import shutil
 
 def process_image(image_path, size=None, verbose=False):
     try:
-        temp_dir = Path(tempfile.mkdtemp())
-        mpc_file = temp_dir / f"{image_path.stem}.mpc"
-        output_file_path = temp_dir / f"{image_path.stem}-IM{image_path.suffix}"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_dir = Path(temp_dir)
+            output_file_path = temp_dir / f"{image_path.stem}-IM{image_path.suffix}"
 
-        convert_opts = [
-            '-filter', 'Triangle',
-            '-define', 'filter:support=2',
-            '-strip',
-            '-unsharp', '0.25x0.08+8.3+0.045',
-            '-dither', 'None',
-            '-posterize', '136',
-            '-quality', '82',
-            '-define', 'jpeg:fancy-upsampling=off',
-            '-auto-level',
-            '-enhance',
-            '-interlace', 'none',
-            '-colorspace', 'sRGB'
-        ]
-        if size:
-            convert_opts += ['-resize', size]
+            convert_opts = [
+                '-filter', 'Triangle',
+                '-define', 'filter:support=2',
+                '-strip',
+                '-unsharp', '0.25x0.08+8.3+0.045',
+                '-dither', 'None',
+                '-posterize', '136',
+                '-quality', '82',
+                '-define', 'jpeg:fancy-upsampling=off',
+                '-auto-level',
+                '-enhance',
+                '-interlace', 'none',
+                '-colorspace', 'sRGB'
+            ]
+            if size:
+                convert_opts += ['-resize', size]
 
-        command = ['magick', 'convert', str(image_path)] + convert_opts + [str(mpc_file)]
-        subprocess.run(command, check=True)
+            command = ['magick', 'convert', str(image_path)] + convert_opts + [str(output_file_path)]
+            subprocess.run(command, check=True)
 
-        command_final = ['magick', 'convert', str(mpc_file), str(output_file_path)]
-        subprocess.run(command_final, check=True)
+            shutil.move(str(output_file_path), str(image_path.with_name(f"{image_path.stem}-IM{image_path.suffix}")))
+            os.remove(str(image_path))  # Remove the original input file
 
-        shutil.move(str(output_file_path), str(image_path.with_name(f"{image_path.stem}-IM{image_path.suffix}")))
-        os.remove(str(image_path))  # Remove the original input file
-        shutil.rmtree(temp_dir)
-
-        if verbose:
-            print(f"Processed {image_path} successfully and saved as {image_path.stem}-IM{image_path.suffix}")
-        return True
+            if verbose:
+                print(f"Processed {image_path} successfully and saved as {image_path.stem}-IM{image_path.suffix}")
+            return True
     except subprocess.CalledProcessError as e:
         if verbose:
             print(f"Failed to process {image_path}: {e}")
