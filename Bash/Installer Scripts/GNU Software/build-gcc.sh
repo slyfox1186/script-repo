@@ -3,9 +3,9 @@
 
 # GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-gcc.sh
 # Build GNU GCC
-# Versions available:  10|11|12|13
+# Versions available:  10|11|12|13|14
 # Features: Automatically sources the latest release of each version.
-# Updated: 05.05.24
+# Updated: 05.11.24
 
 build_dir="/tmp/gcc-build-script"
 packages="$build_dir/packages"
@@ -15,7 +15,7 @@ log_file=""
 selected_versions=()
 verbose=0
 version=""
-versions=(10 11 12 13)
+versions=(10 11 12 13 14)
 
 # ANSI color codes
 GREEN='\033[1;32m'
@@ -252,8 +252,7 @@ install_gcc() {
         execute autoreconf -fi
         execute ./contrib/download_prerequisites
         mkdir builddir; cd builddir || fail "Failed to change the autoconf directory to build"
-        ../configure --program-suffix="-$short_version" --with-isl=system \ 
-                          --with-pkgversion="$os_info GCC $version" "$@"
+        ../configure --program-suffix="-$short_version" --with-isl=system
 
         execute make "-j$threads"
         execute make install-strip
@@ -328,6 +327,9 @@ build_gcc() {
         13) gcc_13_options=(--enable-cet --enable-lto --enable-link-serialization=2 --enable-offload-defaulted --with-arch-32=i686 --with-isl=/usr --with-libiconv-prefix=/usr --with-zstd="$workspace")
             install_gcc "$version" "$short_version" "$os_info" "${common_options[@]}" "${configure_options[@]}" "${gcc_13_options[@]}"
             ;;
+        14) gcc_14_options=(--enable-cet --enable-lto --enable-link-serialization=2 --enable-offload-defaulted --with-arch-32=i686 --with-isl=/usr --with-libiconv-prefix=/usr --with-zstd="$workspace")
+            install_gcc "$version" "$short_version" "$os_info" "${common_options[@]}" "${configure_options[@]}" "${gcc_14_options[@]}"
+            ;;
         *)  fail "GCC version not found. Line: $LINENO" ;;
     esac
 }
@@ -357,7 +359,7 @@ install_autoconf() {
 
 select_versions() {
     local -a selected_versions versions
-    versions=(10 11 12 13)  # Updated to exclude version 9
+    versions=(10 11 12 13 14)
     selected_versions=()
 
     echo -e "\\n${GREEN}Select the GCC version(s) to install:${NC}\n"
@@ -382,7 +384,7 @@ select_versions() {
             selected_versions=("${versions[@]}")
             ;;
         3)
-            read -p "Enter comma-separated versions or ranges (e.g., 11,13 or 11-13): " custom_choice
+            read -p "Enter comma-separated versions or ranges (e.g., 11,14 or 11-14): " custom_choice
             IFS=',' read -ra custom_versions <<< "$custom_choice"
             for version in "${custom_versions[@]}"; do
                 if [[ $version =~ ^[0-9]+$ ]]; then
@@ -413,7 +415,7 @@ select_versions() {
             10)
                 build_gcc "$latest_version" "/usr/local/gcc-$latest_version" "--with-arch-32=i686"
                 ;;
-            11|12|13)
+            11|12|13|14)
                 build_gcc "$latest_version" "/usr/local/gcc-$latest_version"
                 ;;
         esac
@@ -465,6 +467,7 @@ main() {
     set_ccache_dir
     set_environment
     install_deps
+    install_autoconf
     select_versions
     cleanup
     summary
