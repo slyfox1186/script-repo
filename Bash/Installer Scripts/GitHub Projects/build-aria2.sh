@@ -2,10 +2,10 @@
 
 ##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-aria2.sh
 ##  Purpose: Build aria2 from source code with hardening options
-##  Updated: 05.07.24
-##  Script version: 2.5
+##  Updated: 05.11.24
+##  Script version: 2.6
 
-script_ver="2.5"
+script_ver="2.6"
 
 echo "aria2 build script - version $script_ver"
 echo "==============================================="
@@ -56,11 +56,12 @@ set_compiler_options() {
     CFLAGS="-O2 -fPIC -fPIE -mtune=native -DNDEBUG -fstack-protector-strong -Wno-unused-parameter"
     CXXFLAGS="$CFLAGS"
     CPPFLAGS="-D_FORTIFY_SOURCE=2"
-    LDFLAGS="-Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now"
+    LDFLAGS="-Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now -Wl,-rpath,/usr/local/lib"
     PATH="/usr/lib/ccache:$HOME/perl5/bin:$HOME/.cargo/bin:$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin"
     PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/lib/pkgconfig"
     export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS PATH PKG_CONFIG_PATH
 }
+
 
 PATH="\
 /usr/lib/ccache:\
@@ -111,8 +112,9 @@ source_the_latest_version() {
 }
 
 libgpg_latest_release_version() {
-    local url="$1"
-    local latest_version=$(curl -fsS "$url" | grep -oP 'href="libgpg-error-[0-9]+\.[0-9]+\.tar\.bz2"' | head -n1 | grep -oP '[0-9]+\.[0-9]+')
+    local latest_version url
+    url="$1"
+    latest_version=$(curl -fsS "$url" | grep -oP 'href="libgpg-error-[0-9]+\.[0-9]+\.tar\.bz2"' | head -n1 | grep -oP '[0-9]+\.[0-9]+')
     if [[ -z "$latest_version" ]]; then
         echo "Failed to find the latest version of libgpg-error."
         exit 1
@@ -122,66 +124,70 @@ libgpg_latest_release_version() {
 }
 
 prepare_build_environment() {
-    build_dir="$cwd/aria2-build"
     temp_dir="/tmp/aria2-temp-$(date +%s)"
-    log "Creating build directory: $build_dir"
-    mkdir -p "$build_dir"
-    cd "$build_dir" || fail "Failed to create or navigate to build directory."
     log "Creating temporary directory: $temp_dir"
     mkdir -p "$temp_dir"
+    working="$temp_dir/working"
+    log "Creating temporary directory: $working"
+    mkdir -p "$working"
 }
 
 build_libgpg_error() {
-    local libgpg_error_url libgpg_error_version
+    local libgpg_error_version
     echo
     log "Compiling libgpg-error..."
     echo
     libgpg_error_version=$(libgpg_latest_release_version "https://gnupg.org/ftp/gcrypt/libgpg-error/")
-    libgpg_error_url="https://gnupg.org/ftp/gcrypt/libgpg-error/libgpg-error-$libgpg_error_version.tar.bz2"
-    curl -sSL "$libgpg_error_url" | tar -jx
-    cd "libgpg-error-$libgpg_error_version" || exit 1
-    ./configure --prefix="$temp_dir/libgpg-error" --enable-static --disable-shared || fail "Failed to configure libgpg-error. Line $LINENO"
+    curl -Lso "libgpg-error-$libgpg_error_version.tar.bz2" "https://gnupg.org/ftp/gcrypt/libgpg-error/libgpg-error-$libgpg_error_version.tar.bz2"
+    mkdir -p "libgpg-error-$libgpg_error_version/build"
+    tar -jxf "libgpg-error-$libgpg_error_version.tar.bz2" -C "libgpg-error-$libgpg_error_version" --strip-components 1
+    cd "libgpg-error-$libgpg_error_version/build" || exit 1
+    ../configure --prefix="$working" --enable-static --disable-shared || fail "Failed to configure libgpg-error. Line $LINENO"
     make "-j$(nproc --all)" || fail "Failed to build libgpg-error. Line $LINENO"
     sudo make install || fail "Failed to install libgpg-error. Line $LINENO"
-    cd ../
+    cd ../..
 }
 
 build_c_ares() {
-    local c_ares_url c_ares_version
+    local c_ares_version
     echo
     log "Compiling c-ares..."
     echo
     c_ares_version=$(source_the_latest_version "https://github.com/c-ares/c-ares.git")
-    c_ares_url="https://github.com/c-ares/c-ares/archive/refs/tags/cares-${c_ares_version//./_}.tar.gz"
-    curl -sSL "$c_ares_url" | tar -zx
-    cd "c-ares-cares-$c_ares_version" || exit 1
+    curl -Lso "cares-$c_ares_version.tar.gz" "https://github.com/c-ares/c-ares/archive/refs/tags/cares-${c_ares_version//./_}.tar.gz"
+    mkdir -p "cares-$c_ares_version/build"
+    tar -zxf "cares-$c_ares_version.tar.gz" -C "cares-$c_ares_version" --strip-components 1
+    cd "cares-$c_ares_version" || exit 1
     autoreconf -fi
-    ./configure --prefix="$temp_dir/c-ares" --enable-static --disable-shared || fail "Failed to configure c-ares. Line $LINENO"
+    cd build || exit 1
+    ../configure --prefix="$working" --enable-static --disable-shared || fail "Failed to configure c-ares. Line $LINENO"
     make "-j$(nproc --all)" || fail "Failed to build c-ares. Line $LINENO"
     sudo make install || fail "Failed to install c-ares. Line $LINENO"
-    cd ../
+    cd ../..
 }
 
 build_sqlite3() {
-    local sqlite_url sqlite_version
+    local sqlite_version
     echo
     log "Compiling sqlite3..."
     echo
     sqlite_version=$(source_the_latest_version "https://github.com/sqlite/sqlite.git")
-    sqlite_url="https://github.com/sqlite/sqlite/archive/refs/tags/version-$sqlite_version.tar.gz"
-    curl -sSL "https://github.com/sqlite/sqlite/archive/refs/tags/version-3.45.3.tar.gz" | tar -zx
-    cd "sqlite-version-$sqlite_version" || exit 1
-    ./configure --prefix="$temp_dir/sqlite3" --enable-static --disable-shared || fail "Failed to configure sqlite. Line $LINENO"
+    curl -Lso "sqlite-$sqlite_version.tar.gz" "https://github.com/sqlite/sqlite/archive/refs/tags/version-$sqlite_version.tar.gz"
+    mkdir -p "sqlite-$sqlite_version/build"
+    tar -zxf "sqlite-$sqlite_version.tar.gz" -C "sqlite-$sqlite_version" --strip-components 1
+    cd "sqlite-$sqlite_version/build" || exit 1
+    ../configure --prefix="$working" --enable-static --disable-shared || fail "Failed to configure sqlite. Line $LINENO"
     make "-j$(nproc --all)" || fail "Failed to build sqlite. Line $LINENO"
     sudo make install || fail "Failed to install sqlite. Line $LINENO"
-    cd ../
+    cd ../..
 }
 
 # Install ca certs from curl's official website
 install_ca_certs() {
-    if [[ ! -f "/etc/ssl/certs/cacert.pem" ]]; then
+    certs_ssl_dir="/etc/ssl/certs/cacert.pem"
+    if [[ ! -f "$certs_ssl_dir"  ]]; then
         curl -LSso "cacert.pem" "https://curl.se/ca/cacert.pem"
-        sudo cp -f "cacert.pem" "/etc/ssl/certs/cacert.pem"
+        sudo cp -f "cacert.pem" "$certs_ssl_dir"
     fi
 
     if type -P update-ca-certificates &>/dev/null; then
@@ -190,84 +196,45 @@ install_ca_certs() {
 }
 
 fix_tcmalloc_lib() {
-    local lib_file
-
     lib_path=$(find /usr/lib/x86_64-linux-gnu -regextype posix-extended -regex '.*/libtcmalloc_minimal\.so\.[4-9]$')
 
     if [[ -n "$lib_path" ]] && [[ ! -L "/usr/lib/x86_64-linux-gnu/libtcmalloc_minimal.so" ]]; then
-        sudo ln -s "$lib_path" "/usr/lib/x86_64-linux-gnu/libtcmalloc_minimal.so"
+        sudo ln -sf "$lib_path" "/usr/lib/x86_64-linux-gnu/libtcmalloc_minimal.so"
         log "Created a link for the broken tcmalloc_minimal library file."
     else
-        warn "Failed to create a link for the broken tcmalloc_minimal file."
+        log "The required tcmalloc .so files were already created."
     fi
 }
 
 build_aria2() {
-    local aria2_url aria2_version
+    local aria2_version
     echo
     log "Compiling Aria2..."
     echo
     aria2_version=$(source_the_latest_version "https://github.com/aria2/aria2.git")
-    aria2_url="https://github.com/aria2/aria2/releases/download/release-$aria2_version/aria2-$aria2_version.tar.xz"
-    curl -sSL "$aria2_url" | tar -Jx
+    curl -Lso "aria2-$aria2_version.tar.xz" "https://github.com/aria2/aria2/releases/download/release-$aria2_version/aria2-$aria2_version.tar.xz"
+    mkdir -p "aria2-$aria2_version/build"
+    tar -Jxf "aria2-$aria2_version.tar.xz" -C "aria2-$aria2_version" --strip-components 1
     cd "aria2-$aria2_version" || exit 1
+    autoreconf -fi
     sed -i "s/1, 16/1, 128/g" "src/OptionHandlerFactory.cc"
-    ./configure --prefix=/usr/local --enable-static --disable-shared \
-                --without-gnutls --with-openssl \
-                --with-ca-bundle="/etc/ssl/certs/cacert.pem" \
-                --with-tcmalloc --with-libcares="$temp_dir/c-ares" \
-                --with-sqlite3="$temp_dir/sqlite3" --enable-lto --enable-profile-guided-optimization \
-                LDFLAGS="-L$temp_dir/libgpg-error/lib -L$temp_dir/c-ares/lib -L$temp_dir/sqlite3/lib $LDFLAGS" \
-                CPPFLAGS="-I$temp_dir/libgpg-error/include -I$temp_dir/c-ares/include -I$temp_dir/sqlite3/include $CPPFLAGS" || fail "Failed to configure aria2. Line $LINENO"
+    cd build || exit 1
+    ../configure --prefix=/usr/local --disable-static --enable-shared \
+                --without-gnutls --with-openssl --with-ca-bundle="$certs_ssl_dir" \
+                --with-tcmalloc --with-libcares="$working" --with-sqlite3="$working" \
+                --enable-lto --enable-profile-guided-optimization \
+                LDFLAGS="-L$working/lib $LDFLAGS" \
+                CPPFLAGS="-I$working/include $CPPFLAGS" || fail "Failed to configure aria2. Line $LINENO"
     make "-j$(nproc --all)" || fail "Failed to build aria2. Line $LINENO"
     sudo make install || fail "Failed to install aria2. Line $LINENO"
-    cd ../
-}
-
-create_aria2_service() {
-    echo
-    log "Creating aria2 service..."
-    echo
-    sudo tee "/etc/systemd/system/aria2.service" >/dev/null <<EOT
-[Unit]
-Description=Aria2 Service
-After=network.target
-
-[Service]
-Type=simple
-ExecStart=/usr/local/bin/aria2c --enable-rpc --rpc-listen-all --rpc-secure --rpc-certificate=/path/to/cert.pem --rpc-private-key=/path/to/key.pem --rpc-secure-policy-file=/etc/aria2/aria2.seccomp
-Restart=on-abort
-
-[Install]
-WantedBy=multi-user.target
-EOT
-
-    sudo mkdir -p "/etc/aria2"
-    sudo tee "/etc/aria2/aria2.seccomp" >/dev/null <<EOT
-POLICY aria2
-ALLOW {BASIC_SYSCALLS}
-ALLOW {FILESYSTEM_SYSCALLS}
-ALLOW {PROCESS_CONTROL_SYSCALLS}
-ALLOW {MEMORY_SYSCALLS}
-ALLOW {SELECT_SYSCALLS}
-ALLOW {TIME_SYSCALLS}
-ALLOW {SOCKET_SYSCALLS}
-ALLOW {SIGNAL_SYSCALLS}
-EOT
-
-    sudo systemctl daemon-reload
-    sudo systemctl enable aria2
-    sudo systemctl start aria2
-    echo
-    log "Aria2 service created and started."
-    echo
+    cd ../..
 }
 
 cleanup() {
     echo
     log "Cleaning up..."
     echo
-    sudo rm -fr "$build_dir" "$temp_dir"
+    sudo rm -fr "$temp_dir"
     echo
     log "Cleanup completed."
     echo
@@ -278,16 +245,10 @@ main() {
         echo "This script must be run without root or sudo."
         exit 1
     fi
-    
-    create_service="false"
-    cleanup="false"
 
     # Check command line options
     while [[ $# -gt 0 ]]; do
         case "$1" in
-            -s|--service)
-                create_service="true"
-                ;;
             -d|--debug)
                 set -x
                 ;;
@@ -305,8 +266,6 @@ main() {
         shift
     done
 
-    cwd="$PWD"
-
     echo
     log "Starting aria2 build process with ARIA2_STATIC set to $ARIA2_STATIC..."
     echo
@@ -323,8 +282,6 @@ main() {
     build_aria2
     cleanup
 
-    [[ "$create_service" = true ]] && create_aria2_service    
-    
     echo
     log "Aria2 build process completed successfully."
     echo
