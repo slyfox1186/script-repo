@@ -28,14 +28,13 @@ fail() {
 }
 
 if [[ "$EUID" -eq 0 ]]; then
-    fail "You must run this script without root or with sudo."
+    fail "You must run this script without root or sudo."
 fi
 
 script_ver=3.1
 cwd="$PWD/build-tools-script"
-web_repo="https://github.com/slyfox1186/script-repo"
-latest="false"
-debug="OFF"
+latest=false
+debug=OFF
 cpu_threads=$(grep -c ^processor /proc/cpuinfo 2>/dev/null || nproc --all)
 
 echo -e "${GREEN}Build-tools script ${YELLOW}version $script_ver${NC}"
@@ -46,38 +45,18 @@ mkdir -p "$cwd"
 set_compiler_flags() {
     CC="gcc"
     CXX="g++"
-    CFLAGS="-g -O3 -pipe -fno-plt -march=native"
-    CPPFLAGS="-I/usr/local/include"
+    CFLAGS="-O2 -pipe -march=native"
     CXXFLAGS="$CFLAGS"
+    CPPFLAGS="-I/usr/local/include -I/usr/include"
     LDFLAGS="-L/usr/local/lib -Wl,-rpath,/usr/local/lib"
-    export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
+    export CC CXX CFLAGS CXXFLAGS CPPFLAGS LDFLAGS
 }
 set_compiler_flags
 
-PATH="\
-/usr/lib/ccache:\
-$HOME/perl5/bin:\
-$HOME/.cargo/bin:\
-$HOME/.local/bin:\
-/usr/local/sbin:\
-/usr/local/cuda/bin:\
-/usr/local/x86_64-linux-gnu/bin:\
-/usr/local/bin:\
-/usr/sbin:\
-/usr/bin:\
-/sbin:\
-/bin\
-"
+PATH="/usr/lib/ccache:$PATH"
 export PATH
 
-PKG_CONFIG_PATH="\
-/usr/local/lib64/pkgconfig:\
-/usr/local/lib/pkgconfig:\
-/usr/local/lib/usr/local/pkgconfig:\
-/usr/local/share/pkgconfig:\
-/usr/lib64/pkgconfig:\
-/usr/share/pkgconfig\
-"
+PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/pkgconfig"
 export PKG_CONFIG_PATH
 
 exit_fn() {
@@ -85,7 +64,7 @@ exit_fn() {
     log "The script has completed"
     echo
     echo -e "${GREEN}Make sure to ${YELLOW}star ${GREEN}this repository to show your support!${NC}"
-    log "$web_repo"
+    log "https://github.com/slyfox1186/script-repo"
     echo
     exit 0
 }
@@ -113,7 +92,7 @@ show_versions() {
     echo "CMake:  $(cmake --version | sed -e 's/cmake version //g' -e 's/CMake suite maintained and supported by Kitware (kitware.com\/cmake).//g' | xargs -n1)"
     echo "Ninja:  $(ninja --version)"  
     echo "Meson:  $(meson --version)"
-    echo "GoLang: $(go version | grep -Eo '[0-9\.]+ | xargs -n1')"
+    echo "GoLang: $(go version | grep -oP '[0-9.]+ | xargs -n1')"
 }
 
 execute() {
@@ -163,11 +142,6 @@ download() {
             rm "$target_file"
             fail "The script failed to extract $dl_file so it was deleted. Please re-run the script. Line: $LINENO"
         fi
-    else
-        if ! tar -xf "$target_file" -C "$target_dir" --strip-components 1 2>&1; then
-            rm "$target_file" 
-            fail "The script failed to extract $dl_file so it was deleted. Please re-run the script. Line: $LINENO"
-        fi
     fi
     
     log "File extracted: $dl_file"
@@ -197,29 +171,13 @@ build_done() {
     echo "$2" > "$cwd/$1.done"
 }
 
-arch_pkgs() {
+ld_linker_path() {
+    local install_dir name
+    name="$1"
+    install_dir="$2"
 
-    pkgs=(
-        autoconf automake autogen bluez-qt5 base-devel
-        ccache cmake curl git openssl python python-pip
-    )
-    
-    [[ -f "/var/lib/pacman/db.lck" ]] && rm -f "/var/lib/pacman/db.lck"
-    
-    for pkg in "${pkgs[@]}"; do
-        if ! sudo pacman -Qi "$pkg" &>/dev/null; then
-            missing_pkgs+="$pkg "
-        fi
-    done
-    
-    [[ -n "$missing_pkgs" ]] && pacman -Sq --needed --noconfirm $missing_pkgs
-
-    pip_lock=$(find /usr/lib/python3* -type f -name 'EXTERNALLY-MANAGED')
-    if [[ -n "$pip_lock" ]]; then
-        pip install --user --break-system-packages --no-input requests setuptools wheel
-    else
-        pip install --user --no-input requests setuptools wheel
-    fi
+    echo -e "$install_dir/lib" | sudo tee "/etc/ld.so.conf.d/custom_$name.conf" >/dev/null
+    sudo ldconfig
 }
 
 apt_pkgs() {
@@ -287,7 +245,7 @@ get_first_word() {
 }
 
 if [[ -f /etc/os-release ]]; then
-    . /etc/os-release
+    source /etc/os-release
     OS=$(get_first_word "$NAME")  
 elif lsb_release -d &>/dev/null; then
     OS=$(lsb_release -d | awk '{print $2}')
@@ -295,31 +253,33 @@ else
     fail "Failed to define the \$OS and/or \$VER variables. Line: $LINENO"
 fi
 
-case "$OS" in
-    Arch) arch_pkgs ;;
-    *) apt_pkgs ;;  
-esac
+# Install the required apt packages
+apt_pkgs
 
 git_repo "Kitware/CMake"
 if build "cmake" "$version"; then
-    download "https://github.com/Kitware/CMake/archive/refs/tags/v$version.tar.gz" "cmake-$version.tar.gz"
-    execute ./bootstrap --prefix="/usr/local/cmake-$version" --enable-ccache --parallel="$cpu_threads" --qt-gui
+    prog_cmake="cmake"
+    download "https://github.com/Kitware/CMake/archive/refs/tags/v$version.tar.gz" "$prog_cmake-$version.tar.gz"
+    execute ./bootstrap --prefix="/usr/local/$prog_cmake-$version" --enable-ccache --parallel="$cpu_threads" --qt-gui
     execute make "-j$cpu_threads"
     execute sudo make install
-    execute sudo ln -sf "/usr/local/cmake-$version/bin"/{cmake,cmake-gui} "/usr/local/bin/"
+    execute sudo ln -sf "/usr/local/$prog_cmake-$version/bin"/{cmake,cmake-gui} "/usr/local/bin/"
+    ld_linker_path "$prog_cmake" "/usr/local/$prog_cmake-$version"
     build_done "cmake" "$version"
 fi
 
 git_repo "ninja-build/ninja"  
 if build "ninja" "$version"; then
-    download "https://github.com/ninja-build/ninja/archive/refs/tags/v$version.tar.gz" "ninja-$version.tar.gz"
+    prog_ninja="ninja"
+    download "https://github.com/$prog_ninja-build/$prog_ninja/archive/refs/tags/v$version.tar.gz" "$prog_ninja-$version.tar.gz"
     re2c_path="$(command -v re2c)"
-    execute cmake -B build -DCMAKE_INSTALL_PREFIX="/usr/local/ninja-$version" \
+    execute cmake -B build -DCMAKE_INSTALL_PREFIX="/usr/local/$prog_ninja-$version" \
                   -DCMAKE_BUILD_TYPE=Release -DRE2C="$re2c_path" -DBUILD_TESTING=OFF \
                   -Wno-dev
     execute make "-j$cpu_threads" -C build
     execute sudo make -C build install
-    execute sudo ln -sf "/usr/local/ninja-$version/bin/ninja" "/usr/local/bin/ninja"
+    execute sudo ln -sf "/usr/local/$prog_ninja-$version/bin/$prog_ninja" "/usr/local/bin/"
+    ld_linker_path "$prog_ninja" "/usr/local/$prog_ninja-$version"
     build_done "ninja" "$version"  
 fi
 
