@@ -2,8 +2,8 @@
 # shellcheck disable=SC2068,SC2162,SC2317 source=/dev/null
 
 # GitHub: https://github.com/slyfox1186/ffmpeg-build-script
-# Script version: 3.7.0
-# Updated: 05.10.24
+# Script version: 3.7.1
+# Updated: 05.11.24
 # Purpose: build ffmpeg from source code with addon development libraries
 #          also compiled from source to help ensure the latest functionality
 # Supported Distros: Debian 11|12
@@ -19,7 +19,7 @@ fi
 
 # Define global variables
 script_name="${0}"
-script_version="3.7.0"
+script_version="3.7.1"
 cwd="$PWD/ffmpeg-build-script"
 mkdir -p "$cwd" && cd "$cwd" || exit 1
 if [[ "$PWD" =~ ffmpeg-build-script\/ffmpeg-build-script ]]; then
@@ -493,8 +493,7 @@ library_exists() {
 }
 
 determine_libtool_version() {
-    get_wsl_version
-    if [[ "$VER" = "WSL2" ]]; then
+    if [[ "$STATIC_OS" = "WSL2" ]]; then
         libtool_version="2.4.6"
     else
         case "$STATIC_VER" in
@@ -1228,13 +1227,13 @@ get_os_version() {
 get_os_version
 
 # Check if running Windows WSL2
-get_wsl_version() {
-    if [[ $(grep -i "microsoft" /proc/version) ]]; then
-        wsl_flag="yes_wsl"
-        OS="WSL2"
-    fi
-}
-get_wsl_version
+if [[ $(grep -i "microsoft" /proc/version) ]]; then
+    wsl_flag="yes_wsl"
+    OS="WSL2"
+fi
+if [[ "$OS" == "WSL2" ]]; then
+    STATIC_OS="WSL2"
+fi
 
 # Use the function to find the latest versions of specific packages
 libnvidia_encode_wsl=$(apt-cache search '^libnvidia-encode-[0-9]+$' | sort -ruV | head -n1 | awk '{print $1}')
@@ -2555,8 +2554,7 @@ box_out_banner_ffmpeg() {
 box_out_banner_ffmpeg "Building FFmpeg"
 
 # Get DXVA2 and other essential windows header files
-get_wsl_version
-if [[ "$wsl_flag" == "yes_wsl" ]]; then
+if [[ "$STATIC_OS" == "WSL2" ]]; then
     install_windows_hardware_acceleration
 fi
 
