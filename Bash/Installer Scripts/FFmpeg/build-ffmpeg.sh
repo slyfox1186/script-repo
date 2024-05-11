@@ -1555,20 +1555,17 @@ if build "fontconfig" "$repo_version"; then
 fi
 CONFIGURE_OPTIONS+=("--enable-libfontconfig")
 
-# UBUNTU BIONIC FAILS TO BUILD XML2
-if [[ "$VER" != "18.04" ]]; then
-    find_git_repo "harfbuzz/harfbuzz" "1" "T"
-    if build "harfbuzz" "$repo_version"; then
-        download "https://github.com/harfbuzz/harfbuzz/archive/refs/tags/$repo_version.tar.gz" "harfbuzz-$repo_version.tar.gz"
-        extracmds=("-D"{benchmark,cairo,docs,glib,gobject,icu,introspection,tests}"=disabled")
-        execute ./autogen.sh
-        execute meson setup build --prefix="$workspace" --buildtype=release --default-library=static --strip "${extracmds[@]}"
-        execute ninja "-j$threads" -C build
-        execute ninja -C build install
-        build_done "harfbuzz" "$repo_version"
-    fi
-    CONFIGURE_OPTIONS+=("--enable-libharfbuzz")
+find_git_repo "harfbuzz/harfbuzz" "1" "T"
+if build "harfbuzz" "$repo_version"; then
+    download "https://github.com/harfbuzz/harfbuzz/archive/refs/tags/$repo_version.tar.gz" "harfbuzz-$repo_version.tar.gz"
+    extracmds=("-D"{benchmark,cairo,docs,glib,gobject,icu,introspection,tests}"=disabled")
+    execute ./autogen.sh
+    execute meson setup build --prefix="$workspace" --buildtype=release --default-library=static --strip "${extracmds[@]}"
+    execute ninja "-j$threads" -C build
+    execute ninja -C build install
+    build_done "harfbuzz" "$repo_version"
 fi
+CONFIGURE_OPTIONS+=("--enable-libharfbuzz")
 
 git_caller "https://github.com/fribidi/c2man.git" "c2man-git"
 if build "$repo_name" "${version//\$ /}"; then
