@@ -219,8 +219,6 @@ install_windows_hardware_acceleration() {
 }
 
 install_rustc() {
-    local get_rustc_ver
-    get_rustc_ver=$(curl -fsS "https://github.com/rust-lang/rust/tags/" | grep -oP 'href="[^"]*\K[0-9]+\.[0-9]+\.[0-9]+' | head -n1)
     echo "Installing RustUp"
     curl -fsS --proto '=https' --tlsv1.2 'https://sh.rustup.rs' | sh -s -- --default-toolchain stable -y &>/dev/null
     source "$HOME/.cargo/env"
@@ -663,7 +661,7 @@ remove_duplicate_paths() {
     local -a path_array
     local IFS new_path seen
     IFS=':'
-    path_array=($PATH)
+    path_array=("$PATH")
 
     declare -A seen
 
@@ -855,7 +853,7 @@ download_cuda() {
 
 # Function to detect the environment and check for an NVIDIA GPU
 check_nvidia_gpu() {
-    local found gpu_infopath_exists
+    local found
     path_exists=0
     found=0
     gpu_info=""
@@ -964,9 +962,23 @@ apt_pkgs() {
     libunwind_pkg=$(find_latest_version '^libunwind-[0-9]+-dev$')
     gcc_plugin_pkg=$(find_latest_version '^gcc-[1-3]*-plugin-dev$')
 
+    # Define the package names in a multiline string
+    package_names="
+    $libcppabi_pkg
+    $libcpp_pkg
+    $libunwind_pkg
+    $nvidia_driver
+    $nvidia_utils
+    $openjdk_pkg
+    $gcc_plugin_pkg
+    "
+
+    # Use mapfile to read the package names into an array
+    mapfile -t packages <<< "$package_names"
+
     # Define an array of apt package names
     pkgs=(
-        $1 $libcppabi_pkg $libcpp_pkg $libunwind_pkg $nvidia_driver $nvidia_utils $openjdk_pkg $gcc_plugin_pkg
+        "$1" "${packages[@]}"
         asciidoc autoconf autoconf-archive automake autopoint bc binutils bison build-essential cargo ccache checkinstall
         curl doxygen fcitx-libs-dev flex flite1-dev gawk gcc gettext gimp-data git gnome-desktop-testing gnustep-gui-runtime
         google-perftools gperf gtk-doc-tools guile-3.0-dev help2man imagemagick jq junit ladspa-sdk lib32stdc++6 libasound2-dev
@@ -1127,7 +1139,7 @@ debian_os_version() {
     libnvidia_encode_debian=$(find_latest_version_debian '^libnvidia-encode-[0-9]+$')
 
     debian_pkgs=(
-                 cppcheck $libnvidia_encode_debian libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev
+                 cppcheck "$libnvidia_encode_debian" libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev
                  libyuv-utils libyuv0 libhwy-dev libsrt-gnutls-dev libyuv-dev libsharp-dev
                  libdmalloc5 libumfpack5 libsuitesparseconfig5 libcolamd2 libcholmod3 libccolamd2
                  libcamd2 libamd2 software-properties-common libclang-16-dev libgegl-0.4-0 libgoogle-perftools4
@@ -1135,8 +1147,8 @@ debian_os_version() {
 
     case "$VER" in
         msft)          debian_msft ;;
-        12|trixie|sid) apt_pkgs "$1 ${debian_pkgs[@]} librist-dev" ;;
-        11)            apt_pkgs "$1 ${debian_pkgs[@]}" ;;
+        12|trixie|sid) apt_pkgs "$1 ${debian_pkgs[*]} librist-dev" ;;
+        11)            apt_pkgs "$1 ${debian_pkgs[*]}" ;;
         *)             fail "Could not detect the Debian release version. Line: $LINENO" ;;
     esac
 }
@@ -2549,10 +2561,7 @@ if [[ "$wsl_flag" == "yes_wsl" ]]; then
 fi
 
 # Run the 'ffmpeg -version' command and capture its output
-ffmpeg_version_output=$(ffmpeg -version 2>/dev/null)
-
-# Check if the command executed successfully
-if [ "$?" -eq 0 ]; then
+if ffmpeg_version_output=$(ffmpeg -version 2>/dev/null); then
     # Extract the version number using grep and awk
     ffmpeg_version=$(echo "$ffmpeg_version_output" | grep -oP 'ffmpeg version \K\d+\.\d+')
 
