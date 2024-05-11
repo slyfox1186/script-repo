@@ -11,6 +11,8 @@
 # To ensure accurate results and avoid any issues related to timestamp conversions between Windows and Linux, it is recommended to run this script using
 # the Windows version of Python. This will save you from potential inaccuracies and inconsistencies in the extracted cookie data.
 
+#!/usr/bin/env python3
+
 import os
 import json
 import base64
