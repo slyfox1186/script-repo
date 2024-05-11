@@ -3,7 +3,7 @@
 
 # GitHub: https://github.com/slyfox1186/ffmpeg-build-script
 # Script version: 3.7.0
-# Updated: 05.11.24
+# Updated: 05.10.24
 # Purpose: build ffmpeg from source code with addon development libraries
 #          also compiled from source to help ensure the latest functionality
 # Supported Distros: Debian 11|12
@@ -191,7 +191,7 @@ check_and_install_cargo_c() {
         ensure_no_cargo_or_rustc_processes
 
         # Perform cleanup only when it's safe
-        execute cargo clean
+        cargo clean 2>/dev/null
         find "$HOME/.cargo/registry/index" -type f -name ".cargo-lock" -delete
 
         # Install cargo-c
@@ -219,14 +219,13 @@ install_windows_hardware_acceleration() {
 }
 
 install_rustc() {
-    get_rustc_ver=$(rustc --version | grep -oP '[0-9.]+' | head -n1)
-    if [[ ! "$get_rustc_ver" == "1.77.2" ]]; then
-        echo "Installing RustUp"
-        curl -fsS --proto '=https' --tlsv1.2 'https://sh.rustup.rs' | sh -s -- --default-toolchain stable -y &>/dev/null
-        source "$HOME/.cargo/env"
-        [[ -f "$HOME/.zshrc" ]] && source "$HOME/.zshrc"
-        [[ -f "$HOME/.bashrc" ]] && source "$HOME/.bashrc"
-    fi
+    local get_rustc_ver
+    get_rustc_ver=$(curl -fsS "https://github.com/rust-lang/rust/tags/" | grep -oP 'href="[^"]*\K[0-9]+\.[0-9]+\.[0-9]+' | head -n1)
+    echo "Installing RustUp"
+    curl -fsS --proto '=https' --tlsv1.2 'https://sh.rustup.rs' | sh -s -- --default-toolchain stable -y &>/dev/null
+    source "$HOME/.cargo/env"
+    [[ -f "$HOME/.zshrc" ]] && source "$HOME/.zshrc"
+    [[ -f "$HOME/.bashrc" ]] && source "$HOME/.bashrc"
 }
 
 check_ffmpeg_version() {
@@ -2227,12 +2226,12 @@ fi
 CONFIGURE_OPTIONS+=("--enable-libaom")
 
 # Rav1e fails to build on Ubuntu Bionic and Debian 11 Bullseye
-if [[ "$VER" != "18.04" ]] && [[ "$VER" != "11" ]]; then
+if [[ "$VER" != "11" ]]; then
     find_git_repo "xiph/rav1e" "1" "T" "enabled"
     if build "rav1e" "$repo_version"; then
         install_rustc
-        download "https://github.com/xiph/rav1e/archive/refs/tags/$repo_version.tar.gz" "rav1e-$repo_version.tar.gz"
         check_and_install_cargo_c
+        download "https://github.com/xiph/rav1e/archive/refs/tags/$repo_version.tar.gz" "rav1e-$repo_version.tar.gz"
         rm -fr "$HOME/.cargo/registry/index/"* "$HOME/.cargo/.package-cache"
         execute cargo cinstall --prefix="$workspace" \
                                --library-type=staticlib \
