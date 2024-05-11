@@ -466,11 +466,11 @@ imow() {
         return 1
     fi
 
-    wget -cqO "optimize-jpg.sh" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.sh"
-    sudo chmod +x "optimize-jpg.sh"
-    LD_PRELOAD=libtcmalloc.so; ./optimize-jpg.sh --dir "$PWD" --overwrite
+    wget -cqO "optimize-jpg.sh" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.py"
+    sudo chmod +x "optimize-jpg.py"
+    LD_PRELOAD=libtcmalloc.so; python3 optimize-jpg.py
 
-    [[ -f "optimize-jpg.sh" ]] && sudo rm "optimize-jpg.sh"
+    [[ -f "optimize-jpg.sh" ]] && sudo rm "optimize-jpg.py"
 }
 
 # DOWNSAMPLE IMAGE TO 50% OF THE ORIGINAL DIMENSIONS USING SHARPER SETTINGS
