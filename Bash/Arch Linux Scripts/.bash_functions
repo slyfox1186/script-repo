@@ -1,4 +1,4 @@
-# EXPORT ANSI COLORS
+    # EXPORT ANSI COLORS
 BLUE="\033[0;34m"
 GREEN="\033[0;32m"
 RED="\033[0;31m"
@@ -466,7 +466,7 @@ imow() {
         return 1
     fi
 
-    wget -cqO "optimize-jpg.sh" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.py"
+    wget -cqO "optimize-jpg.py" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.py"
     sudo chmod +x "optimize-jpg.py"
     LD_PRELOAD=libtcmalloc.so; python3 optimize-jpg.py
 
