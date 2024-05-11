@@ -2,8 +2,8 @@
 # shellcheck disable=SC2068,SC2162,SC2317 source=/dev/null
 
 # GitHub: https://github.com/slyfox1186/ffmpeg-build-script
-# Script version: 3.6.9
-# Updated: 05.10.24
+# Script version: 3.7.0
+# Updated: 05.11.24
 # Purpose: build ffmpeg from source code with addon development libraries
 #          also compiled from source to help ensure the latest functionality
 # Supported Distros: Debian 11|12
@@ -19,7 +19,7 @@ fi
 
 # Define global variables
 script_name="${0}"
-script_version="3.6.9"
+script_version="3.7.0"
 cwd="$PWD/ffmpeg-build-script"
 mkdir -p "$cwd" && cd "$cwd" || exit 1
 if [[ "$PWD" =~ ffmpeg-build-script\/ffmpeg-build-script ]]; then
@@ -247,42 +247,35 @@ download() {
 
     if [[ "$download_file" =~ tar. ]]; then
         output_directory="${download_file%.*}"
-        output_directory="${3:-"${output_directory%.*}"}"
+        output_directory="${output_directory%.*}"
     else
-        output_directory="${3:-"${download_file%.*}"}"
+        output_directory="${download_file%.*}"
     fi
 
     target_file="$download_path/$download_file"
     target_directory="$download_path/$output_directory"
 
     if [[ -f "$target_file" ]]; then
-        echo "$download_file is already downloaded."
+        log "$download_file is already downloaded."
     else
-        echo "Downloading \"$download_url\" saving as \"$download_file\""
+        log "Downloading \"$download_url\" saving as \"$download_file\""
         if ! curl -LSso "$target_file" "$download_url"; then
             warn "Failed to download \"$download_file\". Second attempt in 3 seconds..."
             sleep 3
             curl -LSso "$target_file" "$download_url" || fail "Failed to download \"$download_file\". Exiting... Line: $LINENO"
         fi
-        echo "Download Completed"
+        log "Download Completed"
     fi
 
     [[ -d "$target_directory" ]] && rm -fr "$target_directory"
     mkdir -p "$target_directory"
 
-    if [[ -n "$3" ]]; then
-        if ! tar -xf "$target_file" -C "$target_directory" 2>/dev/null; then
-            rm "$target_file"
-            fail "Failed to extract the tarball \"$download_file\" and was deleted. Re-run the script to try again. Line: $LINENO"
-        fi
-    else
-        if ! tar -xf "$target_file" -C "$target_directory" --strip-components 1 2>/dev/null; then
-            rm "$target_file"
-            fail "Failed to extract the tarball \"$download_file\" and was deleted. Re-run the script to try again. Line: $LINENO"
-        fi
+    if ! tar -xf "$target_file" -C "$target_directory" --strip-components 1 2>/dev/null; then
+        rm "$target_file"
+        fail "Failed to extract the tarball \"$download_file\" and was deleted. Re-run the script to try again. Line: $LINENO"
     fi
 
-    printf "%s\n\n" "File extracted: $download_file"
+    log "File extracted: $download_file"
 
     cd "$target_directory" || fail "Failed to cd into \"$target_directory\". Line: $LINENO"
 }
@@ -335,7 +328,7 @@ git_clone() {
         elif [[ -n "$3" ]]; then
             target_directory="$download_path/$3"
         fi
-        rm -fr "$target_directory" 2>/dev/null
+        [[ -d "$target_directory" ]] && rm -fr "$target_directory"
         if ! git clone --depth 1 $recurse -q "$repo_url" "$target_directory"; then
             warn "Failed to clone \"$target_directory\". Second attempt in 3 seconds..."
             sleep 3
@@ -372,7 +365,7 @@ github_repo() {
                 continue
             fi
         else
-            curl_cmd=$(curl -fsSL "https://github.com/$repo/$url" | grep -o 'href="[^"]*\.tar\.gz"')
+            curl_cmd=$(curl -fsSL "https://github.com/$repo/$url" | grep -oP 'href="[^"]*\.tar\.gz"')
         fi
 
         line=$(echo "$curl_cmd" | grep -oP 'href="[^"]*\.tar\.gz"' | sed -n "${count}p")
@@ -385,7 +378,7 @@ github_repo() {
     done
 
     while [[ "$repo_version" =~ $git_regex ]]; do
-        curl_cmd=$(curl -fsSL "https://github.com/$repo/$url" | grep -o 'href="[^"]*\.tar\.gz"')
+        curl_cmd=$(curl -fsSL "https://github.com/$repo/$url" | grep -oP 'href="[^"]*\.tar\.gz"')
         line=$(echo "$curl_cmd" | grep -oP 'href="[^"]*\.tar\.gz"' | sed -n "${count}p")
         if echo "$line" | grep -qP 'v*(\d+[._]\d+(?:[._]\d*){0,2})\.tar\.gz'; then
             repo_version=$(echo "$line" | grep -oP '(\d+[._]\d+(?:[._]\d+){0,2})')
@@ -409,8 +402,9 @@ fetch_repo_version() {
     response=$(curl -fsS "$base_url/$project/$api_path") || fail "Failed to fetch data from $base_url/$project/$api_path in the function \"fetch_repo_version\". Line: $LINENO"
 
     version=$(echo "$response" | jq -r ".[$count]$version_jq_filter")
-    [[ "$base_url" != 536 ]] && while [[ "$version" =~ $git_regex ]]; do
-        version=$(echo "$response" | jq -r ".[$((++count))]$version_jq_filter")
+    while [[ "$version" =~ $git_regex ]]; do
+        ((++count))
+        version=$(echo "$response" | jq -r ".[$count]$version_jq_filter")
         [[ -z "$version" || "$version" == "null" ]] && fail "No suitable release version found in the function \"fetch_repo_version\". Line: $LINENO"
     done
 
@@ -627,8 +621,8 @@ fi
 MAKEFLAGS="-j$threads"
 
 if [[ -z "$COMPILER_FLAG" ]] || [[ "$COMPILER_FLAG" == "gcc" ]]; then
-    CC="gcc"
-    CXX="g++"
+    CC="gcc-12"
+    CXX="g++-12"
 elif [[ "$COMPILER_FLAG" == "clang" ]]; then
     CC="clang"
     CXX="clang++"
@@ -963,7 +957,7 @@ apt_pkgs() {
         $1 $libcppabi_pkg $libcpp_pkg $libunwind_pkg $nvidia_driver $nvidia_utils $openjdk_pkg $gcc_plugin_pkg
         asciidoc autoconf autoconf-archive automake autopoint bc binutils bison build-essential cargo ccache checkinstall
         curl doxygen fcitx-libs-dev flex flite1-dev gawk gcc gettext gimp-data git gnome-desktop-testing gnustep-gui-runtime
-        google-perftools gperf gtk-doc-tools guile-3.0-dev help2man jq junit ladspa-sdk lib32stdc++6 libasound2-dev
+        google-perftools gperf gtk-doc-tools guile-3.0-dev help2man imagemagick jq junit ladspa-sdk lib32stdc++6 libasound2-dev
         libass-dev libaudio-dev libavfilter-dev libbabl-0.1-0 libbluray-dev libbpf-dev libbs2b-dev libbz2-dev libc6 libc6-dev
         libcaca-dev libcairo2-dev libcdio-dev libcdio-paranoia-dev libcdparanoia-dev libchromaprint-dev libcjson-dev
         libcodec2-dev libcrypto++-dev libcurl4-openssl-dev libdav1d-dev libdbus-1-dev libde265-dev libdevil-dev libdmalloc-dev
@@ -1093,19 +1087,6 @@ if version_split.length() > 1\\n  pa_version_minor = version_split[1]\\nelse\\n 
     # Remove the original pa_version_minor and pa_version_micro lines
     sed -i '/pa_version_minor = version_split\[1\]/d' "meson.build"
     sed -i '/pa_version_micro = version_split\[2\]/d' "meson.build"
-}
-
-libpulse_fix_libs() {
-    local libpulse_lib pulse_version
-    pulse_version="$1"
-    libpulse_lib=$(find "$workspace/lib/" -type f -name "libpulsecommon-*.so" | head -n1)
-
-    mkdir -p "/usr/lib/x86_64-linux-gnu/pulseaudio"
-
-    if [[ -n "$libpulse_lib" ]]; then
-        execute cp -f "$libpulse_lib" "/usr/lib/x86_64-linux-gnu/pulseaudio/libpulsecommon-$pulse_version.so"
-        execute ln -sf "/usr/lib/x86_64-linux-gnu/pulseaudio/libpulsecommon-$pulse_version.so" "/usr/lib/x86_64-linux-gnu"
-    fi
 }
 
 find_latest_nasm_version() {
@@ -1364,16 +1345,20 @@ fi
 find_git_repo "mesonbuild/meson" "1" "T"
 if build "meson" "$repo_version"; then
     download "https://github.com/mesonbuild/meson/archive/refs/tags/$repo_version.tar.gz" "meson-$repo_version.tar.gz"
-
-    # Set up a Python virtual environment for Meson
-    setup_python_venv_and_install_packages "$workspace/python_virtual_environment/meson" "meson"
-
-    PATH="$ccache_dir:$workspace/python_virtual_environment/meson/bin:$PATH"
-    remove_duplicate_paths
+    execute python3 setup.py build
+    execute python3 setup.py install --prefix=/usr/local
     build_done "meson" "$repo_version"
-else
-    PATH="$ccache_dir:$workspace/python_virtual_environment/meson/bin:$PATH"
-    remove_duplicate_paths
+fi
+
+find_git_repo "ninja-build/ninja" "1" "T"
+if build "ninja" "$repo_version"; then
+    download "https://github.com/ninja-build/ninja/archive/refs/tags/v$repo_version.tar.gz" "ninja-$repo_version.tar.gz"
+    re2c_path="$(command -v re2c)"
+    execute cmake -B build -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_BUILD_TYPE=Release \
+                           -DRE2C="$re2c_path" -DBUILD_TESTING=OFF -Wno-dev
+    execute make "-j$threads" -C build
+    execute make -C build install
+    build_done "ninja" "$repo_version"  
 fi
 
 find_git_repo "facebook/zstd" "1" "T"
@@ -2059,24 +2044,6 @@ if build "libsndfile" "$repo_version"; then
     execute make install
     build_done "libsndfile" "$repo_version"
 fi
-
-git_caller "https://gitlab.freedesktop.org/pulseaudio/pulseaudio.git" "pulseaudio-git"
-if build "$repo_name" "${version//\$ /}"; then
-    echo "Cloning \"$repo_name\" saving version \"$version\""
-    git_clone "$git_url"
-    fix_pulse_meson_build_file
-    extracmds=("-D"{daemon,doxygen,ipv6,man,tests}"=false")
-    execute meson setup build --prefix="$workspace" \
-                              --buildtype=release \
-                              --default-library=static \
-                              --strip \
-                               "${extracmds[@]}"
-    execute ninja "-j$threads" -C build
-    execute ninja -C build install
-    libpulse_fix_libs "${version//\$ /}"
-    build_done "$repo_name" "$version"
-fi
-CONFIGURE_OPTIONS+=("--enable-libpulse")
 
 find_git_repo "xiph/ogg" "1" "T"
 if build "libogg" "$repo_version"; then
