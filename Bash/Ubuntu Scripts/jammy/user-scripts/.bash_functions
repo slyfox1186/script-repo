@@ -530,7 +530,7 @@ imow() {
     curl -LSso "optimize-jpg.sh" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.sh"
     sudo chmod +x "optimize-jpg.sh"
     LD_PRELOAD=libtcmalloc.so
-    if python3 optimize-jpg.sh; then
+    if bash optimize-jpg.sh -o -v; then
         sudo rm "optimize-jpg.sh"
     else
         echo "Failed to process images."
