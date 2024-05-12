@@ -47,10 +47,6 @@ def process_image(image_path, size=None, verbose=False):
         return False
 
 def process_images(directory, file_type, size=None, verbose=False, recursive=False, num_threads=None):
-    if num_threads < 1:
-        print("No threads left to attempt processing.")
-        return
-
     directory = Path(directory)
     if verbose:
         print(f"Processing images in directory with {num_threads} threads: {directory}")
@@ -68,12 +64,17 @@ def process_images(directory, file_type, size=None, verbose=False, recursive=Fal
 
     with ThreadPoolExecutor(max_workers=num_threads) as executor:
         future_to_image = {executor.submit(process_image, img, size, verbose): img for img in images}
-        results = {future: future.result() for future in as_completed(future_to_image)}
-
-    if not all(results.values()):
-        if verbose:
-            print("Some images failed to process, halving the number of threads and retrying...")
-        process_images(directory, file_type, size, verbose, recursive, max(1, num_threads // 2))
+        
+        for future in as_completed(future_to_image):
+            image = future_to_image[future]
+            success = future.result()
+            
+            if not success:
+                if verbose:
+                    print(f"Image {image} failed to process, halving the number of threads and retrying...")
+                num_threads = max(1, num_threads // 2)
+                process_images(directory, file_type, size, verbose, recursive, num_threads)
+                return
 
 def main():
     parser = argparse.ArgumentParser(description="Process images using ImageMagick with dynamic thread adjustment.")
