@@ -47,6 +47,14 @@ echo "Working directory: $working_dir"
 # Change to the specified working directory
 cd "$working_dir" || { echo "Specified directory $working_dir does not exist. Exiting."; exit 1; }
 
+# Check for running processes and terminate them
+for process in magick convert parallel; do
+    if pgrep -x "$process" > /dev/null; then
+        echo "Terminating running process: $process"
+        sudo killall -9 "$process"
+    fi
+done
+
 process_image() {
     infile="$1"
     local base_name="${infile%.*}"
