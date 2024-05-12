@@ -1,168 +1,160 @@
 #!/usr/bin/env bash
 
-##  GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-binutils.sh
-##  Purpose: build gnu binutils with GOLD enabled
-##  Updated: 03.18.2024 09:05:15 PM
-##  Script version: 2.0
-##  To create softlinks in the /usr/local/bin folder pass the argument -l to the script.
+# GitHub Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-binutils.sh
+# Purpose: build gnu binutils with GOLD enabled
+# Updated: 05.12.24
+# Script version: 2.1
 
-# Color Codes
-RED='\033[0;31m'
+if [[ "$EUID" -eq 0 ]]; then
+    echo "You must run this script without root or sudo."
+    exit 1
+fi
+
+CYAN='\033[0;36m'
 GREEN='\033[0;32m'
+RED='\033[0;31m'
 YELLOW='\033[0;33m'
-BLUE='\033[0;34m'
 NC='\033[0m'
 
-# Default Values
-PROGRAM="binutils"
-VERSION="2.39"
-PREFIX="/usr/local/${PROGRAM}-${VERSION}"
-BUILD_DIR="/tmp/${PROGRAM}-build-script"
-LOG_FILE="/tmp/${PROGRAM}_install.log"
-VERBOSE=0
-TEMP_DIR="/tmp/${PROGRAM}_temp"
+# Set the variables
+script_ver=2.1
+prog_name="binutils"
+version=$(curl -fsS "https://ftp.gnu.org/gnu/$prog_name/" | grep -oP 'binutils-\K([0-9.])+(?=\.tar\..*)' | sort -ruV | head -n1)
+archive_name="$prog_name-$version"
+archive_url="https://ftp.gnu.org/gnu/$prog_name/$prog_name-$version.tar.xz"
+archive_ext="${archive_url//*.}"
+tar_file="$archive_name.tar.$archive_ext"
+install_dir="/usr/local/$archive_name"
+cwd="$PWD/$archive_name-build-script"
+
+# Enhanced logging and error handling
+log() {
+    echo -e "${GREEN}[INFO]${NC} $1"
+}
 
 fail() {
-    echo -e "${RED}[FAIL] $1${NC}" | tee -a "$LOG_FILE"
+    echo -e "${RED}[ERROR]${NC} $1"
+    echo -e "To report a bug, create an issue at: https://github.com/slyfox1186/script-repo/issues"
     exit 1
 }
 
-warn() {
-    echo -e "${YELLOW}[WARN] $1${NC}" | tee -a "$LOG_FILE"
+echo "$prog_name build script - version $script_ver"
+echo "================================================="
+echo
+
+# Create functions
+exit_fn() {
+    echo
+    log "The script has completed"
+    log "${GREEN}Make sure to ${YELLOW}star ${GREEN}this repository to show your support!${NC}"
+    log "${CYAN}https://github.com/slyfox1186/script-repo${NC}"
+    exit 0
 }
 
-log() {
-    echo -e "${GREEN}[INFO] $1${NC}" | tee -a "$LOG_FILE"
+cleanup() {
+    sudo rm -fr "$cwd"
 }
 
-debug() {
-    if [[ $VERBOSE -eq 1 ]]; then
-        echo -e "${BLUE}[DEBUG] $1${NC}" | tee -a "$LOG_FILE"
-    fi
-}
+required_packages() {
+    local -a missing_pkgs pkgs
+    local pkg
+    pkgs=(
+        autoconf autoconf-archive automake binutils bison build-essential
+        ccache curl gettext libncursesw5-dev libpth-dev libreadline-dev
+        libticonv-dev libtool lzip m4
+    )
 
-usage() {
-    echo -e "${GREEN}Usage:${NC} $0 [OPTIONS]"
-    echo " -v    Specify ${PROGRAM} version (default: ${VERSION})"
-    echo " -p    Specify installation prefix (default: ${PREFIX})"
-    echo " -V    Enable verbose logging"
-    echo " -h    Display this help message"
-}
-
-parse_arguments() {
-    while getopts ":v:p:lVh" opt; do
-        case $opt in
-            v ) VERSION="$OPTARG" ;;
-            p ) PREFIX="/usr/local/${PROGRAM}-${OPTARG}" ;;
-            V ) VERBOSE=1 ;;
-            h ) usage; exit 0 ;;
-            \? ) fail "Invalid option: $OPTARG" ;;
-            : ) fail "Option -$OPTARG requires an argument." ;;
-        esac
-    done
-}
-
-check_dependencies() {
-    log "Checking dependencies..."
-    local deps=(wget tar make gcc)
-    local pkg_mgr
-
-    if command -v apt-get >/dev/null; then
-        pkg_mgr="apt-get"
-    elif command -v dnf >/dev/null; then
-        pkg_mgr="dnf"
-    elif command -v yum >/dev/null; then
-        pkg_mgr="yum"
-    else
-        fail "Unsupported package manager. Please install the required dependencies manually."
-    fi
-
-    for dep in "${deps[@]}"; do
-        if ! command -v "$dep" &>/dev/null; then
-            warn "Dependency not found: $dep. Installing..."
-            sudo "$pkg_mgr" install -y "$dep" || fail "Failed to install $dep."
+    missing_pkgs=()
+    for pkg in "${pkgs[@]}"; do
+        if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
+            missing_pkgs+=("$pkg")
         fi
     done
+
+    if [ ${#missing_pkgs[@]} -gt 0 ]; then
+        sudo apt update
+        sudo apt install "${missing_pkgs[@]}"
+    fi
+}
+
+set_compiler_flags() {
+    CC="gcc"
+    CXX="g++"
+    CFLAGS="-O2 -pipe -march=native -fstack-protector-strong"
+    CXXFLAGS="$CFLAGS"
+    CPPFLAGS="-D_FORTIFY_SOURCE=2"
+    LDFLAGS="-Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now,-rpath,$install_dir/lib"
+    PATH="/usr/lib/ccache:$PATH"
+    PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/pkgconfig"
+    export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS PATH PKG_CONFIG_PATH
 }
 
 install_autoconf() {
-    if [[ ! -x "$TEMP_DIR/autoconf-2.69/bin/autoconf" || "$($TEMP_DIR/autoconf-2.69/bin/autoconf --version | head -n1 | awk '{print $NF}')" != "2.69" ]]; then
+    if [[ ! -x "/tmp/autoconf-2.69/bin/autoconf" ]]; then
         log "Installing autoconf 2.69..."
-        mkdir -p "$TEMP_DIR/autoconf-2.69"
-        wget -cqO "$TEMP_DIR/autoconf-2.69/build-autoconf.sh" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-autoconf.sh"
-        cd "$TEMP_DIR/autoconf-2.69" || exit 1
+        mkdir -p "/tmp/autoconf-2.69"
+        wget -cqO "/tmp/autoconf-2.69/build-autoconf.sh" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-autoconf.sh"
+        cd "/tmp/autoconf-2.69" || exit 1
         bash build-autoconf.sh -v 2.69
         log "Autoconf 2.69 installed."
     else
         log "Autoconf 2.69 is already installed in the temporary directory."
     fi
-    export PATH="$TEMP_DIR/autoconf-2.69/autoconf-2.69/bin:$PATH"
+    export PATH="/tmp/autoconf-2.69/autoconf-2.69/bin:$PATH"
 }
 
-optimize_build() {
-    CC="ccache gcc"
-    CXX="ccache g++"
-    CFLAGS="-O2 -pipe -fno-plt -march=native -mtune=native"
-    CXXFLAGS="$CFLAGS"
-    export CC CFLAGS CXX CXXFLAGS
+download_archive() {
+    wget --show-progress -cqO "$cwd/$tar_file" "$archive_url" || fail "Failed to download archive with WGET. Line: $LINENO"
 }
 
-cleanup() {
-    if [[ $VERBOSE -eq 1 ]]; then
-        read -p "Remove build directory $BUILD_DIR? [Y/n] " -n 1 -r
-        echo
-    fi
-    [[ $VERBOSE -eq 0 || $REPLY =~ ^[Yy]$ ]] && rm -rf "$BUILD_DIR"
-    [[ -d "$TEMP_DIR" ]] && rm -rf "$TEMP_DIR"
+extract_archive() {
+    tar -Jxf "$cwd/$tar_file" -C "$cwd/$archive_name" --strip-components 1 || fail "Failed to extract: $cwd/$tar_file"
 }
 
-install_binutils() {
-    check_dependencies
-    optimize_build
+configure_build() {
+    cd "$cwd/$archive_name" || fail "Failed to cd into $cwd/$archive_name. Line: $LINENO"
+    autoreconf -fi
+    cd build || exit 1
+    ../configure --prefix="$install_dir" --disable-werror --with-zstd --with-system-zlib \
+                 --enable-lto --enable-year2038 --enable-ld=yes --enable-gold=yes || fail "Failed to execute: configure. Line: $LINENO"
+}
+
+compile_build() {
+    make "-j$(nproc --all)" || fail "Failed to execute: make build. Line: $LINENO"
+}
+
+install_build() {
+    sudo make install || fail "Failed execute: make install. Line: $LINENO"
+}
+
+ld_linker_path() {
+    echo "$install_dir/lib" | sudo tee "/etc/ld.so.conf.d/custom_$prog_name.conf" >/dev/null
+    sudo ldconfig
+}
+
+create_soft_links() {
+    sudo ln -sf "$install_dir/bin/"* "/usr/local/bin/"
+    sudo ln -sf "$install_dir/lib/pkgconfig/"*.pc "/usr/local/lib/pkgconfig/"
+    sudo ln -sf "$install_dir/include/"* "/usr/local/include/"
+}
+
+main_menu() {
+    # Create output directory
+    [[ -d "$cwd/$archive_name" ]] && sudo rm -fr "$cwd/$archive_name"
+    mkdir -p "$cwd/$archive_name/build"
+
+    required_packages
+    set_compiler_flags
     install_autoconf
-
-    mkdir -p "$BUILD_DIR"
-    cd "$BUILD_DIR"
-
-    if [[ ! -f "${PROGRAM}-${VERSION}.tar.xz" ]]; then
-        log "Downloading ${PROGRAM}-${VERSION}.tar.xz..."
-        wget --show-progress -qc "https://ftp.gnu.org/gnu/${PROGRAM}/${PROGRAM}-${VERSION}.tar.xz"
-    fi
-
-    tar xf "${PROGRAM}-${VERSION}.tar.xz"
-    cd "${PROGRAM}-${VERSION}"
-
-    log "Configuring ${PROGRAM} for ${TARGET}..."
-    ./configure --prefix="$PREFIX" --disable-werror --with-zstd \
-                --with-system-zlib --enable-lto --enable-year2038 --enable-ld=yes --enable-gold=yes 
-    log "Building ${PROGRAM} for ${TARGET}..."
-    make "-j$(nproc --all)"
-
-    log "Installing ${PROGRAM} for ${TARGET}..."
-    sudo make install
-
-    log "${PROGRAM} ${VERSION} for ${TARGET} installed to ${PREFIX}."
-}
-
-link_binutils() {
-    log "Linking ${PROGRAM} binaries to /usr/local/bin..."
-    for file in "${PREFIX}/bin/"*; do
-        local binary="${file##*/}"
-        sudo ln -sf "$file" "/usr/local/bin/$binary"
-    done
-}
-
-parse_arguments "$@"
-install_binutils
-link_binutils
-
-log "Installation completed successfully."
-
-read -p "Do you want to remove the build directory $BUILD_DIR? [Y/n] " -n 1 -r
-echo
-if [[ $REPLY =~ ^[Yy]$ ]]; then
+    download_archive
+    extract_archive
+    configure_build
+    compile_build
+    install_build
+    create_soft_links
+    ld_linker_path
     cleanup
-    log "Build directory removed."
-else
-    log "Build directory not removed."
-fi
+    exit_fn
+}
+
+main_menu "$@"
