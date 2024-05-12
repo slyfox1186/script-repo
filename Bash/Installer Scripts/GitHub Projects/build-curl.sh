@@ -1,11 +1,8 @@
 #!/usr/bin/env bash
 
 # GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-curl.sh
-# Purpose: Build the latest release version of cURL from source code
-# Updated: 05.11.24
-
-# Set strict mode for bash
-set -euo pipefail
+# Purpose: Build the latest release version of cURL from source code including nghttp3 support
+# Updated: 05.12.24
 
 # Define color variables
 RED='\033[0;31m'
@@ -30,22 +27,18 @@ log() {
 # Define program variables
 program="curl"
 cwd="$PWD/curl-build-script"
-version=$(curl -fsS "https://github.com/curl/curl/tags/" | grep -oP 'curl-([0-9_])+' | head -n1)
+version=$(curl -fsS "https://github.com/curl/curl/tags/" | grep -oP 'curl-\K([0-9_])+' | head -n1)
 ssh2_version=$(curl -fsS "https://github.com/libssh2/libssh2/tags/" | grep -oP 'libssh2-\K([0-9.])+' | head -n1)
-formatted_version=$(echo "$version" | sed "s/curl-//" | sed "s/_/\./g")
+nghttp3_version=$(curl -fsS "https://github.com/ngtcp2/nghttp3/tags/" | grep -oP 'v?\K([0-9.])+(?=\.tar\.[a-z]+)' | head -n1)
+formatted_version=$(echo "$version" | sed "s/_/\./g")
 tar_file="$cwd/$program-$formatted_version.tar.gz"
 extract_dir="$cwd/$program-$formatted_version"
 install_dir="/usr/local/$program-$formatted_version"
-certs_dir="/etc/ssl/certs"
-pem_file="cacert.pem"
-pem_out="$certs_dir/$pem_file"
+libssh2_install_dir="$cwd/libssh2-$ssh2_version"
+nghttp3_install_dir="$cwd/nghttp3-$nghttp3_version"
 
-# Check if OpenSSL is installed at /usr/local/ssl
-if [[ -d "/usr/local/ssl" ]]; then
-    openssl_prefix="/usr/local/ssl"
-else
-    openssl_prefix="/usr"
-fi
+# Define OpenSSL installation check
+openssl_prefix=$(if [[ -d "/usr/local/ssl" ]]; then echo "/usr/local/ssl"; else echo "/usr"; fi)
 
 # Define environment variables
 set_env_vars() {
@@ -55,213 +48,125 @@ set_env_vars() {
     CXXFLAGS="$CFLAGS"
     CPPFLAGS="-I$openssl_prefix/include -I/usr/include/libxml2 -D_FORTIFY_SOURCE=2"
     LDFLAGS="-Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now,-rpath,$install_dir/lib"
-    PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/pkgconfig"
+    PKG_CONFIG_PATH="$libssh2_install_dir/lib/pkgconfig:$nghttp3_install_dir/lib/pkgconfig:/usr/local/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/pkgconfig"
     export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS PKG_CONFIG_PATH
 }
 
-# Check and install dependencies
 apt_pkgs() {
-    local -a missing_pkgs pkgs
-    local pkg
-    pkgs=(
-        autoconf autoconf-archive autotools-dev build-essential curl
-        libcurl4 libcurl4-openssl-dev libc-ares-dev libnghttp2-dev
-        libpsl-dev libssh2-1-dev libssl-dev libtool libzstd-dev
+    local pkgs=(
+        autoconf autoconf-archive autotools-dev build-essential curl libcurl4 libcurl4-openssl-dev
+        libc-ares-dev libnghttp2-dev libpsl-dev libssh2-1-dev libssl-dev libtool libzstd-dev
         pkg-config zlib1g-dev
     )
 
-    missing_pkgs=()
+    missing_packages=()
+    available_packages=()
+    unavailable_packages=()
+
+    log "Checking package installation status..."
+
     for pkg in "${pkgs[@]}"; do
         if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
-            missing_pkgs+=("$pkg")
+            missing_packages+=("$pkg")
         fi
     done
 
-    if [ "${#missing_pkgs[@]}" -gt 0 ]; then
+    for pkg in "${missing_packages[@]}"; do
+        if apt-cache show "$pkg" >/dev/null 2>&1; then
+            available_packages+=("$pkg")
+        else
+            unavailable_packages+=("$pkg")
+        fi
+    done
+
+    if [ "${#unavailable_packages[@]}" -gt 0 ]; then
+        echo
+        warn "Unavailable packages:"
+        printf " %s\n" "${unavailable_packages[@]}"
+    fi
+
+    if [ "${#available_packages[@]}" -gt 0 ]; then
+        echo
+        log "Installing available missing packages:"
+        printf " %s\n" "${available_packages[@]}"
+        echo
+
         sudo apt update
-        sudo apt install "${missing_pkgs[@]}"
+        sudo apt install -y "${available_packages[@]}"
+
+        echo
+    else
+        log "No missing packages to install or all missing packages are unavailable."
+        echo
     fi
 }
 
-# Check if libcurl4 is installed, remove it, and reinstall it
-check_libcurl4() {
-    if dpkg-query -W -f='${Status}' libcurl4 2>/dev/null | grep -q "ok installed"; then
-        log "Removing libcurl4"
-        sudo apt -y remove --purge libcurl4
-        log "Reinstalling libcurl4"
-        sudo apt -y install libcurl4
-    fi
-}
-
-# Download and extract the libssh2 source code
+# Download and build libssh2
 get_libssh2_source() {
-    local ssh2_tar_file="$cwd/libssh2-$ssh2_version.tar.gz"
-    local ssh2_extract_dir="$cwd/libssh2-$ssh2_version"
-
-    if [[ ! -f "$ssh2_tar_file" ]]; then
-        log "Downloading libssh2 version $ssh2_version"
-        wget --show-progress -cqO "$ssh2_tar_file" "https://github.com/libssh2/libssh2/archive/refs/tags/libssh2-$ssh2_version.tar.gz"
-    else
-        log "The libssh2 tar file $ssh2_tar_file already exists, skipping download"
-    fi
-
-    if [[ -d "$ssh2_extract_dir" ]]; then
-        log "Removing existing directory $ssh2_extract_dir"
-        rm -rf "$ssh2_extract_dir"
-    fi
-
-    log "Creating directory $ssh2_extract_dir"
-    mkdir -p "$ssh2_extract_dir"
-
-    log "Extracting $ssh2_tar_file"
-    if ! tar -zxf "$ssh2_tar_file" -C "$ssh2_extract_dir" --strip-components=1; then
-        sudo rm -f "$ssh2_tar_file"
-        fail "The tar command was unable to extract the libssh2 archive so it was deleted. Re-run the script."
-    fi
-
-    cd "$ssh2_extract_dir" || exit 1
-}
-
-# Configure, compile, and install libssh2
-build_and_install_libssh2() {
-    local ssh2_install_dir
-    ssh2_install_dir="/usr/local/libssh2-$ssh2_version"
-
-    # Generate configuration scripts
+    wget --show-progress -cqO "$cwd/libssh2-$ssh2_version.tar.gz" "https://github.com/libssh2/libssh2/archive/refs/tags/libssh2-$ssh2_version.tar.gz"
+    tar -zxf "$cwd/libssh2-$ssh2_version.tar.gz" -C "$libssh2_install_dir" --strip-components 1
+    cd "$libssh2_install_dir"
     autoreconf -fi
-
-    # Create a build directory
-    mkdir -p build; cd build || fail "Failed to change into the libssh2 build directory. Line: $LINENO"
-
-    # Run the configure script
-    ../configure --prefix="$ssh2_install_dir" \
-                 --with-crypto=openssl \
-                 --with-libssl-prefix="$openssl_prefix" \
-                 --with-libz \
-                 --with-libz-prefix=/usr \
-                 --enable-static \
-                 --disable-examples-build \
-                 CPPFLAGS="$CPPFLAGS" || fail "libssh2 configuration failed. Line: $LINENO"
-
-    log "Compiling libssh2"
-    make "-j$(nproc --all)" || fail "libssh2 compilation failed. Line: $LINENO"
-
-    log "Installing libssh2"
-    sudo make install || fail "libssh2 installation failed. Line: $LINENO"
-
-    # Create soft links
-    [[ ! -d "/usr/local/lib64/pkgconfig" ]] && sudo mkdir -p "/usr/local/lib64/pkgconfig"
-    sudo ln -sf "$ssh2_install_dir/lib/pkgconfig/"*.pc "/usr/local/lib64/pkgconfig"
+    ./configure --prefix="$libssh2_install_dir" --with-openssl
+    make "-j$(nproc --all)" && sudo make install
 }
 
-# Download and extract the curl source code
-get_curl_source() {
-    if [[ ! -f "$tar_file" ]]; then
-        log "Downloading $program version $formatted_version"
-        wget --show-progress -cqO "$tar_file" "https://github.com/curl/curl/archive/refs/tags/$version.tar.gz"
-    else
-        log "The tar file $tar_file already exists, skipping download"
-    fi
+# Function to clone nghttp3 and initialize submodules
+get_nghttp3_source() {
+    echo "Cloning nghttp3 with all submodules..."
+    git clone --recurse-submodules "https://github.com/ngtcp2/nghttp3.git" "$nghttp3_install_dir"
 
-    if [[ -d "$extract_dir" ]]; then
-        log "Removing existing directory $extract_dir"
-        rm -rf "$extract_dir"
-    fi
+    # Navigate into the cloned directory
+    cd "$nghttp3_install_dir"
 
-    log "Creating directory $extract_dir"
-    mkdir -p "$extract_dir"
-
-    log "Extracting $tar_file"
-    if ! tar -zxf "$tar_file" -C "$extract_dir" --strip-components=1; then
-        sudo rm -f "$tar_file"
-        fail "The tar command was unable to extract the curl archive so it was deleted. Re-run the script."
-    fi
-
-    cd "$extract_dir" || exit 1
+    # Additional build steps
+    autoreconf -fi
+    ./configure --prefix="$nghttp3_install_dir" --enable-lib-only
+    make "-j$(nproc --all)" && \
+    sudo make install
 }
 
-# Install ca certs from curl's official website
-install_ca_certs() {
-    if [[ ! -f "$pem_out" ]]; then
-        curl -Lso "$pem_file" "https://curl.se/ca/$pem_file"
-        sudo cp -f "$pem_file" "$pem_out"
-    fi
-
-    if type -P update-ca-certificates &>/dev/null; then
-        sudo update-ca-certificates
-    fi
-}
-
-set_custom_ld_linker_paths() {
-    wget --show-progress -cqO "/tmp/ld-custom-paths.sh" "https://ld.optimizethis.net"
-    if sudo bash "/tmp/ld-custom-paths.sh"; then
-        sudo rm "/tmp/ld-custom-paths.sh"
-    else
-        echo "Failed to install the custom ld linker paths. Line: $LINENO"
-        exit 1
-    fi
-    sudo ldconfig
-}
-
-# Configure, compile, and install curl
+# Download and build cURL with nghttp3 support
 build_and_install_curl() {
+    wget --show-progress -cqO "$tar_file" "https://github.com/curl/curl/archive/refs/tags/curl-$version.tar.gz"
+    tar -zxf "$tar_file" -C "$extract_dir" --strip-components=1
+    cd "$extract_dir"
+    autoreconf -fi
     local dopts=('--disable-'{get-easy-options,shared,verbose,versioned-symbols})
     local eopts=('--enable-'{alt-svc,ares,cookies,dict,dnsshuffle,doh,file,ftp,gopher})
     eopts+=('--enable-'{headers-api,hsts,http,http-auth,imap,ipv6,ldap,ldaps,libcurl-option,libgcc,manual})
     eopts+=('--enable-'{mime,mqtt,netrc,ntlm,ntlm-wb='/usr/bin/ntlm_auth',openssl-auto-load-config})
     eopts+=('--enable-'{optimize,pop3,progress-meter,proxy,pthreads,rtsp,smb,smtp,socketpair,sspi,static})
     eopts+=('--enable-'{telnet,tftp,threaded-resolver,tls-srp,unix-sockets,websockets})
-    local wopts=('--with-'{libssh2,nghttp2,nghttp3,openssl,ssl,zlib})
-    wopts+=('--with-'{ca-bundle="$pem_out",ca-fallback,ca-path="$certs_dir",secure-transport})
-    wopts+=('--with-ssl="$openssl_prefix"')
-
-    # Generate configuration scripts
-    autoreconf -fi
-
-    # Create a build directory
-    mkdir -p build; cd build || fail "Failed to change into the curl build directory. Line: $LINENO"
-
-    # Run the configure script
-    ../configure --prefix="$install_dir" \
-                 "${dopts[@]}" \
-                 "${eopts[@]}" \
-                 "${wopts[@]}" \
-                 CPPFLAGS="$CPPFLAGS" || fail "curl configuration failed. Line: $LINENO"
-
-    log "Compiling $program"
-    make "-j$(nproc --all)" || fail "curl compilation failed. Line: $LINENO"
-
-    log "Installing $program"
-    sudo make install || fail "curl installation failed. Line: $LINENO"
-
-    # Create soft links
-    sudo ln -sf "$install_dir/bin/$program" "/usr/local/bin/"
-    [[ ! -d "/usr/local/lib64/pkgconfig" ]] && sudo mkdir -p "/usr/local/lib64/pkgconfig"
-    sudo ln -sf "$install_dir/lib/pkgconfig/"*.pc "/usr/local/lib64/pkgconfig"
-}
-
-# Display the installed version
-display_version() {
-    local version
-    version=$("$install_dir/bin/$program" --version | head -n1 | awk '{print $2}')
-    log "The installed version of $program is: $version"
-}
-
-# Cleanup
-cleanup() {
-    sudo rm -fr "$cwd"
-    log "$program installation completed successfully"
+    local wopts=('--with-'{libssh2="$libssh2_install_dir",ngtcp2=/usr,nghttp2=/usr,nghttp3="$nghttp3_install_dir",openssl="$openssl_prefix",ssl,zlib})
+    wopts+=('--with-'{ca-bundle="/etc/ssl/certs/cacert.pem",ca-fallback,ca-path="/etc/ssl/certs",secure-transport})
+    ./configure --prefix="$install_dir" "${dopts[@]}" "${eopts[@]}" "${wopts[@]}" CPPFLAGS="-I$nghttp3_install_dir/include $CPPFLAGS" \
+    LDFLAGS="-L$nghttp3_install_dir/lib $LDFLAGS"
+    make "-j$(nproc --all)" && sudo make install
 }
 
 # Parse command line arguments
 usage() {
-    echo "Usage: ./$0 [OPTIONS]"
+    echo "Usage: $0 [OPTIONS]"
+    echo
+    echo "Arguments:"
     echo "  -h, --help       Display this help message"
-    echo "  -v, --version    Display the installed version of $program"
+    echo "  -v, --version    Set the version of cURL to install"
+    echo "  -l, --list       List available versions of cURL"
+    echo "  -p, --preset     Set the installation path for cURL (default: /usr/local/curl-version)"
+    echo "  -c, --compiler   Set the compiler type (gcc or clang, default: gcc)"
+    echo "  -u, --uninstall  Uninstall cURL instead of installing"
     echo
-    echo "./$0"
-    echo "./$0 -v"
+    echo "Examples:"
+    echo "  $0 --version 7.88.1"
+    echo "  $0 --preset /opt/curl --compiler clang"
+    echo "  $0 --uninstall"
     echo
+}
+
+list_versions() {
+    echo "Available versions:"
+    curl -fsS "https://github.com/curl/curl/tags/" | grep -oP 'curl-\K([0-9_])+' | sed "s/_/\./g" | sort -ruV
 }
 
 parse_args() {
@@ -272,37 +177,52 @@ parse_args() {
                 exit 0
                 ;;
             -v|--version)
-                display_version
+                version="$2"
+                if [[ "$version" =~ \. ]]; then
+                    version="${version//\./_}"
+                fi
+                shift
+                ;;
+            -l|--list)
+                list_versions
                 exit 0
+                ;;
+            -p|--preset)
+                install_dir="$2"
+                shift
+                ;;
+            -c|--compiler)
+                CC="$2"
+                CXX="$2++"
+                shift
+                ;;
+            -u|--uninstall)
+                install_mode="uninstall"
                 ;;
             *)  warn "Unknown argument: $1"
                 usage
                 exit 1
                 ;;
         esac
+        shift
     done
 }
 
-# Main script
+# Main function to run tasks
 main() {
-    if [[ "$EUID" -eq 0 ]]; then
-        fail "You must run this script without root or sudo. Line: $LINENO"
-    fi
-
-    mkdir -p "$cwd"
-
     parse_args "$@"
     set_env_vars
     apt_pkgs
+    mkdir -p "$extract_dir" "$libssh2_install_dir" "$nghttp3_install_dir"
     get_libssh2_source
-    build_and_install_libssh2
-    get_curl_source
-    install_ca_certs
+    get_nghttp3_source
     build_and_install_curl
-    set_custom_ld_linker_paths
-    check_libcurl4
-    display_version
-    cleanup
+    if [[ "$install_mode" == "install" ]]; then
+        log "$program installation completed successfully at $install_dir"
+    else
+        log "$program uninstallation completed successfully"
+    fi
+    rm -rf "$cwd"
 }
 
 main "$@"
