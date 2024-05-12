@@ -49,7 +49,7 @@ cd "$working_dir" || { echo "Specified directory $working_dir does not exist. Ex
 
 # Check for running processes and terminate them
 for process in magick convert parallel; do
-    if pgrep -x "$process" > /dev/null; then
+    if pgrep -x "$process" >/dev/null; then
         echo "Terminating running process: $process"
         sudo killall -9 "$process"
     fi
