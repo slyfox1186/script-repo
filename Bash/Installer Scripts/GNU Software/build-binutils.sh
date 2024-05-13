@@ -128,7 +128,8 @@ install_build() {
 }
 
 ld_linker_path() {
-    echo "$install_dir/lib" | sudo tee "/etc/ld.so.conf.d/custom_$prog_name.conf" >/dev/null
+    echo "$install_dir/lib/usr/local/binutils-2.42/lib/bfd-plugins" | sudo tee "/etc/ld.so.conf.d/custom_$prog_name.conf" >/dev/null
+    echo "$install_dir/lib/usr/local/binutils-2.42/lib/gprofng" | sudo tee -a "/etc/ld.so.conf.d/custom_$prog_name.conf" >/dev/null
     sudo ldconfig
 }
 
