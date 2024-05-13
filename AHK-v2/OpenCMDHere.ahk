@@ -1,6 +1,8 @@
 /*____________________________________________________________________________________
     OpenCMDHereNew.ahk
 
+    GitHub: https://github.com/slyfox1186/script-repo/blob/main/AHK-v2/OpenCMDHere.ahk
+
     Mechanism of action:
       - Opens a cmd.exe window to the active explorer window's current folder, otherwise
         it will open cmd.exe to the current user's downloads folder.
