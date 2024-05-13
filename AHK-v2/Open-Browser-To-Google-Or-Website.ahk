@@ -16,9 +16,9 @@
     https://github.com/slyfox1186/script-repo/
 */
 
-^!c Up::
+^!c::
 {
-    browser := "C:\Program Files\Google\Chrome\Application\chrome.exe" ; Update this path as necessary
+    Browser := A_ProgramFiles . "\Google\Chrome Beta\Application\chrome.exe" ; Update this path as necessary
     win := "ahk_class Chrome_WidgetWin_1 ahk_exe chrome.exe"
 
     ClipSaved := ClipboardAll()  ; Save the current Clipboard contents
@@ -26,11 +26,8 @@
 
     Send("^c")
     if !ClipWait(1)
-    {
-        MsgBox "The attempt to copy text onto the clipboard failed."
-        return
-    }
-
+        A_Clipboard := ClipSaved
+    
     ; Trim whitespace from the clipboard text for accurate URL detection
     searchText := Trim(A_Clipboard, " `t`r`n")
 
@@ -39,15 +36,17 @@
     searchOrUrl := isUrl ? searchText : "https://www.google.com/search?q=" . searchText
 
     ; Open the browser with the URL or search query
-    ff_cmd := '"' . browser . '"' . " --new-tab " . '"' . searchOrUrl . '"'
+    ff_cmd := '"' . Browser . '"' . " --new-tab " . '"' . searchOrUrl . '"'
     Run(ff_cmd,, "Max")
 
     ; Attempt to bring the browser window to the foreground
     If !WinExist(win)
+    {
         WinWait(win,, 2)
-    WinActivate(win)
-    WinMaximize(win)
-    
+        WinActivate(win)
+        WinMaximize(win)
+    }
+
     ; Restore the original clipboard content
     A_Clipboard := ClipSaved
 }
