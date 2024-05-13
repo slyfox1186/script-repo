@@ -10,22 +10,22 @@
 
     Authors:
       - SlyFox1186
+      - https://www.reddit.com/user/plankoe/
 */
 
 #SingleInstance Force
 SetWorkingDir A_ScriptDir
 
-!c::OpenCMDHereNew()
+!c::OpenCMDHere()
 
-OpenCMDHereNew() {
-    explorerWinTitle := "ahk_class CabinetWClass ahk_exe explorer.exe"
-    cmdWinTitle := "ahk_class ConsoleWindowClass ahk_exe cmd.exe"
+OpenCMDHere() {
+    win := "ahk_class ConsoleWindowClass ahk_exe cmd.exe"
 
-    if !WinActive(explorerWinTitle) {
-        downloadsFolder := GetDownloadsFolder()
-        Run A_ComSpec ' /E:ON /T:0A /K pushd "' downloadsFolder '"',, "Max", &outputPID
-        If WinWait("ahk_pid " outputPID,, 1)
-            WinActivate
+    if !WinActive("ahk_class CabinetWClass ahk_exe explorer.exe") {
+        downloadsFolder := FindDownloadsFolder()
+        Run(A_ComSpec ' /E:ON /T:0A /K pushd "' downloadsFolder '"',, "Max", &winPID)
+        If WinWait(win . " ahk_pid " winPID,, 1)
+            WinActivate(win)
         return
     }
 
@@ -53,12 +53,12 @@ OpenCMDHereNew() {
         }
     }
 
-    Run A_ComSpec ' /E:ON /T:0A /K pushd ' pwd,, "Max", &winPID
-    if WinWait("ahk_pid " winPID,, 1)
-        WinActivate
+    Run(A_ComSpec ' /E:ON /T:0A /K pushd ' pwd,, "Max", &winPID)
+    if WinWait(win . " ahk_pid " winPID,, 1)
+        WinActivate(win)
 }
 
-GetDownloadsFolder() {
+FindDownloadsFolder() {
     downloadsFolder := ""
     if (FileExist(A_MyDocuments "\Downloads"))
         downloadsFolder := A_MyDocuments "\Downloads"
