@@ -1,5 +1,5 @@
 /*____________________________________________________________________________________
-    OpenCMDHereNew.ahk
+    OpenCMDHere.ahk
 
     GitHub: https://github.com/slyfox1186/script-repo/blob/main/AHK-v2/OpenCMDHere.ahk
 
