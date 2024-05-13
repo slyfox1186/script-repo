@@ -22,11 +22,11 @@ def process_image(image_path):
 
             # Calculate scale to preserve aspect ratio
             scale = min(max_width / orig_width, max_height / orig_height, 1)
-            new_width = int(orig_width * scale)
-            new_height = int(orig_height * scale)
 
             # Resizing if necessary
             if scale < 1:
+                new_width = int(orig_width * scale)
+                new_height = int(orig_height * scale)
                 print(f"Resizing {image_path} from {orig_width}x{orig_height} to {new_width}x{new_height}...")
                 img = img.resize((new_width, new_height), Image.LANCZOS)
                 img.save(image_path, 'JPEG', quality=82)  # Overwrite the original image
@@ -51,6 +51,10 @@ def process_image(image_path):
         subprocess.run(command, check=True)
         print(f"Processed and saved as: {im_output_path}")
 
+        # Remove the original input file
+        os.remove(image_path)
+        print(f"Removed original file: {image_path}")
+
         return True
     except subprocess.CalledProcessError as e:
         print(f"Failed to process {image_path} with ImageMagick: {e}")
@@ -60,7 +64,7 @@ def process_image(image_path):
         return False
 
 def process_images(directory):
-    images = [os.path.join(directory, f) for f in os.listdir(directory) if f.endswith('.jpg') and '-IM.jpg' not in f]
+    images = [os.path.join(directory, f) for f in os.listdir(directory) if f.lower().endswith('.jpg') and '-IM.jpg' not in f]
     max_workers = os.cpu_count()  # Use all available CPU cores
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         results = list(executor.map(process_image, images))
