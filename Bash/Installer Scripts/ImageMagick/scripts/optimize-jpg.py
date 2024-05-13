@@ -7,7 +7,7 @@ import sys
 from concurrent.futures import ThreadPoolExecutor
 
 # Increase the maximum number of pixels that can be processed by Pillow.
-Image.MAX_IMAGE_PIXELS = None  # Consider setting a specific limit if needed
+Image.MAX_IMAGE_PIXELS = None  # Optionally set a specific limit
 
 def process_image(image_path):
     # Skip files that have already been processed and marked with "-IM"
@@ -32,7 +32,7 @@ def process_image(image_path):
                 img.save(image_path, 'JPEG', quality=82)  # Overwrite the original image
                 print(f"Resized: {image_path}")
 
-        # ImageMagick convert command to further process and overwrite the original file
+        # Process the image with ImageMagick and save it with -IM suffix
         im_output_path = os.path.splitext(image_path)[0] + '-IM.jpg'
         command = [
             'convert', image_path,
@@ -49,8 +49,7 @@ def process_image(image_path):
         ]
 
         subprocess.run(command, check=True)
-        os.rename(im_output_path, image_path)  # Overwrite the original image with the processed image
-        print(f"Processed and saved as: {image_path}")
+        print(f"Processed and saved as: {im_output_path}")
 
         return True
     except subprocess.CalledProcessError as e:
@@ -62,7 +61,8 @@ def process_image(image_path):
 
 def process_images(directory):
     images = [os.path.join(directory, f) for f in os.listdir(directory) if f.endswith('.jpg') and '-IM.jpg' not in f]
-    with ThreadPoolExecutor(max_workers=4) as executor:
+    max_workers = os.cpu_count()  # Use all available CPU cores
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
         results = list(executor.map(process_image, images))
 
     print(f"Processing completed: {sum(results)} images successfully processed.")
