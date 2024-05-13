@@ -527,11 +527,11 @@ rmf() {
 
 ## IMAGEMAGICK ##
 imow() {
-    curl -LSso "optimize-jpg.sh" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.sh"
-    sudo chmod +x "optimize-jpg.sh"
+    curl -LSso "optimize-jpg.py" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.py"
+    sudo chmod +x "optimize-jpg.py"
     LD_PRELOAD=libtcmalloc.so
-    if bash optimize-jpg.sh -o -v; then
-        sudo rm "optimize-jpg.sh"
+    if python3 optimize-jpg.py; then
+        sudo rm "optimize-jpg.py"
     else
         echo "Failed to process images."
         google_speech "Failed to process images." &>/dev/null
