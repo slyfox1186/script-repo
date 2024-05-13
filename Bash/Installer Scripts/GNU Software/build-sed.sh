@@ -97,7 +97,7 @@ configure_build() {
 
     autoreconf -fi
     cd build || exit 1
-    ../configure --prefix="$install_dir" --enable-threads=posix --disable-nls \
+    ../configure --prefix="$install_dir/$archive_name" --enable-threads=posix --disable-nls \
                  --with-libiconv-prefix=/usr --with-libintl-prefix=/usr || fail "Failed to execute: configure. Line: $LINENO"
 }
 
