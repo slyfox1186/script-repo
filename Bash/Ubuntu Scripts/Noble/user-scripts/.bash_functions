@@ -12,7 +12,7 @@ export BLUE GREEN NC RED YELLOW
 
 ## WHEN LAUNCHING CERTAIN PROGRAMS FROM THE TERMINAL, SUPPRESS ANY WARNING MESSAGES ##
 gedit() {
-    $(type -P gedit) "$@" &>/dev/null
+    eval $(type -P gedit) "$@" &>/dev/null
 }
 
 geds() {
@@ -20,7 +20,7 @@ geds() {
 }
 
 gnome-text-editor() {
-    $(type -P gnome-text-editor) "$@" &>/dev/null
+    eval $(type -P gnome-text-editor) "$@" &>/dev/null
 }
 
 gnome-text-editors() {
@@ -527,47 +527,15 @@ rmf() {
 
 ## IMAGEMAGICK ##
 imow() {
-    # Function to replace lines in the policy.xml file
-    replace_lines() {
-        local policy_file="$1"
-        local temp_file=$(mktemp)
-
-        sudo grep -v '<!-- <policy domain="resource" name="thread".*/>-->' "$policy_file" | sudo sed '/<policy domain="resource" name="thread"/i \
-            <policy domain="resource" name="thread" value="32"/>' > "$temp_file"
-        sudo grep -v '<!-- <policy domain="resource" name="file".*/>-->' "$temp_file" | sudo sed '/<policy domain="resource" name="file"/i \
-            <policy domain="resource" name="file" value="999999"/>' > "$temp_file.tmp" && mv "$temp_file.tmp" "$temp_file"
-        sudo grep -v '<!-- <policy domain="resource" name="memory".*/>-->' "$temp_file" | sudo sed '/<policy domain="resource" name="memory"/i \
-            <policy domain="resource" name="memory" value="32GiB"/>' > "$temp_file.tmp" && mv "$temp_file.tmp" "$temp_file"
-        sudo grep -v '<!-- <policy domain="resource" name="map".*/>-->' "$temp_file" | sudo sed '/<policy domain="resource" name="map"/i \
-            <policy domain="resource" name="map" value="32GiB"/>' > "$temp_file.tmp" && mv "$temp_file.tmp" "$temp_file"
-        sudo grep -v '<!-- <policy domain="resource" name="area".*/>-->' "$temp_file" | sudo sed '/<policy domain="resource" name="area"/i \
-            <policy domain="resource" name="area" value="16GiB"/>' > "$temp_file.tmp" && mv "$temp_file.tmp" "$temp_file"
-        sudo grep -v '<!-- <policy domain="resource" name="disk".*/>-->' "$temp_file" | sudo sed '/<policy domain="resource" name="disk"/i \
-            <policy domain="resource" name="disk" value="999GiB"/>' > "$temp_file.tmp" && mv "$temp_file.tmp" "$temp_file"
-        sudo grep -v '<!-- <policy domain="resource" name="width".*/>-->' "$temp_file" | sudo sed '/<policy domain="resource" name="width"/i \
-            <policy domain="resource" name="width" value="64KP"/>' > "$temp_file.tmp" && mv "$temp_file.tmp" "$temp_file"
-        sudo grep -v '<!-- <policy domain="resource" name="height".*/>-->' "$temp_file" | sudo sed '/<policy domain="resource" name="height"/i \
-            <policy domain="resource" name="height" value="64KP"/>' > "$temp_file.tmp" && mv "$temp_file.tmp" "$temp_file"
-
-        sudo mv "$temp_file" "$policy_file"
-    }
-
-    # Find the policy.xml file dynamically in /usr/local and /usr
-    policy_file=$(find /usr/local /usr -type f -path "*/etc/ImageMagick-7/policy.xml" -print -quit)
-
-    if [ -n "$policy_file" ]; then
-        replace_lines "$policy_file"
-        echo "Lines replaced successfully in $policy_file"
+    curl -LSso "optimize-jpg.py" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.py"
+    sudo chmod +x "optimize-jpg.py"
+    LD_PRELOAD=libtcmalloc.so
+    if python3 optimize-jpg.py; then
+        sudo rm "optimize-jpg.py"
     else
-        echo "policy.xml file not found in /usr/local or /usr"
-        return 1
+        echo "Failed to process images."
+        google_speech "Failed to process images." &>/dev/null
     fi
-
-    wget -cqO "optimize-jpg.sh" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.sh"
-    sudo chmod +x "optimize-jpg.sh"
-    LD_PRELOAD=libtcmalloc.so; ./optimize-jpg.sh --dir "$PWD" --overwrite
-
-    [[ -f "optimize-jpg.sh" ]] && sudo rm "optimize-jpg.sh"
 }
 
 # Downsample image to 50% of the original dimensions using sharper settings
@@ -974,12 +942,11 @@ int main(void)
 EOF
 
     if [[ -n "$1" ]]; then
-        "$1" -Q -v "$random_dir/hello.c"
+        "$1" -v "$random_dir/hello.c" -o "$random_dir/hello" && "$random_dir/hello"
     else
-        clear
         read -p "Enter the Clang binary you wish to test (example: clang-11): " choice
         echo
-        "$choice" -Q -v "$random_dir/hello.c"
+        "$choice" -v "$random_dir/hello.c" -o "$random_dir/hello" && "$random_dir/hello"
     fi
     sudo rm -fr "$random_dir"
 }
@@ -1128,59 +1095,99 @@ update_icons() {
 ############
 
 adl() {
-    if [[ "$#" -ne 2 ]]; then
+local file url
+
+if [[ "$#" -ne 2 ]]; then
+    echo "Error: Two arguments are required: output file and download URL"
+    return 1
+fi
+
+if ! command -v aria2c &>/dev/null; then
+    echo "aria2c is missing and will be installed."
+    sleep 3
+    bash <(curl -fsSL "https://aria2.optimizethis.net")
+fi
+
+file="$1"
+
+# Check if the file extension is missing and append '.mp4' if needed
+ext_regex='\*.mp4'
+
+if [[ "$file" != $ext_regex ]]; then
+    file+=".mp4"
+fi
+
+url="$2"
+
+if [[ ! -f "$HOME/.aria2/aria2.conf" ]]; then 
+    mkdir -p "$HOME/.aria2"
+    if ! wget -cqO "/tmp/create-aria2-folder.sh" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Misc/Networking/create-aria2-folder.sh"; then
+        echo "Failed to download the aria2.conf installer script."
+        return 1
+    fi
+    if ! bash "/tmp/create-aria2-folder.sh"; then
+        echo "Failed to execute: /tmp/create-aria2-folder.sh"
+        return 1
+    fi
+fi
+    aria2c --conf-path="$HOME/.aria2/aria2.conf" --out="$file" "$url"
+}
+
+padl() {
+    # Get the clipboard contents using PowerShell
+    clipboard=$(pwsh.exe -Command "Get-Clipboard")
+
+    # Split the clipboard contents into an array using whitespace as the delimiter
+    IFS=' ' read -r -a args <<< "$clipboard"
+
+    # Check if the number of arguments is less than 2
+    if [ ${#args[@]} -lt 2 ]; then
         echo "Error: Two arguments are required: output file and download URL"
         return 1
     fi
 
-    local file="$1"
-    local url="$2"
+    # Extract the first argument as the output file
+    output_file="${args[0]}"
 
-    # Use optimal settings for aria2c with a Gigabit connection
-    if aria2c --console-log-level=error \
-        -x128 \
-        -j32 \
-        -s64 \
-        -k1M \
-        --optimize-concurrent-downloads=true \
-        --piece-length=1M \
-        --allow-overwrite=true \
-        --allow-piece-length-change=true \
-        --always-resume=true \
-        --auto-file-renaming=false \
-        --disk-cache=512M \
-        --file-allocation=none \
-        --continue=true \
-        --max-overall-upload-limit=0 \
-        --max-upload-limit=0 \
-        --max-overall-download-limit=0 \
-        --max-download-limit=0 \
-        --out="$file" \
-        "$url"; then
-        echo "Download completed."
-    else
-        echo "Download failed."
-    fi
+    # Extract the remaining arguments as the download URL and remove trailing whitespace
+    url=$(echo "${args[@]:1}" | tr -d '[:space:]')
 
-    clear; ls -1AhFv --color --group-directories-first
+    # Call the 'adl' function with the output file and URL as separate arguments
+    adl "$output_file" "$url"
 }
 
 ## GET FILE SIZES ##
 big_files() {
-    local count
-    if [[ -n "$1" ]]; then
-        count=$1
-    else
-        read -p "Enter how many files to list in the results: " count
-        echo
-    fi
-    echo "$count largest files"
-    echo
-    sudo find "$PWD" -type f -exec du -Sh {} + | sort -hr | head -n"$count"
-    echo
-    echo "$count largest folders"
-    echo
-    sudo du -Bm "$PWD" 2>/dev/null | sort -hr | head -n"$count"
+  # Check if an argument is provided
+  if [ -n "$1" ] && [[ "$1" =~ ^[0-9]+$ ]]; then
+    num_results=$1
+  else
+    # Prompt the user to enter the number of results
+    read -p "Enter the number of results to display: " num_results
+    while ! [[ "$num_results" =~ ^[0-9]+$ ]]; do
+      read -p "Invalid input. Enter a valid number: " num_results
+    done
+  fi
+
+  echo "Largest Folders:"
+  max_width=$(du -h -d 1 | sort -hr | head -n "$num_results" | awk '{print length($2)}' | sort -nr | head -n 1)
+  du -h -d 1 | sort -hr | head -n "$num_results" | while read -r size folder; do
+    full_path=$(realpath "$folder")
+    printf "%-*s %10s\n" $((max_width + 10)) "$full_path" "$size"
+  done
+
+  echo
+
+  echo "Largest Files:"
+  max_width=$(find . -type f -exec du -h {} + | sort -hr | head -n "$num_results" | awk '{print length($2)}' | sort -nr | head -n 1)
+  find . -type f -exec du -h {} + | sort -hr | head -n "$num_results" | while read -r size file; do
+    full_path=$(realpath "$file")
+    printf "%-*s %10s\n" $((max_width + 10)) "$full_path" "$size"
+  done
+}
+
+big_file () {
+    find . -type f -print0 | du -ha --files0-from=- | LC_ALL='C' sort -rh | head -n $1
 }
 
 big_vids() {
@@ -1718,29 +1725,54 @@ check_port() {
 dlu() {
     local domain_list=("${@:-$(read -p "Enter the domain(s) to pass: " -a domain_list && echo "${domain_list[@]}")}")
 
-    if [[ -f /usr/local/bin/domain_lookup.py ]]; then
-        python3 /usr/local/bin/domain_lookup.py "${domain_list[@]}"
-    else
-        printf "\n%s\n\n" "The Python script not found at /usr/local/bin/domain_lookup.py"
+    if [[ ! -f /usr/local/bin/domain_lookup.py ]]; then
+        sudo wget -cqO /usr/local/bin/domain_lookup.py "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Python3/domain_lookup.py"
+        sudo chmod +x /usr/local/bin/domain_lookup.py
     fi
+        python3 /usr/local/bin/domain_lookup.py "${domain_list[@]}"
 }
 
 # Python Virtual Environment
 venv() {
-    [[ -n "$VIRTUAL_ENV" ]] && {
-        echo -e "\n${YELLOW}Deactivating current virtual environment...${NC}\n"
-        deactivate
-        return 0
-    }
+    local choice arg random_dir
+    random_dir=$(mktemp -d)
+    wget -cqO "$random_dir/pip-venv-installer.sh" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Misc/Python3/pip-venv-installer.sh"
 
-    if [[ -d "venv" ]]; then
-        echo -e "\n${YELLOW}Activating virtual environment...${NC}\n"
-        source venv/bin/activate
-    else
-        echo -e "\n${YELLOW}Creating and activating virtual environment...${NC}\n"
-        python3 -m venv venv
-        source venv/bin/activate
-    fi
+    case "$#" in
+        0)
+            printf "\n%s\%s\%s\%s\%s\%s\%s\%s\%s\%s\n\n" \
+                "[h]elp" \
+                "[l]ist" \
+                "[i]mport" \
+                "[c]reate" \
+                "[u]pdate" \
+                "[d]elete" \
+                "[a]dd" \
+                "[U]pgrade" \
+                "[r]emove" \
+                "[p]ath"
+            read -p "Choose a letter: " choice
+            case "$choice" in
+                h) arg="-h" ;;
+                l) arg="-l" ;;
+                i) arg="-i" ;;
+                c) arg="-c" ;;
+                u) arg="-u" ;;
+                d) arg="-d" ;;
+                a|U|r)
+                    read -p "Enter package names (space-separated): " pkgs
+                    arg="-$choice $pkgs"
+                    ;;
+                p) arg="-p" ;;
+                *) clear && venv ;;
+            esac
+            ;;
+        *)
+            arg="$@"
+            ;;
+    esac
+
+    bash "$random_dir/pip-venv-installer.sh" $arg
 }
 
 # Correct Lazy AI Responses
@@ -1866,5 +1898,269 @@ sai() {
         else
             echo "$save_text" | xclip -select -clipboard
         fi
+    fi
+}
+
+
+# GitHub Script-Repo Script Menu
+script_repo() {
+  echo "Select a script to install:"
+  options=(
+    [1]="Linux Build Menu"
+    [2]="Build All GNU Scripts"
+    [3]="Build All GitHub Scripts"
+    [4]="Install GCC Latest Version"
+    [5]="Install Clang"
+    [6]="Install Latest 7-Zip Version"
+    [7]="Install ImageMagick 7"
+    [8]="Compile FFmpeg from Source"
+    [9]="Install OpenSSL Latest Version"
+    [10]="Install Rust Programming Language"
+    [11]="Install Essential Build Tools"
+    [12]="Install Aria2 with Enhanced Configurations"
+    [13]="Add Custom Mirrors for /etc/apt/sources.list"
+    [14]="Customize Your Shell Environment"
+    [15]="Install Adobe Fonts System-Wide"
+    [16]="Debian Package Downloader"
+    [17]="Install Tilix"
+    [18]="Install Python 3.12.0"
+    [19]="Update WSL2 with the Latest Linux Kernel"
+    [20]="Enhance GParted with Extra Functionality"
+    [21]="Quit"
+  )
+
+  select opt in "${options[@]}"; do
+    case $opt in
+      "Linux Build Menu")
+        bash <(curl -fsSL "https://build-menu.optimizethis.net")
+        break
+        ;;
+      "Build All GNU Scripts")
+        bash <(curl -fsSL "https://build-all-gnu.optimizethis.net")
+        break
+        ;;
+      "Build All GitHub Scripts")
+        bash <(curl -fsSL "https://build-all-git.optimizethis.net")
+        break
+        ;;
+      "Install GCC Latest Version")
+        curl -LSso build-gcc.sh "https://gcc.optimizethis.net"
+        sudo bash build-gcc.sh
+        break
+        ;;
+      "Install Clang")
+        curl -LSso build-clang.sh "https://build-clang.optimizethis.net"
+        sudo bash build-clang.sh --help
+        echo
+        read -p "Enter your chosen arguments: (e.g. -c -v 17.0.6): " clang_args
+        sudo bash build-ffmpeg.sh $clang_args
+        break
+        ;;
+      "Install Latest 7-Zip Version")
+        bash <(curl -fsSL "https://7z.optimizethis.net")
+        break
+        ;;
+      "Install ImageMagick 7")
+        curl -LSso build-magick.sh "https://imagick.optimizethis.net"
+        sudo bash build-magick.sh
+        break
+        ;;
+      "Compile FFmpeg from Source")
+        git clone "https://github.com/slyfox1186/ffmpeg-build-script.git"
+        cd ffmpeg-build-script || exit 1
+        clear
+        sudo ./build-ffmpeg.sh -h
+        read -p "Enter your chosen arguments: (e.g. --build --gpl-and-nonfree --latest): " ff_args
+        sudo ./build-ffmpeg.sh $ff_args
+        break
+        ;;
+      "Install OpenSSL Latest Version")
+        curl -LSso build-openssl.sh "https://ossl.optimizethis.net"
+        echo
+        read -p "Enter arguments for OpenSSL (e.g., '-v 3.1.5'): " openssl_args
+        sudo bash build-openssl.sh $openssl_args
+        break
+        ;;
+      "Install Rust Programming Language")
+        bash <(curl -fsSL "https://rust.optimizethis.net")
+        break
+        ;;
+      "Install Essential Build Tools")
+        curl -LSso build-tools.sh "https://build-tools.optimizethis.net"
+        sudo bash build-tools.sh
+        break
+        ;;
+      "Install Aria2 with Enhanced Configurations")
+        sudo curl -LSso build-aria2.sh "https://aria2.optimizethis.net"
+        sudo bash build-aria2.sh
+        break
+        ;;
+      "Add Custom Mirrors for /etc/apt/sources.list")
+        bash <(curl -fsSL "https://mirrors.optimizethis.net")
+        break
+        ;;
+      "Customize Your Shell Environment")
+        bash <(curl -fsSL "https://user-scripts.optimizethis.net")
+        break
+        ;;
+      "Install Adobe Fonts System-Wide")
+        bash <(curl -fsSL "https://adobe-fonts.optimizethis.net")
+        break
+        ;;
+      "Debian Package Downloader")
+        curl -LSso debian-package-downloader.sh "https://download.optimizethis.net"
+        echo
+        read -p "Enter an apt package name (e.g., clang-15): " deb_pkg_args
+        sudo bash debian-package-downloader.sh $deb_pkg_args
+        break
+        ;;
+      "Install Tilix")
+        curl -LSso build-tilix.sh "https://tilix.optimizethis.net"
+        sudo bash build-tilix.sh
+        break
+        ;;
+      "Install Python 3.12.0")
+        curl -LSso build-python3.sh "https://python3.optimizethis.net"
+        sudo bash build-python3.sh
+        break
+        ;;
+      "Update WSL2 with the Latest Linux Kernel")
+        curl -LSso build-wsl2-kernel.sh "https://wsl.optimizethis.net"
+        sudo bash build-wsl2-kernel.sh
+        break
+        ;;
+      "Enhance GParted with Extra Functionality")
+        bash <(curl -fsSL "https://gparted.optimizethis.net")
+        break
+        ;;
+      "Quit")
+        break
+        ;;
+      *) echo "Invalid option $REPLY";;
+    esac
+  done
+}
+
+# Open a browser and search the string passed to the function
+
+www() {
+    local browser input keyword url urlRegex
+    if [ "$#" -eq 0 ]; then
+        echo "Usage: www <url or keywords>"
+        exit 1
+    fi
+
+    # Regex to check if the input is a valid URL
+    urlRegex='^(https?://)?[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,5}(:[0-9]{1,5})?(/.*)?$'
+
+    # Join all arguments to form the input
+    input="${*}"
+
+    # Check if the system is WSL and set the appropriate browser executable
+    if [[ $(grep -i "microsoft" /proc/version) ]]; then
+        browser="/c/Program Files/Google/Chrome Beta/Application/chrome.exe"
+        if [[ ! -f "$browser" ]]; then
+            echo "No supported WSL browsers found."
+            return 1
+        fi
+    else
+        if command -v chrome &>/dev/null; then
+            browser="chrome"
+        elif command -v firefox &>/dev/null; then
+            browser="firefox"
+        elif command -v chromium &>/dev/null; then
+            browser="chromium"
+        elif command -v firefox-esr &>/dev/null; then
+            browser="firefox-esr"
+        else
+            echo "No supported Native Linux browsers found."
+            return 1
+        fi
+    fi
+
+    # Determine if input is a URL or a search query
+    if [[ $input =~ $urlRegex ]]; then
+        # If it is a URL, open it directly
+        url=$input
+        # Ensure the URL starts with http:// or https://
+        [[ $url =~ ^https?:// ]] || url="http://$url"
+        "$browser" --new-tab "$url"
+    else
+        # If it is not a URL, search Google
+        keyword="${input// /+}"
+        "$browser" --new-tab "https://www.google.com/search?q=$keyword"
+    fi
+}
+
+# The master script download menu for github repository script-repo
+dlmaster() {
+    local script_path="/usr/local/bin/download-master.py"
+    local script_url="https://raw.githubusercontent.com/slyfox1186/script-repo/main/Python3/download-master.py"
+
+    # Check if the script exists
+    if [[ ! -f "$script_path" ]]; then
+        echo "The required script does not exist. Downloading now."
+        # Download the script
+        sudo curl -LSso "$script_path" "$script_url"    
+        # Set the owner to root and permissions to 755
+        sudo chown root:root "$script_path"
+        sudo chmod 755 "$script_path"
+        echo "The required script was successfully installed."
+        sleep 3
+        clear
+    fi
+
+    # Run the script
+    python3 "$script_path"
+}
+
+# Aria2c batch downloader
+adt() {
+    local json_script="add-video-to-json.py"
+    local run_script="batch-downloader.py"
+    local repo_base="https://raw.githubusercontent.com/slyfox1186/script-repo/main/Python3/aria2"
+
+    # Check and download Python scripts if they don't exist
+    for script in "$json_script" "$run_script"; do
+        if [ ! -f "$script" ]; then
+            echo "Downloading $script from GitHub..."
+            if ! curl -LSso "$script" "$repo_base/$script"; then
+                echo "Error: Failed to download $script from GitHub." >&2
+                return 1
+            fi
+            echo "$script downloaded successfully."
+        fi
+    done
+
+    # Prompt for video details
+    echo "Enter the video details:"
+    read -p "Filename: " filename
+    read -p "Extension: " extension
+    read -p "Path: " path
+    read -p "URL: " url
+
+    # Validate input
+    if [[ -z "$filename" || -z "$extension" || -z "$path" || -z "$url" ]]; then
+        echo "Error: All fields are required." >&2
+        return 1
+    fi
+
+    # Call the Python script with the provided arguments
+    echo "Adding video details to JSON file..."
+    if ! output=$(python3 "$json_script" "$filename" "$extension" "$path" "$url" 2>&1); then
+        echo "Error: Failed to add video details." >&2
+        echo "Python script error output:" >&2
+        echo "$output" >&2
+        return 1
+    fi
+    echo "Video details added successfully:"
+    echo "$output"
+
+    # Check for '--run' argument before executing batch downloader
+    if [[ "$1" == "--run" ]]; then
+        echo "Starting batch download..."
+        python3 "$run_script"
+    else
+        echo "Batch download not initiated. Pass '--run' to start downloading."
     fi
 }
