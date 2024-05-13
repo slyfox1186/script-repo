@@ -57,7 +57,7 @@ check_dependencies() {
     sudo apt update
     sudo apt install autoconf automake build-essential bzip2 curl gfortran \
                      libcurl4-openssl-dev libexpat1-dev libgcrypt20-dev \
-                     libgpgme-dev libssl-dev libunistring-dev pkg-config \
+                     libgpgme-dev libssl-dev libunistring-dev lzip pkg-config \
                      zlib1g-dev
 }
 
