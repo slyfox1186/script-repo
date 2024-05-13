@@ -136,14 +136,12 @@ download() {
 
     [[ -d "$target_dir" ]] && rm -fr "$target_dir"
     mkdir -p "$target_dir"
-    
-    if [[ -n "$3" ]]; then
-        if ! tar -xf "$target_file" -C "$target_dir" --strip-components 1 2>&1; then
-            rm "$target_file"
-            fail "The script failed to extract $dl_file so it was deleted. Please re-run the script. Line: $LINENO"
-        fi
+
+    if ! tar -xf "$target_file" -C "$target_dir" --strip-components 1 2>&1; then
+        rm "$target_file"
+        fail "The script failed to extract $dl_file so it was deleted. Please re-run the script. Line: $LINENO"
     fi
-    
+
     log "File extracted: $dl_file"
     cd "$target_dir" || fail "Unable to change the working directory to: $target_dir. Line: $LINENO"
 }
