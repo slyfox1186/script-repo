@@ -72,7 +72,7 @@ def process_image(image_path):
 
 def process_images(directory):
     images = [os.path.join(directory, f) for f in os.listdir(directory) if f.lower().endswith('.jpg') and '-IM.jpg' not in f]
-    max_workers = os.cpu_count()  # Use all available CPU cores
+    max_workers = 16  # Set the maximum number of threads to 16
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         results = list(executor.map(process_image, images))
 
