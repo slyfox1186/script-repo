@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 
 import os
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 import subprocess
-import sys
 from concurrent.futures import ThreadPoolExecutor
 
 # Increase the maximum number of pixels that can be processed by Pillow.
@@ -48,16 +47,24 @@ def process_image(image_path):
             im_output_path
         ]
 
-        subprocess.run(command, check=True)
-        print(f"Processed and saved as: {im_output_path}")
+        try:
+            subprocess.run(command, check=True)
+            print(f"Processed and saved as: {im_output_path}")
 
-        # Remove the original input file
-        os.remove(image_path)
-        print(f"Removed original file: {image_path}")
+            # Remove the original input file
+            os.remove(image_path)
+            print(f"Removed original file: {image_path}")
 
-        return True
-    except subprocess.CalledProcessError as e:
-        print(f"Failed to process {image_path} with ImageMagick: {e}")
+            return True
+        except subprocess.CalledProcessError as e:
+            if "Memory allocation failed" in e.stderr:
+                print(f"Skipping {image_path} due to memory allocation error.")
+                return False
+            else:
+                print(f"Failed to process {image_path} with ImageMagick: {e}")
+                return False
+    except (UnidentifiedImageError, OSError) as e:
+        print(f"Skipping corrupt or invalid file: {image_path}. Error: {str(e)}")
         return False
     except Exception as e:
         print(f"An error occurred while processing {image_path}: {e}")
@@ -70,6 +77,13 @@ def process_images(directory):
         results = list(executor.map(process_image, images))
 
     print(f"Processing completed: {sum(results)} images successfully processed.")
+
+def cleanup():
+    current_process = psutil.Process()
+    children = current_process.children(recursive=True)
+    for child in children:
+        if 'convert' in child.name():
+            child.terminate()
 
 if __name__ == "__main__":
     script_directory = os.path.dirname(os.path.realpath(__file__))  # Use the script's directory
