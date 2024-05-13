@@ -1,14 +1,9 @@
 #!/usr/bin/env bash
 
-##  Github: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-tar.sh
-##  Purpose: build gnu tar
-##  Updated: 08.08.24
-##  Script version: 2.1
-
-if [[ "$EUID" -eq 0 ]]; then
-    echo "You must run this script without root or sudo."
-    exit 1
-fi
+# Github: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-tar.sh
+# Purpose: build gnu tar
+# Updated: 05.13.24
+# Script version: 2.2
 
 CYAN='\033[0;36m'
 GREEN='\033[0;32m'
@@ -17,15 +12,12 @@ YELLOW='\033[0;33m'
 NC='\033[0m'
 
 # Set the variables
-script_ver=2.1
+script_ver=2.2
 prog_name="tar"
-version=$(curl -fsS "https://ftp.gnu.org/gnu/$prog_name/" | grep -oP 'tar-\K[0-9]\.[0-9]+' | sort -ruV | head -n1)
-archive_name="$prog_name-$version"
-archive_url="https://ftp.gnu.org/gnu/$prog_name/$prog_name-$version.tar.xz"
-archive_ext="${archive_url//*.}"
-tar_file="$archive_name.tar.$archive_ext"
-install_dir="/usr/local/$archive_name"
-cwd="$PWD/$archive_name-build-script"
+default_version=$(curl -fsS "https://ftp.gnu.org/gnu/$prog_name/" | grep -oP '\d\.[\d.]+(?=\.tar\.[a-z]+)' | sort -ruV | head -n1)
+install_dir="/usr/local"
+cwd="$PWD/$prog_name-build-script"
+compiler="gcc"
 
 # Enhanced logging and error handling
 log() {
@@ -38,12 +30,16 @@ fail() {
     exit 1
 }
 
-echo "$prog_name build script - version $script_ver"
-echo "================================================="
-echo
+print_usage() {
+    echo "Usage: $0 [OPTIONS]"
+    echo "  -v, --version VERSION       Set the version of $prog_name to install (default: $default_version)"
+    echo "  -l, --list                  List available versions of $prog_name"
+    echo "  -u, --uninstall             Uninstall $prog_name"
+    echo "  -c, --compiler COMPILER     Set the compiler to use (clang) instead of the default: $compiler"
+    echo "  -h, --help                  Display this help and exit"
+}
 
-# Create functions
-exit_fn() {
+exit_function() {
     echo
     log "The script has completed"
     log "${GREEN}Make sure to ${YELLOW}star ${GREEN}this repository to show your support!${NC}"
@@ -78,14 +74,14 @@ required_packages() {
 }
 
 set_compiler_flags() {
-    CC="gcc"
-    CXX="g++"
-    CFLAGS="-O2 -march=native"
+    CC="$compiler"
+    CXX="$compiler++"
+    CFLAGS="-O2 -pipe -march=native"
     CXXFLAGS="$CFLAGS"
     LDFLAGS="-Wl,-rpath,$install_dir/lib"
-    PATH="/usr/lib/ccache:$HOME/perl5/bin:$HOME/.cargo/bin:$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin"
+    PATH="/usr/lib/ccache:$PATH"
     PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/pkgconfig"
-    export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS PATH PKG_CONFIG_PATH
+    export CC CXX CFLAGS CXXFLAGS LDFLAGS PATH PKG_CONFIG_PATH
 }
 
 download_archive() {
@@ -101,7 +97,7 @@ configure_build() {
 
     autoreconf -fi
     cd build || exit 1
-    ../configure --prefix="$install_dir" --disable-nls --disable-gcc-warnings --with-bzip2="$(type -P bzip2)" \
+    ../configure --prefix="$install_dir/$archive_name" --disable-nls --disable-gcc-warnings --with-bzip2="$(type -P bzip2)" \
                  --with-lzip="$(type -P lzip)" --with-lzma="$(type -P lzma)" --with-xz="$(type -P xz)" \
                  --with-zstd="$(type -P zstd)" --with-lzop="$(type -P lzop)" --with-gzip="$(type -P gzip)" \
                  --with-libiconv-prefix=/usr --with-libintl-prefix=/usr || fail "Failed to execute: configure. Line: $LINENO"
@@ -116,17 +112,75 @@ install_build() {
 }
 
 ld_linker_path() {
-    echo "$install_dir/lib" | sudo tee "/etc/ld.so.conf.d/custom_$prog_name.conf" >/dev/null
+    echo "$install_dir/$archive_name/lib" | sudo tee "/etc/ld.so.conf.d/custom_$prog_name.conf" >/dev/null
     sudo ldconfig
 }
 
 create_soft_links() {
-    sudo ln -sf "$install_dir/bin/"* "/usr/local/bin/"
-    sudo ln -sf "$install_dir/lib/pkgconfig/"*.pc "/usr/local/lib/pkgconfig/"
-    sudo ln -sf "$install_dir/include/"* "/usr/local/include/"
+    [[ -d "$install_dir/$archive_name/bin" ]] && sudo ln -sf "$install_dir/$archive_name/bin/"* "/usr/local/bin/"
+    [[ -d "$install_dir/$archive_name/lib/pkgconfig" ]] && sudo ln -sf "$install_dir/$archive_name/lib/pkgconfig/"*.pc "/usr/local/lib/pkgconfig/"
+    [[ -d "$install_dir/$archive_name/include" ]] && sudo ln -sf "$install_dir/$archive_name/include/"* "/usr/local/include/"
+}
+
+uninstall_tar() {
+    local tar_dir
+    tar_dir="$install_dir/$archive_name"
+    if [[ -d "$tar_dir" ]]; then
+        log "Uninstalling $prog_name from $tar_dir"
+        sudo rm -rf "$tar_dir"
+        sudo rm "/etc/ld.so.conf.d/custom_$prog_name.conf"
+        sudo ldconfig
+        log "$prog_name has been uninstalled"
+    else
+        log "$prog_name is not installed"
+    fi
+}
+
+list_versions() {
+    log "Available versions of $prog_name:"
+    curl -fsS "https://ftp.gnu.org/gnu/$prog_name/" | grep -oP '\d\.[\d.]+(?=\.tar\.[a-z]+)' | sort -ruV
 }
 
 main_menu() {
+    # Parse command-line arguments
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -v|--version)
+                version="$2"
+                shift 2
+                ;;
+            -l|--list)
+                list_versions
+                exit 0
+                ;;
+            -u|--uninstall)
+                uninstall_tar
+                exit 0
+                ;;
+            -c|--compiler)
+                compiler="$2"
+                shift 2
+                ;;
+            -h|--help)
+                print_usage
+                exit 0
+                ;;
+            *)
+                fail "Invalid option: $1"
+                ;;
+        esac
+    done
+
+    if [[ -z "$version" ]]; then
+        version="$default_version"
+        log "No version specified, using default version: $version"
+    fi
+
+    archive_name="$prog_name-$version"
+    archive_url="https://ftp.gnu.org/gnu/$prog_name/$prog_name-$version.tar.xz"
+    archive_ext="${archive_url//*.}"
+    tar_file="$archive_name.tar.$archive_ext"
+
     # Create output directory
     [[ -d "$cwd/$archive_name" ]] && sudo rm -fr "$cwd/$archive_name"
     mkdir -p "$cwd/$archive_name/build"
@@ -138,10 +192,15 @@ main_menu() {
     configure_build
     compile_build
     install_build
-    ld_linker_path
+    [[ -d "$install_dir/$archive_name/lib" ]] && ld_linker_path
     create_soft_links
     cleanup
-    exit_fn
+    exit_function
 }
+
+if [[ "$EUID" -eq 0 ]]; then
+    echo "You must run this script without root or sudo."
+    exit 1
+fi
 
 main_menu "$@"
