@@ -18,7 +18,7 @@
 
 ^!c::
 {
-    Browser := A_ProgramFiles . "\Google\Chrome Beta\Application\chrome.exe" ; Update this path as necessary
+    Browser := GetDefaultBrowser()
     win := "ahk_class Chrome_WidgetWin_1 ahk_exe chrome.exe"
 
     ClipSaved := ClipboardAll()  ; Save the current Clipboard contents
@@ -49,4 +49,25 @@
 
     ; Restore the original clipboard content
     A_Clipboard := ClipSaved
+}
+
+
+GetDefaultBrowser() {
+    ; Retrieve the ProgId for the default browser
+    userChoice := RegRead("HKCU\Software\Microsoft\Windows\Shell\Associations\UrlAssociations\http\UserChoice", "ProgId")
+
+    ; Check if we got a ProgId, then find the browser path
+    if (userChoice != "")
+    {
+        ; Retrieve the application associated with the ProgId
+        applicationPath := RegRead("HKCR\" . userChoice . "\shell\open\command",, "Default")
+
+        ; Format the path to remove any command-line parameters
+        if (applicationPath != "")
+        {
+            applicationPath := RegExReplace(applicationPath, '"\s*--.*$', '"')
+            applicationPath := StrReplace(applicationPath, '"', "")  ; Remove quotation marks for clarity
+        }
+    }
+    return applicationPath
 }
