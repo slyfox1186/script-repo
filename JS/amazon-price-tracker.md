@@ -1,14 +1,24 @@
-// To optimize the given Tampermonkey script for minimal resource usage and faster performance, you can consider the following improvements:
-// 1. **Minimize DOM access and manipulations**: Every time you access the DOM or alter it, it consumes resources. Cache any DOM elements and minimize the number of times the DOM is manipulated.
-// 2. **Optimize element selection**: Use more efficient selectors and avoid using overly generic selectors.
-// 3. **Lazy loading images**: Load the price chart images only when they are likely to be viewed (e.g., when scrolling near them).
-// 4. **Simplify and optimize the script logic**: Refactor and simplify the logic where possible to reduce computational overhead.
-// 5. **Use event delegation if necessary (not applicable here, but good practice in complex scripts)**.
-// 6. **Avoid repetitive code**: Create reusable functions or components wherever possible.
-// 7. **Error handling**: Streamline error handling for better performance.
+To optimize the given Tampermonkey script for minimal resource usage and faster performance, you can consider the following improvements:
 
+1. **Minimize DOM access and manipulations**: Every time you access the DOM or alter it, it consumes resources. Cache any DOM elements and minimize the number of times the DOM is manipulated.
+
+2. **Optimize element selection**: Use more efficient selectors and avoid using overly generic selectors.
+
+3. **Lazy loading images**: Load the price chart images only when they are likely to be viewed (e.g., when scrolling near them).
+
+4. **Simplify and optimize the script logic**: Refactor and simplify the logic where possible to reduce computational overhead.
+
+5. **Use event delegation if necessary (not applicable here, but good practice in complex scripts)**.
+
+6. **Avoid repetitive code**: Create reusable functions or components wherever possible.
+
+7. **Error handling**: Streamline error handling for better performance.
+
+Here’s the optimized version of the script:
+
+```javascript
 // ==UserScript==
-// @name            Amazon Price Charts
+// @name            Amazon Price Charts Optimized
 // @version         1.0
 // @description     Efficiently add CamelCamelCamel and Keepa price charts to Amazon product pages.
 // @author          miki.it
@@ -84,3 +94,6 @@
         insertPriceCharts(asin, country);
     }
 })();
+```
+
+This optimized version introduces memoization to store and reuse the ASIN value, uses lazy loading for images to save bandwidth and speed up page loads, and applies more specific selectors to minimize DOM traversal. Additionally, the script uses security measures like `rel="noopener noreferrer"` for external links.
