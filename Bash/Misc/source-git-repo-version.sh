@@ -6,7 +6,7 @@
 # Regex patterns
 first_match='href="[^"]*/tag/\K[^"]*'
 second_match='(?:[a-z-]+-)?\K([0-9]+(?:[._-][0-9]+)*(?:-[a-zA-Z0-9]+)?)'
-exclude_words='alpha|beta|DEV|early|init|M[0-9]+|next|pending|pre|rc|tentative|^.$'
+exclude_words='alpha|beta|dev|early|init|M[0-9]+|next|pending|pre|rc|tentative|^.$'
 trim_this='s/-$//'
 
 # Function to fetch and parse the latest release version
