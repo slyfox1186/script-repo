@@ -12,8 +12,9 @@ trim_this='s/-$//'
 
 # Function to fetch and parse the latest release version
 get_latest_release_version() {
-    local url="$1"
-    local tags_url="${url%.*}/tags"  # Adjust the URL to point to the tags page
+    local tags_url url
+    url="$1"
+    tags_url="${url%.*}/tags"  # Adjust the URL to point to the tags page
 
     # Correct usage of the pipe with curl and grep commands
     latest_version=$(curl -fsSL "$url" | parse_version)
