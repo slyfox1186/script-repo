@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            Amazon Price Charts
 // @version         1.0
-// @description     Add CamelCamelCamel and Keepa price charts to Amazon product pages with optimized resource usage.
+// @description     Efficiently add CamelCamelCamel and Keepa price charts to Amazon product pages.
 // @author          miki.it
 // @namespace       null
 // @homepage        url
@@ -13,39 +13,48 @@
 (function() {
     'use strict';
 
-    // Function to retrieve ASIN from the page
-    const getASIN = () => {
-        const asinElement = document.getElementById("ASIN") || document.querySelector('[name="ASIN"]');
+    // Utilize memoization to avoid redundant DOM access
+    const memoize = (fn) => {
+        const cache = new Map();
+        return function(...args) {
+            const key = JSON.stringify(args);
+            if (cache.has(key)) return cache.get(key);
+            const result = fn.apply(this, args);
+            cache.set(key, result);
+            return result;
+        };
+    };
+
+    // Efficiently fetch ASIN from page with memoization
+    const getASIN = memoize(() => {
+        const asinElement = document.getElementById("ASIN") || document.querySelector('input[name="ASIN"]');
         if (!asinElement) {
             console.error("Unable to find ASIN on the page.");
             return null;
         }
         return asinElement.value;
-    };
+    });
 
-    // Function to create a chart container
+    // Create chart container with minimal overhead
     const createChartContainer = (url, imgUrl, width, height) => {
         const link = document.createElement("a");
         link.href = url;
         link.target = "_blank";
+        link.rel = "noopener noreferrer"; // Security measure
 
-        const img = document.createElement("img");
+        const img = new Image(width, height);
         img.src = imgUrl;
-        img.width = width;
-        img.height = height;
+        img.loading = "lazy"; // Utilize lazy loading
 
         link.appendChild(img);
-        const container = document.createElement("div");
-        container.appendChild(link);
-        return container;
+        return link;
     };
 
-    // Function to insert price charts into the page
+    // Efficient insertion of price charts
     const insertPriceCharts = (asin, country) => {
-        const parentElement = document.getElementById("unifiedPrice_feature_div") || document.getElementById("MediaMatrix");
+        const parentElement = document.getElementById("unifiedPrice_feature_div") || document.querySelector("#MediaMatrix");
         if (!parentElement) {
-            console.error("Unable to find a suitable parent element for inserting the price charts.");
-            return;
+            return console.error("Unable to find a suitable parent element for inserting the price charts.");
         }
 
         const camelUrl = `https://${country}.camelcamelcamel.com/product/${asin}`;
@@ -53,17 +62,16 @@
         const keepaUrl = `https://keepa.com/#!product/5-${asin}`;
         const keepaImgUrl = `https://graph.keepa.com/pricehistory.png?asin=${asin}&domain=${country}`;
 
-        // Adding charts in one DOM manipulation
         const chartsContainer = document.createElement("div");
         chartsContainer.appendChild(createChartContainer(camelUrl, camelImgUrl, 500, 320));
         chartsContainer.appendChild(createChartContainer(keepaUrl, keepaImgUrl, 500, 200));
         parentElement.appendChild(chartsContainer);
     };
 
-    // Main execution block
+    // Main execution with optimized logic
     const asin = getASIN();
     if (asin) {
-        const country = document.location.hostname.split('.').slice(-1)[0] === "com" ? "us" : "de";
+        const country = document.location.hostname.endsWith(".com") ? "us" : "de";
         insertPriceCharts(asin, country);
     }
 })();
