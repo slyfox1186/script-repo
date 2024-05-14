@@ -28,4 +28,5 @@ get_latest_release_version() {
 # Main script execution
 [[ -z "$1" ]] && { echo "Usage: $0 <url>"; exit 1; }
 
-get_latest_release_version "$1"
+version=$(get_latest_release_version "$1")
+echo "$version"
