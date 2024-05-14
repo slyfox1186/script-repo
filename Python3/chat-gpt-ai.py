@@ -17,7 +17,7 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 DEFAULT_AI_MODEL = "gpt-4-turbo"
 BACKUP_AI_MODEL = "gpt-3.5-turbo-0125"
 DEFAULT_MAX_TOKENS = 4096
-DEFAULT_TEMPERATURE = 0.6
+DEFAULT_TEMPERATURE = 0.3 # Higher numbers are more creative responses up to a max of 1.0
 DEFAULT_SCRIPT_PATH = ""
 
 # Default user instructions
