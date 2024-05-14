@@ -1,33 +1,38 @@
 #!/usr/bin/env bash
 
 # Disable specific shellcheck warnings that are not applicable after optimizations
-# Shellcheck disable=sc1091,sc2001,sc2068,sc2086,sc2155,sc2162,sc2317
+# shellcheck disable=SC1091,SC2001,SC2068,SC2086,SC2155,SC2162,SC2317
 
-##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-python3
-##  Purpose: Install Python3 from the source code acquired from the official website: https://www.python.org/downloads
-##  Features: Static build, OpenSSL backend
-##  Updated: 04.30.24
-##  Script version: 2.5 (Optimized and Corrected)
+## Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-python3
+## Purpose: Install Python3 from the source code acquired from the official website: https://www.python.org/downloads
+## Features: Static build, OpenSSL backend
+## Updated: 05.13.24
+## Script version: 2.6
 
 if [[ "$EUID" -eq 0 ]]; then
     echo "You must run this script without root or sudo."
     exit 1
 fi
 
-script_ver=2.5
+script_ver=2.6
+prog_name="python3"
 python_version=3.12.3
 archive_url="https://www.python.org/ftp/python/$python_version/Python-$python_version.tar.xz"
-install_dir="/usr/local/python3-$python_version"
 cwd="$PWD/python3-build-script"
-openssl_prefix=$(dirname $(readlink -f $(type -P openssl)))
+openssl_prefix=$(dirname "$(readlink -f "$(type -P openssl)")")
+
+compiler="gcc"
+lto="no"
 
 usage() {
     echo "Usage: $0 [OPTIONS]"
     echo
     echo "Options:"
-    echo "  -v, --version   Set the Python version (default: 3.12.3)"
-    echo "  -l, --list      List available Python3 versions"
-    echo "  -h, --help      Display this help message"
+    echo "  -v, --version    Set the Python version (default: 3.12.3)"
+    echo "  -l, --list       List available Python3 versions"
+    echo "  -c, --clang      Use clang instead of gcc"
+    echo "  -t, --lto        Set LTO value (yes, no, thin, full)"
+    echo "  -h, --help       Display this help message"
     echo
 }
 
@@ -40,12 +45,20 @@ while [[ $# -gt 0 ]]; do
         -v|--version)
             python_version="$2"
             archive_url="https://www.python.org/ftp/python/$python_version/Python-$python_version.tar.xz"
-            install_dir="/usr/local/python3-$python_version"
+            install_dir="/usr/local/$prog_name-$python_version"
             shift 2
             ;;
         -l|--list)
             list_versions
             exit 0
+            ;;
+        -c|--clang)
+            compiler="clang"
+            shift
+            ;;
+        -t|--lto)
+            lto="$2"
+            shift 2
             ;;
         -h|--help)
             usage
@@ -59,7 +72,55 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-exit_fn() {
+archive_name="$prog_name-$python_version"
+install_dir="/usr/local/$archive_name"
+
+install_required_packages() {
+    local pkg
+    local -a pkgs missing_packages
+
+    pkgs=(
+        autoconf autoconf-archive autogen automake binutils build-essential ccache clang
+        curl git itstool libb2-dev libexempi-dev libgnome-desktop-3-dev libhandy-1-dev 
+        libpeas-dev libpeasd-3-dev libssl-dev libtool libtool-bin llvm m4 nasm openssl
+        python3 valgrind yasm zlib1g-dev
+    )
+
+    for pkg in "${pkgs[@]}"; do
+        if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
+            missing_packages+=("$pkg")
+        fi
+    done
+
+    if [[ ${#missing_packages[@]} -gt 0 ]]; then
+        sudo apt install "${missing_packages[@]}" || fail "Failed to install required packages. Line: $LINENO"
+    else
+        echo "All required packages are already installed."
+    fi
+}
+
+if [[ "$lto" == "thin" && "$compiler" != "clang" ]]; then
+    echo "Error: LTO 'thin' can only be used with clang."
+    exit 1
+fi
+
+if [[ "$lto" == "thin" && "$compiler" == "clang" ]]; then
+    if ! command -v llvm-ar &> /dev/null; then
+        echo "Error: llvm-ar is required for a --with-lto=thin build with clang but could not be found."
+        exit 1
+    fi
+
+    # Verify compatibility between clang and llvm-ar versions
+    clang_version=$(clang --version | grep -oP 'clang-\K[0-9]+')
+    llvm_ar_version=$(llvm-ar --version | grep -oP 'LLVM \K[0-9]+')
+    
+    if [[ "$clang_version" != "$llvm_ar_version" ]]; then
+        echo "Error: Mismatch between clang version ($clang_version) and llvm-ar version ($llvm_ar_version)."
+        exit 1
+    fi
+fi
+
+exit_function() {
     printf "\n%s\n%s\n\n" "Make sure to star this repository to show your support!" "$web_repo"
     exit 0
 }
@@ -73,29 +134,11 @@ fail() {
 trap 'fail $LINENO' ERR
 
 cleanup() {
-    local choice
-
-    echo
-    echo "========================================================="
-    echo "       Would you like to clean up the build files?       "
-    echo "========================================================="
-    echo
-    echo "[1] Yes"
-    echo "[2] No"
-    echo
-    read -p "Your choices are (1 or 2): " choice
-
-    case "$choice" in
-        1) sudo rm -fr "$cwd" ;;
-        2) ;;
-        *) unset choice
-           cleanup
-           ;;
-    esac 
+    sudo rm -fr "$cwd"
 }
 
 show_ver_fn() {
-    save_ver="$(sudo find $install_dir/ -type f -name "python3.12" | grep -oP '[0-9\.]+$' | xargs -I{} echo python{})"
+    save_ver="$(sudo find "$install_dir/" -type f -name "python3.12" | grep -oP '[0-9\.]+$' | xargs -I{} echo python{})"
     printf "\n%s\n" "The newly installed version is: $save_ver"
 }
 
@@ -103,53 +146,41 @@ prepare_environment() {
     echo "Python3 Build Script - v$script_ver"
     echo "==============================================="
 
-    [[ -d "$cwd" ]] && rm -fr "$cwd" 
+    [[ -d "$cwd" ]] && rm -fr "$cwd"
     mkdir -p "$cwd"
 
-    export PATH="\
-/usr/lib/ccache:\
-$HOME/perl5/bin:\
-$HOME/.cargo/bin:\
-$HOME/.local/bin:\
-/usr/local/sbin:\
-/usr/local/cuda/bin:\
-/usr/local/x86_64-linux-gnu/bin:\
-/usr/local/bin:\
-/usr/sbin:\
-/usr/bin:\
-/sbin:\
-/bin\
-"
-    export PKG_CONFIG_PATH="\
-/usr/local/lib64/pkgconfig:\
-/usr/local/lib/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/local/share/pkgconfig:\
-/usr/lib64/pkgconfig:\
-/usr/lib/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/share/pkgconfig\
-"
+    PATH="/usr/lib/ccache:$PATH"
+    PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/pkgconfig"
+    export PATH PKG_CONFIG_PATH
 }
 
 set_compiler_flags() {
-    CC="gcc"
-    CXX="g++"
-    CFLAGS="-O3 -pipe -mtune=native"
+    if [[ "$compiler" == "clang" ]]; then
+        CC="clang"
+        CXX="clang++"
+    else
+        CC="gcc"
+        CXX="g++"
+    fi
+
+    CFLAGS="-O2 -fPIE -pipe -mtune=native -fstack-protector-strong"
     CXXFLAGS="$CFLAGS"
-    CPPFLAGS="-D_FORTIFY_SOURCE=2"
-    export CC CFLAGS CXX CXXFLAGS CPPFLAGS
+    CPPFLAGS="-D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security"
+    LDFLAGS="-Wl,-O1 -Wl,--as-needed -Wl,-z,relro -Wl,-z,now -Wl,--enable-new-dtags -Wl,-rpath=${install_dir}/lib"
+    export CC CFLAGS CXX CXXFLAGS CPPFLAGS LDFLAGS
 }
 
 verify_gcc_version=$(gcc --version | awk 'NR==1{split($3,a,"."); print a[1]}')
 verify_gpp_version=$(g++ --version | awk 'NR==1{split($3,a,"."); print a[1]}')
 
-if [[ "$verify_gcc_version" -eq 13 ]] || [[ "$verify_gpp_version" -eq 13 ]]; then
-    clear
-    echo "You must use gcc/g++ version 12 or lower."
-    echo "The current setup is using: gcc-$verify_gcc_version and g++-$verify_gpp_version"
-    echo "Please edit the \"CC\" and \"CXX\" variables in the script to change versions."
-    exit 1
+if [[ "$compiler" == "gcc" ]]; then
+    if [[ "$verify_gcc_version" -eq 13 ]] || [[ "$verify_gpp_version" -eq 13 ]]; then
+        clear
+        echo "You must use gcc/g++ version 12 or lower."
+        echo "The current setup is using: gcc-$verify_gcc_version and g++-$verify_gpp_version"
+        echo "Please edit the \"CC\" and \"CXX\" variables in the script to change versions."
+        exit 1
+    fi
 fi
 
 download_and_extract_python() {
@@ -164,38 +195,15 @@ download_and_extract_python() {
     tar -xf "$cwd/$python_version.tar.xz" -C "$cwd/$python_version" --strip-components 1 || fail "Failed to extract: $cwd/$python_version.tar.xz. Line: $LINENO"
 }
 
-install_required_packages() {
-    local pkgs missing_packages
-
-    pkgs=(
-        autoconf autoconf-archive autogen automake binutils build-essential ccache 
-        curl git itstool libb2-dev libexempi-dev libgnome-desktop-3-dev libhandy-1-dev
-        libpeas-dev libpeasd-3-dev libssl-dev libtool libtool-bin m4 nasm openssl python3
-        valgrind yasm zlib1g-dev 
-    )
-
-    for pkg in "${pkgs[@]}"; do
-        if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
-            missing_packages+=("$pkg")
-        fi
-    done
-
-    if [[ ${#missing_packages[@]} -gt 0 ]]; then
-        sudo apt install ${missing_packages[@]} || fail "Failed to install required packages. Line: $LINENO"
-    else
-        echo "All required packages are already installed."
-    fi
+ld_linker_path() {
+    echo "$install_dir/lib/python${python_version::-2}/lib-dynload" | sudo tee "/etc/ld.so.conf.d/custom_$prog_name.conf" >/dev/null
+    sudo ldconfig
 }
 
-create_symlinks() {
-    echo "Creating symlinks for essential programs"
-    echo "========================================="  
-    local bin_dir="$install_dir/bin"
-    local programs=("python3" "pip3" "idle3" "pydoc3" "python3-config")
-
-    for program in ${programs[@]}; do
-       sudo ln -sf "$bin_dir/$program" "/usr/local/bin/$program"
-    done
+create_soft_links() {
+    [[ -d "$install_dir/bin" ]] && sudo ln -sf "$install_dir/bin/"* "/usr/local/bin/"
+    [[ -d "$install_dir/lib/pkgconfig" ]] && sudo ln -sf "$install_dir/lib/pkgconfig/"*.pc "/usr/local/lib/pkgconfig/"
+    [[ -d "$install_dir/include" ]] && sudo ln -sf "$install_dir/include/"* "/usr/local/include/"
 }
 
 create_user_site() {
@@ -207,14 +215,16 @@ build_python() {
     echo "Build Python3 - v$python_version"
     echo "==============================================="
     echo
+
     cd "$cwd/$python_version" || exit 1
     autoreconf -fi
     cd build || exit 1
     ../configure --prefix="$install_dir" \
+                 --disable-ipv6 \
                  --disable-test-modules \
                  --enable-optimizations \
                  --with-ensurepip=install \
-                 --with-lto=no \
+                 --with-lto=$lto \
                  --with-openssl-rpath=auto \
                  --with-openssl="$openssl_prefix" \
                  --with-pkg-config=yes \
@@ -226,13 +236,18 @@ build_python() {
 }
 
 # Main script execution
-prepare_environment
-install_required_packages  
-set_compiler_flags
-download_and_extract_python
-build_python
-create_symlinks
-create_user_site
-show_ver_fn
-cleanup
-exit_fn
+main() {
+    prepare_environment
+    install_required_packages  
+    set_compiler_flags
+    download_and_extract_python
+    build_python
+    [[ -d "$install_dir/lib" ]] && ld_linker_path
+    create_soft_links
+    create_user_site
+    show_ver_fn
+    cleanup
+    exit_function
+}
+
+main "$@"
