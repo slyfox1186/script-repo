@@ -9,8 +9,8 @@ import openai
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # AI Model Configuration Defaults
-DEFAULT_AI_MODEL = "gpt-4-turbo"
-BACKUP_AI_MODEL = "gpt-3.5-turbo-0125"  # Backup AI model
+DEFAULT_AI_MODEL = "gpt-4o"
+BACKUP_AI_MODEL = "gpt-4-turbo"
 DEFAULT_MAX_TOKENS = 4096
 DEFAULT_TEMPERATURE = 0.5
 DEFAULT_SCRIPT_PATH = "/path/to/script/for/analysis/file.{sh,py,pl,bat,whatever}"
