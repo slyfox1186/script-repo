@@ -1938,7 +1938,8 @@ if build "libogg" "$repo_version"; then
     download "https://github.com/xiph/ogg/archive/refs/tags/v$repo_version.tar.gz" "libogg-$repo_version.tar.gz"
     execute autoreconf -fi
     execute cmake -B build -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_BUILD_TYPE=Release \
-                  -DBUILD_{SHARED_LIBS,TESTING}=OFF -DCPACK_{BINARY_DEB,SOURCE_ZIP}=OFF -G Ninja -Wno-dev
+                  -DBUILD_TESTING=OFF -DBUILD_SHARED_LIBS=ON -DCPACK_{BINARY_DEB,SOURCE_ZIP}=OFF \
+                  -G Ninja -Wno-dev
     execute ninja "-j$threads" -C build
     execute ninja -C build install
     build_done "libogg" "$repo_version"
