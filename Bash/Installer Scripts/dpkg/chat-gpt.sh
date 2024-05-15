@@ -14,7 +14,7 @@ error() {
 }
 
 # Github repository url for chatgpt releases
-REPO_URL="https://github.com/lencx/ChatGPT/releases"
+REPO_URL="https://github.com/lencx/ChatGPT/releases/"
 
 # Function to fetch and install the latest debian release
 fetch_and_install_release() {

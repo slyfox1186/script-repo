@@ -1,23 +1,31 @@
 #!/usr/bin/env bash
 
-# Purpose: Build GNU gawk optimized for x86_64/amd64 PCs
-# Updated: 02.24.24
-# Script version: 2.0
+# Github: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-gawk.sh
+# Purpose: build gnu gawk
+# Updated: 05.15.24
+# Script version: 2.2
 
-# Colors
+CYAN='\033[0;36m'
+GREEN='\033[0;32m'  
 RED='\033[0;31m'
-GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
 NC='\033[0m'
 
-# Variables
-script_ver="2.0"
-cwd="$PWD/gawk-build-script"
-install_dir="/usr/local/gawk"
-gnu_ftp="https://ftp.gnu.org/gnu/gawk/"
+# Set the variables
+script_ver=2.2
+prog_name="gawk"  
+default_version=$(curl -fsS "https://ftp.gnu.org/gnu/$prog_name/" | grep -oP '\d\.[\d.]+(?=\.tar\.[a-z]+)' | sort -ruV | head -n1)
+install_dir="/usr/local"
+cwd="$PWD/$prog_name-build-script"
+compiler="gcc"
 
 # Enhanced logging and error handling
 log() {
     echo -e "${GREEN}[INFO]${NC} $1"
+}
+
+warn() {
+    echo -e "\\n${YELLOW}[WARNING]${NC} $1"
 }
 
 fail() {
@@ -26,118 +34,180 @@ fail() {
     exit 1
 }
 
-print_banner() {
-    log "==============================================="
-    log "      gawk build script - v$script_ver"
-    log "==============================================="
+print_usage() {
+    echo "Usage: $0 [OPTIONS]"
+    echo "  -v, --version VERSION       Set the version of $prog_name to install (default: $default_version)"
+    echo "  -l, --list                  List available versions of $prog_name"
+    echo "  -u, --uninstall             Uninstall $prog_name"
+    echo "  -c, --compiler COMPILER     Set the compiler to use (clang) instead of the default: $compiler"
+    echo "  -h, --help                  Display this help and exit"
 }
 
-# Cleanup resources  
-cleanup() {
+exit_function() {
     echo
-    read -p "Remove temporary build directory '$build_dir'? [y/N] " response
-    case "$response" in
-        [yY]*|"")
-        sudo rm -rf "$cwd"
-        log "Build directory removed."
-        ;;
-        [nN]*) ;;
-    esac
+    log "The script has completed"
+    log "${GREEN}Make sure to ${YELLOW}star ${GREEN}this repository to show your support!${NC}"
+    log "${CYAN}https://github.com/slyfox1186/script-repo${NC}"
+    exit 0
 }
 
-handle_failure() {
-    fail "An error occurred. Exiting..."
+cleanup() {
     sudo rm -fr "$cwd"
-    exit 1
 }
 
-install_missing_packages() {
-    log "Checking and installing missing packages..."
-
-    declare -A pkg_managers
-    pkg_managers["/etc/redhat-release"]=yum
-    pkg_managers["/etc/arch-release"]=pacman
-    pkg_managers["/etc/gentoo-release"]=emerge
-    pkg_managers["/etc/SuSE-release"]=zypper
-    pkg_managers["/etc/debian_version"]=apt-get
-
-    for file in "${!pkg_managers[@]}"; do
-        if [[ -f $file ]]; then
-            pkg_manager=${pkg_managers[$file]}
-            break
+required_packages() {
+    local -a missing_pkgs pkgs 
+    local pkg
+    pkgs=(
+        autoconf automake build-essential gettext libsigsegv-dev
+        libmpfr-dev libgmp-dev libintl-perl libreadline-dev libticonv-dev
+        libtool lzip
+    )
+    
+    missing_pkgs=()
+    for pkg in "${pkgs[@]}"; do
+        if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
+            missing_pkgs+=("$pkg")  
         fi
     done
 
-    case $pkg_manager in
-        apt-get)
-            pkgs=(autoconf autoconf-archive autogen automake binutils build-essential ccache
-                  cmake curl git libtool libtool-bin lzip m4 nasm ninja-build texinfo zlib1g-dev
-                  yasm)
-            sudo apt update
-            for pkg in "${pkgs[@]}"; do
-                if ! dpkg -l | grep -qw $pkg; then
-                    sudo apt -y install $pkg
-                fi
-            done
-            ;;
-        yum)
-            pkgs=(autoconf automake binutils gcc gcc-c++ make)
-            sudo yum install -y "${pkgs[@]}"
-            ;;
-        *)
-            fail "Unsupported package manager. Please install dependencies manually."
-            exit 1
-            ;;
-    esac
-}
-
-find_latest_release() {
-    clear
-    log "Finding the latest gawk release..."
-    latest_release=$(curl -sL $gnu_ftp | grep tar.lz | grep -v '.sig' | sed -n 's/.*href="\([^"]*\).*/\1/p' | sort -rV | head -n1)
-    if [[ -z $latest_release ]]; then
-        fail "Failed to find the latest gawk release. Exiting..."
-        exit 1
+    if [[ "${#missing_pkgs[@]}" -gt 0 ]]; then
+        sudo apt update
+        sudo apt install "${missing_pkgs[@]}"
     fi
-    archive_url="${gnu_ftp}${latest_release}"
-    archive_name="${latest_release}"
-    archive_dir="${latest_release%.tar.lz}"
 }
 
-download_and_extract() {
-    log "Downloading and extracting gawk..."
-    mkdir -p "$cwd"
-    cd "$cwd" || exit
-    if [[ ! -f $archive_name ]]; then
-        curl -Lso $archive_name $archive_url
+set_compiler_flags() {
+    CC="$compiler"
+    CXX="${compiler}++"
+    CFLAGS="-O2 -pipe -march=native"   
+    CXXFLAGS="$CFLAGS"
+    LDFLAGS="-Wl,-rpath,$install_dir/lib"
+    PATH="/usr/lib/ccache:$PATH"
+    PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/pkgconfig"  
+    export CC CXX CFLAGS CXXFLAGS LDFLAGS PATH PKG_CONFIG_PATH
+}
+
+download_archive() {
+    wget --show-progress -cqO "$cwd/$tar_file" "$archive_url" || fail "Failed to download archive with WGET. Line: $LINENO"
+}
+
+extract_archive() {
+    tar --lzip -xf "$cwd/$tar_file" -C "$cwd/$archive_name" --strip-components 1 || fail "Failed to extract: $cwd/$tar_file"
+}
+
+configure_build() {
+    cd "$cwd/$archive_name" || fail "Failed to cd into $cwd/$archive_name. Line: $LINENO"
+
+    autoreconf -fi  
+    cd build || exit 1
+    ../configure --prefix="$install_dir/$archive_name" --disable-nls --with-libiconv-prefix=/usr --with-libintl-prefix=/usr \
+                 --with-readline=/usr --with-mpfr=/usr || fail "Failed to execute: configure. Line: $LINENO"
+}
+
+compile_build() {
+    make "-j$(nproc --all)" || fail "Failed to execute: make build. Line: $LINENO"
+}
+
+install_build() {
+    sudo make install || fail "Failed execute: make install. Line: $LINENO"
+}
+
+ld_linker_path() {
+    echo "$install_dir/$archive_name/lib/gawk" | sudo tee "/etc/ld.so.conf.d/custom_$prog_name.conf" >/dev/null
+    sudo ldconfig  
+}
+
+create_soft_links() {
+    [[ -d "$install_dir/$archive_name/bin" ]] && sudo ln -sf "$install_dir/$archive_name/bin/"* "/usr/local/bin/"
+    [[ -d "$install_dir/$archive_name/lib/pkgconfig" ]] && sudo ln -sf "$install_dir/$archive_name/lib/pkgconfig/"*.pc "/usr/local/lib/pkgconfig/"
+    [[ -d "$install_dir/$archive_name/include" ]] && sudo ln -sf "$install_dir/$archive_name/include/"* "/usr/local/include/"
+}
+
+uninstall_gawk() {
+    local gawk_dir
+    gawk_dir="$install_dir/$archive_name"
+    if [[ -d "$gawk_dir" ]]; then
+        log "Uninstalling $prog_name from $gawk_dir"
+        sudo rm -rf "$gawk_dir"
+        sudo rm "/etc/ld.so.conf.d/custom_$prog_name.conf"
+        sudo ldconfig
+        log "$prog_name has been uninstalled"
+    else
+        log "$prog_name is not installed"
     fi
-    mkdir -p "$archive_dir/build"
-    tar --lzip -xf $archive_name -C "$archive_dir/build" --strip-components 1 || handle_failure
 }
 
-build_and_install() {
-    log "Building and installing gawk..."
-    cd "$archive_dir/build" || exit 1
-    ./configure --prefix="$install_dir" CFLAGS="-g -O3 -pipe -march=native" --build=x86_64-linux-gnu --host=x86_64-linux-gnu || handle_failure
-    make "-j$(nproc)" || handle_failure
-    sudo make install || handle_failure
-
-    # Create symlinks
-    sudo ln -sf "$install_dir/bin/gawk" "/usr/local/bin/gawk"
-    sudo ln -sf "$install_dir/bin/gawk-${archive_dir#*-}" "/usr/local/bin/gawk-${archive_dir#*-}"
-
-    log "gawk installation completed successfully."
+list_versions() {
+    log "Available versions of $prog_name:"
+    echo
+    curl -fsS "https://ftp.gnu.org/gnu/$prog_name/" | grep -oP '\d\.[\d.]+(?=\.tar\.[a-z]+)' | sort -ruV
 }
 
-# Start the script
-if [[ $EUID -eq 0 ]]; then
-    fail "This script must be run with root or with sudo."
+main_menu() {
+    # Parse command-line arguments
+    while [[ $# -gt 0 ]]; do  
+        case "$1" in
+            -v|--version)
+                version="$2"
+                shift 2
+                ;;
+            -l|--list)  
+                list_versions
+                exit 0
+                ;;
+            -u|--uninstall)
+                uninstall_gawk
+                exit 0  
+                ;;
+            -c|--compiler)
+                compiler="$2"
+                shift 2
+                ;;
+            -h|--help) 
+                print_usage
+                exit 0
+                ;;
+            *)
+                fail "Invalid option: $1"
+                ;;
+        esac
+    done
+
+    if [[ -z "$version" ]]; then
+        version="$default_version"
+        log "No version specified, using default version: $version"
+    fi
+    
+    archive_name="$prog_name-$version"
+    archive_url="https://ftp.gnu.org/gnu/$prog_name/$prog_name-$version.tar.lz"
+    archive_ext="${archive_url//*.}"  
+    tar_file="$archive_name.tar.$archive_ext"
+
+    # Create output directory
+    [[ -d "$cwd/$archive_name" ]] && sudo rm -fr "$cwd/$archive_name"
+    mkdir -p "$cwd/$archive_name/build"
+
+    required_packages
+    set_compiler_flags
+    download_archive
+    extract_archive
+    configure_build
+    compile_build  
+    install_build
+    if [[ ! -f "$install_dir/$archive_name/lib/"*.so ]]; then
+        warn "Failed to located any \".so\" files so no custom ld linking will occur."
+    else
+        ld_linker_path
+    fi
+    create_soft_links
+    cleanup
+    exit_function
+}
+
+if [[ "$EUID" -eq 0 ]]; then
+    echo "You must run this script without root or sudo."
     exit 1
 fi
 
-print_banner
-install_missing_packages
-find_latest_release
-download_and_extract
-build_and_install
-cleanup
+main_menu "$@"

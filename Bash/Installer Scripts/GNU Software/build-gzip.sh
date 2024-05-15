@@ -1,196 +1,202 @@
 #!/usr/bin/env bash
 # Shellcheck disable=sc2162
 
-###########################################################################################################################
-##
-##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-gzip
-##
-##  Purpose: build gnu gzip
-##
-##  Updated: 09.10.23
-##
-##  Script version: 1.0
-##
-###########################################################################################################################
+# Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-gzip.sh
+# Purpose: build gnu gzip
+# Updated: 05.15.24
+# Script version: 1.1
 
-clear
+CYAN='\033[0;36m'
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[0;33m'
+NC='\033[0m'
 
-if [ "${EUID}" -eq '0' ]; then
+# Set the variables
+script_ver=1.1
+prog_name="gzip"
+default_version=$(curl -fsS "https://ftp.gnu.org/gnu/$prog_name/" | grep -oP '\d\.[\d.]+(?=\.tar\.[a-z]+)' | sort -ruV | head -n1)
+install_dir="/usr/local"
+cwd="$PWD/$prog_name-build-script"
+compiler="gcc"
+
+# Enhanced logging and error handling
+log() {
+    echo -e "${GREEN}[INFO]${NC} $1"
+}
+
+warn() {
+    echo -e "\\n${YELLOW}[WARNING]${NC} $1"
+}
+
+fail() {
+    echo -e "${RED}[ERROR]${NC} $1"
+    echo -e "To report a bug, create an issue at: https://github.com/slyfox1186/script-repo/issues"
+    exit 1
+}
+
+print_usage() {
+    echo "Usage: $0 [OPTIONS]"
+    echo "  -v, --version VERSION       Set the version of $prog_name to install (default: $default_version)"
+    echo "  -l, --list                  List available versions of $prog_name"
+    echo "  -u, --uninstall             Uninstall $prog_name"
+    echo "  -c, --compiler COMPILER     Set the compiler to use (clang) instead of the default: $compiler"
+    echo "  -h, --help                  Display this help and exit"
+}
+
+exit_function() {
+    echo
+    log "The script has completed"
+    log "${GREEN}Make sure to ${YELLOW}star ${GREEN}this repository to show your support!${NC}"
+    log "${CYAN}https://github.com/slyfox1186/script-repo${NC}"
+    exit 0
+}
+
+cleanup() {
+    sudo rm -fr "$cwd"
+}
+
+required_packages() {
+    local -a missing_pkgs pkgs
+    local pkg
+    pkgs=(
+        autoconf automake build-essential bzip2 curl libc6-dev
+        libzstd-dev lzip lzma lzma-dev xz-utils zlib1g-dev zstd
+    )
+
+    missing_pkgs=()
+    for pkg in "${pkgs[@]}"; do
+        if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
+            missing_pkgs+=("$pkg")
+        fi
+    done
+
+    if [[ "${#missing_pkgs[@]}" -gt 0 ]]; then
+        sudo apt update
+        sudo apt install "${missing_pkgs[@]}"
+    fi
+}
+
+set_compiler_flags() {
+    CC="$compiler"
+    CXX="$compiler++"
+    CFLAGS="-O2 -pipe -march=native"
+    CXXFLAGS="$CFLAGS"
+    LDFLAGS="-Wl,-rpath,$install_dir/lib"
+    PATH="/usr/lib/ccache:$PATH"
+    PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/pkgconfig"
+    export CC CXX CFLAGS CXXFLAGS LDFLAGS PATH PKG_CONFIG_PATH
+}
+
+download_archive() {
+    wget --show-progress -cqO "$cwd/$tar_file" "$archive_url" || fail "Failed to download archive with WGET. Line: $LINENO"
+}
+
+extract_archive() {
+    tar -xJf "$cwd/$tar_file" -C "$cwd/$archive_name" --strip-components 1 || fail "Failed to extract: $cwd/$tar_file"
+}
+
+configure_build() {
+    cd "$cwd/$archive_name" || fail "Failed to cd into $cwd/$archive_name. Line: $LINENO"
+
+    autoreconf -fi
+    cd build || exit 1
+    ../configure --prefix="$install_dir/$archive_name" --disable-gcc-warnings --enable-silent-rules || fail "Failed to execute: configure. Line: $LINENO"
+}
+
+compile_build() {
+    make "-j$(nproc --all)" || fail "Failed to execute: make build. Line: $LINENO"
+}
+
+install_build() {
+    sudo make install || fail "Failed execute: make install. Line: $LINENO"
+}
+
+create_soft_links() {
+    [[ -d "$install_dir/$archive_name/bin" ]] && sudo ln -sf "$install_dir/$archive_name/bin/"* "/usr/local/bin/"
+    [[ -d "$install_dir/$archive_name/lib/pkgconfig" ]] && sudo ln -sf "$install_dir/$archive_name/lib/pkgconfig/"*.pc "/usr/local/lib/pkgconfig/"
+    [[ -d "$install_dir/$archive_name/include" ]] && sudo ln -sf "$install_dir/$archive_name/include/"* "/usr/local/include/"
+}
+
+uninstall_gzip() {
+    local gzip_dir
+    gzip_dir="$install_dir/$archive_name"
+    if [[ -d "$gzip_dir" ]]; then
+        log "Uninstalling $prog_name from $gzip_dir"
+        sudo rm -rf "$gzip_dir"
+        sudo rm "/etc/ld.so.conf.d/custom_$prog_name.conf"
+        sudo ldconfig
+        log "$prog_name has been uninstalled"
+    else
+        log "$prog_name is not installed"
+    fi
+}
+
+list_versions() {
+    log "Available versions of $prog_name:"
+    echo
+    curl -fsS "https://ftp.gnu.org/gnu/$prog_name/" | grep -oP '\d\.[\d.]+(?=\.tar\.[a-z]+)' | sort -ruV
+}
+
+main_menu() {
+    # Parse command-line arguments
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -v|--version)
+                version="$2"
+                shift 2
+                ;;
+            -l|--list)
+                list_versions
+                exit 0
+                ;;
+            -u|--uninstall)
+                uninstall_gzip
+                exit 0
+                ;;
+            -c|--compiler)
+                compiler="$2"
+                shift 2
+                ;;
+            -h|--help)
+                print_usage
+                exit 0
+                ;;
+            *)
+                fail "Invalid option: $1"
+                ;;
+        esac
+    done
+
+    if [[ -z "$version" ]]; then
+        version="$default_version"
+        log "No version specified, using default version: $version"
+    fi
+
+    archive_name="$prog_name-$version"
+    archive_url="https://ftp.gnu.org/gnu/$prog_name/$prog_name-$version.tar.xz"
+    archive_ext="${archive_url//*.}"
+    tar_file="$archive_name.tar.$archive_ext"
+
+    # Create output directory
+    [[ -d "$cwd/$archive_name" ]] && sudo rm -fr "$cwd/$archive_name"
+    mkdir -p "$cwd/$archive_name/build"
+
+    required_packages
+    set_compiler_flags
+    download_archive
+    extract_archive
+    configure_build
+    compile_build
+    install_build
+    create_soft_links
+    cleanup
+    exit_function
+}
+
+if [[ "$EUID" -eq 0 ]]; then
     echo "You must run this script without root or sudo."
     exit 1
 fi
 
-# Set the variables
-
-script_ver=1.0
-archive_dir=gzip-1.13
-archive_url=https://ftp.gnu.org/gnu/gzip/$archive_dir.tar.xz
-archive_ext="${archive_url//*.}"
-archive_name="$archive_dir.tar.${archive_ext}"
-cwd="$PWD"/gzip-build-script
-install_dir=/usr/local
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
-web_repo=https://github.com/slyfox1186/script-repo
-
-printf "%s\n%s\n\n" \
-    "gzip build script - v${script_ver}" \
-    '==============================================='
-
-# Create output directory
-
-if [ -d "$cwd" ]; then
-    sudo rm -fr "$cwd"
-fi
-mkdir -p "$cwd"
-
-# Set the c + cpp compilers
-
-export CC=gcc CXX=g++
-
-# Set compiler optimization flags
-
-export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -fno-plt -march=native'
-
-# Set the path variable
-
-PATH="\
-/usr/lib/ccache:\
-${HOME}/perl5/bin:\
-${HOME}/.cargo/bin:\
-${HOME}/.local/bin:\
-/usr/local/sbin:\
-/usr/local/cuda/bin:\
-/usr/local/x86_64-linux-gnu/bin:\
-/usr/local/bin:\
-/usr/sbin:\
-/usr/bin:\
-/sbin:\
-/bin:\
-/usr/local/games:\
-/usr/games:\
-/snap/bin\
-"
-export PATH
-
-# Set the pkg_config_path variable
-
-PKG_CONFIG_PATH="\
-/usr/local/lib64/pkgconfig:\
-/usr/local/lib/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/local/share/pkgconfig:\
-/usr/lib64/pkgconfig:\
-/usr/lib/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/share/pkgconfig:\
-/lib64/pkgconfig:\
-/lib/pkgconfig:\
-/lib/x86_64-linux-gnu/pkgconfig\
-"
-export PKG_CONFIG_PATH
-
-# Create functions
-
-exit_fn()
-{
-    printf "\n%s\n\n%s\n\n" \
-        'Make sure to star this repository to show your support!' \
-        "$web_repo"
-    exit 0
-}
-
-fail_fn()
-{
-    printf "\n%s\n\n%s\n\n" \
-        "$1" \
-        "To report a bug create an issue at: $web_repo/issues"
-    exit 1
-}
-
-cleanup_fn()
-{
-    local choice
-
-    printf "%s\n%s\n%s\n\n%s\n%s\n\n" \
-        '============================================' \
-        '  Do you want to clean up the build files?  ' \
-        '============================================' \
-        '[1] Yes' \
-        '[2] No'
-    read -p 'Your choices are (1 or 2): ' choice
-
-    case "${choice}" in
-        1)      sudo rm -fr "$cwd";;
-        2)      echo;;
-        *)
-                clear
-                printf "%s\n\n" 'Bad user input. Reverting script...'
-                sleep 3
-                unset choice
-                clear
-                cleanup_fn
-                ;;
-    esac
-}
-
-# Install required apt packages
-
-
-pkgs=(autoconf autoconf-archive autogen automake binutils bison build-essential bzip2 ccache curl
-	  libc6-dev libintl-perl libtool libtool-bin libzstd-dev lzip lzma lzma-dev m4 nasm
-	  texinfo xz-utils zlib1g-dev zstd yasm)
-
-for i in ${pkgs[@]}
-do
-	missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
-
-	if [ -z "${missing_pkg}" ]; then
-		missing_pkgs+=" ${i}"
-	fi
-done
-
-if [ -n "$missing_pkgs" ]; then
-	sudo apt install $missing_pkgs
-	sudo apt -y autoremove
-	clear
-fi
-
-# Download the archive file
-
-if [ ! -f "$cwd/${archive_name}" ]; then
-    curl -A "$user_agent" -Lso "$cwd/${archive_name}" "${archive_url}"
-fi
-
-# Create output directory
-
-if [ -d "$cwd/$archive_dir" ]; then
-    sudo rm -fr "$cwd/$archive_dir"
-fi
-mkdir -p "$cwd/$archive_dir/build"
-
-# Extract archive files
-
-if ! tar -xf "$cwd/${archive_name}" -C "$cwd/$archive_dir" --strip-components 1; then
-    printf "%s\n\n" "Failed to extract: $cwd/${archive_name}"
-    exit 1
-fi
-
-# Build program from source
-
-cd "$cwd/$archive_dir" || exit 1
-autoreconf -fi
-cd build || exit 1
-../configure --prefix="$install_dir"       \
-             --{build,host}=x86_64-linux-gnu \
-             --disable-gcc-warnings          \
-             --enable-silent-rules
-make "-j$(nproc --all)"
-if ! sudo make install; then
-    fail_fn "Failed to execute: sudo make install:Line ${LINENO}"
-fi
-
-# Prompt user to clean up files
-cleanup_fn
-
-# Show exit message
-exit_fn
+main_menu "$@"
