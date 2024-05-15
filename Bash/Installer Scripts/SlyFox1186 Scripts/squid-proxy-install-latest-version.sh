@@ -18,21 +18,21 @@ fail() {
 }
 
 set_compiler_flags() {
-    export CFLAGS="-O2 -pipe -fno-plt -march=native -fstack-protector-strong"
-    export CXXFLAGS="$CFLAGS"
-    export CPPFLAGS="-I/usr/include/tirpc -D_FORTIFY_SOURCE=2"
-    export LDFLAGS="-L/usr/lib/x86_64-linux-gnu -ltirpc -Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now,-rpath,/usr/lib/squid"
+    CFLAGS="-O2 -pipe -fno-plt -march=native -fstack-protector-strong"
+    CXXFLAGS="$CFLAGS"
+    CPPFLAGS="-I/usr/include/tirpc -D_FORTIFY_SOURCE=2"
+    LDFLAGS="-L/usr/lib/x86_64-linux-gnu -ltirpc -Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now,-rpath,/usr/lib/squid"
+    export CFLAGS CXXFLAGS CPPFLAGS LDFLAGS
 }
 
 install_dependencies() {
     log "Installing required dependencies..."
     sudo apt update
-    sudo apt -y install autoconf automake autogen autoconf-archive build-essential \
-        libcap-dev libcap-dev libcppunit-dev libcppunit-dev libdb-dev libdb-dev \
-        libexpat1-dev libexpat1-dev libgnutls28-dev libkrb5-dev libkrb5-dev libldap2-dev \
-        libldap2-dev libnetfilter-conntrack-dev libpam0g-dev libpam0g-dev librust-nettle-dev \
-        libsasl2-dev libsasl2-dev libssl-dev libtirpc-dev libtool libtool-bin libxml2-dev \
-        libxml2-dev m4 pkg-config wget
+    sudo apt -y install build-essential libssl-dev pkg-config libcppunit-dev \
+        libxml2-dev libkrb5-dev libldap2-dev libsasl2-dev libdb-dev libcap-dev \
+        libpam0g-dev libexpat1-dev libcppunit-dev libxml2-dev libkrb5-dev libldap2-dev \
+        libsasl2-dev libdb-dev libnetfilter-conntrack-dev librust-nettle-dev libgnutls28-dev \
+        libcap-dev libpam0g-dev libexpat1-dev wget
 }
 
 download_squid() {
@@ -119,4 +119,4 @@ main() {
     log "Squid installation completed successfully!"
 }
 
-main "$@"
+main
