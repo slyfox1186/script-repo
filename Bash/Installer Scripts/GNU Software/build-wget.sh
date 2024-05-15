@@ -1,154 +1,238 @@
 #!/usr/bin/env bash
 
-# Github script: https://github.com/slyfox1186/script-repo/edit/main/util-linux/installer%20scripts/gnu%20software/build-wget
+# Github: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-wget.sh
 # Purpose: build gnu wget from source code
-# Features: +cares +digest +gpgme +https -ipv6 +iri +large-file +metalink -nls +ntlm +opie +psl +ssl/openssl
-# Updated: 01.30.24
-# Script version: 1.4
-# Added: libmetalink-dev library files
+# Updated: 05.13.24
+# Script version: 1.5
 
-# Terminal colors
-RED='\033[0;31m'
+CYAN='\033[0;36m'
 GREEN='\033[0;32m'
+RED='\033[0;31m'
 YELLOW='\033[0;33m'
 NC='\033[0m'
 
-# Ensure running as root
-if [[ "$EUID" -eq 0 ]]; then
-    echo "This script must be without root or with sudo."
-    exit 1
-fi
+# Set the variables
+script_ver=1.5
+prog_name="wget"
+default_version=$(curl -fsS "https://ftp.gnu.org/gnu/wget/" | grep -oP 'wget-1\.[\d.]+(?=\.tar\.[a-z]+)' | sort -ruV | head -n1)
+install_dir="/usr/local/$prog_name-$default_version"
+install_dir="${install_dir//wget-wget-/wget-}"
+cwd="$PWD/$prog_name-build-script"
+compiler="gcc"
 
-# Script variables
-cwd="$PWD/wget-build-script"
-archive_dir="wget-latest"
-install_dir="/usr/local"
-verbose=0
-
-# Function definitions
-display_help() {
-    echo "Usage: ${0} [OPTION]..."
-    echo
-    echo "Options:"
-    echo "  -v, --verbose       Enable verbose logging."
-    echo "  -h, --help          Display this help message and exit."
-    echo
-    echo "Example:"
-    echo "  ${0} --verbose"
-    exit 0
-}
-
+# Enhanced logging and fail handling
 log() {
-    if [[ "$verbose" -eq 1 ]]; then
-        echo -e "${GREEN}[INFO]${NC} $1"
-    fi
-}
-
-error() {
-    echo -e "${RED}[ERROR]${NC} $1" >&2
-    exit 1
+    echo -e "${GREEN}[INFO]${NC} $1"
 }
 
 warn() {
-    echo -e "${YELLOW}[WARN]${NC} $1"
+    echo -e "\\n${YELLOW}[WARNING]${NC} $1"
 }
 
-check_dependencies() {
-    sudo apt update
-    sudo apt install autoconf automake build-essential bzip2 curl gfortran \
-                     libcurl4-openssl-dev libexpat1-dev libgcrypt20-dev \
-                     libgpgme-dev libssl-dev libunistring-dev lzip pkg-config \
-                     zlib1g-dev
+fail() {
+    echo -e "${RED}[ERROR]${NC} $1"
+    echo -e "To report a bug, create an issue at: https://github.com/slyfox1186/script-repo/issues"
+    exit 1
 }
 
-source_flags() {
-    CC="gcc"
-    CXX="g++"
-    CFLAGS="-O3 -pipe -march=native"
+print_usage() {
+    echo "Usage: $0 [OPTIONS]"
+    echo "  -v, --version VERSION       Set the version of $prog_name to install (default: $default_version)"
+    echo "  -l, --list                  List available versions of $prog_name"
+    echo "  -u, --uninstall             Uninstall $prog_name"
+    echo "  -c, --compiler COMPILER     Set the compiler to use (clang) instead of the default: $compiler"
+    echo "  -h, --help                  Display this help and exit"
+}
+
+exit_function() {
+    echo
+    log "The script has completed"
+    log "${GREEN}Make sure to ${YELLOW}star ${GREEN}this repository to show your support!${NC}"
+    log "${CYAN}https://github.com/slyfox1186/script-repo${NC}"
+    exit 0
+}
+
+cleanup() {
+    sudo rm -fr "$cwd"
+}
+
+required_packages() {
+    local -a missing_pkgs pkgs
+    local pkg
+    pkgs=(
+        autoconf automake build-essential bzip2 curl gfortran \
+        libcurl4-openssl-dev libexpat1-dev libgcrypt20-dev \
+        libgpgme-dev libssl-dev libunistring-dev lzip pkg-config \
+        zlib1g-dev
+    )
+
+    missing_pkgs=()
+    for pkg in "${pkgs[@]}"; do
+        if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
+            missing_pkgs+=("$pkg")
+        fi
+    done
+
+    if [[ "${#missing_pkgs[@]}" -gt 0 ]]; then
+        sudo apt update
+        sudo apt install "${missing_pkgs[@]}"
+    fi
+}
+
+set_compiler_flags() {
+    CC="$compiler"
+    CXX="$compiler++"
+    CFLAGS="-O2 -pipe -march=native"
     CXXFLAGS="$CFLAGS"
-    export CC CFLAGS CXX CXXFLAGS
+    LDFLAGS="-Wl,-rpath,$install_dir/lib"
+    PATH="/usr/lib/ccache:$PATH"
+    PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/pkgconfig" 
+    export CC CXX CFLAGS CXXFLAGS LDFLAGS PATH PKG_CONFIG_PATH
 }
 
 build_libmetalink() {
     log "Building libmetalink..."
-    local libmetalink_dir="$cwd/libmetalink"
-    mkdir -p "$libmetalink_dir" && cd "$libmetalink_dir"
+    local libmetalink_dir
+    libmetalink_dir="$cwd/libmetalink"
+    mkdir -p "$libmetalink_dir" && cd "$libmetalink_dir" || exit 1
     curl -fsSL "https://github.com/metalink-dev/libmetalink/releases/download/release-0.1.3/libmetalink-0.1.3.tar.xz" | tar -Jxf - --strip-components 1
-    make distclean
-    ./configure --prefix="$install_dir" || error "Failed to configure libmetalink."
-    make "-j$(nproc)" || error "Failed to build libmetalink."
-    sudo make install || error "Failed to install libmetalink."
+    autoreconf -fi
+    mkdir build; cd build || exit 1
+    ../configure --prefix="$install_dir" || fail "Failed to configure libmetalink."
+    make "-j$(nproc)" || fail "Failed to build libmetalink."
+    sudo make install || fail "Failed to install libmetalink."
     log "libmetalink built successfully."
 }
 
-build_wget() {
-    log "Building wget from source..."
-    local wget_dir="$cwd/wget"
-    mkdir -p "$wget_dir" && cd "$wget_dir"
-    curl -fsSL "https://ftp.gnu.org/gnu/wget/$archive_dir.tar.lz" | tar --lzip -xf - --strip-components=1
-    mkdir build; cd build || exit 1
-    make distclean
+download_archive() {
+    wget --show-progress -cqO "$cwd/$tar_file" "$archive_url" || fail "Failed to download archive with WGET. Line: $LINENO"
+}
+
+extract_archive() {
+    tar -Jxf "$cwd/$tar_file" -C "$cwd/$archive_name" --strip-components 1 || fail "Failed to extract: $cwd/$tar_file"
+}
+
+configure_build() {
+    cd "$cwd/$archive_name" || fail "Failed to cd into $cwd/$archive_name. Line: $LINENO"
+
+    autoreconf -fi
+    cd build || exit 1
     ../configure --prefix="$install_dir" \
                  --with-ssl=openssl \
-                 --with-libssl-prefix="$install_dir" \
+                 --with-libssl-prefix="$cwd" \
                  --with-metalink \
                  --with-libunistring-prefix=/usr \
                  --with-libcares \
                  --without-ipv6 \
-                 --disable-nls || error "Failed to configure wget."
-                 make "-j$(nproc --all)" || error "Failed to build wget."
-                 sudo make install || error "Failed to install wget."
-    log "wget built and installed successfully."
+                 --disable-nls || fail "Failed to execute: configure. Line: $LINENO"
 }
 
-fix_libmetalink_libs() {
-    if [[ ! -f /usr/local/lib/libmetalink.so.3 ]]; then
-        metalink_library_file=$(find /usr/local/ -type f -name 'libmetalink.so.3*' | head -n1)
-        if ! sudo ln -sf "$metalink_library_file" /usr/local/lib/libmetalink.so.3; then
-            fail_fn "Failed to find or locate the libmetalink library 'so' file and create the required soft link. Line: $LINENO"
-        fi
-    fi
+compile_build() {
+    make "-j$(nproc --all)" || fail "Failed to execute: make build. Line: $LINENO"
 }
 
-cleanup() {
-    log "Cleaning up build directories..."
-    sudo rm -rf "$cwd"
-    log "Cleanup complete."
+install_build() {
+    sudo make install || fail "Failed execute: make install. Line: $LINENO"
 }
 
-# Parse command line arguments
-parse_args() {
-    while (( "$#" )); do
-        case "$1" in
-            -v|--verbose)
-                verbose=1
-                shift
-                ;;
-            -h|--help)
-                display_help
-                ;;
-            *)
-                warn "Ignoring unrecognized option: $1"
-                shift
-                ;;
-        esac
-    done
-}
-
-# Main execution flow
-main() {
-    [[ -d "$cwd" ]] && sudo rm -rf "$cwd"
-    parse_args "$@"
-    check_dependencies
-    source_flags
-    build_libmetalink
-    build_wget
-    fix_libmetalink_libs
-    cleanup
+ld_linker_path() {
+    echo "$install_dir/lib/" | sudo tee "/etc/ld.so.conf.d/custom_$prog_name.conf" >/dev/null
     sudo ldconfig
 }
 
-main "$@"
+create_soft_links() {
+    [[ -d "$install_dir/bin" ]] && sudo ln -sf "$install_dir/bin/"* "/usr/local/bin/"
+    [[ -d "$install_dir/lib/pkgconfig" ]] && sudo ln -sf "$install_dir/lib/pkgconfig/"*.pc "/usr/local/lib/pkgconfig/"
+    [[ -d "$install_dir/include" ]] && sudo ln -sf "$install_dir/include/"* "/usr/local/include/"
+}
 
-echo
-log "Wget build script completed successfully."
+uninstall_wget() {
+    local tar_dir
+    wget_dir="$install_dir/$archive_name"
+    if [[ -d "$wget_dir" ]]; then
+        log "Uninstalling $prog_name from $wget_dir"
+        sudo rm -rf "$wget_dir"
+        sudo rm "/etc/ld.so.conf.d/custom_$prog_name.conf"
+        sudo ldconfig
+        log "$prog_name has been uninstalled"
+    else
+        log "$prog_name is not installed"
+    fi
+}
+
+list_versions() {
+    log "Available versions of $prog_name:"
+    echo
+    curl -fsS "https://ftp.gnu.org/gnu/wget/" | grep -oP 'wget-1\.[\d.]+(?=\.tar\.[a-z]+)' | sort -ruV
+}
+
+main_menu() {
+    # Parse command-line arguments
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -v|--version)
+                version="$2"
+                shift 2
+                ;;
+            -l|--list)
+                list_versions
+                exit 0
+                ;;
+            -u|--uninstall)
+                uninstall_wget
+                exit 0
+                ;;
+            -c|--compiler)
+                compiler="$2"
+                shift 2
+                ;;
+            -h|--help)
+                print_usage
+                exit 0
+                ;;
+            *)
+                fail "Invalid option: $1"
+                ;;
+        esac
+    done
+
+    if [[ -z "$version" ]]; then
+        version="$default_version"
+        log "No version specified, using default version: $version"
+    fi
+
+    archive_name="$prog_name-$version"
+    archive_name="${archive_name//wget-wget-/wget-}"
+    archive_url="https://ftp.gnu.org/gnu/$prog_name/$prog_name-$version.tar.lz"
+    archive_url="${archive_url//wget-wget-/wget-}"
+    archive_ext="${archive_url//*.}"
+    tar_file="$archive_name.tar.$archive_ext"
+
+    # Create output directory
+    [[ -d "$cwd/$archive_name" ]] && sudo rm -fr "$cwd/$archive_name"
+    mkdir -p "$cwd/$archive_name/build"
+
+    required_packages
+    set_compiler_flags
+    build_libmetalink
+    download_archive
+    extract_archive
+    configure_build
+    compile_build
+    install_build
+    if [[ ! -d "$install_dir/lib/" ]]; then
+        warn "Failed to located the lib directory \"$install_dir/lib\" so no custom ld linking will occur."
+    else
+        ld_linker_path
+    fi
+    create_soft_links
+    cleanup
+    exit_function
+}
+
+if [[ "$EUID" -eq 0 ]]; then
+    echo "You must run this script without root or sudo."
+    exit 1
+fi
+
+main_menu "$@"
