@@ -1,13 +1,8 @@
 #!/usr/bin/env bash
 
-# Create a temporary file to store the video paths in
-temp_file=$(mktemp)
-
-# Add the video paths that FFmpeg will process to the temporary file that was created above
-cat > "$temp_file" <<'EOF'
-/path/to/video.mkv
-/path/to/video.mp4
-EOF
+# Default paths file
+paths_file="paths.txt"
+log_file="conversion.log"
 
 # Define color codes
 RED='\033[0;31m'
@@ -18,21 +13,68 @@ PURPLE='\033[0;35m'
 CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
+# Function to show usage
+show_usage() {
+    echo "Usage: $0 [-p paths_file] [-l log_file]"
+    echo "  -p paths_file   File containing the list of video paths (default: paths.txt)"
+    echo "  -l log_file     Log file to save output (default: conversion.log)"
+}
+
+# Parse command-line arguments
+while getopts "p:l:h" opt; do
+    case ${opt} in
+        p ) paths_file=$OPTARG ;;
+        l ) log_file=$OPTARG ;;
+        h ) show_usage; exit 0 ;;
+        * ) show_usage; exit 1 ;;
+    esac
+done
+
+# Create a temporary file to store the video paths in
+temp_file=$(mktemp)
+error_log=$(mktemp /tmp/error_log.XXXXXX)
+
+# Add the video paths that FFmpeg will process to the temporary file
+cat > "$temp_file" <<'EOF'
+/path/to/video.mkv
+/path/to/video.mp4
+EOF
+
 # Log functions
 log() {
-    echo -e "\\n${GREEN}[INFO]${NC} $1 $2\\n"
+    local message
+    message="$1"
+    echo -e "\\n${GREEN}[INFO]${NC} $message\\n" | tee -a "$log_file"
 }
 
 fail() {
-    echo -e "\\n${RED}[ERROR]${NC} $1 $2\\n"
+    local message
+    message="$1"
+    echo -e "\\n${RED}[ERROR]${NC} $message\\n" | tee -a "$log_file"
+    echo "$message" >> "$error_log"
     exit 1
+}
+
+# Cleanup function to remove temporary files
+cleanup() {
+    rm -f "$temp_file" "$error_log"
+}
+
+# Send notification
+send_notification() {
+    local message
+    message="$1"
+    if command -v notify-send &> /dev/null; then
+        notify-send "Video Conversion" "$message"
+    fi
 }
 
 # Check for required dependencies before proceeding
 check_dependencies() {
-    local missing_pkgs
+    local missing_pkgs pkg
+
     missing_pkgs=()
-    for pkg in bc ffpb google_speech sed; do
+    for pkg in bc ffpb google_speech sed ffmpeg notify-send; do
         if ! command -v "$pkg" &>/dev/null; then
             missing_pkgs+=("$pkg")
         fi
@@ -46,26 +88,52 @@ check_dependencies() {
 remove_video_path() {
     local video_path
     video_path="$1"
-    
+
     # Remove the video path from the heredoc using awk
-    awk -v path="$video_path" '!index($0, path)' "$0" > "$0.tmp" && mv "$0.tmp" "$0"
+    awk -v path="$video_path" '!index($0, path)' "$temp_file" > "$temp_file.tmp" && mv "$temp_file.tmp" "$temp_file"
+}
+
+# Retry function
+retry_command() {
+    local retries=3
+    local count=0
+    local delay=5
+
+    until "$@"; do
+        exit=$?
+        count=$((count + 1))
+        if [ $count -lt $retries ]; then
+            echo "Retry $count/$retries:"
+            sleep $delay
+        else
+            return $exit
+        fi
+    done
+    return 0
 }
 
 # Main video conversion function
 convert_videos() {
     local aspect_ratio bitrate bufsize file_out height length maxrate original_bitrate
     local threads total_input_size total_output_size total_space_saved width
+    local video input_size_bytes input_file output_file input_size_mb output_size space_saved
+    local video_name count total_videos progress estimated_output_size estimated_bitrate
 
     total_input_size=0
     total_output_size=0
     total_space_saved=0
+    count=0
+    total_videos=$(wc -l < "$temp_file")
 
     while read -u 9 video; do
+        count=$((count + 1))
+        progress=$((count * 100 / total_videos))
+        
         aspect_ratio=$(ffprobe -v error -select_streams v:0 -show_entries stream=display_aspect_ratio -of default=nk=1:nw=1 "$video")
         height=$(ffprobe -v error -select_streams v:0 -show_entries stream=height -of csv=s=x:p=0 "$video")
         input_size_bytes=$(ffprobe -v error -show_entries format=size -of default=noprint_wrappers=1:nokey=1 "$video")
         length=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$video")
-        original_bitrate=$(ffprobe -v error -show_entries format=bit_rate -of default=nk=1:nw=1 "$video")
+        original_bitrate=$(ffprobe -v error -show_entries format=bit_rate -of default=nk=1:nw=1 "$video" | awk '{print int($1/1024)}')
         width=$(ffprobe -v error -select_streams v:0 -show_entries stream=width -of csv=s=x:p=0 "$video")
 
         file_out="${video%.*} (x265).${video##*.}"
@@ -80,10 +148,6 @@ convert_videos() {
         bufsize=$(printf "%.0f" "$bufsize")
         maxrate=$(printf "%.0f" "$maxrate")
 
-        bitrate=$((bitrate / 1024))
-        bufsize=$((bufsize / 1024))
-        maxrate=$((maxrate / 1024))
-
         # Ensure integer arithmetic by truncating to integers before any operations
         length=$(printf "%.0f" "$length")
         length=$((length / 60))
@@ -96,31 +160,33 @@ convert_videos() {
         input_file="${video##*/}"
         output_file="${file_out##*/}"
         input_size_mb=$(echo "scale=2; $input_size_bytes / 1024 / 1024" | bc)
+        
+        # Estimate output size and bitrate
+        estimated_bitrate=$bitrate  # Bitrate is halved for output estimation
+        estimated_output_size=$(echo "scale=2; ($estimated_bitrate * $length * 60) / 8 / 1024" | bc)
 
         # Print video stats in the terminal
         printf "\\n${BLUE}::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::${NC}\\n\\n"
-
+        printf "${YELLOW}Progress:${NC} ${PURPLE}%d%%${NC}\\n" "$progress"
         printf "${YELLOW}Working Directory:${NC}  ${PURPLE}%s${NC}\\n\\n" "$PWD"
-
         printf "${YELLOW}Input File:${NC}         ${CYAN}%s${NC}\\n\\n" "$input_file"
-
         printf "${YELLOW}Size:${NC}               ${PURPLE}%.2f MB${NC}\\n" "$input_size_mb"
-        printf "${YELLOW}Bitrate:${NC}            ${PURPLE}%s kbps${NC}\\n" "$bitrate"
+        printf "${YELLOW}Bitrate:${NC}            ${PURPLE}%s kbps${NC}\\n" "$original_bitrate"
         printf "${YELLOW}Aspect Ratio:${NC}       ${PURPLE}%s${NC}\\n" "$aspect_ratio"
         printf "${YELLOW}Resolution:${NC}         ${PURPLE}%sx%s${NC}\\n" "$width" "$height"
         printf "${YELLOW}Duration:${NC}           ${PURPLE}%s mins${NC}\\n" "$length"
-
         printf "\\n${YELLOW}Output File:${NC}        ${CYAN}%s${NC}\\n" "$output_file"
-
+        printf "${YELLOW}Estimated Output Bitrate:${NC}  ${PURPLE}%s kbps${NC}\\n" "$estimated_bitrate"
+        printf "${YELLOW}Estimated Output Size:${NC}  ${PURPLE}%.2f MB${NC}\\n" "$estimated_output_size"
         printf "\\n${BLUE}::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::${NC}\\n"
 
-        log "Converting${NC}" "$video"
+        log "Converting $video"
 
         input_size=$(du -m "$video" | cut -f1)
         total_input_size=$((total_input_size + input_size))
 
         # Conversion using ffmpeg with HEVC codec
-        if ffpb -y -hide_banner -hwaccel_output_format cuda \
+        if retry_command ffpb -y -hide_banner -hwaccel_output_format cuda \
             -threads "$threads" -i "$video" -fps_mode:v vfr \
             -c:v hevc_nvenc -preset medium \
             -profile:v main10 -pix_fmt p010le -rc:v vbr -tune:v hq \
@@ -130,7 +196,7 @@ convert_videos() {
 
             google_speech "Video converted." &>/dev/null
 
-            log "Video conversion completed:${NC}" "$file_out"
+            log "Video conversion completed: $file_out"
 
             output_size=$(du -m "$file_out" | cut -f1)
             total_output_size=$((total_output_size + output_size))
@@ -152,13 +218,16 @@ convert_videos() {
             fail "Video conversion failed for: $video"
         fi
     done 9< "$temp_file"
-    rm "$temp_file"
 
     log "Total input size: ${total_input_size} MB"
     log "Total output size: ${total_output_size} MB"
     log "Total space saved: ${total_space_saved} MB"
 }
 
+# Register the cleanup function to be called on the EXIT signal
+trap cleanup EXIT
+
 # Check dependencies and start the video conversion process
 check_dependencies
 convert_videos
+send_notification "Video conversion process completed."
