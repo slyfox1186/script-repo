@@ -1253,6 +1253,7 @@ case "$STATIC_OS" in
 esac
 
 # Check minimum disk space-requirements
+echo
 echo "Checking disk space requirements..."
 echo "========================================================"
 disk_space_requirements
