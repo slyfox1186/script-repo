@@ -24,6 +24,10 @@ log() {
     echo -e "${GREEN}[INFO]${NC} $1"
 }
 
+warn() {
+    echo -e "\\n${YELLOW}[WARNING]${NC} $1"
+}
+
 fail() {
     echo -e "${RED}[ERROR]${NC} $1"
     echo -e "To report a bug, create an issue at: https://github.com/slyfox1186/script-repo/issues"
@@ -80,7 +84,7 @@ set_compiler_flags() {
     CXXFLAGS="$CFLAGS"
     LDFLAGS="-Wl,-rpath,$install_dir/lib"
     PATH="/usr/lib/ccache:$PATH"
-    PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/pkgconfig"
+    PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/pkgconfig" 
     export CC CXX CFLAGS CXXFLAGS LDFLAGS PATH PKG_CONFIG_PATH
 }
 
@@ -136,6 +140,7 @@ uninstall_sed() {
 
 list_versions() {
     log "Available versions of $prog_name:"
+    echo
     curl -fsS "https://ftp.gnu.org/gnu/$prog_name/" | grep -oP '\d\.[\d.]+(?=\.tar\.[a-z]+)' | sort -ruV
 }
 
@@ -190,7 +195,11 @@ main_menu() {
     configure_build
     compile_build
     install_build
-    [[ -d "$install_dir/$archive_name/lib" ]] && ld_linker_path
+    if [[ ! -f "$install_dir/$archive_name/lib/"*.so ]]; then
+        warn "Failed to located any \".so\" files so no custom ld linking will occur."
+    else
+        ld_linker_path
+    fi
     create_soft_links
     cleanup
     exit_function
