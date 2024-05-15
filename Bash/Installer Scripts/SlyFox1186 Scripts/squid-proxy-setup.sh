@@ -5,7 +5,18 @@ if [[ "$EUID" -ne 0 ]]; then
     exit 1
 fi
 
-[[ ! -d /etc/squid ]] && mkdir -p "/etc/squid"
+# Variables
+squid_user=squid
+squid_conf="/etc/squid/squid.conf"
+squid_passwords="/etc/squid/passwords"
+squid_whitelist="/etc/squid/whitelist.txt"
+squid_blacklist="/etc/squid/blacklist.txt"
+backup_dir="/etc/squid/backup"
+log_file="/var/log/squid-setup.log"
+health_check_interval=60 # seconds
+ssh_port=31500 # default SSH port, user can modify this
+
+# Functions
 
 create_squid_user() {
     echo "Creating user 'squid'..."
@@ -14,7 +25,6 @@ create_squid_user() {
         exit 1
     else
         echo "User 'squid' created successfully."
-
         echo "Adding user 'squid' to group 'root'..."
         if ! usermod -aG root squid; then
             echo "Failed to add user 'squid' to group 'root'."
@@ -24,23 +34,45 @@ create_squid_user() {
     fi
 }
 
-# Check if user squid exists
-if getent passwd squid &>/dev/null; then
-    echo "The user \"squid\" was found"
-else
-    echo "The user \"squid\" was not found"
-    create_squid_user
-fi
+backup_configs() {
+    echo "Backing up current Squid configuration..." | tee -a "$log_file"
+    cp $squid_conf "$backup_dir/squid.conf.bak"
+    cp $squid_whitelist "$backup_dir/whitelist.txt.bak"
+    cp $squid_blacklist "$backup_dir/blacklist.txt.bak"
+    echo "Backup completed." | tee -a "$log_file"
+}
 
-squid_user=squid
+restore_configs() {
+    echo "Restoring Squid configuration from backup..." | tee -a "$log_file"
+    cp "$backup_dir/squid.conf.bak" $squid_conf
+    cp "$backup_dir/whitelist.txt.bak" $squid_whitelist
+    cp "$backup_dir/blacklist.txt.bak" $squid_blacklist
+    echo "Restore completed." | tee -a "$log_file"
+}
 
-squid_conf="/etc/squid/squid.conf"
-squid_passwords="/etc/squid/passwords"
-squid_whitelist="/etc/squid/whitelist.txt"
-squid_blacklist="/etc/squid/blacklist.txt"
-SSH_PORT=<fill this out>
+interactive_config() {
+    get_hostname="$(hostname)"
+    read -p "Enter visible hostname (default: $get_hostname): " visible_hostname
+    visible_hostname="${visible_hostname:-$get_hostname}"
 
-cat > $squid_conf <<EOF
+    read -p "Enter Squid HTTP port (default: 3128): " http_port
+    http_port="${http_port:-3128}"
+
+    read -p "Enter memory cache size in MB (default: 512): " cache_mem
+    cache_mem="${cache_mem:-512}"
+
+    read -p "Enter maximum object size in MB (default: 1): " max_obj_size
+    max_obj_size="${max_obj_size:-1}"
+
+    read -p "Enter DNS nameservers (default: 1.1.1.1 1.0.0.1): " dns_servers
+    dns_servers="${dns_servers:-"1.1.1.1 1.0.0.1"}"
+
+    read -p "Enter SSH port (default: 22): " ssh_port_input
+    ssh_port="${ssh_port_input:-22}"
+}
+
+configure_squid() {
+    cat > $squid_conf <<EOF
 acl localnet src 172.16.0.0/12                  # RFC 1918 local private network [LAN]
 acl localnet src 192.168.0.0/16                 # RFC 1918 local private network [LAN]
 acl localhost src 127.0.0.1/255.255.255.255
@@ -54,7 +86,7 @@ acl Safe_ports port 210                         # wais
 acl Safe_ports port 1025-65535                  # unregistered ports
 acl Safe_ports port 280                         # http-mgmt
 acl Safe_ports port 488                         # gss-http
-acl Safe_ports port 563                         # commonly used (at least at one time) for NNTP (USENET news transfer) over SSL
+acl Safe_ports port 563                         # NNTP (USENET news transfer) over SSL
 acl Safe_ports port 591                         # filemaker
 acl Safe_ports port 777                         # multiling http
 acl CONNECT method CONNECT
@@ -74,15 +106,15 @@ via off
 
 client_request_buffer_max_size 512 KB
 
-dns_nameservers 1.1.1.1 1.0.0.1
+dns_nameservers $dns_servers
 
 minimum_object_size 64 bytes
-maximum_object_size 1 MB
-maximum_object_size_in_memory 1 MB
+maximum_object_size ${max_obj_size} MB
+maximum_object_size_in_memory ${max_obj_size} MB
 
 cache_swap_low 90
 cache_swap_high 95
-cache_mem 512 MB
+cache_mem ${cache_mem} MB
 
 memory_cache_mode always
 
@@ -98,21 +130,53 @@ refresh_pattern \/InRelease$                                 0         0%       
 refresh_pattern \/(Translation-.*)(|\.bz2|\.gz|\.xz)$        0         0%        0  refresh-ims
 refresh_pattern (\.deb|\.udeb)$                         129600       100%   129600
 refresh_pattern .                                            0        20%     4320
-cache_mem 512 MB
-http_port 3128
-visible_hostname macbookpro
+
+http_port $http_port
+visible_hostname $visible_hostname
+
 detect_broken_pconn off
 client_persistent_connections on
 server_persistent_connections off
-# cache_effective_user proxy
 http_accel_surrogate_remote on
 esi_parser expat
 shutdown_lifetime 5 seconds
 coredump_dir /var/spool/squid
 umask 022
 EOF
+}
 
-cat > $squid_whitelist <<'EOF'
+log_setup() {
+    echo "$(date) - Squid setup initiated." >> "$log_file"
+}
+
+email_notification() {
+    mail_recipient="user@example.com"
+    mail_subject="Squid Service Notification"
+    mail_body="The Squid service has been ${1}."
+    echo "$mail_body" | mail -s "$mail_subject" "$mail_recipient"
+}
+
+monitor_squid() {
+    while true; do
+        if ! systemctl is-active --quiet squid; then
+            email_notification "stopped"
+        fi
+        sleep $health_check_interval
+    done &
+}
+
+install_dependencies() {
+    if ! type -P htpasswd; then
+        apt -y install apache2-utils
+        clear
+    fi
+    if ! command -v squidclient &>/dev/null; then
+        apt -y install squidclient
+    fi
+}
+
+setup_whitelist_blacklist() {
+    cat > $squid_whitelist <<'EOF'
 \.7z$
 \.deb$
 \.debb$
@@ -132,59 +196,183 @@ cat > $squid_whitelist <<'EOF'
 ^ftp:\/\/
 EOF
 
-cat > $squid_blacklist <<'EOF'
-.facbook.com
+    cat > $squid_blacklist <<'EOF'
+.facebook.com
 .tiktok.com
 .whatsapp.com
 EOF
+}
 
-if ! type -P htpasswd; then
-    apt -y install apache2-utils
-    clear
-fi
-
-if [[ ! -f "$squid_passwords" ]]; then
-    if ! htpasswd -c "$squid_passwords" "$squid_user"; then
-        printf "\n%s\n\n" 'The squid passwd file failed to create.'
-    else
-        printf "\n%s\n\n" 'The squid passwd file was created successfully!'
+setup_passwords() {
+    if [[ ! -f "$squid_passwords" ]]; then
+        if ! htpasswd -c "$squid_passwords" "$squid_user"; then
+            printf "\n%s\n\n" 'The squid passwd file failed to create.'
+        else
+            printf "\n%s\n\n" 'The squid passwd file was created successfully!'
+        fi
+        echo
+        cat "$squid_passwords"
     fi
+}
+
+configure_firewall() {
     echo
-    cat "$squid_passwords"
-fi
+    echo "[1] Add UFW firewall rules"
+    echo "[2] Skip"
+    echo
+    read -p 'Enter a number: ' choice
+    clear
 
-echo
-echo "[1] Add UFW firewall rules"
-echo "[2] Skip"
-echo
-read -p 'Enter a number: ' choice
-clear
+    case "$choice" in
+        1)  echo
+            echo "Installing UFW Firewall Rules"
+            echo "=============================="
+            echo
+            ufw allow 53/tcp
+            ufw allow 53/udp
+            ufw allow 67/tcp
+            ufw allow 67/udp
+            ufw allow 80/tcp
+            ufw allow 546:547/udp
+            ufw allow 3128/tcp
+            ufw allow "$ssh_port/tcp"
+            ufw enable
+            service ufw start
+            echo
+            ;;
+        2)  ;;
+        "") ;;
+        *)  printf "%s\n\n" 'Bad user input.'
+            exit 1
+            ;;
+    esac
+}
 
-case "$choice" in
-    1)  echo
-        echo "Installing UFW Firewall Rules"
-        echo "=============================="
-        echo
-        ufw allow 53/tcp
-        ufw allow 53/udp
-        ufw allow 67/tcp
-        ufw allow 67/udp
-        ufw allow 80/tcp
-        ufw allow 546:547/udp
-        ufw allow 3128/tcp
-        ufw allow $SSH_PORT/tcp
-        echo
+restart_squid() {
+    systemctl restart squid
+    systemctl enable squid
+}
+
+enable_automatic_updates() {
+    echo "[1] Enable automatic updates"
+    echo "[2] Skip"
+    echo
+    read -p 'Enter a number: ' update_choice
+    clear
+
+    case "$update_choice" in
+        1)  echo "Enabling automatic updates for Squid..."
+            apt-get install unattended-upgrades
+            dpkg-reconfigure --priority=low unattended-upgrades
+            echo "Automatic updates enabled." | tee -a "$log_file"
+            ;;
+        2)  ;;
+        "") ;;
+        *)  printf "%s\n\n" 'Bad user input.'
+            exit 1
+            ;;
+    esac
+}
+
+help_menu() {
+    echo "Usage: $0 [options]"
+    echo "Options:"
+    echo "  -h, --help                Show this help message and exit"
+    echo "  -b, --backup              Backup current Squid configuration"
+    echo "  -r, --restore             Restore Squid configuration from backup"
+    echo "  -i, --interactive         Interactive configuration setup"
+    echo "  -m, --monitor             Start Squid monitoring and alert system"
+    echo "  -u, --update              Enable automatic updates for Squid"
+    echo "  --maintenance             Enable maintenance mode for Squid"
+}
+
+main() {
+    log_setup
+
+    # Ensure backup directory exists
+    mkdir -p "$backup_dir"
+
+    # Ensure Squid user exists
+    if getent passwd squid &>/dev/null; then
+        echo "The user \"squid\" was found"
+    else
+        echo "The user \"squid\" was not found"
+        create_squid_user
+    fi
+
+    # Setup whitelist and blacklist
+    setup_whitelist_blacklist
+
+    # Install necessary dependencies
+    install_dependencies
+
+    # Setup passwords
+    setup_passwords
+
+    # Configure firewall
+    configure_firewall
+
+    # Monitor Squid service
+    monitor_squid
+
+    # Restart Squid service
+    restart_squid
+
+    # Enable automatic updates
+    enable_automatic_updates
+
+    # Provide interactive options for configuration
+    echo
+    echo "[1] Backup current configuration"
+    echo "[2] Restore configuration from backup"
+    echo "[3] Interactive configuration"
+    echo "[4] Skip"
+    echo
+    read -p 'Enter a number: ' config_choice
+    clear
+
+    case "$config_choice" in
+        1)  backup_configs ;;
+        2)  restore_configs ;;
+        3)  interactive_config
+            configure_squid
+            restart_squid
+            ;;
+        4)  ;;
+        "") ;;
+        *)  printf "%s\n\n" 'Bad user input.'
+            exit 1
+            ;;
+    esac
+}
+
+# Parse command-line arguments
+case "$1" in
+    -h|--help)
+        help_menu
         ;;
-    2)  ;;
-    "") ;;
-    *)  printf "%s\n\n" 'Bad user input.'
-        exit 1
+    -b|--backup)
+        backup_configs
+        ;;
+    -r|--restore)
+        restore_configs
+        ;;
+    -i|--interactive)
+        interactive_config
+        configure_squid
+        restart_squid
+        ;;
+    -m|--monitor)
+        monitor_squid
+        ;;
+    -u|--update)
+        enable_automatic_updates
+        ;;
+    --maintenance)
+        systemctl stop squid
+        email_notification "entered maintenance mode"
+        ;;
+    *)
+        main "$@"
         ;;
 esac
-
-sudo systemctl restart squid
-service squid enable
-
-if ! command -v squidclient &>/dev/null; then
-    apt -y install squidclient
-fi
