@@ -2,8 +2,8 @@
 # shellcheck disable=SC2068,SC2162,SC2317 source=/dev/null
 
 # GitHub: https://github.com/slyfox1186/ffmpeg-build-script
-# Script version: 3.7.1
-# Updated: 05.11.24
+# Script version: 3.7.2
+# Updated: 05.14.24
 # Purpose: build ffmpeg from source code with addon development libraries
 #          also compiled from source to help ensure the latest functionality
 # Supported Distros: Debian 11|12
@@ -18,8 +18,8 @@ if [[ "$EUID" -ne 0 ]]; then
 fi
 
 # Define global variables
-script_name="${0}"
-script_version="3.7.1"
+script_name="$0"
+script_version="3.7.2"
 cwd="$PWD/ffmpeg-build-script"
 mkdir -p "$cwd" && cd "$cwd" || exit 1
 if [[ "$PWD" =~ ffmpeg-build-script\/ffmpeg-build-script ]]; then
@@ -2167,7 +2167,7 @@ PATH="$PATH:$workspace/ant/bin"
 remove_duplicate_paths
 
 # Ubuntu Jammy gives an error so use the APT version instead
-if [[ ! "$OS" == "Ubuntu" ]]; then
+if [[ ! "$STATIC_VER" == "22.04" ]]; then
     find_git_repo "206" "2" "T"
     if build "libbluray" "$repo_version"; then
         download "https://code.videolan.org/videolan/libbluray/-/archive/$repo_version/$repo_version.tar.gz" "libbluray-$repo_version.tar.gz"
@@ -2275,7 +2275,7 @@ if "$NONFREE_AND_GPL"; then
     if build "x264" "$repo_short_version_1"; then
         download "https://code.videolan.org/videolan/x264/-/archive/$repo_version_1/x264-$repo_version_1.tar.bz2" "x264-$repo_short_version_1.tar.bz2"
         execute ./configure --prefix="$workspace" --bit-depth=all --chroma-format=all --enable-debug --enable-gprof \
-                            --enable-lto --enable-pic --enable-static --enable-strip --extra-cflags="$CFLAGS" --extra-ldflags="$LDFLAGS"
+                            --enable-lto --enable-pic --enable-static --enable-strip --extra-cflags="-O3 -pipe -fPIC -march=native"
         execute make "-j$threads"
         execute make install-lib-static install
         build_done "x264" "$repo_short_version_1"
@@ -2332,17 +2332,6 @@ EOF
     CONFIGURE_OPTIONS+=("--enable-libx265")
 fi
 
-# Vaapi doesn"t work well with static links FFmpeg.
-if [[ -z "$LDEXEFLAGS" ]]; then
-    # If the libva development SDK is installed, enable vaapi.
-    if library_exists "libva"; then
-        if build "vaapi" "1"; then
-            build_done "vaapi" "1"
-        fi
-        CONFIGURE_OPTIONS+=("--enable-vaapi")
-    fi
-fi
-
 if "$NONFREE_AND_GPL"; then
     if [[ -n "$iscuda" ]]; then
         if build "nv-codec-headers" "12.1.14.0"; then
@@ -2366,6 +2355,27 @@ if "$NONFREE_AND_GPL"; then
         nvidia_architecture
         CONFIGURE_OPTIONS+=("--nvccflags=-gencode arch=$nvidia_arch_type")
     fi
+
+    # Vaapi doesn"t work well with static links FFmpeg.
+    if [[ -z "$LDEXEFLAGS" ]]; then
+        # If the libva development SDK is installed, enable vaapi.
+        if library_exists "libva"; then
+            if build "vaapi" "1"; then
+                build_done "vaapi" "1"
+            fi
+            CONFIGURE_OPTIONS+=("--enable-vaapi")
+        fi
+    fi
+
+    find_git_repo "GPUOpen-LibrariesAndSDKs/AMF" "1" "T"
+    if build "amf" "$repo_version"; then
+        download "https://github.com/GPUOpen-LibrariesAndSDKs/AMF/archive/refs/tags/v$repo_version.tar.gz" "amf-$repo_version.tar.gz"
+        execute rm -fr "$workspace/include/AMF"
+        execute mkdir -p "$workspace/include/AMF"
+        execute cp -fr "$packages/amf-$repo_version/amf/public/include/"* "$workspace/include/AMF/"
+        build_done "amf" "$repo_version"
+    fi
+    CONFIGURE_OPTIONS+=("--enable-amf")
 fi
 
 if "$NONFREE_AND_GPL"; then
@@ -2488,8 +2498,8 @@ find_git_repo "strukturag/libheif" "1" "T"
 if build "libheif" "$repo_version"; then
     download "https://github.com/strukturag/libheif/archive/refs/tags/v$repo_version.tar.gz" "libheif-$repo_version.tar.gz"
     source_compiler_flags
-    CFLAGS="-g -O3 -fno-lto -pipe -fPIE -fPIC -march=native"
-    CXXFLAGS="-g -O3 -fno-lto -fPIE -fPIC -pipe -march=native"
+    CFLAGS="-O3 -pipe -fno-lto -fPIC -march=native"
+    CXXFLAGS="-O3 -pipe -fno-lto -fPIC -march=native"
     export CFLAGS CXXFLAGS
     libde265_libs=$(find /usr/ -type f -name 'libde265.s*')
     if [[ -f "$libde265_libs" ]] && [[ ! -e "/usr/lib/x86_64-linux-gnu/libde265.so" ]]; then
@@ -2568,6 +2578,7 @@ else
     log_update "The latest FFmpeg release version available is: Unknown"
 fi
 
+source_compiler_flags
 find_git_repo "FFmpeg/FFmpeg" "1" "T"
 if build "ffmpeg" "n${repo_version}"; then
     CFLAGS="$CFLAGS -flto -DCL_TARGET_OPENCL_VERSION=300 -DX265_DEPTH=12 -DENABLE_LIBVMAF=0"
