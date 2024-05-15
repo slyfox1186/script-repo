@@ -1,102 +1,190 @@
 #!/usr/bin/env bash
 
-set -euo pipefail
-
-configure_squid_user_and_directories() {
-    log "Creating Squid user and directories..."
-    sudo useradd -M -r -U -d /var/cache/squid -s /usr/sbin/nologin proxy
-    sudo mkdir -p /var/cache/squid /var/log/squid
-    sudo chown -R proxy:proxy /var/cache/squid /var/log/squid || fail "Failed to create Squid user and directories"
-}
-
-parse_arguments() {
-    while [[ "$#" -gt 0 ]]; do
-        case $1 in
-            -c|--cache-size) CACHE_SIZE_GB="$2"; shift ;;
-            -e|--email) EMAIL="$2"; shift ;;
-            -d|--ddns-service) DDNS_SERVICE="$2"; shift ;;
-            -H|--ddns-hostname) DDNS_HOSTNAME="$2"; shift ;;
-            -u|--ddns-username) DDNS_USERNAME="$2"; shift ;;
-            -p|--ddns-password) DDNS_PASSWORD="$2"; shift ;;
-            -P|--parental-control) PARENTAL_CONTROL=true ;;
-            -a|--no-ad-blocker) AD_BLOCKER=false ;;
-            -s|--ssl-bump) ENABLE_SSL_BUMP=true ;;
-            -h|--help) usage ;;
-            *) echo "Unknown option: $1"; usage ;;
-        esac
-        shift
-    done
-}
-
-usage() {
-    cat <<EOF
-Usage: $0 [OPTIONS]
-Set up a home Squid proxy server with various features like caching, parental controls, ad blocking, SSL bumping, and more.
-
-Options:
-  -c, --cache-size SIZE          Set the cache directory size in GB (default: 50)
-  -e, --email EMAIL              Email address to send notifications to
-  -d, --ddns-service SERVICE     Dynamic DNS service provider (e.g., noip, duckdns, dynu)
-  -H, --ddns-hostname HOSTNAME   Dynamic DNS hostname
-  -u, --ddns-username USERNAME   Dynamic DNS username
-  -p, --ddns-password PASSWORD   Dynamic DNS password
-  -P, --parental-control         Enable parental control (block adult content)
-  -a, --no-ad-blocker            Disable ad blocker
-  -s, --ssl-bump                 Enable SSL bumping
-  -h, --help                     Display this help menu
-
-Examples:
-  $0 --cache-size 100 --email user@example.com --ddns-service noip --ddns-hostname myproxy.ddns.net --ddns-username myuser --ddns-password mypass --parental-control --no-ad-blocker --ssl-bump
-EOF
+if [[ "$EUID" -ne 0 ]]; then
+    echo "You must run this script as root or with sudo."
     exit 1
+fi
+
+[[ ! -d /etc/squid ]] && mkdir -p "/etc/squid"
+
+create_squid_user() {
+    echo "Creating user 'squid'..."
+    if ! useradd -m squid; then
+        echo "Failed to create user 'squid'."
+        exit 1
+    else
+        echo "User 'squid' created successfully."
+
+        echo "Adding user 'squid' to group 'root'..."
+        if ! usermod -aG root squid; then
+            echo "Failed to add user 'squid' to group 'root'."
+        else
+            echo "User 'squid' added to group 'root' successfully."
+        fi
+    fi
 }
 
-main() {
-    parse_arguments "$@"
-    configure_squid_user_and_directories
+# Check if user squid exists
+if getent passwd squid &>/dev/null; then
+    echo "The user \"squid\" was found"
+else
+    echo "The user \"squid\" was not found"
+    create_squid_user
+fi
 
-    # Configure Squid options based on arguments
-    if [[ -n "$CACHE_SIZE_GB" ]]; then
-        sed -i "s/cache_dir ufs \/var\/spool\/squid.*/cache_dir ufs \/var\/spool\/squid $((CACHE_SIZE_GB * 1024)) 16 256/g" /etc/squid/squid.conf
+squid_user=squid
+
+squid_conf="/etc/squid/squid.conf"
+squid_passwords="/etc/squid/passwords"
+squid_whitelist="/etc/squid/whitelist.txt"
+squid_blacklist="/etc/squid/blacklist.txt"
+SSH_PORT=<fill this out>
+
+cat > $squid_conf <<EOF
+acl localnet src 172.16.0.0/12                  # RFC 1918 local private network [LAN]
+acl localnet src 192.168.0.0/16                 # RFC 1918 local private network [LAN]
+acl localhost src 127.0.0.1/255.255.255.255
+acl local_network src 192.168.1.0/255.255.255.0
+acl SSL_ports port 443
+acl Safe_ports port 80                          # http
+acl Safe_ports port 21                          # ftp
+acl Safe_ports port 443                         # https
+acl Safe_ports port 70                          # gopher
+acl Safe_ports port 210                         # wais
+acl Safe_ports port 1025-65535                  # unregistered ports
+acl Safe_ports port 280                         # http-mgmt
+acl Safe_ports port 488                         # gss-http
+acl Safe_ports port 563                         # commonly used (at least at one time) for NNTP (USENET news transfer) over SSL
+acl Safe_ports port 591                         # filemaker
+acl Safe_ports port 777                         # multiling http
+acl CONNECT method CONNECT
+acl whitelist dstdom_regex $squid_whitelist
+acl blacklist dstdomain $squid_blacklist
+
+http_access allow local_network
+http_access allow localnet
+http_access allow localhost
+http_access allow whitelist
+
+# And finally deny all other access to this proxy
+http_access deny blacklist
+http_access deny all
+
+via off
+
+client_request_buffer_max_size 512 KB
+
+dns_nameservers 1.1.1.1 1.0.0.1
+
+minimum_object_size 64 bytes
+maximum_object_size 1 MB
+maximum_object_size_in_memory 1 MB
+
+cache_swap_low 90
+cache_swap_high 95
+cache_mem 512 MB
+
+memory_cache_mode always
+
+cache_dir ufs /var/spool/squid 1024 16 256
+
+refresh_pattern \/master$                                    0         0%        0  refresh-ims
+refresh_pattern ^ftp:                                     1440        20%    10080
+refresh_pattern ^gopher:                                  1440         0%     1440
+refresh_pattern -i (/cgi-bin/|\?)                            0         0%        0
+refresh_pattern \/(Packages|Sources)(|\.bz2|\.gz|\.xz)$      0         0%        0  refresh-ims
+refresh_pattern \/Release(|\.gpg)$                           0         0%        0  refresh-ims
+refresh_pattern \/InRelease$                                 0         0%        0  refresh-ims
+refresh_pattern \/(Translation-.*)(|\.bz2|\.gz|\.xz)$        0         0%        0  refresh-ims
+refresh_pattern (\.deb|\.udeb)$                         129600       100%   129600
+refresh_pattern .                                            0        20%     4320
+cache_mem 512 MB
+http_port 3128
+visible_hostname macbookpro
+detect_broken_pconn off
+client_persistent_connections on
+server_persistent_connections off
+# cache_effective_user proxy
+http_accel_surrogate_remote on
+esi_parser expat
+shutdown_lifetime 5 seconds
+coredump_dir /var/spool/squid
+umask 022
+EOF
+
+cat > $squid_whitelist <<'EOF'
+\.7z$
+\.deb$
+\.debb$
+\.exe$
+\.flac$
+\.mkv$
+\.mov$
+\.mp3$
+\.mp4$
+\.py$
+\.rar$
+\.sh$
+\.tar\.[a-z]+$
+\.tgz$
+\.xml$
+\.zip$
+^ftp:\/\/
+EOF
+
+cat > $squid_blacklist <<'EOF'
+.facbook.com
+.tiktok.com
+.whatsapp.com
+EOF
+
+if ! type -P htpasswd; then
+    apt -y install apache2-utils
+    clear
+fi
+
+if [[ ! -f "$squid_passwords" ]]; then
+    if ! htpasswd -c "$squid_passwords" "$squid_user"; then
+        printf "\n%s\n\n" 'The squid passwd file failed to create.'
+    else
+        printf "\n%s\n\n" 'The squid passwd file was created successfully!'
     fi
+    echo
+    cat "$squid_passwords"
+fi
 
-    if $PARENTAL_CONTROL; then
-        cat "$SQUID_BLACKLIST" >> /etc/squid/blacklist
-    fi
+echo
+echo "[1] Add UFW firewall rules"
+echo "[2] Skip"
+echo
+read -p 'Enter a number: ' choice
+clear
 
-    if ! $AD_BLOCKER; then
-        sed -i '/^acl ads/d' /etc/squid/squid.conf
-        sed -i '/^http_access deny ads/d' /etc/squid/squid.conf
-    fi
+case "$choice" in
+    1)  echo
+        echo "Installing UFW Firewall Rules"
+        echo "=============================="
+        echo
+        ufw allow 53/tcp
+        ufw allow 53/udp
+        ufw allow 67/tcp
+        ufw allow 67/udp
+        ufw allow 80/tcp
+        ufw allow 546:547/udp
+        ufw allow 3128/tcp
+        ufw allow $SSH_PORT/tcp
+        echo
+        ;;
+    2)  ;;
+    "") ;;
+    *)  printf "%s\n\n" 'Bad user input.'
+        exit 1
+        ;;
+esac
 
-    if $ENABLE_SSL_BUMP; then
-        apt -y install ssl-cert
-        {
-            ssl_bump server-first all
-            sslcrtd_program /usr/lib/squid/security_file_certgen -s /var/lib/ssl_db -M 4MB
-            sslcrtd_children
-        } >> /etc/squid/squid.conf
-    fi
+sudo systemctl restart squid
+service squid enable
 
-    # Restart and enable Squid service
-    systemctl restart squid
-    systemctl enable squid
-
-    log "Squid installation completed successfully!"
-}
-
-# Default values
-CACHE_SIZE_GB=50
-EMAIL=""
-DDNS_SERVICE=""
-DDNS_HOSTNAME=""
-DDNS_USERNAME=""
-DDNS_PASSWORD=""
-PARENTAL_CONTROL=false
-AD_BLOCKER=true
-ENABLE_SSL_BUMP=false
-
-# Blacklist file
-SQUID_BLACKLIST="/etc/squid/blacklist"
-
-main "$@"
+if ! command -v squidclient &>/dev/null; then
+    apt -y install squidclient
+fi
