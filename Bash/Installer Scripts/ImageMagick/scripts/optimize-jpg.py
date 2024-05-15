@@ -59,7 +59,7 @@ def process_image(image_path):
 
 def process_images(directory):
     images = [os.path.join(directory, f) for f in sorted(os.listdir(directory)) if f.lower().endswith('.jpg') and '-IM.jpg' not in f]
-    max_workers = psutil.cpu_count(logical=True)
+    max_workers = psutil.cpu_count(logical=True) // 2
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         results = list(executor.map(process_image, images))
     print(f"Processing completed: {sum(results)} images successfully processed.")
