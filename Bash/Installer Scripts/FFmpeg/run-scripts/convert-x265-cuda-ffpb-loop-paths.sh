@@ -2,7 +2,7 @@
 
 # Default paths file
 paths_file="paths.txt"
-log_file="conversion.log"
+log_file=""
 
 # Define color codes
 RED='\033[0;31m'
@@ -16,21 +16,21 @@ NC='\033[0m' # No Color
 # Function to show usage
 show_usage() {
     echo "Usage: $0 [-p paths_file] [-l log_file]"
-    echo "  -p paths_file   File containing the list of video paths (default: paths.txt)"
-    echo "  -l log_file     Log file to save output (default: conversion.log)"
+    echo "  -p paths_file   File containing the list of video paths"
+    echo "  -l log_file     Log file to save output"
 }
 
 # Parse command-line arguments
 while getopts "p:l:h" opt; do
     case ${opt} in
-        p ) paths_file=$OPTARG ;;
-        l ) log_file=$OPTARG ;;
+        p ) paths_file="$OPTARG" ;;
+        l ) log_file="$OPTARG" ;;
         h ) show_usage; exit 0 ;;
         * ) show_usage; exit 1 ;;
     esac
 done
 
-# Create a temporary file to store the video paths in
+# Create a temporary file to store the video paths
 temp_file=$(mktemp)
 error_log=$(mktemp /tmp/error_log.XXXXXX)
 
@@ -44,14 +44,23 @@ EOF
 log() {
     local message
     message="$1"
-    echo -e "\\n${GREEN}[INFO]${NC} $message\\n" | tee -a "$log_file"
+    if [[ -n "$log_file" ]]; then
+        echo -e "\n${GREEN}[INFO]${NC} $message\n" | tee -a "$log_file"
+    else
+        echo -e "\n${GREEN}[INFO]${NC} $message\n"
+    fi
 }
 
 fail() {
     local message
     message="$1"
-    echo -e "\\n${RED}[ERROR]${NC} $message\\n" | tee -a "$log_file"
-    echo "$message" >> "$error_log"
+    if [[ -n "$log_file" ]]; then
+        echo -e "\n${RED}[ERROR]${NC} $message\n" | tee -a "$log_file"
+        echo "$message" >> "$error_log"
+    else
+        echo -e "\n${RED}[ERROR]${NC} $message\n"
+        echo "$message" >> "$error_log"
+    fi
     exit 1
 }
 
@@ -71,8 +80,7 @@ send_notification() {
 
 # Check for required dependencies before proceeding
 check_dependencies() {
-    local missing_pkgs pkg
-
+    local -a missing_pkgs
     missing_pkgs=()
     for pkg in bc ffpb google_speech sed ffmpeg notify-send; do
         if ! command -v "$pkg" &>/dev/null; then
@@ -84,32 +92,11 @@ check_dependencies() {
     fi
 }
 
-# Function to remove a video path from the heredoc
+# Function to remove a video path from the script itself
 remove_video_path() {
     local video_path
     video_path="$1"
-
-    # Remove the video path from the heredoc using awk
-    awk -v path="$video_path" '!index($0, path)' "$temp_file" > "$temp_file.tmp" && mv "$temp_file.tmp" "$temp_file"
-}
-
-# Retry function
-retry_command() {
-    local retries=3
-    local count=0
-    local delay=5
-
-    until "$@"; do
-        exit=$?
-        count=$((count + 1))
-        if [ $count -lt $retries ]; then
-            echo "Retry $count/$retries:"
-            sleep $delay
-        else
-            return $exit
-        fi
-    done
-    return 0
+    awk -v path="$video_path" '!index($0, path)' "$0" > "$0.tmp" && mv "$0.tmp" "$0"
 }
 
 # Main video conversion function
@@ -128,7 +115,13 @@ convert_videos() {
     while read -u 9 video; do
         count=$((count + 1))
         progress=$((count * 100 / total_videos))
-        
+
+        # Local variable declarations
+        aspect_ratio= bitrate= bufsize= file_out= height= length= maxrate= original_bitrate=
+        threads= total_input_size= total_output_size= total_space_saved= width=
+        video= input_size_bytes= input_file= output_file= input_size_mb= output_size= space_saved=
+        video_name= count= total_videos= progress= estimated_output_size= estimated_bitrate=
+
         aspect_ratio=$(ffprobe -v error -select_streams v:0 -show_entries stream=display_aspect_ratio -of default=nk=1:nw=1 "$video")
         height=$(ffprobe -v error -select_streams v:0 -show_entries stream=height -of csv=s=x:p=0 "$video")
         input_size_bytes=$(ffprobe -v error -show_entries format=size -of default=noprint_wrappers=1:nokey=1 "$video")
@@ -160,25 +153,25 @@ convert_videos() {
         input_file="${video##*/}"
         output_file="${file_out##*/}"
         input_size_mb=$(echo "scale=2; $input_size_bytes / 1024 / 1024" | bc)
-        
+
         # Estimate output size and bitrate
         estimated_bitrate=$bitrate  # Bitrate is halved for output estimation
         estimated_output_size=$(echo "scale=2; ($estimated_bitrate * $length * 60) / 8 / 1024" | bc)
 
         # Print video stats in the terminal
-        printf "\\n${BLUE}::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::${NC}\\n\\n"
-        printf "${YELLOW}Progress:${NC} ${PURPLE}%d%%${NC}\\n" "$progress"
-        printf "${YELLOW}Working Directory:${NC}  ${PURPLE}%s${NC}\\n\\n" "$PWD"
-        printf "${YELLOW}Input File:${NC}         ${CYAN}%s${NC}\\n\\n" "$input_file"
-        printf "${YELLOW}Size:${NC}               ${PURPLE}%.2f MB${NC}\\n" "$input_size_mb"
-        printf "${YELLOW}Bitrate:${NC}            ${PURPLE}%s kbps${NC}\\n" "$original_bitrate"
-        printf "${YELLOW}Aspect Ratio:${NC}       ${PURPLE}%s${NC}\\n" "$aspect_ratio"
-        printf "${YELLOW}Resolution:${NC}         ${PURPLE}%sx%s${NC}\\n" "$width" "$height"
-        printf "${YELLOW}Duration:${NC}           ${PURPLE}%s mins${NC}\\n" "$length"
-        printf "\\n${YELLOW}Output File:${NC}        ${CYAN}%s${NC}\\n" "$output_file"
-        printf "${YELLOW}Estimated Output Bitrate:${NC}  ${PURPLE}%s kbps${NC}\\n" "$estimated_bitrate"
-        printf "${YELLOW}Estimated Output Size:${NC}  ${PURPLE}%.2f MB${NC}\\n" "$estimated_output_size"
-        printf "\\n${BLUE}::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::${NC}\\n"
+        printf "\n${BLUE}::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::${NC}\n\n"
+        printf "${YELLOW}Progress:${NC} ${PURPLE}%d%%${NC}\n" "$progress"
+        printf "${YELLOW}Working Directory:${NC}  ${PURPLE}%s${NC}\n\n" "$PWD"
+        printf "${YELLOW}Input File:${NC}         ${CYAN}%s${NC}\n\n" "$input_file"
+        printf "${YELLOW}Size:${NC}               ${PURPLE}%.2f MB${NC}\n" "$input_size_mb"
+        printf "${YELLOW}Bitrate:${NC}            ${PURPLE}%s kbps${NC}\n" "$original_bitrate"
+        printf "${YELLOW}Aspect Ratio:${NC}       ${PURPLE}%s${NC}\n" "$aspect_ratio"
+        printf "${YELLOW}Resolution:${NC}         ${PURPLE}%sx%s${NC}\n" "$width" "$height"
+        printf "${YELLOW}Duration:${NC}           ${PURPLE}%s mins${NC}\n" "$length"
+        printf "\n${YELLOW}Output File:${NC}        ${CYAN}%s${NC}\n" "$output_file"
+        printf "${YELLOW}Estimated Output Bitrate:${NC}  ${PURPLE}%s kbps${NC}\n" "$estimated_bitrate"
+        printf "${YELLOW}Estimated Output Size:${NC}  ${PURPLE}%.2f MB${NC}\n" "$estimated_output_size"
+        printf "\n${BLUE}::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::${NC}\n"
 
         log "Converting $video"
 
@@ -186,7 +179,7 @@ convert_videos() {
         total_input_size=$((total_input_size + input_size))
 
         # Conversion using ffmpeg with HEVC codec
-        if retry_command ffpb -y -hide_banner -hwaccel_output_format cuda \
+        if ffpb -y -hide_banner -hwaccel_output_format cuda \
             -threads "$threads" -i "$video" -fps_mode:v vfr \
             -c:v hevc_nvenc -preset medium \
             -profile:v main10 -pix_fmt p010le -rc:v vbr -tune:v hq \
