@@ -683,7 +683,7 @@ list_ppa() {
         if [[ -f "$1.tar.gz" ]]; then
             sudo rm "$1.tar.gz"
         fi
-        7z a -ttar -so -an "$1" | 7z a -tgz -mx9 -mpass1 -si "$1.tar.gz"
+        7z a -ttar -so -an "$1" | 7z a -tgzip -mx9 -mpass1 -si "$1.tar.gz"
     else
         read -p "Please enter the source folder path: " source
         read -p "Please enter the destination archive path (w/o extension): " output
@@ -691,7 +691,7 @@ list_ppa() {
         if [[ -f "$output.tar.gz" ]]; then
             sudo rm "$output.tar.gz"
         fi
-        7z a -ttar -so -an "$source" | 7z a -tgz -mx9 -mpass1 -si "$output.tar.gz"
+        7z a -ttar -so -an "$source" | 7z a -tgzip -mx9 -mpass1 -si "$output.tar.gz"
     fi
 }
 
