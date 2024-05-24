@@ -2,10 +2,10 @@
 
 ##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-aria2.sh
 ##  Purpose: Build aria2 from source code with hardening options
-##  Updated: 05.23.24
-##  Script version: 2.7
+##  Updated: 05.24.24
+##  Script version: 2.8
 
-script_ver="2.7"
+script_ver="2.8"
 
 echo "aria2 build script - version $script_ver"
 echo "==============================================="
@@ -54,10 +54,10 @@ set_compiler_options() {
 install_packages() {
     local pkgs missing_pkgs
     pkgs=(
-          autoconf autoconf-archive automake autopoint build-essential
-          ca-certificates ccache curl google-perftools libgoogle-perftools-dev
-          libssl-dev libxml2-dev libtool m4 pkg-config tcl-dev zlib1g-dev
-     )
+        autoconf autoconf-archive automake autopoint build-essential
+        ca-certificates ccache curl google-perftools libgoogle-perftools-dev
+        libssl-dev libxml2-dev libtool m4 pkg-config tcl-dev zlib1g-dev
+    )
     log "Attempting to install required packages..."
     missing_pkgs=($(comm -23 <(printf "%s\n" "${pkgs[@]}" | sort) <(dpkg-query -W -f='${Package}\n' | sort) | tr '\n' ' '))
     [[ ${#missing_pkgs[@]} -gt 0 ]] && sudo apt-get install -y "${missing_pkgs[@]}"
@@ -87,6 +87,7 @@ build_library() {
     cd "${name}-${version}" || exit 1
     if [[ "${name}" == "aria2" ]]; then
         autoreconf -fi
+        sed -i "s/1, 16/1, 128/g" "src/OptionHandlerFactory.cc"
         TCMALLOC_CFLAGS="-I/usr/include"
         TCMALLOC_LIBS="-L/usr/lib/x86_64-linux-gnu -ltcmalloc_minimal"
         CPPFLAGS="-I${temp_dir}/include $CPPFLAGS"
@@ -103,20 +104,17 @@ build_library() {
 
 # Install ca certs from curl's official website
 install_ca_certs() {
-    certs_ssl_dir="/etc/ssl/certs/cacert.pem"
-    if [[ ! -f "$certs_ssl_dir"  ]]; then
+    local certs_ssl_dir="/etc/ssl/certs/cacert.pem"
+    if [[ ! -f "$certs_ssl_dir" ]]; then
         curl -LSso "cacert.pem" "https://curl.se/ca/cacert.pem"
         sudo cp -f "cacert.pem" "$certs_ssl_dir"
     fi
-
-    if type -P update-ca-certificates &>/dev/null; then
-        sudo update-ca-certificates
-    fi
+    type -P update-ca-certificates &>/dev/null && sudo update-ca-certificates
 }
 
 fix_tcmalloc_lib() {
+    local lib_path
     lib_path=$(sudo find /usr/lib/x86_64-linux-gnu -regextype posix-extended -regex '.*/libtcmalloc_minimal\.so\.[4-9]$')
-
     if [[ -n "$lib_path" ]] && [[ ! -L "/usr/lib/x86_64-linux-gnu/libtcmalloc_minimal.so" ]]; then
         sudo ln -sf "$lib_path" "/usr/lib/x86_64-linux-gnu/libtcmalloc_minimal.so"
         log "Created a link for the broken tcmalloc_minimal library file."
@@ -126,7 +124,7 @@ fix_tcmalloc_lib() {
 }
 
 start_build() {
-    local temp_dir aria2_version
+    local temp_dir
     temp_dir="/tmp/aria2-$$"
     mkdir -p "${temp_dir}"
     cd "${temp_dir}" || exit 1
