@@ -98,16 +98,33 @@ install_and_set_compiler() {
 
     case "$pkg_manager" in
         apt)
-            apt install -y "$compiler-$version"
+            if [[ "$compiler" == "gcc" ]]; then
+                apt install -y "$compiler-$version" "g++-$version"
+            else
+                apt install -y "$compiler-$version"
+            fi
             ;;
         yum)
-            yum install -y "$compiler-$version"
+            if [[ "$compiler" == "gcc" ]]; then
+                yum install -y "$compiler-$version" "g++-$version"
+            else
+                yum install -y "$compiler-$version"
+            fi
             ;;
     esac
 
     # Set alternatives
     update-alternatives --install "$binary_base_path" "$compiler" "$binary_base_path-$version" 50
     update-alternatives --set "$compiler" "$binary_base_path-$version"
+
+    # Set alternatives for the compiler++
+    if [[ "$compiler" == "gcc" ]]; then
+        update-alternatives --install "$binary_base_path++" "g++" "$binary_base_path++-$version" 50
+        update-alternatives --set "g++" "$binary_base_path++-$version"
+    elif [[ "$compiler" == "clang" ]]; then
+        update-alternatives --install "$binary_base_path++" "clang++" "$binary_base_path++-$version" 50
+        update-alternatives --set "clang++" "$binary_base_path++-$version"
+    fi
 }
 
 # Main execution
@@ -129,4 +146,4 @@ main() {
     echo "Setup completed based on selected options."
 }
 
-main
+main "$@"
