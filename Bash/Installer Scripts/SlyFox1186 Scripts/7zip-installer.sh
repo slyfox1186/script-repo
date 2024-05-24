@@ -5,7 +5,7 @@
 # Script version: 3.3
 # Optimized code
 
-random=$(mkdtemp -d)
+random=$(mktemp -d)
 
 # Set variables
 readonly script_version="3.3"
@@ -146,7 +146,7 @@ display_help() {
     echo
     echo "Options:"
     echo "  -h, --help         Display this help menu"
-    echo "  -nc, --no-cleanup  Do not clean up the install files after the script has finished"
+    echo "  -n, --no-cleanup   Do not clean up the install files after the script has finished"
     echo "  -v, --version      Display the script version"
     echo
     echo "Examples:"
@@ -170,7 +170,7 @@ while [[ "$#" -gt 0 ]]; do
             display_help
             exit 0
             ;;
-        -nc|--no-cleanup)
+        -n|--no-cleanup)
             no_cleanup=true
             ;;
         -v|--version)
@@ -193,19 +193,8 @@ if ! command -v wget &>/dev/null || ! command -v tar &>/dev/null; then
     install_dependencies
 fi
 
-# Prompt user to choose between stable or beta version
-echo "Choose the version of 7-Zip to install:"
-echo
-echo "[1] Stable version (v2301)"
-echo "[2] Beta version (v2403)"
-echo
-read -p "Your choices are ( 1 or 2): " choice
-
-case "$choice" in
-    1) version="7z2301" ;;
-    2) version="7z2403" ;;
-    *) fail "Invalid choice. Please enter 1 or 2." ;;
-esac
+# Set current version
+version="7z2405"
 
 # Clean up existing installation directory
 if [[ -d "$working" ]]; then
@@ -255,7 +244,7 @@ echo
 log_update "7-Zip installation completed successfully."
 print_version
 
-if [[ -z "$no_cleanup" ]]; then
+if [[ "$no_cleanup" == false ]]; then
     rm -fr "$working"
 else
     log "Skipping cleanup of install files as requested."
