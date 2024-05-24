@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 
-# Ffmpeg_video_dicer.sh
+# Video path and start/stop times
+video_path="/path/to/video.mp4"
 
 concat_video_segments() {
-    local video_path=$1
+    local video_path="$1"
     local start=("${@:2:$(($#/2))}") # First half of arguments are 'starts'
     local stops=("${@:$(($#/2 + 2))}") # Second half of arguments are 'stops'
 
@@ -33,12 +34,9 @@ concat_video_segments() {
     rm -r "$tmp_dir"
 }
 
-# Video path and start/stop times
-video_path='/path/to/video.mp4' # Replace with your actual video file path
-
 # Each start variable on top corresponds with the stop variable directly below it.
 # Add additional matching start and stop times as needed.
-start=("00:02:00" "00:06:18")
-stops=("00:04:10" "00:07:12")
+start=("00:00:00" "00:04:07")
+stops=("00:02:48" "00:22:37")
 
 concat_video_segments "$video_path" "${start[@]}" "${stops[@]}"
