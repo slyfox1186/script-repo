@@ -17,7 +17,7 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 ARIA2_STATIC="no"
-export ARIA2_STATIC
+CFLAGS_OPTION="-march=native"
 
 log() { echo -e "${GREEN}[LOG]${NC} $*"; }
 warn() { echo -e "${YELLOW}[WARNING]${NC} $*"; }
@@ -29,14 +29,17 @@ Usage: $0 [OPTION]...
 Build aria2 from source code with hardening options.
 
 Options:
-  -d, --debug         Enable debug mode for more detailed output
-  -S, --static        Set aria2 as statically linked (ARIA2_STATIC=yes)
   -h, --help          Display this help message and exit
+  -d, --debug         Enable debug mode for more detailed output
+  -g, --generic       Set CFLAGS to -O3 -pipe -march=generic
+  -n, --native        Set CFLAGS to -O3 -pipe -march=native (default)
+  -s, --static        Set aria2 as statically linked (ARIA2_STATIC=yes)
 
 Examples:
   $0                     # Build aria2 from source
+  $0 --debug --generic   # Build aria2 with CFLAGS set to -O3 -pipe -march=generic
   $0 --static            # Build aria2 from source and set as statically linked
-  $0 -d --static         # Build aria2 with debug mode, and set as statically linked
+  $0 -d -g -s            # Build aria2 with debug mode, generic tuning, and set as statically linked
 EOF
     exit 0
 }
@@ -44,11 +47,21 @@ EOF
 set_compiler_options() {
     CC="gcc"
     CXX="g++"
-    CFLAGS="-O2 -fPIC -fPIE -mtune=native -DNDEBUG -fstack-protector-strong -Wno-unused-parameter"
+    CFLAGS="-O3 -pipe $CFLAGS_OPTION -fPIC -fPIE -DNDEBUG -fstack-protector-strong -Wno-unused-parameter"
     CXXFLAGS="$CFLAGS"
     CPPFLAGS="-I/usr/local/include -I/usr/include -D_FORTIFY_SOURCE=2"
     LDFLAGS="-Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now -Wl,-rpath,/usr/local/lib"
     export CC CXX CFLAGS CXXFLAGS CPPFLAGS LDFLAGS
+}
+
+print_env() {
+    log "Environment variables:"
+    log "CC=$CC"
+    log "CXX=$CXX"
+    log "CFLAGS=$CFLAGS"
+    log "CXXFLAGS=$CXXFLAGS"
+    log "CPPFLAGS=$CPPFLAGS"
+    log "LDFLAGS=$LDFLAGS"
 }
 
 install_packages() {
@@ -146,7 +159,38 @@ main() {
         echo "This script must be run without root or sudo."
         exit 1
     fi
+
+    for arg in "$@"; do
+        case $arg in
+            -d|--debug)
+                set -x
+                shift
+                ;;
+            -s|--static)
+                ARIA2_STATIC="yes"
+                shift
+                ;;
+            -g|--generic)
+                CFLAGS_OPTION="-mtune=generic"
+                shift
+                ;;
+            -n|--native)
+                CFLAGS_OPTION="-march=native"
+                shift
+                ;;
+            -h|--help)
+                display_help
+                ;;
+            *)
+                display_help
+                ;;
+        esac
+    done
+
+    export ARIA2_STATIC
+
     set_compiler_options
+    print_env
     install_packages
     start_build
     log "Aria2 build process completed successfully."
