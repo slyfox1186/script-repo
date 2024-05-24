@@ -2,10 +2,10 @@
 
 ##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-aria2.sh
 ##  Purpose: Build aria2 from source code with hardening options
-##  Updated: 05.11.24
-##  Script version: 2.6
+##  Updated: 05.23.24
+##  Script version: 2.7
 
-script_ver="2.6"
+script_ver="2.7"
 
 echo "aria2 build script - version $script_ver"
 echo "==============================================="
@@ -53,7 +53,11 @@ set_compiler_options() {
 
 install_packages() {
     local pkgs missing_pkgs
-    pkgs=(autoconf autoconf-archive automake build-essential ca-certificates ccache curl google-perftools libgoogle-perftools-dev libssl-dev libxml2-dev libtool m4 pkg-config zlib1g-dev)
+    pkgs=(
+          autoconf autoconf-archive automake autopoint build-essential
+          ca-certificates ccache curl google-perftools libgoogle-perftools-dev
+          libssl-dev libxml2-dev libtool m4 pkg-config tcl-dev zlib1g-dev
+     )
     log "Attempting to install required packages..."
     missing_pkgs=($(comm -23 <(printf "%s\n" "${pkgs[@]}" | sort) <(dpkg-query -W -f='${Package}\n' | sort) | tr '\n' ' '))
     [[ ${#missing_pkgs[@]} -gt 0 ]] && sudo apt-get install -y "${missing_pkgs[@]}"
