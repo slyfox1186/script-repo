@@ -116,12 +116,6 @@ convert_videos() {
         count=$((count + 1))
         progress=$((count * 100 / total_videos))
 
-        # Local variable declarations
-        aspect_ratio= bitrate= bufsize= file_out= height= length= maxrate= original_bitrate=
-        threads= total_input_size= total_output_size= total_space_saved= width=
-        video= input_size_bytes= input_file= output_file= input_size_mb= output_size= space_saved=
-        video_name= count= total_videos= progress= estimated_output_size= estimated_bitrate=
-
         aspect_ratio=$(ffprobe -v error -select_streams v:0 -show_entries stream=display_aspect_ratio -of default=nk=1:nw=1 "$video")
         height=$(ffprobe -v error -select_streams v:0 -show_entries stream=height -of csv=s=x:p=0 "$video")
         input_size_bytes=$(ffprobe -v error -show_entries format=size -of default=noprint_wrappers=1:nokey=1 "$video")
