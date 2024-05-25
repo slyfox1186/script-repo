@@ -11,7 +11,7 @@ ICON_SIZES="256,128,96,64,48,32,20,16"
 # Function to display the help menu
 display_help() {
     echo "Purpose:"
-    echo "This script converts image files to various formats using ImageMagick and FFmpeg."
+    echo "This script converts image files to various formats using ImageMagick and GNU Parallel."
     echo "It supports conversions between PNG, JPG, WEBP, JFIF, ICO, TIFF, BMP, and GIF formats."
     echo
     echo "Usage: $0"
@@ -23,7 +23,7 @@ display_help() {
 
 # Function to check for required dependencies
 check_dependencies() {
-    local dependencies=(ffmpeg convert)
+    local dependencies=(parallel convert identify)
     local missing_deps=()
     
     for dep in "${dependencies[@]}"; do
@@ -38,55 +38,39 @@ check_dependencies() {
     fi
 }
 
-# Function to convert image files
-convert_files() {
-    local input_type="$1"
-    local output_types=("$@")
-    output_types=("${output_types[@]:1}")
-    
-    local files=(*."$input_type")
-    local convert_success=0
-    local convert_fail=0
-    
-    for file in "${files[@]}"; do
-        for output_type in "${output_types[@]}"; do
-            local output_file="output/${file%.*}.$output_type"
-            
-            if [[ "$input_type" == "$output_type" ]]; then
-                echo -e "${RED}[ERROR]${NC} Skipping conversion of $file to the same format."
-                convert_fail=$((convert_fail + 1))
-                continue
-            fi
-            
-            case "$output_type" in
-                jpg|jfif|tiff|bmp|gif)
-                    convert "$file" -quality 90 -colorspace RGB -strip "$output_file"
-                    ;;
-                png|webp)
-                    ffmpeg -y -i "$file" -vf "format=rgb24" -update 1 "$output_file"
-                    ;;
-                ico)
-                    convert -background none "$file" -define icon:auto-resize="$ICON_SIZES" "$output_file"
-                    ;;
-                *)
-                    echo -e "${RED}[ERROR]${NC} Unsupported output format: $output_type"
-                    convert_fail=$((convert_fail + 1))
-                    continue
-                    ;;
-            esac
-            
-            if [ $? -eq 0 ]; then
-                echo -e "${GREEN}[INFO]${NC} Convert success: $file to $output_file"
-                convert_success=$((convert_success + 1))
-            else
-                echo -e "${RED}[ERROR]${NC} Convert failed: $file to $output_file"
-                convert_fail=$((convert_fail + 1))
-            fi
-        done
-    done
-    
-    echo -e "${GREEN}[INFO]${NC} Conversion completed. Success: $convert_success, Failed: $convert_fail"
+# Function to determine file type
+get_file_type() {
+    identify -format '%m' "$1" | tr '[:upper:]' '[:lower:]'
 }
+
+# Function to convert image files
+convert_file() {
+    local file="$1"
+    local output_type="$2"
+    local output_file="$3"
+
+    case "$output_type" in
+        jpg|jfif|tiff|bmp|gif|png|webp)
+            convert "$file" -quality 90 -strip "$output_file"
+            ;;
+        ico)
+            convert -background none "$file" -define icon:auto-resize="$ICON_SIZES" "$output_file"
+            ;;
+        *)
+            echo -e "${RED}[ERROR]${NC} Unsupported output format: $output_type"
+            return 1
+            ;;
+    esac
+
+    if [ $? -eq 0 ]; then
+        echo -e "${GREEN}[INFO]${NC} Convert success: $file to $output_file"
+        return 0
+    else
+        echo -e "${RED}[ERROR]${NC} Convert failed: $file to $output_file"
+        return 1
+    fi
+}
+export -f convert_file
 
 # Main script
 main() {
@@ -100,20 +84,14 @@ main() {
     check_dependencies
 
     # Create output directory
-    mkdir -p output
+    output_dir="output"
+    mkdir -p "$output_dir"
     
-    # Determine input file types
-    local input_types=()
-    [[ -n "$(ls *.png 2>/dev/null)" ]] && input_types+=("png")
-    [[ -n "$(ls *.jpg 2>/dev/null)" ]] && input_types+=("jpg")
-    [[ -n "$(ls *.webp 2>/dev/null)" ]] && input_types+=("webp")
-    [[ -n "$(ls *.jfif 2>/dev/null)" ]] && input_types+=("jfif")
-    [[ -n "$(ls *.tiff 2>/dev/null)" ]] && input_types+=("tiff")
-    [[ -n "$(ls *.bmp 2>/dev/null)" ]] && input_types+=("bmp")
-    [[ -n "$(ls *.gif 2>/dev/null)" ]] && input_types+=("gif")
+    # Determine input files
+    mapfile -t files < <(find . -type f -name "*.png" -o -name "*.jpg" -o -name "*.webp" -o -name "*.jfif" -o -name "*.tiff" -o -name "*.bmp" -o -name "*.gif")
     
-    if [ ${#input_types[@]} -eq 0 ]; then
-        echo -e "${RED}[ERROR]${NC} No supported input files found (PNG, JPG, WEBP, JFIF, TIFF, BMP, GIF)."
+    if [ ${#files[@]} -eq 0 ]; then
+        echo -e "${RED}[ERROR]${NC} No supported input files found."
         exit 1
     fi
     
@@ -133,18 +111,24 @@ main() {
         esac
     done
     
-    # Convert files for each input type
-    for input_type in "${input_types[@]}"; do
-        convert_files "$input_type" "${output_types[@]}"
+    # Convert files using GNU Parallel
+    for file in "${files[@]}"; do
+        input_type=$(get_file_type "$file")
+        for output_type in "${output_types[@]}"; do
+            output_file="$output_dir/${file%.*}.$output_type"
+            if [[ "$input_type" == "$output_type" ]]; then
+                echo -e "${GREEN}[INFO]${NC} Skipping conversion of $file to the same format."
+                continue
+            fi
+            parallel convert_file ::: "$file" ::: "$output_type" ::: "$output_file"
+        done
     done
     
     # Prompt to delete input files
     echo
     read -p "Do you want to delete the input files? [y/N]: " delete_choice
-    if [[ "$delete_choice" =~ ^[Yy]$ ]]; then
-        for input_type in "${input_types[@]}"; do
-            rm *."$input_type"
-        done
+    if [[ ${delete_choice,,} == "y" ]]; then
+        rm -f "${files[@]}"
         echo -e "${GREEN}[INFO]${NC} Input files deleted."
     else
         echo -e "${GREEN}[INFO]${NC} Input files not deleted."
