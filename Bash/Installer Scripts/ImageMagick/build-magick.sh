@@ -63,25 +63,8 @@ else
     cpu_threads=$(nproc --all)
 fi
 
-# SET THE PATH
-if [[ -d /usr/lib/ccache/bin ]]; then
-    ccache_dir=/usr/lib/ccache/bin
-else
-    ccache_dir=/usr/lib/ccache
-fi
-
 # Set the path variable
-PATH="\
-$ccache_dir:\
-$workspace/bin:\
-$HOME/.local/bin:\
-/usr/local/sbin:\
-/usr/local/bin:\
-/usr/sbin:\
-/usr/bin:\
-/sbin:\
-/bin\
-"
+PATH="/usr/lib/ccache:$workspace/bin:$PATH"
 export PATH
 
 # Set the pkg_config_path variable
