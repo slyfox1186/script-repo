@@ -8,22 +8,29 @@ NC='\033[0m'
 # Icon sizes
 ICON_SIZES="256,128,96,64,48,32,20,16"
 
+# Default values
+output_dir="output"
+quality=83
+additional_args=""
+
 # Function to display the help menu
 display_help() {
     echo "Purpose:"
-    echo "This script converts image files to various formats using ImageMagick and GNU Parallel."
+    echo "This script converts image files to various formats using ImageMagick."
     echo "It supports conversions between PNG, JPG, WEBP, JFIF, ICO, TIFF, BMP, and GIF formats."
     echo
-    echo "Usage: $0"
+    echo "Usage: $0 [options]"
     echo
-    echo "Example:"
-    echo "  $0              Convert image files in the current directory"
-    echo "  $0 --help       Display the help menu"
+    echo "Options:"
+    echo "  -h, --help              Display the help menu"
+    echo "  -q, --quality [value]   Set the quality level (default is 83)"
+    echo "  -o, --output [dir]      Set the output directory (default is 'output')"
+    echo "  -a, --additional [args] Set additional command-line arguments for ImageMagick"
 }
 
 # Function to check for required dependencies
 check_dependencies() {
-    local dependencies=(parallel convert identify)
+    local dependencies=('convert' 'identify')
     local missing_deps=()
     
     for dep in "${dependencies[@]}"; do
@@ -48,13 +55,17 @@ convert_file() {
     local file="$1"
     local output_type="$2"
     local output_file="$3"
+    local quality="$4"
+    local additional_args="$5"
+
+    echo -e "${GREEN}[INFO]${NC} Converting $file to $output_file with quality $quality and additional args $additional_args"
 
     case "$output_type" in
         jpg|jfif|tiff|bmp|gif|png|webp)
-            convert "$file" -quality 90 -strip "$output_file"
+            convert "$file" -quality "$quality" $additional_args "$output_file"
             ;;
         ico)
-            convert -background none "$file" -define icon:auto-resize="$ICON_SIZES" "$output_file"
+            convert -background none "$file" -define icon:auto-resize="$ICON_SIZES" $additional_args "$output_file"
             ;;
         *)
             echo -e "${RED}[ERROR]${NC} Unsupported output format: $output_type"
@@ -70,25 +81,47 @@ convert_file() {
         return 1
     fi
 }
-export -f convert_file
 
 # Main script
 main() {
-    # Check if help is requested
-    if [[ "$1" == "--help" ]]; then
-        display_help
-        exit 0
-    fi
+    # Parse arguments
+    while [[ "$#" -gt 0 ]]; do
+        case $1 in
+            -h|--help)
+                display_help
+                exit 0
+                ;;
+            -q|--quality)
+                quality="$2"
+                shift
+                ;;
+            -o|--output)
+                output_dir="$2"
+                shift
+                ;;
+            -a|--additional)
+                additional_args="$2"
+                shift
+                ;;
+            *)
+                echo -e "${RED}[ERROR]${NC} Invalid option: $1"
+                display_help
+                exit 1
+                ;;
+        esac
+        shift
+    done
     
     # Check for dependencies
     check_dependencies
 
-    # Create output directory
-    output_dir="output"
-    mkdir -p "$output_dir"
+    # Create output directory if it doesn't exist
+    if [ ! -d "$output_dir" ]; then
+        mkdir -p "$output_dir"
+    fi
     
     # Determine input files
-    mapfile -t files < <(find . -type f -name "*.png" -o -name "*.jpg" -o -name "*.webp" -o -name "*.jfif" -o -name "*.tiff" -o -name "*.bmp" -o -name "*.gif")
+    mapfile -t files < <(find . -maxdepth 1 -type f \( -name "*.png" -o -name "*.jpg" -o -name "*.webp" -o -name "*.jfif" -o -name "*.tiff" -o -name "*.bmp" -o -name "*.gif" \) ! -path "./$output_dir/*")
     
     if [ ${#files[@]} -eq 0 ]; then
         echo -e "${RED}[ERROR]${NC} No supported input files found."
@@ -111,16 +144,16 @@ main() {
         esac
     done
     
-    # Convert files using GNU Parallel
+    # Convert files
     for file in "${files[@]}"; do
         input_type=$(get_file_type "$file")
         for output_type in "${output_types[@]}"; do
-            output_file="$output_dir/${file%.*}.$output_type"
             if [[ "$input_type" == "$output_type" ]]; then
                 echo -e "${GREEN}[INFO]${NC} Skipping conversion of $file to the same format."
                 continue
             fi
-            parallel convert_file ::: "$file" ::: "$output_type" ::: "$output_file"
+            output_file="$output_dir/$(basename "${file%.*}").$output_type"
+            convert_file "$file" "$output_type" "$output_file" "$quality" "$additional_args"
         done
     done
     
