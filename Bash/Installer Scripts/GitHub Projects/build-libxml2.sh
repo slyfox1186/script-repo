@@ -1,57 +1,69 @@
 #!/usr/bin/env bash
 # Shellcheck disable=sc2162,sc2317
 
-# Github: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-nasm.sh
-# Purpose: Build NASM
-# Updated: 05.25.24
-# Script version: 1.2
+##  Github: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-libxml2.sh
+##  Purpose: Build libxml2
+##  Updated: 05.25.24
+##  Script version: 1.2
 
 if [[ "$EUID" -eq 0 ]]; then
     echo "You must run this script without root or sudo."
     exit 1
 fi
 
-# Set global variables
+# Set variables
 script_ver=1.2
-cwd="$PWD/nasm-build-script"
+cwd="$PWD/libxml2-build-script"
+install_dir="/usr/local"
 debug=OFF
 
-# Create output directories
+echo "libxml2 build script - v$script_ver"
+echo "==============================================="
+echo
+
+# Create the output directory
+[[ -d "$cwd" ]] && sudo rm -fr "$cwd"
 mkdir -p "$cwd"
 
-# Figure out which compilers to use
+# Set the c+cpp compilers and their optimization flags
 CC="gcc"
 CXX="g++"
-CFLAGS="-O2 -pipe -march=native"
+CFLAGS="-O3 -pipe -march=native"
 CXXFLAGS="$CFLAGS"
 export CC CXX CFLAGS CXXFLAGS
 
-# Set the available cpu count for parallel processing (speeds up the build process)
-if [ -f /proc/cpuinfo ]; then
-    cpu_threads="$(grep -c ^processor /proc/cpuinfo)"
-else
-    cpu_threads="$(nproc --all)"
-fi
-
+# Set the path variable
 PATH="/usr/lib/ccache:$PATH"
-PKG_CONFIG_PATH="/usr/local/lib64/x86_64-linux-gnu:/usr/local/lib64/pkgconfig:/usr/local/lib/x86_64-linux-gnu/pkgconfig"
-PKG_CONFIG_PATH+=":/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig"
-export PATH PKG_CONFIG_PATH
+export PATH
+
+# Set the pkg_config_path variable
+PKG_CONFIG_PATH="\
+/usr/local/lib64/pkgconfig:\
+/usr/local/lib/pkgconfig:\
+/usr/local/lib/usr/local/pkgconfig:\
+/usr/local/share/pkgconfig:\
+/usr/lib64/pkgconfig:\
+/usr/lib/pkgconfig:\
+/usr/lib/usr/local/pkgconfig:\
+/usr/share/pkgconfig:\
+/lib64/pkgconfig:\
+/lib/pkgconfig:\
+/lib/usr/local/pkgconfig\
+"
+export PKG_CONFIG_PATH
 
 # Create functions
 exit_function() {
     echo
-    echo "The script has completed"
     echo "Make sure to star this repository to show your support!"
     echo "https://github.com/slyfox1186/script-repo"
     exit 0
 }
 
 fail() {
-    printf "\n\n%s\n\n%s\n\n%s\n\n" \
-        "$1" \
-        "To report a bug please visit: " \
-        "https://github.com/slyfox1186/script-repo/issues"
+    echo
+    echo "$1"
+    echo "To report a bug create an issue at https://github.com/slyfox1186/script-repo/issues"
     exit 1
 }
 
@@ -59,38 +71,37 @@ cleanup() {
     sudo rm -fr "$cwd"
 }
 
-execute() {
-    echo "$ $*"
-
-    if [[ "$debug" = "ON" ]]; then
-        if ! output="$("$@")"; then
-            notify-send -t 5000 "Failed to execute: $*" 2>/dev/null
-            fail "Failed to execute: $*"
-        fi
-    else
-        if ! output="$("$@" 2>&1)"; then
-            notify-send -t 5000 "Failed to execute: $*" 2>/dev/null
-            fail "Failed to execute: $*"
-        fi
-    fi
-}
-
 build() {
     echo "Building $1 - version $2"
-    echo "=========================================="
+    echo "===================================="
     echo
 
-    if [ -f "$cwd/$1.done" ]; then
+    if [[ -f "$cwd/$1.done" ]]; then
         if grep -Fx "$2" "$cwd/$1.done" >/dev/null; then
             echo "$1 version $2 already built. Remove $cwd/$1.done lockfile to rebuild it."
+            return 1
+        else
+            echo "$1 is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove $cwd/$1.done lockfile."
             return 1
         fi
     fi
     return 0
 }
 
-build_done() {
-    echo "$2" > "$cwd/$1.done"
+execute() {
+    echo "$ ${*}"
+
+    if [[ "${debug}" = "ON" ]]; then
+        if ! output=$("$@"); then
+            notify-send 5000 "Failed to execute: ${*}" 2>/dev/null
+            fail "Failed to execute: ${*}"
+        fi
+    else
+        if ! output=$("$@" 2>&1); then
+            notify-send 5000 "Failed to execute: ${*}" 2>/dev/null
+            fail "Failed to execute: ${*}"
+        fi
+    fi
 }
 
 download() {
@@ -108,24 +119,24 @@ download() {
     target_file="$dl_path/$dl_file"
     target_dir="$dl_path/$output_dir"
 
-    if [ -f "$target_file" ]; then
+    if [[ -f "$target_file" ]]; then
         echo "The file \"$dl_file\" is already downloaded."
     else
         echo "Downloading \"$dl_url\" saving as \"$dl_file\""
-        if ! wget --show-progress -t 2 -cqO "$target_file" "$dl_url"; then
+        if ! curl -LSso "$target_file" "$dl_url"; then
             printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 10 seconds..."
             sleep 10
-            if ! wget --show-progress -t 2 -cqO "$target_file" "$dl_url"; then
+            if ! curl -LSso "$target_file" "$dl_url"; then
                 fail "The script failed to download \"$dl_file\" twice and will now exit. Line: $LINENO"
             fi
         fi
-        printf "\n%s\n\n" "Download completed"
+        echo "Download Completed"
     fi
 
     [[ -d "$target_dir" ]] && sudo rm -fr "$target_dir"
     mkdir -p "$target_dir"
 
-    if [ -n "$3" ]; then
+    if [[ -n "$3" ]]; then
         if ! tar -xf "$target_file" -C "$target_dir" 2>&1; then
             sudo rm "$target_file"
             fail "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script. Line: $LINENO"
@@ -142,64 +153,51 @@ download() {
     cd "$target_dir" || fail "Unable to change the working directory to: $target_dir. Line: $LINENO"
 }
 
-find_latest_nasm_version() {
-    version=$(
-              curl -fsS "https://www.nasm.us/pub/nasm/stable/" |
-              grep -oP 'nasm-\K[0-9]+\.[0-9]+\.[0-9]+(?=\.tar\.xz)' |
-              sort -ruV | head -n1
-         )
+git_clone() {
+    web_repo="$1"
+    action="$2"
+    if curl_cmd="$(curl -LSsf "https://gitlab.gnome.org/api/v4/projects/$web_repo/repository/$action" | jq -r '.[0].name')"; then
+        version="${curl_cmd#v}"
+    fi
 }
 
-# Print the options available when manually running the script
+build_done() {
+    echo "$2" > "$cwd/$1.done"
+}
+
+# Install required apt packages
 pkgs=(
-      autoconf automake autopoint binutils binutils-dev bison
-      build-essential ccache curl jq libc6 libc6-dev libedit-dev
-      libtool libxml2-dev m4 nasm ninja-build yasm zlib1g-dev
-)
+      asciidoc autogen automake binutils bison build-essential bzip2
+      ccache cmake curl libc6-dev libintl-perl libpth-dev libtool
+      lzip lzma-dev nasm ninja-build texinfo xmlto yasm zlib1g-dev
+  )
 
 for pkg in ${pkgs[@]}; do
     missing_pkg="$(sudo dpkg -l | grep -o "$pkg")"
-
-    if [[ -z "$missing_pkg" ]]; then
+    if [[ -z "${missing_pkg}" ]]; then
         missing_pkgs+=" $pkg"
     fi
 done
 
-if [[ -n "$missing_pkgs" ]]; then
-    sudo apt update
-    sudo apt install $missing_pkgs
-    clear
-else
-    printf "%s\n" "The APT packages are already installed"
-fi
+[[ -n "$missing_pkgs" ]] && sudo apt install $missing_pkgs; clear
 
-# Begin building clang
-clear
-box_out_banner() {
-    input_char=$(echo "$@" | wc -c)
-    line=$(for i in $(seq 0 "$input_char"); do printf "-"; done)
-    tput bold
-    line="$(tput setaf 3)$line"
-    space=${line//-/ }
-    echo " $line"
-    printf "|" ; echo -n "$space" ; printf "%s\n" "|";
-    printf "| " ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" " |";
-    printf "|" ; echo -n "$space" ; printf "%s\n" "|";
-    echo " $line"
-    tput sgr 0
-}
-box_out_banner "nasm build script - version $script_ver"
-
-find_latest_nasm_version
-if build "nasm" "$version"; then
-    download "https://www.nasm.us/pub/nasm/stable/nasm-$version.tar.xz"
+# Build program from source
+git_clone "1665" "tags"
+if build "libxml2" "$version"; then
+    download "https://gitlab.gnome.org/GNOME/libxml2/-/archive/v$version/libxml2-v$version.tar.bz2" "libxml2-$version.tar.bz2"
+    CFLAGS+=" -DNOLIBTOOL"
     execute ./autogen.sh
-    execute ./configure --prefix=/usr/local --enable-ccache
-    execute make "-j$cpu_threads"
-    execute sudo make install
+    execute cmake -B build \
+                  -DCMAKE_INSTALL_PREFIX="$install_dir" \
+                  -DCMAKE_BUILD_TYPE=Release \
+                  -DBUILD_SHARED_LIBS=ON \
+                  -G Ninja -Wno-dev
+    execute ninja "-j$(nproc --all)" -C build
+    execute sudo ninja -C build install
+    build_done "libxml2" "$version"
 fi
 
-# Prompt the user to clean up the build files
+# Prompt user to clean up files
 cleanup
 
 # Show exit message
