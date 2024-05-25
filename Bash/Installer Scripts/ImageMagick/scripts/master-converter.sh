@@ -11,7 +11,7 @@ ICON_SIZES="256,128,96,64,48,32,20,16"
 # Function to display the help menu
 display_help() {
     echo "Purpose:"
-    echo "This script converts image files to various formats using ImageMagick and ffmpeg."
+    echo "This script converts image files to various formats using ImageMagick and FFmpeg."
     echo "It supports conversions between PNG, JPG, WEBP, JFIF, ICO, TIFF, BMP, and GIF formats."
     echo
     echo "Usage: $0"
