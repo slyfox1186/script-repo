@@ -64,8 +64,8 @@ for pkg in ${pkgs[@]}; do
 done
 
 if [[ -n "$missing_pkgs" ]]; then
-    sudo apt-get update
-    sudo apt-get install $missing_pkgs
+    sudo apt update
+    sudo apt install $missing_pkgs
     echo
 fi
 
@@ -78,13 +78,16 @@ sudo rm -f /tmp/ld-script.sh
 cd "$cwd" || exit 1
 
 # Download scripts
-scripts=(adobe-fonts curl tools aria2 zlib
-         zstd git jq libxml2 nasm yasm python3)
+scripts=(
+         tools aria2 curl zlib zstd
+         git jq libxml2 nasm yasm
+     )
 
+count=0
 for script in ${scripts[@]}; do
     ((count++))
     wget --show-progress -t 2 -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GitHub%20Projects/build-$script.sh"
-    mv "build-$script" "$count-build-$script.sh" || fail "Failed to move the file build-$script"
+    mv "build-$script.sh" "$count-build-$script.sh" || fail "Failed to move the file build-$script.sh"
 done
 
 # Loop and execute the scripts in numerical order
