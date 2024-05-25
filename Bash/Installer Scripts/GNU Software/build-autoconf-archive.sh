@@ -16,7 +16,7 @@ archive_url="https://ftp.gnu.org/gnu/autoconf-archive/$archive_dir.tar.xz"
 archive_ext="${archive_url//*.}"
 archive_name="$archive_dir.tar.$archive_ext"
 cwd="$PWD/autoconf-archive-build-script"
-install_dir=/usr/local
+install_dir="/usr/local"
 
 # Create output directory
 [[ -d "$cwd" ]] && sudo rm -fr "$cwd"
@@ -25,25 +25,12 @@ mkdir -p "$cwd"
 # Set the C +CPP compilers & their compiler optimization flags
 CC="gcc"
 CXX="g++"
-CFLAGS="-O3 -pipe -fno-plt -march=native -mtune=native"
+CFLAGS="-O2 -pipe -march=native"
 CXXFLAGS="$CFLAGS"
 export CC CFLAGS CXX CXXFLAGS
 
 # Set the path variable
-PATH="\
-/usr/lib/ccache:\
-$HOME/perl5/bin:\
-$HOME/.cargo/bin:\
-$HOME/.local/bin:\
-/usr/local/sbin:\
-/usr/local/cuda/bin:\
-/usr/local/x86_64-linux-gnu/bin:\
-/usr/local/bin:\
-/usr/sbin:\
-/usr/bin:\
-/sbin:\
-/bin\
-"
+PATH="/usr/lib/ccache:$PATH"
 export PATH
 
 # Set the PKG_CONFIG_PATH variable
@@ -82,7 +69,7 @@ cleanup() {
     case "$response" in
         [yY]*|"")
         sudo rm -rf "$cwd"
-        log_msg "Build directory removed."
+        log "Build directory removed."
         ;;
         [nN]*) ;;
     esac
