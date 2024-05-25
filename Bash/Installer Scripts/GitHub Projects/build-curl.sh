@@ -210,6 +210,10 @@ parse_args() {
 
 # Main function to run tasks
 main() {
+    if [[ "$EUID" -eq 0 ]]; then
+        echo "You must run this script without root or with sudo."
+        exit 1
+    fi
     parse_args "$@"
     set_env_vars
     apt_pkgs
@@ -222,7 +226,7 @@ main() {
     else
         log "$program uninstallation completed successfully"
     fi
-    rm -rf "$cwd"
+    sudo rm -rf "$cwd"
 }
 
 main "$@"

@@ -1,77 +1,42 @@
 #!/usr/bin/env bash
 # Shellcheck disable=sc2162,sc2317
 
-###########################################################################################################
-##
-##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-libxml2
-##
+##  Github: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-libxml2.sh
 ##  Purpose: Build libxml2
-##
-##  Updated: 08.31.23
-##
-##  Script version: 1.1
-##
-###########################################################################################################
+##  Updated: 05.25.24
+##  Script version: 1.2
 
-clear
-
-if [ "${EUID}" -eq '0' ]; then
+if [[ "$EUID" -eq 0 ]]; then
     echo "You must run this script without root or sudo."
     exit 1
 fi
 
 # Set variables
+script_ver=1.2
+cwd="$PWD/libxml2-build-script"
+install_dir="/usr/local"
+debug=OFF
 
-script_ver=1.1
-cwd="$PWD"/libxml2-build-script
-install_dir=/usr/local
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
-web_repo='https://github.com/slyfox1186/script-repo'
-debug=OFF # Change THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
+echo "libxml2 build script - v$script_ver"
+echo "==============================================="
+echo
 
-printf "%s\n%s\n\n" \
-    "libxml2 build script - v${script_ver}" \
-    '==============================================='
-sleep 2
-
-# Create output directory
-
-if [ -d "$cwd" ]; then
-    sudo rm -fr "$cwd"
-fi
+# Create the output directory
+[[ -d "$cwd" ]] && sudo rm -fr "$cwd"
 mkdir -p "$cwd"
 
-# Set the c+cpp compilers
-
-export CC=gcc CXX=g++
-
-# Set compiler optimization flags
-
-export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -fno-plt -march=native'
+# Set the c+cpp compilers and their optimization flags
+CC="gcc"
+CXX="g++"
+CFLAGS="-O3 -pipe -march=native"
+CXXFLAGS="$CFLAGS"
+export CC CXX CFLAGS CXXFLAGS
 
 # Set the path variable
-
-PATH="\
-/usr/lib/ccache:\
-${HOME}/perl5/bin:\
-${HOME}/.cargo/bin:\
-${HOME}/.local/bin:\
-/usr/local/sbin:\
-/usr/local/cuda/bin:\
-/usr/local/x86_64-linux-gnu/bin:\
-/usr/local/bin:\
-/usr/sbin:\
-/usr/bin:\
-/sbin:\
-/bin:\
-/usr/local/games:\
-/usr/games:\
-/snap/bin\
-"
+PATH="/usr/lib/ccache:$PATH"
 export PATH
 
 # Set the pkg_config_path variable
-
 PKG_CONFIG_PATH="\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
@@ -88,53 +53,30 @@ PKG_CONFIG_PATH="\
 export PKG_CONFIG_PATH
 
 # Create functions
-
-exit_fn()
-{
-    printf "\n%s\n\n%s\n\n"                                       \
-        'Make sure to star this repository to show your support!' \
-        "$web_repo"
+exit_function() {
+    echo
+    echo "Make sure to star this repository to show your support!"
+    echo "https://github.com/slyfox1186/script-repo"
     exit 0
 }
 
-fail_fn()
-{
-    printf "\n%s\n\n%s\n\n" \
-        "$1"              \
-        "To report a bug create an issue at $web_repo/issues"
+fail() {
+    echo
+    echo "$1"
+    echo "To report a bug create an issue at https://github.com/slyfox1186/script-repo/issues"
     exit 1
 }
 
-cleanup_fn()
-{
-    local choice
-
-    printf "%s\n%s\n%s\n\n%s\n%s\n\n"                  \
-        '============================================' \
-        '  Do you want to clean up the build files?  ' \
-        '============================================' \
-        '[1] Yes'                                      \
-        '[2] No'
-    read -p 'Your choices are (1 or 2): ' choice
-
-    case "${choice}" in
-        1)      sudo rm -fr "$cwd";;
-        2)      echo;;
-        *)
-                unset choice
-                clear
-                cleanup_fn
-                ;;
-    esac
+cleanup() {
+    sudo rm -fr "$cwd"
 }
 
-build()
-{
-    printf "\n%s\n%s\n"                \
-        "Building $1 - version $2" \
-        '===================================='
+build() {
+    echo "Building $1 - version $2"
+    echo "===================================="
+    echo
 
-    if [ -f "$cwd/$1.done" ]; then
+    if [[ -f "$cwd/$1.done" ]]; then
         if grep -Fx "$2" "$cwd/$1.done" >/dev/null; then
             echo "$1 version $2 already built. Remove $cwd/$1.done lockfile to rebuild it."
             return 1
@@ -146,25 +88,23 @@ build()
     return 0
 }
 
-execute()
-{
+execute() {
     echo "$ ${*}"
 
-    if [ "${debug}" = 'ON' ]; then
+    if [[ "${debug}" = "ON" ]]; then
         if ! output=$("$@"); then
             notify-send 5000 "Failed to execute: ${*}" 2>/dev/null
-            fail_fn "Failed to execute: ${*}"
+            fail "Failed to execute: ${*}"
         fi
     else
         if ! output=$("$@" 2>&1); then
             notify-send 5000 "Failed to execute: ${*}" 2>/dev/null
-            fail_fn "Failed to execute: ${*}"
+            fail "Failed to execute: ${*}"
         fi
     fi
 }
 
-download()
-{
+download() {
     dl_path="$cwd"
     dl_url="$1"
     dl_file="${2:-"${1##*/}"}"
@@ -179,103 +119,86 @@ download()
     target_file="$dl_path/$dl_file"
     target_dir="$dl_path/$output_dir"
 
-    if [ -f "${target_file}" ]; then
+    if [[ -f "$target_file" ]]; then
         echo "The file \"$dl_file\" is already downloaded."
     else
-        echo "Downloading \"${dl_url}\" saving as \"$dl_file\""
-        if ! curl -A "$user_agent" -Lso "${target_file}" "${dl_url}"; then
+        echo "Downloading \"$dl_url\" saving as \"$dl_file\""
+        if ! curl -LSso "$target_file" "$dl_url"; then
             printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 10 seconds..."
             sleep 10
-            if ! curl -A "$user_agent" -Lso "${target_file}" "${dl_url}"; then
-                fail_fn "The script failed to download \"$dl_file\" twice and will now exit:Line ${LINENO}"
+            if ! curl -LSso "$target_file" "$dl_url"; then
+                fail "The script failed to download \"$dl_file\" twice and will now exit. Line: $LINENO"
             fi
         fi
-        echo 'Download Completed'
+        echo "Download Completed"
     fi
 
-    if [ -d "$target_dir" ]; then
-        sudo rm -fr "$target_dir"
-    fi
-
+    [[ -d "$target_dir" ]] && sudo rm -fr "$target_dir"
     mkdir -p "$target_dir"
 
-    if [ -n "$3" ]; then
-        if ! tar -xf "${target_file}" -C "$target_dir" 2>/dev/null >/dev/null; then
-            sudo rm "${target_file}"
-            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script:Line ${LINENO}"
+    if [[ -n "$3" ]]; then
+        if ! tar -xf "$target_file" -C "$target_dir" 2>&1; then
+            sudo rm "$target_file"
+            fail "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script. Line: $LINENO"
         fi
     else
-        if ! tar -xf "${target_file}" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
-            sudo rm "${target_file}"
-            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script:Line ${LINENO}"
+        if ! tar -xf "$target_file" -C "$target_dir" --strip-components 1 2>&1; then
+            sudo rm "$target_file"
+            fail "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script. Line: $LINENO"
         fi
     fi
 
     printf "%s\n\n" "File extracted: $dl_file"
 
-    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir:Line ${LINENO}"
+    cd "$target_dir" || fail "Unable to change the working directory to: $target_dir. Line: $LINENO"
 }
 
-git_1_fn()
-{
+git_clone() {
     web_repo="$1"
-    url="$2"
-    if curl_cmd="$(curl -A "$user_agent" -m 10 -sSL "https://gitlab.gnome.org/api/v4/projects/$web_repo/repository/${url}" | jq -r '.[0].name')"; then
-        g_ver="${curl_cmd#V}"
+    action="$2"
+    if curl_cmd="$(curl -LSsf "https://gitlab.gnome.org/api/v4/projects/$web_repo/repository/$action" | jq -r '.[0].name')"; then
+        version="${curl_cmd#v}"
     fi
 }
 
-build_done() { echo "$2" > "$cwd/$1.done"; }
+build_done() {
+    echo "$2" > "$cwd/$1.done"
+}
 
 # Install required apt packages
+pkgs=(
+      asciidoc autogen automake binutils bison build-essential bzip2
+      ccache cmake curl libc6-dev libintl-perl libpth-dev libtool
+      lzip lzma-dev nasm ninja-build texinfo xmlto yasm zlib1g-dev
+  )
 
-pkgs=(asciidoc autogen automake binutils bison build-essential bzip2 ccache cmake
-      curl libc6-dev libintl-perl libpth-dev libtool libtool-bin lzip lzma-dev
-      nasm ninja-build texinfo xmlto yasm zlib1g-dev)
-
-for i in ${pkgs[@]}
-do
-    missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
-
-    if [ -z "${missing_pkg}" ]; then
-        missing_pkgs+=" ${i}"
+for pkg in ${pkgs[@]}; do
+    missing_pkg="$(sudo dpkg -l | grep -o "$pkg")"
+    if [[ -z "${missing_pkg}" ]]; then
+        missing_pkgs+=" $pkg"
     fi
 done
 
-if [ -n "$missing_pkgs" ]; then
-    sudo apt install $missing_pkgs
-    sudo apt -y autoremove
-    clear
-fi
+[[ -n "$missing_pkgs" ]] && sudo apt install $missing_pkgs; clear
 
 # Build program from source
-
-git_1_fn '1665' 'tags'
-if build 'libxml2' "$g_ver"; then
-    download "https://gitlab.gnome.org/GNOME/libxml2/-/archive/v$g_ver/libxml2-v$g_ver.tar.bz2" "libxml2-$g_ver.tar.bz2"
-    CFLAGS+=' -DNOLIBTOOL'
+git_clone "1665" "tags"
+if build "libxml2" "$version"; then
+    download "https://gitlab.gnome.org/GNOME/libxml2/-/archive/v$version/libxml2-v$version.tar.bz2" "libxml2-$version.tar.bz2"
+    CFLAGS+=" -DNOLIBTOOL"
     execute ./autogen.sh
-    execute cmake -B build -DCMAKE_install_dir="$install_dir" \
-                           -DCMAKE_EXPORT_COMPILE_COMMANDS=OFF  \
-                           -DCMAKE_VERBOSE_MAKEFILE=OFF         \
-                           -DBUILD_SHARED_LIBS=ON               \
-                           -DCPACK_BINARY_DEB=OFF               \
-                           -DCPACK_BINARY_FREEBSD=OFF           \
-                           -DCPACK_BINARY_IFW=OFF               \
-                           -DCPACK_BINARY_NSIS=OFF              \
-                           -DCPACK_BINARY_RPM=OFF               \
-                           -DCPACK_BINARY_TBZ2=OFF              \
-                           -DCPACK_BINARY_TXZ=OFF               \
-                           -DCPACK_SOURCE_RPM=ON                \
-                           -DCPACK_SOURCE_ZIP=ON                \
-                           -G Ninja -Wno-dev
+    execute cmake -B build \
+                  -DCMAKE_INSTALL_PREFIX="$install_dir" \
+                  -DCMAKE_BUILD_TYPE=Release \
+                  -DBUILD_SHARED_LIBS=ON \
+                  -G Ninja -Wno-dev
     execute ninja "-j$(nproc --all)" -C build
-    execute sudo ninja "-j$(nproc --all)" -C build install
-    build_done 'libxml2' "$g_ver"
+    execute sudo ninja -C build install
+    build_done "libxml2" "$version"
 fi
 
 # Prompt user to clean up files
-cleanup_fn
+cleanup
 
 # Show exit message
-exit_fn
+exit_function
