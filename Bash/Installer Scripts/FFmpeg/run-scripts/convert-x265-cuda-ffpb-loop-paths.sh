@@ -22,9 +22,9 @@ show_usage() {
 
 # Parse command-line arguments
 while getopts "p:l:h" opt; do
-    case ${opt} in
-        p ) paths_file=$OPTARG ;;
-        l ) log_file=$OPTARG ;;
+    case "$opt" in
+        p ) paths_file="$OPTARG" ;;
+        l ) log_file="$OPTARG" ;;
         h ) show_usage; exit 0 ;;
         * ) show_usage; exit 1 ;;
     esac
@@ -37,19 +37,20 @@ error_log=$(mktemp /tmp/error_log.XXXXXX)
 # Add the video paths that FFmpeg will process to the temporary file
 cat > "$temp_file" <<'EOF'
 /path/to/video.mp4
+/path/to/video.mkv
 EOF
 
 # Log functions
 log() {
     local message
     message="$1"
-    echo -e "\\n${GREEN}[INFO]${NC} $message\\n" | tee -a "$log_file"
+    echo -e "\n${GREEN}[INFO]${NC} $message\n" | tee -a "$log_file"
 }
 
 fail() {
     local message
     message="$1"
-    echo -e "\\n${RED}[ERROR]${NC} $message\\n" | tee -a "$log_file"
+    echo -e "\n${RED}[ERROR]${NC} $message\n" | tee -a "$log_file"
     echo "$message" >> "$error_log"
     exit 1
 }
@@ -152,19 +153,19 @@ convert_videos() {
         estimated_output_size=$(echo "scale=2; ($estimated_bitrate * $length * 60) / 8 / 1024" | bc)
 
         # Print video stats in the terminal
-        printf "\\n${BLUE}::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::${NC}\\n\\n"
-        printf "${YELLOW}Progress:${NC} ${PURPLE}%d%%${NC}\\n" "$progress"
-        printf "${YELLOW}Working Directory:${NC}  ${PURPLE}%s${NC}\\n\\n" "$PWD"
-        printf "${YELLOW}Input File:${NC}         ${CYAN}%s${NC}\\n\\n" "$input_file"
-        printf "${YELLOW}Size:${NC}               ${PURPLE}%.2f MB${NC}\\n" "$input_size_mb"
-        printf "${YELLOW}Bitrate:${NC}            ${PURPLE}%s kbps${NC}\\n" "$original_bitrate"
-        printf "${YELLOW}Aspect Ratio:${NC}       ${PURPLE}%s${NC}\\n" "$aspect_ratio"
-        printf "${YELLOW}Resolution:${NC}         ${PURPLE}%sx%s${NC}\\n" "$width" "$height"
-        printf "${YELLOW}Duration:${NC}           ${PURPLE}%s mins${NC}\\n" "$length"
-        printf "\\n${YELLOW}Output File:${NC}        ${CYAN}%s${NC}\\n" "$output_file"
-        printf "${YELLOW}Estimated Output Bitrate:${NC}  ${PURPLE}%s kbps${NC}\\n" "$estimated_bitrate"
-        printf "${YELLOW}Estimated Output Size:${NC}  ${PURPLE}%.2f MB${NC}\\n" "$estimated_output_size"
-        printf "\\n${BLUE}::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::${NC}\\n"
+        printf "\n${BLUE}::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::${NC}\n\n"
+        printf "${YELLOW}Progress:${NC} ${PURPLE}%d%%${NC}\n" "$progress"
+        printf "${YELLOW}Working Directory:${NC}  ${PURPLE}%s${NC}\n\n" "$PWD"
+        printf "${YELLOW}Input File:${NC}         ${CYAN}%s${NC}\n\n" "$input_file"
+        printf "${YELLOW}Size:${NC}               ${PURPLE}%.2f MB${NC}\n" "$input_size_mb"
+        printf "${YELLOW}Bitrate:${NC}            ${PURPLE}%s kbps${NC}\n" "$original_bitrate"
+        printf "${YELLOW}Aspect Ratio:${NC}       ${PURPLE}%s${NC}\n" "$aspect_ratio"
+        printf "${YELLOW}Resolution:${NC}         ${PURPLE}%sx%s${NC}\n" "$width" "$height"
+        printf "${YELLOW}Duration:${NC}           ${PURPLE}%s mins${NC}\n" "$length"
+        printf "\n${YELLOW}Output File:${NC}        ${CYAN}%s${NC}\n" "$output_file"
+        printf "${YELLOW}Estimated Output Bitrate:${NC}  ${PURPLE}%s kbps${NC}\n" "$estimated_bitrate"
+        printf "${YELLOW}Estimated Output Size:${NC}  ${PURPLE}%.2f MB${NC}\n" "$estimated_output_size"
+        printf "\n${BLUE}::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::${NC}\n"
 
         log "Converting $video"
 
