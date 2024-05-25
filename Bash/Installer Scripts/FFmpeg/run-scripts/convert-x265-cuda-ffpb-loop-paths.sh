@@ -2,7 +2,7 @@
 
 # Default paths file
 paths_file="paths.txt"
-log_file=""
+log_file="conversion.log"
 
 # Define color codes
 RED='\033[0;31m'
@@ -16,15 +16,15 @@ NC='\033[0m' # No Color
 # Function to show usage
 show_usage() {
     echo "Usage: $0 [-p paths_file] [-l log_file]"
-    echo "  -p paths_file   File containing the list of video paths"
-    echo "  -l log_file     Log file to save output"
+    echo "  -p paths_file   File containing the list of video paths (default: paths.txt)"
+    echo "  -l log_file     Log file to save output (default: conversion.log)"
 }
 
 # Parse command-line arguments
 while getopts "p:l:h" opt; do
     case ${opt} in
-        p ) paths_file="$OPTARG" ;;
-        l ) log_file="$OPTARG" ;;
+        p ) paths_file=$OPTARG ;;
+        l ) log_file=$OPTARG ;;
         h ) show_usage; exit 0 ;;
         * ) show_usage; exit 1 ;;
     esac
@@ -36,7 +36,6 @@ error_log=$(mktemp /tmp/error_log.XXXXXX)
 
 # Add the video paths that FFmpeg will process to the temporary file
 cat > "$temp_file" <<'EOF'
-/path/to/video.mkv
 /path/to/video.mp4
 EOF
 
@@ -44,23 +43,14 @@ EOF
 log() {
     local message
     message="$1"
-    if [[ -n "$log_file" ]]; then
-        echo -e "\n${GREEN}[INFO]${NC} $message\n" | tee -a "$log_file"
-    else
-        echo -e "\n${GREEN}[INFO]${NC} $message\n"
-    fi
+    echo -e "\\n${GREEN}[INFO]${NC} $message\\n" | tee -a "$log_file"
 }
 
 fail() {
     local message
     message="$1"
-    if [[ -n "$log_file" ]]; then
-        echo -e "\n${RED}[ERROR]${NC} $message\n" | tee -a "$log_file"
-        echo "$message" >> "$error_log"
-    else
-        echo -e "\n${RED}[ERROR]${NC} $message\n"
-        echo "$message" >> "$error_log"
-    fi
+    echo -e "\\n${RED}[ERROR]${NC} $message\\n" | tee -a "$log_file"
+    echo "$message" >> "$error_log"
     exit 1
 }
 
@@ -80,7 +70,8 @@ send_notification() {
 
 # Check for required dependencies before proceeding
 check_dependencies() {
-    local -a missing_pkgs
+    local missing_pkgs pkg
+
     missing_pkgs=()
     for pkg in bc ffpb google_speech sed ffmpeg notify-send; do
         if ! command -v "$pkg" &>/dev/null; then
@@ -93,10 +84,12 @@ check_dependencies() {
 }
 
 # Function to remove a video path from the script itself
-remove_video_path() {
-    local video_path
+remove_video_path_from_script() {
+    local video_path script_path
     video_path="$1"
-    awk -v path="$video_path" '!index($0, path)' "$0" > "$0.tmp" && mv "$0.tmp" "$0"
+    script_path="$0"
+    
+    sed -i "\|$video_path|d" "$script_path"
 }
 
 # Main video conversion function
@@ -113,9 +106,15 @@ convert_videos() {
     total_videos=$(wc -l < "$temp_file")
 
     while read -u 9 video; do
+        if [[ ! -f "$video" ]]; then
+            log "File not found: $video. Removing from list."
+            remove_video_path_from_script "$video"
+            continue
+        fi
+
         count=$((count + 1))
         progress=$((count * 100 / total_videos))
-
+        
         aspect_ratio=$(ffprobe -v error -select_streams v:0 -show_entries stream=display_aspect_ratio -of default=nk=1:nw=1 "$video")
         height=$(ffprobe -v error -select_streams v:0 -show_entries stream=height -of csv=s=x:p=0 "$video")
         input_size_bytes=$(ffprobe -v error -show_entries format=size -of default=noprint_wrappers=1:nokey=1 "$video")
@@ -147,25 +146,25 @@ convert_videos() {
         input_file="${video##*/}"
         output_file="${file_out##*/}"
         input_size_mb=$(echo "scale=2; $input_size_bytes / 1024 / 1024" | bc)
-
+        
         # Estimate output size and bitrate
         estimated_bitrate=$bitrate  # Bitrate is halved for output estimation
         estimated_output_size=$(echo "scale=2; ($estimated_bitrate * $length * 60) / 8 / 1024" | bc)
 
         # Print video stats in the terminal
-        printf "\n${BLUE}::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::${NC}\n\n"
-        printf "${YELLOW}Progress:${NC} ${PURPLE}%d%%${NC}\n" "$progress"
-        printf "${YELLOW}Working Directory:${NC}  ${PURPLE}%s${NC}\n\n" "$PWD"
-        printf "${YELLOW}Input File:${NC}         ${CYAN}%s${NC}\n\n" "$input_file"
-        printf "${YELLOW}Size:${NC}               ${PURPLE}%.2f MB${NC}\n" "$input_size_mb"
-        printf "${YELLOW}Bitrate:${NC}            ${PURPLE}%s kbps${NC}\n" "$original_bitrate"
-        printf "${YELLOW}Aspect Ratio:${NC}       ${PURPLE}%s${NC}\n" "$aspect_ratio"
-        printf "${YELLOW}Resolution:${NC}         ${PURPLE}%sx%s${NC}\n" "$width" "$height"
-        printf "${YELLOW}Duration:${NC}           ${PURPLE}%s mins${NC}\n" "$length"
-        printf "\n${YELLOW}Output File:${NC}        ${CYAN}%s${NC}\n" "$output_file"
-        printf "${YELLOW}Estimated Output Bitrate:${NC}  ${PURPLE}%s kbps${NC}\n" "$estimated_bitrate"
-        printf "${YELLOW}Estimated Output Size:${NC}  ${PURPLE}%.2f MB${NC}\n" "$estimated_output_size"
-        printf "\n${BLUE}::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::${NC}\n"
+        printf "\\n${BLUE}::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::${NC}\\n\\n"
+        printf "${YELLOW}Progress:${NC} ${PURPLE}%d%%${NC}\\n" "$progress"
+        printf "${YELLOW}Working Directory:${NC}  ${PURPLE}%s${NC}\\n\\n" "$PWD"
+        printf "${YELLOW}Input File:${NC}         ${CYAN}%s${NC}\\n\\n" "$input_file"
+        printf "${YELLOW}Size:${NC}               ${PURPLE}%.2f MB${NC}\\n" "$input_size_mb"
+        printf "${YELLOW}Bitrate:${NC}            ${PURPLE}%s kbps${NC}\\n" "$original_bitrate"
+        printf "${YELLOW}Aspect Ratio:${NC}       ${PURPLE}%s${NC}\\n" "$aspect_ratio"
+        printf "${YELLOW}Resolution:${NC}         ${PURPLE}%sx%s${NC}\\n" "$width" "$height"
+        printf "${YELLOW}Duration:${NC}           ${PURPLE}%s mins${NC}\\n" "$length"
+        printf "\\n${YELLOW}Output File:${NC}        ${CYAN}%s${NC}\\n" "$output_file"
+        printf "${YELLOW}Estimated Output Bitrate:${NC}  ${PURPLE}%s kbps${NC}\\n" "$estimated_bitrate"
+        printf "${YELLOW}Estimated Output Size:${NC}  ${PURPLE}%.2f MB${NC}\\n" "$estimated_output_size"
+        printf "\\n${BLUE}::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::${NC}\\n"
 
         log "Converting $video"
 
@@ -199,7 +198,7 @@ convert_videos() {
             rm -f "$video"
 
             # Remove the video path from the script itself using awk
-            remove_video_path "$video"
+            remove_video_path_from_script "$video"
         else
             google_speech "Video conversion failed." &>/dev/null
             fail "Video conversion failed for: $video"
