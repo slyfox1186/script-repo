@@ -62,6 +62,10 @@ fail() {
     exit 1
 }
 
+log() {
+    echo "[INFO] $*"
+}
+
 cleanup() {
     local choice
     echo
