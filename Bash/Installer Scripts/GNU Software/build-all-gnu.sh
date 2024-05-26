@@ -309,4 +309,3 @@ for prog in "${progs[@]}"; do
 done
 
 log "All specified programs have been built and installed successfully."
-exit 0
