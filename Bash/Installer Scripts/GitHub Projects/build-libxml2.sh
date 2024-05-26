@@ -1,43 +1,91 @@
 #!/usr/bin/env bash
-# Shellcheck disable=sc2162,sc2317
 
-##  Github: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-libxml2.sh
-##  Purpose: Build libxml2
-##  Updated: 05.25.24
-##  Script version: 1.2
+# Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-libxml2.sh
+# Purpose: Build libxml2
+# Updated: 05.25.24
+# Script version: 1.2
 
-if [[ "$EUID" -eq 0 ]]; then
-    echo "You must run this script without root or sudo."
-    exit 1
-fi
+CYAN='\033[0;36m'
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[0;33m'
+NC='\033[0m'
 
-# Set variables
+# Set the variables
 script_ver=1.2
-cwd="$PWD/libxml2-build-script"
+prog_name="libxml2"
+default_version="2.10.3"
 install_dir="/usr/local"
-debug=OFF
+cwd="$PWD/$prog_name-build-script"
+compiler="gcc"
+debug="OFF"
 
-echo "libxml2 build script - v$script_ver"
-echo "==============================================="
-echo
+# Enhanced logging and error handling
+log() {
+    echo -e "${GREEN}[INFO]${NC} $1"
+}
 
-# Create the output directory
-[[ -d "$cwd" ]] && sudo rm -fr "$cwd"
-mkdir -p "$cwd"
+warn() {
+    echo -e "\\n${YELLOW}[WARNING]${NC} $1"
+}
 
-# Set the c+cpp compilers and their optimization flags
-CC="gcc"
-CXX="g++"
-CFLAGS="-O3 -pipe -march=native"
-CXXFLAGS="$CFLAGS"
-export CC CXX CFLAGS CXXFLAGS
+fail() {
+    echo -e "${RED}[ERROR]${NC} $1"
+    echo -e "To report a bug, create an issue at: https://github.com/slyfox1186/script-repo/issues"
+    exit 1
+}
 
-# Set the path variable
-PATH="/usr/lib/ccache:$PATH"
-export PATH
+print_usage() {
+    echo "Usage: $0 [OPTIONS]"
+    echo "  -v, --version VERSION       Set the version of $prog_name to install (default: $default_version)"
+    echo "  -l, --list                  List available versions of $prog_name"
+    echo "  -u, --uninstall             Uninstall $prog_name"
+    echo "  -c, --compiler COMPILER     Set the compiler to use (clang) instead of the default: $compiler"
+    echo "  -h, --help                  Display this help and exit"
+}
 
-# Set the pkg_config_path variable
-PKG_CONFIG_PATH="\
+exit_function() {
+    echo
+    log "The script has completed"
+    log "${GREEN}Make sure to ${YELLOW}star ${GREEN}this repository to show your support!${NC}"
+    log "${CYAN}https://github.com/slyfox1186/script-repo${NC}"
+    exit 0
+}
+
+cleanup() {
+    sudo rm -fr "$cwd"
+}
+
+required_packages() {
+    local -a missing_pkgs pkgs
+    local pkg
+    pkgs=(
+        asciidoc autogen automake binutils bison build-essential bzip2
+        ccache cmake curl libc6-dev libintl-perl libpth-dev libtool
+        lzip lzma-dev nasm ninja-build texinfo xmlto yasm zlib1g-dev
+    )
+
+    missing_pkgs=()
+    for pkg in "${pkgs[@]}"; do
+        if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
+            missing_pkgs+=("$pkg")
+        fi
+    done
+
+    if [[ "${#missing_pkgs[@]}" -gt 0 ]]; then
+        sudo apt update
+        sudo apt install "${missing_pkgs[@]}"
+    fi
+}
+
+set_compiler_flags() {
+    CC="$compiler"
+    CXX="$compiler++"
+    CFLAGS="-O3 -pipe -march=native"
+    CXXFLAGS="$CFLAGS"
+    LDFLAGS="-Wl,-rpath,$install_dir/lib"
+    PATH="/usr/lib/ccache:$PATH"
+    PKG_CONFIG_PATH="\
 /usr/local/lib64/pkgconfig:\
 /usr/local/lib/pkgconfig:\
 /usr/local/lib/usr/local/pkgconfig:\
@@ -50,155 +98,126 @@ PKG_CONFIG_PATH="\
 /lib/pkgconfig:\
 /lib/usr/local/pkgconfig\
 "
-export PKG_CONFIG_PATH
-
-# Create functions
-exit_function() {
-    echo
-    echo "Make sure to star this repository to show your support!"
-    echo "https://github.com/slyfox1186/script-repo"
-    exit 0
+    export CC CXX CFLAGS CXXFLAGS LDFLAGS PATH PKG_CONFIG_PATH
 }
 
-fail() {
+download_archive() {
+    wget --show-progress -cqO "$cwd/$tar_file" "$archive_url" || fail "Failed to download archive with WGET. Line: $LINENO"
+}
+
+extract_archive() {
+    tar -jxf "$cwd/$tar_file" -C "$cwd/$archive_name" --strip-components 1 || fail "Failed to extract: $cwd/$tar_file"
+}
+
+configure_build() {
+    cd "$cwd/$archive_name" || fail "Failed to cd into $cwd/$archive_name. Line: $LINENO"
+    autoreconf -fi || fail "Failed to execute: autoreconf. Line: $LINENO"
+    ./autogen.sh || fail "Failed to execute: autogen.sh. Line: $LINENO"
+    cmake -B build -DCMAKE_INSTALL_PREFIX="$install_dir" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -G Ninja -Wno-dev || fail "Failed to execute: cmake. Line: $LINENO"
+}
+
+compile_build() {
+    ninja "-j$(nproc --all)" -C build || fail "Failed to execute: ninja build. Line: $LINENO"
+}
+
+install_build() {
+    sudo ninja -C build install || fail "Failed execute: ninja install. Line: $LINENO"
+}
+
+ld_linker_path() {
+    echo "$install_dir/$archive_name/lib" | sudo tee "/etc/ld.so.conf.d/custom_$prog_name.conf" >/dev/null
+    sudo ldconfig
+}
+
+create_soft_links() {
+    [[ -d "$install_dir/$archive_name/bin" ]] && sudo ln -sf "$install_dir/$archive_name/bin/"* "/usr/local/bin/"
+    [[ -d "$install_dir/$archive_name/lib/pkgconfig" ]] && sudo ln -sf "$install_dir/$archive_name/lib/pkgconfig/"*.pc "/usr/local/lib/pkgconfig/"
+    [[ -d "$install_dir/$archive_name/include" ]] && sudo ln -sf "$install_dir/$archive_name/include/"* "/usr/local/include/"
+}
+
+uninstall_libxml2() {
+    local libxml2_dir
+    libxml2_dir="$install_dir/$archive_name"
+    if [[ -d "$libxml2_dir" ]]; then
+        log "Uninstalling $prog_name from $libxml2_dir"
+        sudo rm -rf "$libxml2_dir"
+        sudo rm "/etc/ld.so.conf.d/custom_$prog_name.conf"
+        sudo ldconfig
+        log "$prog_name has been uninstalled"
+    else
+        log "$prog_name is not installed"
+    fi
+}
+
+list_versions() {
+    log "Available versions of $prog_name:"
     echo
-    echo "$1"
-    echo "To report a bug create an issue at https://github.com/slyfox1186/script-repo/issues"
+    curl -fsS "https://ftp.gnu.org/gnu/$prog_name/" | grep -oP '\d\.[\d.]+(?=\.tar\.[a-z]+)' | sort -ruV
+}
+
+main_menu() {
+    # Parse command-line arguments
+    while [[ "$#" -gt 0 ]]; do
+        case "$1" in
+            -v|--version)
+                version="$2"
+                shift 2
+                ;;
+            -l|--list)
+                list_versions
+                exit 0
+                ;;
+            -u|--uninstall)
+                uninstall_libxml2
+                exit 0
+                ;;
+            -c|--compiler)
+                compiler="$2"
+                shift 2
+                ;;
+            -h|--help)
+                print_usage
+                exit 0
+                ;;
+            *)
+                fail "Invalid option: $1"
+                ;;
+        esac
+    done
+
+    if [[ -z "$version" ]]; then
+        version="$default_version"
+        log "No version specified, using default version: $version"
+    fi
+
+    archive_name="$prog_name-$version"
+    archive_url="https://gitlab.gnome.org/GNOME/libxml2/-/archive/v$version/libxml2-v$version.tar.bz2"
+    tar_file="$archive_name.tar.bz2"
+
+    # Create output directory
+    [[ -d "$cwd/$archive_name" ]] && sudo rm -fr "$cwd/$archive_name"
+    mkdir -p "$cwd/$archive_name/build"
+
+    required_packages
+    set_compiler_flags
+    download_archive
+    extract_archive
+    configure_build
+    compile_build
+    install_build
+    if [[ ! -f "$install_dir/$archive_name/lib/"*.so ]]; then
+        warn "Failed to located any \".so\" files so no custom ld linking will occur."
+    else
+        ld_linker_path
+    fi
+    create_soft_links
+    cleanup
+    exit_function
+}
+
+if [[ "$EUID" -eq 0 ]]; then
+    echo "You must run this script without root or sudo."
     exit 1
-}
-
-cleanup() {
-    sudo rm -fr "$cwd"
-}
-
-build() {
-    echo "Building $1 - version $2"
-    echo "===================================="
-    echo
-
-    if [[ -f "$cwd/$1.done" ]]; then
-        if grep -Fx "$2" "$cwd/$1.done" >/dev/null; then
-            echo "$1 version $2 already built. Remove $cwd/$1.done lockfile to rebuild it."
-            return 1
-        else
-            echo "$1 is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove $cwd/$1.done lockfile."
-            return 1
-        fi
-    fi
-    return 0
-}
-
-execute() {
-    echo "$ ${*}"
-
-    if [[ "${debug}" = "ON" ]]; then
-        if ! output=$("$@"); then
-            notify-send 5000 "Failed to execute: ${*}" 2>/dev/null
-            fail "Failed to execute: ${*}"
-        fi
-    else
-        if ! output=$("$@" 2>&1); then
-            notify-send 5000 "Failed to execute: ${*}" 2>/dev/null
-            fail "Failed to execute: ${*}"
-        fi
-    fi
-}
-
-download() {
-    dl_path="$cwd"
-    dl_url="$1"
-    dl_file="${2:-"${1##*/}"}"
-
-    if [[ "$dl_file" =~ tar. ]]; then
-        output_dir="${dl_file%.*}"
-        output_dir="${3:-"${output_dir%.*}"}"
-    else
-        output_dir="${3:-"${dl_file%.*}"}"
-    fi
-
-    target_file="$dl_path/$dl_file"
-    target_dir="$dl_path/$output_dir"
-
-    if [[ -f "$target_file" ]]; then
-        echo "The file \"$dl_file\" is already downloaded."
-    else
-        echo "Downloading \"$dl_url\" saving as \"$dl_file\""
-        if ! curl -LSso "$target_file" "$dl_url"; then
-            printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 10 seconds..."
-            sleep 10
-            if ! curl -LSso "$target_file" "$dl_url"; then
-                fail "The script failed to download \"$dl_file\" twice and will now exit. Line: $LINENO"
-            fi
-        fi
-        echo "Download Completed"
-    fi
-
-    [[ -d "$target_dir" ]] && sudo rm -fr "$target_dir"
-    mkdir -p "$target_dir"
-
-    if [[ -n "$3" ]]; then
-        if ! tar -xf "$target_file" -C "$target_dir" 2>&1; then
-            sudo rm "$target_file"
-            fail "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script. Line: $LINENO"
-        fi
-    else
-        if ! tar -xf "$target_file" -C "$target_dir" --strip-components 1 2>&1; then
-            sudo rm "$target_file"
-            fail "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script. Line: $LINENO"
-        fi
-    fi
-
-    printf "%s\n\n" "File extracted: $dl_file"
-
-    cd "$target_dir" || fail "Unable to change the working directory to: $target_dir. Line: $LINENO"
-}
-
-git_clone() {
-    web_repo="$1"
-    action="$2"
-    if curl_cmd="$(curl -LSsf "https://gitlab.gnome.org/api/v4/projects/$web_repo/repository/$action" | jq -r '.[0].name')"; then
-        version="${curl_cmd#v}"
-    fi
-}
-
-build_done() {
-    echo "$2" > "$cwd/$1.done"
-}
-
-# Install required apt packages
-pkgs=(
-      asciidoc autogen automake binutils bison build-essential bzip2
-      ccache cmake curl libc6-dev libintl-perl libpth-dev libtool
-      lzip lzma-dev nasm ninja-build texinfo xmlto yasm zlib1g-dev
-  )
-
-for pkg in ${pkgs[@]}; do
-    missing_pkg="$(sudo dpkg -l | grep -o "$pkg")"
-    if [[ -z "${missing_pkg}" ]]; then
-        missing_pkgs+=" $pkg"
-    fi
-done
-
-[[ -n "$missing_pkgs" ]] && sudo apt install $missing_pkgs; clear
-
-# Build program from source
-git_clone "1665" "tags"
-if build "libxml2" "$version"; then
-    download "https://gitlab.gnome.org/GNOME/libxml2/-/archive/v$version/libxml2-v$version.tar.bz2" "libxml2-$version.tar.bz2"
-    CFLAGS+=" -DNOLIBTOOL"
-    execute ./autogen.sh
-    execute cmake -B build \
-                  -DCMAKE_INSTALL_PREFIX="$install_dir" \
-                  -DCMAKE_BUILD_TYPE=Release \
-                  -DBUILD_SHARED_LIBS=ON \
-                  -G Ninja -Wno-dev
-    execute ninja "-j$(nproc --all)" -C build
-    execute sudo ninja -C build install
-    build_done "libxml2" "$version"
 fi
 
-# Prompt user to clean up files
-cleanup
-
-# Show exit message
-exit_function
+main_menu "$@"
