@@ -2,7 +2,7 @@
 
 # Purpose: Build various GNU programs from source
 # Updated: 05.26.24
-# Script version: 2.8
+# Script version: 1.0
 
 CYAN='\033[0;36m'
 GREEN='\033[0;32m'
