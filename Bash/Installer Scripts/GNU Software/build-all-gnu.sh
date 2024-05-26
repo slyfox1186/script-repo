@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 
-# Purpose: Build various GNU programs from source
+# GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-all-gnu.sh
+# Purpose: Build various GNU programs from source code
 # Updated: 05.26.24
-# Script version: 1.0
+# Version: 1.0
 
 CYAN='\033[0;36m'
 GREEN='\033[0;32m'
@@ -11,7 +12,10 @@ YELLOW='\033[0;33m'
 NC='\033[0m'
 
 # List of available programs
-available_programs=(autoconf autoconf-archive automake bash gawk gettext grep gzip libiconv libtool make nano parallel pkg-config sed tar texinfo wget which)
+available_programs=(
+                    autoconf autoconf-archive automake bash gawk gettext grep gzip libiconv
+                    libtool make nano parallel pkg-config sed tar texinfo wget which
+               )
 
 # Consolidated list of required packages for all programs
 MASTER_PKGS="autoconf autoconf-archive automake build-essential ccache libtool m4 gettext libintl-perl bzip2 curl libc6-dev lzip lzma lzma-dev xz-utils zlib1g-dev texinfo libticonv-dev"
@@ -38,24 +42,27 @@ log() {
 }
 
 fail() {
+    echo
     echo -e "${RED}[ERROR]${NC} $1"
     echo -e "To report a bug, create an issue at: https://github.com/slyfox1186/script-repo/issues"
     exit 1
 }
 
 show_usage() {
-    echo "Usage: ${0##*/} [OPTIONS]"
-    echo "Build various GNU programs from source."
+    echo -e "${YELLOW}Usage:${NC} $0 [OPTIONS]"
     echo
-    echo "Options:"
+    echo -e "${YELLOW}Description:${NC} Build various GNU programs from source code."
+    echo
+    echo -e "${YELLOW}Options:${NC}"
     echo "  -h, --help           Show this help message and exit"
     echo "  -p, --programs       Specify the programs to build (comma-separated, or 'all' for all programs)"
-    echo "  -v, --version        Specify the version of the program to build (default: latest)"
     echo
-    echo "Available Programs: ${available_programs[*]}"
+    echo -e "${YELLOW}Available Programs:${NC}"
+    printf "%s\n" "${available_programs[@]}"
     echo
-    echo "Example:"
-    echo "  ${0##*/} -p bash,make,grep"
+    echo -e "${YELLOW}Examples:${NC}"
+    echo "  $0 -p all"
+    echo "  $0 -p bash,make,grep"
 }
 
 # Parse command-line options
@@ -71,10 +78,6 @@ while [[ "$#" -gt 0 ]]; do
         -p|--programs)
             shift
             programs="$1"
-            ;;
-        -v|--version)
-            shift
-            version="$1"
             ;;
         *)
             fail "Unknown option: $1"
@@ -194,7 +197,7 @@ get_latest_version_url() {
             version="2.71"
             ;;
         *)
-            version=$(curl -fsS "https://ftp.gnu.org/gnu/$prog_name/" | grep -oP "$prog_name-\K([0-9.]+)(?=\.tar\..*)" | sort -ruV | head -n1)
+            version=$(curl -fsS "https://ftp.gnu.org/gnu/$prog_name/" | grep -oP "$prog_name-\K([0-9.]+)(?=\.tar\.)" | sort -ruV | head -n1)
             ;;
     esac
     if [[ -z "$version" ]]; then
@@ -228,7 +231,7 @@ configure_build() {
         pkg-config|which)
             autoconf || fail "Failed to execute: autoconf. Line: $LINENO"
             ;;
-        make)
+        make|wget)
             autoreconf -fi -I /usr/share/aclocal || fail "Failed to execute: autoreconf. Line: $LINENO"
             ;;
         *)
@@ -308,4 +311,5 @@ for prog in "${progs[@]}"; do
     build_program "$prog" "$version"
 done
 
+echo
 log "All specified programs have been built and installed successfully."
