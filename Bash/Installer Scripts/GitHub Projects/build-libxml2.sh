@@ -14,7 +14,6 @@ NC='\033[0m'
 # Set the variables
 script_ver=1.2
 prog_name="libxml2"
-default_version="2.10.3"
 install_dir="/usr/local"
 cwd="$PWD/$prog_name-build-script"
 compiler="gcc"
@@ -37,7 +36,7 @@ fail() {
 
 print_usage() {
     echo "Usage: $0 [OPTIONS]"
-    echo "  -v, --version VERSION       Set the version of $prog_name to install (default: $default_version)"
+    echo "  -v, --version VERSION       Set the version of $prog_name to install"
     echo "  -l, --list                  List available versions of $prog_name"
     echo "  -u, --uninstall             Uninstall $prog_name"
     echo "  -c, --compiler COMPILER     Set the compiler to use (clang) instead of the default: $compiler"
@@ -152,7 +151,12 @@ uninstall_libxml2() {
 list_versions() {
     log "Available versions of $prog_name:"
     echo
-    curl -fsS "https://ftp.gnu.org/gnu/$prog_name/" | grep -oP '\d\.[\d.]+(?=\.tar\.[a-z]+)' | sort -ruV
+    curl -fsS "https://gitlab.gnome.org/GNOME/libxml2/-/tags" | grep -oP 'v\d+\.\d+\.\d+(?=\")' | grep -vE 'rc|beta' | sort -ruV
+}
+
+get_latest_version() {
+    default_version=$(curl -fsS "https://gitlab.gnome.org/GNOME/libxml2/-/tags" | grep -oP 'v\d+\.\d+\.\d+(?=\")' | grep -vE 'rc|beta' | sort -ruV | head -n 1 | tr -d 'v')
+    log "Detected latest version: $default_version"
 }
 
 main_menu() {
@@ -186,8 +190,9 @@ main_menu() {
     done
 
     if [[ -z "$version" ]]; then
+        get_latest_version
         version="$default_version"
-        log "No version specified, using default version: $version"
+        log "No version specified, using latest version: $version"
     fi
 
     archive_name="$prog_name-$version"
