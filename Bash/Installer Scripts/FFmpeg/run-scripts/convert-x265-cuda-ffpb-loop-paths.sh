@@ -40,13 +40,13 @@ EOF
 # Log functions
 log() {
     local message
-    message="$1"
+    message=$1
     echo -e "\n${GREEN}[INFO]${NC} $message\n" | tee -a "$log_file"
 }
 
 fail() {
     local message
-    message="$1"
+    message=$1
     echo -e "\n${RED}[ERROR]${NC} $message\n" | tee -a "$log_file"
     echo "$message" >> "$error_log"
     exit 1
@@ -63,35 +63,35 @@ check_dependencies() {
     local pkg
 
     missing_pkgs=()
-    for pkg in bc ffpb google_speech sed ffmpeg notify-send; do
+    for pkg in bc ffmpeg ffpb google_speech notify-send sed; do
         if ! command -v "$pkg" &>/dev/null; then
             missing_pkgs+=("$pkg")
         fi
     done
     if [[ ${#missing_pkgs[@]} -ne 0 ]]; then
-        fail "Missing dependencies: ${missing_pkgs[*]}. Please install them."
+        fail "Missing dependencies: ${missing_pkgs[*]}. Please install using the apt or pip commands."
     fi
 }
 
 # Function to remove a video path from the script itself
 remove_video_path_from_script() {
-    local script_path video_path
-    video_path="$1"
-    script_path="$0"
-    
+    local video_path script_path
+    script_path=$0
+    video_path=$1
+
     sed -i "\|$video_path|d" "$script_path"
 }
 
 # Function to execute ffmpeg command
 convert_with_ffmpeg() {
     local audio_codec bitrate bufsize file_out maxrate threads video
-    video="$1"
-    audio_codec="$2"
-    file_out="$3"
-    bitrate="$4"
-    bufsize="$5"
-    maxrate="$6"
-    threads="$7"
+    video=$1
+    audio_codec=$2
+    file_out=$3
+    bitrate=$4
+    bufsize=$5
+    maxrate=$6
+    threads=$7
 
     ffpb -y -hide_banner -hwaccel_output_format cuda \
         -threads "$threads" -i "$video" -fps_mode:v vfr \
@@ -124,7 +124,7 @@ convert_videos() {
 
         count=$((count + 1))
         progress=$((count * 100 / total_videos))
-        
+
         aspect_ratio=$(ffprobe -v error -select_streams v:0 -show_entries stream=display_aspect_ratio -of default=nk=1:nw=1 "$video")
         height=$(ffprobe -v error -select_streams v:0 -show_entries stream=height -of csv=s=x:p=0 "$video")
         input_size_bytes=$(ffprobe -v error -show_entries format=size -of default=noprint_wrappers=1:nokey=1 "$video")
@@ -156,7 +156,7 @@ convert_videos() {
         input_file="${video##*/}"
         output_file="${file_out##*/}"
         input_size_mb=$(echo "scale=2; $input_size_bytes / 1024 / 1024" | bc)
-        
+
         # Estimate output size and bitrate
         estimated_bitrate=$bitrate  # Bitrate is halved for output estimation
         estimated_output_size=$(echo "scale=2; ($estimated_bitrate * $length * 60) / 8 / 1024" | bc)
