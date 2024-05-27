@@ -94,13 +94,13 @@ convert_with_ffmpeg() {
     threads=$7
 
     ffpb -y -hide_banner -hwaccel_output_format cuda \
-        -threads "$threads" -i "$video" -fps_mode:v vfr \
-        -c:v hevc_nvenc -preset medium -profile:v main10 \
-        -pix_fmt p010le -rc:v vbr -tune:v hq -b:v "${bitrate}k" \
-        -bufsize:v "${bufsize}k" -maxrate:v "${maxrate}k" -bf:v 3 \
-        -g:v 250 -b_ref_mode:v middle -qmin:v 0 -temporal-aq:v 1 \
-        -rc-lookahead:v 20 -i_qfactor:v 0.75 -b_qfactor:v 1.1 \
-        -c:a "$audio_codec" "$file_out"
+         -threads "$threads" -i "$video" -fps_mode:v vfr \
+         -c:v hevc_nvenc -preset medium -profile:v main10 \
+         -pix_fmt p010le -rc:v vbr -tune:v hq -b:v "${bitrate}k" \
+         -bufsize:v "${bufsize}k" -maxrate:v "${maxrate}k" -bf:v 3 \
+         -g:v 250 -b_ref_mode:v middle -qmin:v 0 -temporal-aq:v 1 \
+         -rc-lookahead:v 20 -i_qfactor:v 0.75 -b_qfactor:v 1.1 \
+         -c:a "$audio_codec" "$file_out"
 }
 
 # Main video conversion function
