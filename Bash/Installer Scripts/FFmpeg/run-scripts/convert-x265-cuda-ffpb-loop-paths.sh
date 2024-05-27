@@ -20,11 +20,11 @@ NC='\033[0m' # No Color
 
 # Log functions
 log() {
-    echo -e "\n${GREEN}[INFO]${NC} $1 $2\n"
+    echo -e "\\n${GREEN}[INFO]${NC} $1 $2\\n"
 }
 
 fail() {
-    echo -e "\n${RED}[ERROR]${NC} $1 $2\n"
+    echo -e "\\n${RED}[ERROR]${NC} $1 $2\\n"
     exit 1
 }
 
@@ -70,6 +70,31 @@ run_ffmpeg() {
         -g:v 250 -b_ref_mode:v middle -qmin:v 0 -temporal-aq:v 1 \
         -rc-lookahead:v 20 -i_qfactor:v 0.75 -b_qfactor:v 1.1 \
         -c:a "$audio_codec" "$file_out"
+}
+
+# Function to handle successful conversion
+handle_success() {
+    local video file_out input_size total_input_size total_output_size total_space_saved
+
+    google_speech "Video converted." &>/dev/null
+
+    log "Video conversion completed:${NC}" "$file_out"
+
+    output_size=$(du -m "$file_out" | cut -f1)
+    total_output_size=$((total_output_size + output_size))
+    space_saved=$((input_size - output_size))
+    total_space_saved=$((total_space_saved + space_saved))
+
+    # Extract the video name from the full path using variable expansion
+    video_name="${video##*/}"
+
+    echo -e "${YELLOW}Total space savings for \"$video_name\": ${MAGENTA}$space_saved MB${NC}"
+    echo -e "${YELLOW}Total cumulative space saved: ${MAGENTA}$total_space_saved MB${NC}"
+
+    rm -f "$video"
+
+    # Remove the video path from the script itself using awk
+    remove_video_path "$video"
 }
 
 # Main video conversion function
@@ -159,47 +184,11 @@ convert_videos() {
 
         # Conversion using ffmpeg with HEVC codec
         if run_ffmpeg "$video" "copy" "$file_out" "$bitrate" "$bufsize" "$maxrate" "$threads"; then
-            google_speech "Video converted." &>/dev/null
-
-            log "Video conversion completed:${NC}" "$file_out"
-
-            output_size=$(du -m "$file_out" | cut -f1)
-            total_output_size=$((total_output_size + output_size))
-            space_saved=$((input_size - output_size))
-            total_space_saved=$((total_space_saved + space_saved))
-
-            # Extract the video name from the full path using variable expansion
-            video_name="${video##*/}"
-
-            echo -e "${YELLOW}Total space savings for \"$video_name\": ${MAGENTA}$space_saved MB${NC}"
-            echo -e "${YELLOW}Total cumulative space saved: ${MAGENTA}$total_space_saved MB${NC}"
-
-            rm -f "$video"
-
-            # Remove the video path from the script itself using awk
-            remove_video_path "$video"
+            handle_success "$video" "$file_out" "$input_size" "$total_input_size" "$total_output_size" "$total_space_saved"
         else
             # Fallback to AAC audio encoding if copying fails
             if run_ffmpeg "$video" "aac" "$file_out" "$bitrate" "$bufsize" "$maxrate" "$threads"; then
-                google_speech "Video converted." &>/dev/null
-
-                log "Video conversion completed:${NC}" "$file_out"
-
-                output_size=$(du -m "$file_out" | cut -f1)
-                total_output_size=$((total_output_size + output_size))
-                space_saved=$((input_size - output_size))
-                total_space_saved=$((total_space_saved + space_saved))
-
-                # Extract the video name from the full path using variable expansion
-                video_name="${video##*/}"
-
-                echo -e "${YELLOW}Total space savings for \"$video_name\": ${MAGENTA}$space_saved MB${NC}"
-                echo -e "${YELLOW}Total cumulative space saved: ${MAGENTA}$total_space_saved MB${NC}"
-
-                rm -f "$video"
-
-                # Remove the video path from the script itself using awk
-                remove_video_path "$video"
+                handle_success "$video" "$file_out" "$input_size" "$total_input_size" "$total_output_size" "$total_space_saved"
             else
                 google_speech "Video conversion failed." &>/dev/null
                 fail "Video conversion failed for: $video"
