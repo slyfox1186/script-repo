@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-clear
-
 # Menu color functions
 green='\e[32m'
 blue='\e[34m'
