@@ -2,8 +2,10 @@
 # shellcheck disable=SC2068,SC2162,SC2317 source=/dev/null
 
 # GitHub: https://github.com/slyfox1186/ffmpeg-build-script
-# Script version: 3.7.2
-# Updated: 05.14.24
+#
+# Script version: 3.8.2
+# Updated: 05.24.24
+#
 # Purpose: build ffmpeg from source code with addon development libraries
 #          also compiled from source to help ensure the latest functionality
 # Supported Distros: Debian 11|12
@@ -19,7 +21,7 @@ fi
 
 # Define global variables
 script_name="$0"
-script_version="3.7.2"
+script_version="3.8.2"
 cwd="$PWD/ffmpeg-build-script"
 mkdir -p "$cwd" && cd "$cwd" || exit 1
 if [[ "$PWD" =~ ffmpeg-build-script\/ffmpeg-build-script ]]; then
@@ -494,7 +496,7 @@ library_exists() {
 
 determine_libtool_version() {
     case "$STATIC_VER" in
-        20.04|22.04|23.04|23.10)
+        20.04|22.04|23.04|23.10|msft)
             libtool_version="2.4.6"
             ;;
         11|12|24.04)
@@ -718,10 +720,18 @@ check_remote_cuda_version() {
 
 set_java_variables() {
     source_path
-    locate_java=$(
-                 find /usr/lib/jvm/ -type d -name "java-*-openjdk*" |
-                 sort -ruV | head -n1
-              )
+    if [[ -d "/usr/lib/jvm/" ]]; then
+        locate_java=$(
+                     find /usr/lib/jvm/ -type d -name "java-*-openjdk*" |
+                     sort -ruV | head -n1
+                  )
+    else
+        if sudo apt -y install openjdk-17-jdk-headless; then
+            set_java_variables
+        else
+            fail "Could not install openjdk. Line: $LINENO"
+        fi
+    fi
     java_include=$(
                   find /usr/lib/jvm/ -type f -name "javac" |
                   sort -ruV | head -n1 | xargs dirname |
@@ -778,7 +788,12 @@ nvidia_architecture() {
 download_cuda() {
     local -a options
     local choice cuda_pin_url cuda_url cuda_version_number distro installer_path pin_file pkg_ext version version_serial
-    cuda_version_number="$remote_cuda_version"
+    cuda_last_known_update="12.5.0"
+    if [[ ! "$remote_cuda_version" == "$remote_cuda_version" ]]; then
+        fail "The script needs to be updated manually. Please report and skip this section until the next update."
+    else
+        cuda_version_number="$remote_cuda_version"
+    fi
     cuda_pin_url="https://developer.download.nvidia.com/compute/cuda/repos"
     cuda_url="https://developer.download.nvidia.com/compute/cuda/$cuda_version_number"
 
@@ -786,6 +801,7 @@ download_cuda() {
     echo "Pick your Linux version from the list below:"
     echo "Supported architecture: x86_64"
     echo
+
     options=(
         "Debian 10"
         "Debian 11"
@@ -797,23 +813,23 @@ download_cuda() {
         "Exit"
     )
 
-    version_serial="12.4.1-550.54.15-1"
+    version_serial="12.5.0-555.42.02-1"
     select choice in "${options[@]}"; do
         case "$choice" in
-            "Debian 10") distro="debian10"; version="10-12-4"; pkg_ext="deb"; installer_path="local_installers/cuda-repo-debian${version}-local_${version_serial}_amd64.deb" ;;
-            "Debian 11") distro="debian11"; version="11-12-4"; pkg_ext="deb"; installer_path="local_installers/cuda-repo-debian${version}-local_${version_serial}_amd64.deb" ;;
-            "Debian 12") distro="debian12"; version="12-12-4"; pkg_ext="deb"; installer_path="local_installers/cuda-repo-debian${version}-local_${version_serial}_amd64.deb" ;;
-            "Ubuntu 20.04") distro="ubuntu2004"; version="12-4"; pkg_ext="pin"; pin_file="$distro/x86_64/cuda-ubuntu2004.pin"; installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_serial}_amd64.deb" ;;
-            "Ubuntu 22.04") distro="ubuntu2204"; version="12-4"; pkg_ext="pin"; pin_file="$distro/x86_64/cuda-ubuntu2204.pin"; installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_serial}_amd64.deb" ;;
+            "Debian 10") distro="debian10"; version="10-12-5"; pkg_ext="deb"; installer_path="local_installers/cuda-repo-debian${version}-local_${version_serial}_amd64.deb" ;;
+            "Debian 11") distro="debian11"; version="11-12-5"; pkg_ext="deb"; installer_path="local_installers/cuda-repo-debian${version}-local_${version_serial}_amd64.deb" ;;
+            "Debian 12") distro="debian12"; version="12-12-5"; pkg_ext="deb"; installer_path="local_installers/cuda-repo-debian${version}-local_${version_serial}_amd64.deb" ;;
+            "Ubuntu 20.04") distro="ubuntu2004"; version="12-5"; pkg_ext="pin"; pin_file="$distro/x86_64/cuda-ubuntu2004.pin"; installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_serial}_amd64.deb" ;;
+            "Ubuntu 22.04") distro="ubuntu2204"; version="12-5"; pkg_ext="pin"; pin_file="$distro/x86_64/cuda-ubuntu2204.pin"; installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_serial}_amd64.deb" ;;
             "Ubuntu 24.04")
                 echo "deb http://security.ubuntu.com/ubuntu jammy-security main universe" | tee "/etc/apt/sources.list.d/install-cuda-on-noble.list" >/dev/null
                 apt update
                 apt -y upgrade
-                echo "export PATH=/usr/local/cuda-12.4/bin\${PATH:+:\${PATH}}" | tee -a "$HOME/.bashrc" >/dev/null
-                distro="ubuntu2204"; version="12-4"; pkg_ext="pin"; pin_file="$distro/x86_64/cuda-ubuntu2204.pin"; installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_serial}_amd64.deb"
+                echo "export PATH=/usr/local/cuda/bin\${PATH:+:\${PATH}}" | tee -a "$HOME/.bashrc" >/dev/null
+                distro="ubuntu2204"; version="12-5"; pkg_ext="pin"; pin_file="$distro/x86_64/cuda-ubuntu2204.pin"; installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_serial}_amd64.deb"
                 ;;
-            "Ubuntu WSL") distro="wsl-ubuntu"; version="12-4"; version_ext="12.4.1-1"; pkg_ext="pin"; pin_file="$distro/x86_64/cuda-wsl-ubuntu.pin"; installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_ext}_amd64.deb" ;;
-            "Exit") return ;;
+            "Ubuntu WSL") distro="wsl-ubuntu"; version="12-5"; version_ext="12.5.0-1"; pkg_ext="pin"; pin_file="$distro/x86_64/cuda-wsl-ubuntu.pin"; installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_ext}_amd64.deb" ;;
+            Exit) return ;;
             *) echo "Invalid choice. Please try again."; continue ;;
         esac
         break
@@ -839,11 +855,11 @@ download_cuda() {
         package_name="$packages/nvidia-cuda/cuda-$distro-$cuda_version_number.deb"
         wget --show-progress -cqO "$package_name" "$cuda_url/$installer_path"
         dpkg -i "$package_name"
-        cp -f "/var/cuda-repo-${distro}-12-4-local/cuda-"*"-keyring.gpg" "/usr/share/keyrings/"
+        cp -f "/var/cuda-repo-${distro}-12-5-local/cuda-"*"-keyring.gpg" "/usr/share/keyrings/"
     fi
 
     apt update
-    apt install -y cuda-toolkit-12-4
+    apt install -y cuda-toolkit-12-5
 }
 
 # Function to detect the environment and check for an NVIDIA GPU
@@ -924,20 +940,6 @@ install_cuda() {
     return 0
 }
 
-nvidia_encode_utils_version() {
-    nvidia_utils_version=$(
-                           apt list nvidia-utils-* 2>/dev/null |
-                           grep -oP '^nvidia-utils-[0-9]{3}' |
-                           sort -ruV | head -n1
-                       )
-
-    nvidia_encode_version=$(
-                            apt list libnvidia-encode* 2>&1 |
-                            grep -oP 'libnvidia-encode-[0-9]{3}' |
-                            sort -ruV | head -n1
-                       )
-}
-
 # Required build packages
 apt_pkgs() {
     local -a available_packages missing_packages pkgs unavailable_packages
@@ -957,36 +959,21 @@ apt_pkgs() {
     libunwind_pkg=$(find_latest_version '^libunwind-[0-9]+-dev$')
     gcc_plugin_pkg=$(find_latest_version '^gcc-[1-3]*-plugin-dev$')
 
-    # Define the package names in a multiline string
-    package_names="
-    $libcppabi_pkg
-    $libcpp_pkg
-    $libunwind_pkg
-    $nvidia_driver
-    $nvidia_utils
-    $openjdk_pkg
-    $gcc_plugin_pkg
-    "
-
-    # Use mapfile to read the package names into an array
-    mapfile -t packages <<< "$package_names"
-
     # Define an array of apt package names
     pkgs=(
-        "$1" "${packages[@]}"
+        $1 $libcppabi_pkg $libcpp_pkg $libunwind_pkg $nvidia_driver $nvidia_utils $openjdk_pkg $gcc_plugin_pkg
         asciidoc autoconf autoconf-archive automake autopoint bc binutils bison build-essential cargo ccache checkinstall
         curl doxygen fcitx-libs-dev flex flite1-dev gawk gcc gettext gimp-data git gnome-desktop-testing gnustep-gui-runtime
         google-perftools gperf gtk-doc-tools guile-3.0-dev help2man imagemagick jq junit ladspa-sdk lib32stdc++6 libasound2-dev
         libass-dev libaudio-dev libavfilter-dev libbabl-0.1-0 libbluray-dev libbpf-dev libbs2b-dev libbz2-dev libc6 libc6-dev
-        libcaca-dev libcairo2-dev libcdio-dev libcdio-paranoia-dev libcdparanoia-dev libchromaprint-dev libcjson-dev
-        libcodec2-dev libcrypto++-dev libcurl4-openssl-dev libdav1d-dev libdbus-1-dev libde265-dev libdevil-dev libdmalloc-dev
-        libdrm-dev libdvbpsi-dev libebml-dev libegl1-mesa-dev libffi-dev libflac-dev libgbm-dev libgdbm-dev
-        libgegl-common libgl1-mesa-dev libgles2-mesa-dev libglfw3-dev libglib2.0-dev libglu1-mesa-dev libgme-dev libgmock-dev
-        libgnutls28-dev libgoogle-perftools-dev libgsm1-dev libgtest-dev libgvc6 libibus-1.0-dev libintl-perl
-        libladspa-ocaml-dev libldap2-dev libleptonica-dev liblilv-dev liblz-dev liblzma-dev liblzo2-dev libmathic-dev
-        libmatroska-dev libmbedtls-dev libmetis5 libmfx-dev libmodplug-dev libmp3lame-dev libmusicbrainz5-dev libnuma-dev
-        libpango1.0-dev libperl-dev libplacebo-dev libpocketsphinx-dev libportaudio-ocaml-dev libpsl-dev libpstoedit-dev
-        libpulse-dev librabbitmq-dev libraw-dev librsvg2-dev librtmp-dev librubberband-dev librust-gstreamer-base-sys-dev
+        libcaca-dev libcairo2-dev libcdio-dev libcdio-paranoia-dev libcdparanoia-dev libchromaprint-dev libcjson-dev libcodec2-dev
+        libcrypto++-dev libcurl4-openssl-dev libdav1d-dev libdbus-1-dev libde265-dev libdevil-dev libdmalloc-dev libdrm-dev
+        libdvbpsi-dev libebml-dev libegl1-mesa-dev libffi-dev libflac-dev libgbm-dev libgdbm-dev libgegl-common libgl1-mesa-dev
+        libgles2-mesa-dev libglfw3-dev libglib2.0-dev libglu1-mesa-dev libgme-dev libgmock-dev libgnutls28-dev libgoogle-perftools-dev
+        libgsm1-dev libgtest-dev libgvc6 libibus-1.0-dev libintl-perl libladspa-ocaml-dev libldap2-dev libleptonica-dev liblilv-dev
+        liblz-dev liblzma-dev liblzo2-dev libmathic-dev libmatroska-dev libmbedtls-dev libmetis5 libmfx-dev libmodplug-dev libmp3lame-dev
+        libmusicbrainz5-dev libnuma-dev libpango1.0-dev libperl-dev libplacebo-dev libpocketsphinx-dev libportaudio-ocaml-dev libpsl-dev
+        libpstoedit-dev libpulse-dev librabbitmq-dev libraw-dev librsvg2-dev librtmp-dev librubberband-dev librust-gstreamer-base-sys-dev
         libsctp-dev libserd-dev libshine-dev libsmbclient-dev libsnappy-dev libsndio-dev libsoxr-dev libspeex-dev libsphinxbase-dev
         libsqlite3-dev libsratom-dev libssh-dev libssl-dev libsystemd-dev libtalloc-dev libtesseract-dev libticonv-dev libtool
         libtwolame-dev libudev-dev libv4l-dev libva-dev libvdpau-dev libvidstab-dev libvlccore-dev libvo-amrwbenc-dev libx11-dev
@@ -1082,7 +1069,7 @@ fix_libstd_libs() {
     local libstdc_path
     libstdc_path=$(find /usr/lib/x86_64-linux-gnu/ -type f -name 'libstdc++.so.6.0.*' | sort -ruV | head -n1)
     if [[ ! -f "/usr/lib/x86_64-linux-gnu/libstdc++.so" ]] && [[ -f "$libstdc_path" ]]; then
-        exec ln -sf "$libstdc_path" "/usr/lib/x86_64-linux-gnu/libstdc++.so"
+        ln -sf "$libstdc_path" "/usr/lib/x86_64-linux-gnu/libstdc++.so"
     fi
 }
 
@@ -1112,7 +1099,7 @@ get_openssl_version() {
 }
 
 debian_msft() {
-    case "$STATIC_VER" in
+    case "$VER" in
         11) apt_pkgs "$debian_pkgs $debian_wsl_pkgs" ;;
         12) apt_pkgs "$debian_pkgs $debian_wsl_pkgs" ;;
         *) fail "Failed to parse the Debian MSFT version. Line: $LINENO" ;;
@@ -1120,30 +1107,22 @@ debian_msft() {
 }
 
 debian_os_version() {
-    if [[ "$2" == "yes_wsl" ]]; then
-        VER="msft"
-        debian_wsl_pkgs="$3"
+    if [[ "$1" == "yes_wsl" ]]; then
+        STATIC_VER="msft"
+        debian_wsl_pkgs="$2"
     fi
 
-    # Function to find the latest version of a package by pattern
-    find_latest_version_debian() {
-        apt-cache search "^libnvidia-encode-[0-9]+$" | sort -ruV | head -n1 | awk '{print $1}'
-    }
-
-    # Use the function to find the latest versions of specific packages
-    libnvidia_encode_debian=$(find_latest_version_debian '^libnvidia-encode-[0-9]+$')
-
     debian_pkgs=(
-                 cppcheck "$libnvidia_encode_debian" libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev
-                 libyuv-utils libyuv0 libhwy-dev libsrt-gnutls-dev libyuv-dev libsharp-dev
-                 libdmalloc5 libumfpack5 libsuitesparseconfig5 libcolamd2 libcholmod3 libccolamd2
-                 libcamd2 libamd2 software-properties-common libclang-16-dev libgegl-0.4-0 libgoogle-perftools4
+                 cppcheck libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev libyuv-utils libyuv0
+                 libhwy-dev libsrt-gnutls-dev libyuv-dev libsharp-dev libdmalloc5 libumfpack5
+                 libsuitesparseconfig5 libcolamd2 libcholmod3 libccolamd2 libcamd2 libamd2
+                 software-properties-common libclang-16-dev libgegl-0.4-0 libgoogle-perftools4
             )
 
-    case "$VER" in
+    case "$STATIC_VER" in
         msft)          debian_msft ;;
-        12|trixie|sid) apt_pkgs "$1 ${debian_pkgs[*]} librist-dev" ;;
         11)            apt_pkgs "$1 ${debian_pkgs[*]}" ;;
+        12|trixie|sid) apt_pkgs "$1 ${debian_pkgs[*]} librist-dev" ;;
         *)             fail "Could not detect the Debian release version. Line: $LINENO" ;;
     esac
 }
@@ -1158,9 +1137,9 @@ ubuntu_msft() {
 }
 
 ubuntu_os_version() {
-    if [[ "$2" = "yes_wsl" ]]; then
+    if [[ "$1" = "yes_wsl" ]]; then
         VER="msft"
-        ubuntu_wsl_pkgs="$3"
+        ubuntu_wsl_pkgs="$2"
     fi
 
     ubuntu_common_pkgs="cppcheck libgegl-0.4-0 libgoogle-perftools4"
@@ -1176,7 +1155,7 @@ ubuntu_os_version() {
     mantic_pkgs+=" libccolamd2 libcholmod3 cargo-c libsuitesparseconfig5 libumfpack5 libjxl-dev libamd2"
     noble_pkgs="cargo-c libcamd3 libccolamd3 libcholmod5 libcolamd3 libsuitesparseconfig7"
     noble_pkgs+=" libumfpack6 libjxl-dev libamd3 libgegl-0.4-0t64 libgoogle-perftools4t64"
-    case "$VER" in
+    case "$STATIC_VER" in
         msft)
             ubuntu_msft
             ;;
@@ -1200,6 +1179,8 @@ ubuntu_os_version() {
             ;;
     esac
 }
+
+clear
 
 # Test the OS and its version
 find_lsb_release=$(find /usr/bin/ -type f -name lsb_release)
@@ -1225,14 +1206,12 @@ get_os_version
 # Check if running Windows WSL2
 if [[ $(grep -i "microsoft" /proc/version) ]]; then
     wsl_flag="yes_wsl"
-    OS="WSL2"
-fi
-if [[ "$OS" == "WSL2" ]]; then
     STATIC_OS="WSL2"
+[[ "$OS" == "WSL2" ]] && STATIC_OS="WSL2"
 fi
 
 # Use the function to find the latest versions of specific packages
-libnvidia_encode_wsl=$(apt-cache search '^libnvidia-encode-[0-9]+$' | sort -ruV | head -n1 | awk '{print $1}')
+libnvidia_encode_wsl=$(apt-cache search '^libnvidia-encode[0-9]+$' | sort -ruV | head -n1 | awk '{print $1}')
 wsl_common_pkgs="cppcheck libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev libyuv-utils"
 wsl_common_pkgs+=" libyuv0 libsharp-dev libdmalloc5 $libnvidia_encode_wsl"
 
@@ -1241,11 +1220,25 @@ echo "Installing the required APT packages"
 echo "========================================================"
 log "Checking installation status of each package..."
 
+nvidia_encode_utils_version() {
+    nvidia_utils_version=$(
+                           apt-cache search '^nvidia-utils-.*' 2>/dev/null |
+                           grep -oP '^nvidia-utils-[0-9]+' |
+                           sort -ruV | head -n1
+                       )
+
+    nvidia_encode_version=$(
+                            apt-cache search '^libnvidia-encode.*' 2>&1 |
+                            grep -oP '^libnvidia-encode-[0-9-]+' |
+                            sort -ruV | head -n1
+                       )
+}
+
 nvidia_encode_utils_version
 case "$STATIC_OS" in
-    WSL2) case "$STATIC_OS" in
-              Debian|n/a) debian_os_version "$nvidia_encode_version $nvidia_utils_version" "$wsl_flag" "$wsl_common_pkgs" ;;
-              Ubuntu)     ubuntu_os_version "$nvidia_encode_version $nvidia_utils_version" "$wsl_flag" "$wsl_common_pkgs" ;;
+    WSL2) case "$OS" in
+              Debian|n/a) debian_os_version "$wsl_flag" "$wsl_common_pkgs" ;;
+              Ubuntu)     ubuntu_os_version "$wsl_flag" "$wsl_common_pkgs" ;;
           esac
           ;;
     Debian|n/a) debian_os_version "$nvidia_encode_version" "$nvidia_utils_version" ;;
@@ -1332,10 +1325,19 @@ gnu_repo "https://pkgconfig.freedesktop.org/releases/"
 if build "pkg-config" "$version"; then
     download "https://pkgconfig.freedesktop.org/releases/pkg-config-$version.tar.gz"
     execute autoconf
-    execute ./configure --prefix="$workspace" --enable-silent-rules --with-pc-path="$PKG_CONFIG_PATH"
+    execute ./configure --prefix="$workspace" --enable-silent-rules --with-pc-path="$PKG_CONFIG_PATH" --with-internal-glib
     execute make "-j$threads"
     execute make install
     build_done "pkg-config" "$version"
+fi
+
+find_git_repo "Kitware/CMake" "1" "T"
+if build "cmake" "$repo_version"; then
+    download "https://github.com/Kitware/CMake/archive/refs/tags/v$repo_version.tar.gz" "cmake-$repo_version.tar.gz"
+    execute ./bootstrap --prefix="$workspace" --parallel="$threads" --enable-ccache
+    execute make "-j$threads"
+    execute make install
+    build_done "cmake" "$repo_version"
 fi
 
 find_git_repo "mesonbuild/meson" "1" "T"
@@ -1433,15 +1435,6 @@ else
     fi
 fi
 
-find_git_repo "Kitware/CMake" "1" "T"
-if build "cmake" "$repo_version"; then
-    download "https://github.com/Kitware/CMake/archive/refs/tags/v$repo_version.tar.gz" "cmake-$repo_version.tar.gz"
-    execute ./bootstrap --prefix="$workspace" --parallel="$threads" --enable-ccache
-    execute make "-j$threads"
-    execute make install
-    build_done "cmake" "$repo_version"
-fi
-
 find_git_repo "yasm/yasm" "1" "T"
 if build "yasm" "$repo_version"; then
     download "https://github.com/yasm/yasm/archive/refs/tags/v$repo_version.tar.gz" "yasm-$repo_version.tar.gz"
@@ -1474,7 +1467,7 @@ if build "giflib" "5.2.2"; then
 fi
 
 # UBUNTU BIONIC FAILS TO BUILD XML2
-if [[ "$VER" != "18.04" ]]; then
+if [[ "$STATIC_VER" != "18.04" ]]; then
     find_git_repo "1665" "5" "T"
     if build "libxml2" "$repo_version"; then
         download "https://gitlab.gnome.org/GNOME/libxml2/-/archive/v$repo_version/libxml2-v$repo_version.tar.bz2" "libxml2-$repo_version.tar.bz2"
@@ -2086,7 +2079,7 @@ fi
 CONFIGURE_OPTIONS+=("--enable-libaom")
 
 # Rav1e fails to build on Ubuntu Bionic and Debian 11 Bullseye
-if [[ "$VER" != "11" ]]; then
+if [[ "$STATIC_VER" != "11" ]]; then
     find_git_repo "xiph/rav1e" "1" "T" "enabled"
     if build "rav1e" "$repo_version"; then
         install_rustc
@@ -2413,8 +2406,8 @@ if "$NONFREE_AND_GPL"; then
 fi
 
 # find_git_repo "vapoursynth/vapoursynth" "1" "T"
-if build "vapoursynth" "R65"; then
-    download "https://github.com/vapoursynth/vapoursynth/archive/refs/tags/R65.tar.gz" "vapoursynth-R65.tar.gz"
+if build "vapoursynth" "R68"; then
+    download "https://github.com/vapoursynth/vapoursynth/archive/refs/tags/R68.tar.gz" "vapoursynth-R68.tar.gz"
 
     venv_packages=("Cython==0.29.36")
     setup_python_venv_and_install_packages "$workspace/python_virtual_environment/vapoursynth" "${venv_packages[@]}"
@@ -2438,7 +2431,7 @@ if build "vapoursynth" "R65"; then
     # Deactivate the virtual environment after the build
     deactivate
 
-    build_done "vapoursynth" "R65"
+    build_done "vapoursynth" "R68"
 else
     # Explicitly set the PYTHON environment variable to the virtual environment's Python
     PYTHON="$workspace/python_virtual_environment/vapoursynth/bin/python"
@@ -2509,7 +2502,7 @@ if build "libheif" "$repo_version"; then
         chmod 755 "/usr/lib/x86_64-linux-gnu/libde265.so"
     fi
 
-    case "$VER" in
+    case "$STATIC_VER" in
         20.04) pixbuf_switch=OFF ;;
         *)     pixbuf_switch=ON ;;
     esac
@@ -2582,6 +2575,9 @@ fi
 
 source_compiler_flags
 find_git_repo "FFmpeg/FFmpeg" "1" "T"
+case "$VER" in
+    11|12) repo_version="6.1.1" ;;
+esac
 if build "ffmpeg" "n${repo_version}"; then
     CFLAGS="$CFLAGS -flto -DCL_TARGET_OPENCL_VERSION=300 -DX265_DEPTH=12 -DENABLE_LIBVMAF=0"
     download "https://ffmpeg.org/releases/ffmpeg-$repo_version.tar.xz" "ffmpeg-n${repo_version}.tar.xz"
