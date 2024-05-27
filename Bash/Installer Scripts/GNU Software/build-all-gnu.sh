@@ -2,8 +2,8 @@
 
 # GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-all-gnu.sh
 # Purpose: Build various GNU programs from source code
-# Updated: 05.26.24
-# Version: 1.1
+# Updated: 05.27.24
+# Version: 1.2
 
 CYAN='\033[0;36m'
 GREEN='\033[0;32m'
@@ -18,14 +18,14 @@ available_programs=(
                )
 
 # Consolidated list of required packages for all programs
-MASTER_PKGS="autoconf autoconf-archive automake build-essential ccache libtool m4 gettext libintl-perl bzip2 curl libc6-dev lzip lzma lzma-dev xz-utils zlib1g-dev texinfo libticonv-dev"
+MASTER_PKGS="autoconf autoconf-archive automake build-essential bzip2 ccache curl gettext libc6-dev libintl-perl libticonv-dev libtool lzip lzma lzma-dev m4 texinfo xz-utils zlib1g-dev"
 
 # Specific package lists for each program (excluding those already in MASTER_PKGS)
 BASH_PKGS="libacl1-dev libattr1-dev liblzma-dev libticonv9 libzstd-dev lzip lzop"
 GAWK_PKGS="libgmp-dev libmpfr-dev libreadline-dev libsigsegv-dev lzip"
-GREP_PKGS="libltdl-dev libsigsegv-dev libticonv-dev"
+GREP_PKGS="libltdl-dev libsigsegv-dev"
 GZIP_PKGS="libzstd-dev zstd"
-MAKE_PKGS=" libdmalloc-dev libsigsegv2 libticonv9"
+MAKE_PKGS="libdmalloc-dev libsigsegv2 libticonv9"
 NANO_PKGS="libncurses5-dev libpth-dev nasm"
 PKG_CONFIG_PKGS="libglib2.0-dev libpopt-dev"
 SED_PKGS="autopoint autotools-dev libaudit-dev librust-polling-dev valgrind"
@@ -101,7 +101,7 @@ if [[ -z "$programs" ]]; then
     clear
 fi
 
-# Define required packages and common functions
+# Function to check and install required packages
 required_packages() {
     local -a pkgs
     local pkg
@@ -162,16 +162,18 @@ required_packages() {
     # Remove duplicate packages and sort alphabetically
     pkgs=($(echo "${pkgs[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
 
-    local -a missing_pkgs=()
+    local -a available_pkgs=()
     for pkg in "${pkgs[@]}"; do
-        if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
-            missing_pkgs+=("$pkg")
+        if apt-cache show "$pkg" &> /dev/null; then
+            available_pkgs+=("$pkg")
+        else
+            log "Package $pkg is not available in the apt database and will be skipped."
         fi
     done
 
-    if [[ "${#missing_pkgs[@]}" -gt 0 ]]; then
+    if [[ "${#available_pkgs[@]}" -gt 0 ]]; then
         sudo apt update
-        sudo apt install "${missing_pkgs[@]}"
+        sudo apt install -y "${available_pkgs[@]}"
     fi
 }
 
