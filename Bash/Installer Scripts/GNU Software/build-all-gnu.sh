@@ -3,7 +3,7 @@
 # GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-all-gnu.sh
 # Purpose: Build various GNU programs from source code
 # Updated: 05.26.24
-# Version: 1.1
+# Version: 1.0
 
 CYAN='\033[0;36m'
 GREEN='\033[0;32m'
