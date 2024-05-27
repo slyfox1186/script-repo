@@ -75,7 +75,7 @@ check_dependencies() {
 
 # Function to remove a video path from the script itself
 remove_video_path_from_script() {
-    local video_path script_path
+    local script_path video_path
     video_path="$1"
     script_path="$0"
     
