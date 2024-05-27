@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import json
 import os
-import requests
+import subprocess
 import sys
 import logging
 
@@ -12,14 +12,14 @@ def create_json_entry(filename, path, url):
         "filename": filename,
         "path": path,
         "url": url,
-        "extension": filename.split('.')[-1]
+        "extension": filename.split('.')[-1] if '.' in filename else ""
     }
     return entry
 
 def create_json_file(output_file, filename, path, url):
     logging.info("Creating JSON entry")
     entry = create_json_entry(filename, path, url)
-
+    
     try:
         with open(output_file, 'r') as f:
             data = json.load(f)
@@ -34,44 +34,48 @@ def create_json_file(output_file, filename, path, url):
             json.dump(data, f, indent=4)
         logging.info(f"Entry added to {output_file}")
 
-def download_file(url, save_path):
+def download_video(filename, path, url):
+    # Create the download directory if it doesn't exist
+    os.makedirs(path, exist_ok=True)
+
+    # Construct the output filename
+    output_file = filename
+
+    # Download the video using aria2c
     try:
-        logging.info(f"Downloading {url} to {save_path}")
-        response = requests.get(url)
-        response.raise_for_status()
-        with open(save_path, 'wb') as file:
-            file.write(response.content)
+        logging.info(f"URL: {url}")
+        logging.info(f"Path: {os.path.join(path, output_file)}")
+        subprocess.run(["aria2c", "--conf-path", os.path.expanduser("~/.aria2/aria2.conf"), "--out", output_file, url], cwd=path, check=True)
         logging.info(f"Downloaded {url} successfully")
-    except requests.RequestException as e:
+    except subprocess.CalledProcessError as e:
         logging.error(f"Failed to download {url}: {e}")
+
+def batch_download_videos(video_data):
+    for video in video_data:
+        filename = video["filename"]
+        path = video["path"]
+        url = video["url"]
+
+        download_video(filename, path, url)
 
 def batch_download_from_json(json_file):
     try:
         with open(json_file, 'r') as file:
-            files = json.load(file)
+            video_data = json.load(file)
         logging.info(f"Loaded JSON file: {json_file}")
     except FileNotFoundError:
         logging.error(f"JSON file not found: {json_file}")
         return
 
-    for file_info in files:
-        url = file_info["url"]
-        file_name = file_info["filename"]
-        output_dir = file_info["path"]
-
-        if not os.path.exists(output_dir):
-            logging.info(f"Creating directory: {output_dir}")
-            os.makedirs(output_dir)
-
-        save_path = os.path.join(output_dir, file_name)
-        download_file(url, save_path)
+    batch_download_videos(video_data)
+    subprocess.run(["google_speech", "Batch video download completed."], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 if __name__ == "__main__":
     import argparse
     script_name = os.path.basename(sys.argv[0])
     parser = argparse.ArgumentParser(description=f"""
 Utility script for creating JSON file entries and batch downloading files from a JSON file.
-
+    
 Commands:
     json            Create a JSON entry with provided filename, path, and URL.
     batch           Batch download files from a JSON file.
@@ -79,23 +83,23 @@ Commands:
 Examples:
     Create a JSON entry:
         {script_name} json <filename> <path> <url>
-
+        
     Batch download files from a JSON file:
         {script_name} batch <json_file>
     """, formatter_class=argparse.RawTextHelpFormatter)
-
+    
     subparsers = parser.add_subparsers(dest='command', required=True)
-
+    
     json_parser = subparsers.add_parser('json', help="Create a JSON entry with provided filename, path, and URL")
     json_parser.add_argument("filename", help="Filename of the file")
     json_parser.add_argument("path", help="Path to the file")
     json_parser.add_argument("url", help="URL for downloading the file")
-
+    
     batch_parser = subparsers.add_parser('batch', help="Batch download files from a JSON file")
     batch_parser.add_argument("json_file", help="Path to the JSON file containing download information")
-
+    
     args = parser.parse_args()
-
+    
     if args.command == 'json':
         if not args.filename or not args.path or not args.url:
             parser.error("The 'json' command requires <filename>, <path>, and <url> arguments.")
