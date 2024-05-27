@@ -1,5 +1,15 @@
 #!/usr/bin/env bash
 
+# Create a temporary file to store the video paths
+temp_file=$(mktemp)
+error_log=$(mktemp /tmp/error_log.XXXXXX)
+
+# Add the video paths that FFmpeg will process to the temporary file
+cat > "$temp_file" <<'EOF'
+/path/to/video.mkv
+/path/to/video.mp4
+EOF
+
 # Default paths file
 log_file="conversion.log"
 
@@ -26,16 +36,6 @@ while getopts "p:l:h" opt; do
         * ) show_usage; exit 1 ;;
     esac
 done
-
-# Create a temporary file to store the video paths
-temp_file=$(mktemp)
-error_log=$(mktemp /tmp/error_log.XXXXXX)
-
-# Add the video paths that FFmpeg will process to the temporary file
-cat > "$temp_file" <<'EOF'
-/path/to/video.mkv
-/path/to/video.mp4
-EOF
 
 # Log functions
 log() {
