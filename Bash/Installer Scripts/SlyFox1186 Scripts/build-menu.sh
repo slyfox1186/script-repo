@@ -5,7 +5,6 @@ clear
 user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
 
 # Menu color functions
-
 green='\e[32m'
 blue='\e[34m'
 clear='\e[0m'
@@ -14,9 +13,7 @@ ColorGreen() { echo -ne "${green}$1${clear}"; }
 ColorBlue() { echo -ne "${blue}$1${clear}"; }
 
 # Show script banner
-
-box_out_banner()
-{
+box_out_banner() {
     input_char=$(echo "$@" | wc -c)
     line=$(for i in $(seq 0 ${input_char}); do printf '-'; done)
     tput bold
@@ -32,17 +29,15 @@ box_out_banner()
 box_out_banner 'Installer Script Menu'
 
 # Download scripts
-
 download() {
     local url="$1"
     bash <(curl -fsSL "$url")
 }
 
 # Display the main menu
-
 main_menu() {
-    options=(
-        "7-Zip v23.01"
+    local options=(
+        "7-Zip v24.06"
         "cURL, WGET, and Aria2c"
         "CMake, Meson, Ninja, and GoLang"
         "ImageMagick 7"
@@ -55,11 +50,8 @@ main_menu() {
         "Exit"
     )
 
-    counter=1
-    while [ $counter -le ${#Options[@]} ]
-    do
-        echo "$counter) ${options[counter-1]}"
-        ((counter++))
+    for i in "${!options[@]}"; do
+        echo "$((i+1))) ${options[i]}"
     done
 
     local choice
@@ -82,18 +74,15 @@ main_menu() {
 }
 
 # Custom user scripts menu
-
 custom_user_scripts() {
-    options=(
+    local options=(
         "Ubuntu Lunar"
         "Ubuntu Jammy, Focal, or Bionic"
         "Exit"
     )
 
-    counter=1
-    while [ $counter -le ${#Options[@]} ]; do
-        echo "$counter) ${options[counter-1]}"
-        ((counter++))
+    for i in "${!options[@]}"; do
+        echo "$((i+1))) ${options[i]}"
     done
 
     local choice
@@ -108,9 +97,8 @@ custom_user_scripts() {
 }
 
 # Extra mirrors menu
-
 extra_mirrors() {
-    options=(
+    local options=(
         "Ubuntu Lunar"
         "Ubuntu Jammy"
         "Ubuntu Focal"
@@ -121,10 +109,8 @@ extra_mirrors() {
         "Exit"
     )
 
-    counter=1
-    while [ $counter -le ${#Options[@]} ]; do
-        echo "$counter) ${options[counter-1]}"
-        ((counter++))
+    for i in "${!options[@]}"; do
+        echo "$((i+1))) ${options[i]}"
     done
 
     local choice
