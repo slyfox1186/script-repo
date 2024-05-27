@@ -3,7 +3,7 @@
 # GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-all-gnu.sh
 # Purpose: Build various GNU programs from source code
 # Updated: 05.26.24
-# Version: 1.0
+# Version: 1.1
 
 CYAN='\033[0;36m'
 GREEN='\033[0;32m'
@@ -182,7 +182,12 @@ set_compiler_flags() {
     CXXFLAGS="$CFLAGS"
     LDFLAGS="-Wl,-rpath=$install_dir/lib64:$install_dir/lib"
     PATH="/usr/lib/ccache:$PATH"
-    PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig"
+    PKG_CONFIG_PATH="$HOME/.local/lib/pkgconfig:$HOME/.local/share/pkgconfig:/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig"
+    PKG_CONFIG_PATH+=":/usr/local/share/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig"
+    PKG_CONFIG_PATH+=":/usr/local/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/local/lib64/x86_64-linux-gnu/pkgconfig"
+    PKG_CONFIG_PATH+=":/usr/lib64/x86_64-linux-gnu/pkgconfig:/usr/local/lib/x86_64-pc-linux-gnu/pkgconfig:/usr/lib/x86_64-pc-linux-gnu/pkgconfig"
+    PKG_CONFIG_PATH+=":/usr/local/lib/pkgconfig:/usr/local/libdata/pkgconfig:/usr/libdata/pkgconfig:/usr/local/Cellar/pkgconfig"
+    PKG_CONFIG_PATH+=":/usr/local/lib/pkgconfig:/opt/local/lib/pkgconfig:/opt/lib/pkgconfig"
     export CC CXX CFLAGS CXXFLAGS LDFLAGS PATH PKG_CONFIG_PATH
 }
 
@@ -241,7 +246,14 @@ configure_build() {
     
     mkdir -p build
     cd build || fail "Failed to cd into the build directory. Line: $LINENO"
-    ../configure --prefix="$install_dir" --disable-nls || fail "Failed to execute: configure. Line: $LINENO"
+    case "$prog_name" in
+        pkg-config)
+            ../configure --prefix="$install_dir" --with-pc-path="$PKG_CONFIG_PATH" || fail "Failed to execute: configure. Line: $LINENO"
+            ;;
+        *)
+            ../configure --prefix="$install_dir" --disable-nls || fail "Failed to execute: configure. Line: $LINENO"
+            ;;
+    esac
 }
 
 compile_and_install() {
