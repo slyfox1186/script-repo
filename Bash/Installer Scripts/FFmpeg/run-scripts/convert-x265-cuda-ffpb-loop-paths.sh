@@ -36,8 +36,8 @@ error_log=$(mktemp /tmp/error_log.XXXXXX)
 
 # Add the video paths that FFmpeg will process to the temporary file
 cat > "$temp_file" <<'EOF'
-/path/to/video.mp4
 /path/to/video.mkv
+/path/to/video.mp4
 EOF
 
 # Log functions
@@ -60,18 +60,10 @@ cleanup() {
     rm -f "$temp_file" "$error_log"
 }
 
-# Send notification
-send_notification() {
-    local message
-    message="$1"
-    if command -v notify-send &> /dev/null; then
-        notify-send "Video Conversion" "$message"
-    fi
-}
-
 # Check for required dependencies before proceeding
 check_dependencies() {
-    local missing_pkgs pkg
+    local -a missing_pkgs
+    local pkg
 
     missing_pkgs=()
     for pkg in bc ffpb google_speech sed ffmpeg notify-send; do
@@ -79,7 +71,7 @@ check_dependencies() {
             missing_pkgs+=("$pkg")
         fi
     done
-    if [ ${#missing_pkgs[@]} -ne 0 ]; then
+    if [ ${#missing_pkgs[@]} -ne 0; then
         fail "Missing dependencies: ${missing_pkgs[*]}. Please install them."
     fi
 }
@@ -91,6 +83,25 @@ remove_video_path_from_script() {
     script_path="$0"
     
     sed -i "\|$video_path|d" "$script_path"
+}
+
+# Function to execute ffmpeg command
+convert_with_ffmpeg() {
+    local video="$1"
+    local audio_codec="$2"
+    local file_out="$3"
+    local bitrate="$4"
+    local bufsize="$5"
+    local maxrate="$6"
+    local threads="$7"
+
+    ffpb -y -hide_banner -hwaccel_output_format cuda \
+        -threads "$threads" -i "$video" -fps_mode:v vfr \
+        -c:v hevc_nvenc -preset medium \
+        -profile:v main10 -pix_fmt p010le -rc:v vbr -tune:v hq \
+        -b:v "${bitrate}k" -bufsize:v "${bufsize}k" -maxrate:v "${maxrate}k" \
+        -bf:v 3 -g:v 250 -b_ref_mode:v middle -qmin:v 0 -temporal-aq:v 1 \
+        -rc-lookahead:v 20 -i_qfactor:v 0.75 -b_qfactor:v 1.1 -c:a "$audio_codec" "$file_out"
 }
 
 # Main video conversion function
@@ -172,38 +183,34 @@ convert_videos() {
         input_size=$(du -m "$video" | cut -f1)
         total_input_size=$((total_input_size + input_size))
 
-        # Conversion using ffmpeg with HEVC codec
-        if ffpb -y -hide_banner -hwaccel_output_format cuda \
-            -threads "$threads" -i "$video" -fps_mode:v vfr \
-            -c:v hevc_nvenc -preset medium \
-            -profile:v main10 -pix_fmt p010le -rc:v vbr -tune:v hq \
-            -b:v "${bitrate}k" -bufsize:v "${bufsize}k" -maxrate:v "${maxrate}k" \
-            -bf:v 3 -g:v 250 -b_ref_mode:v middle -qmin:v 0 -temporal-aq:v 1 \
-            -rc-lookahead:v 20 -i_qfactor:v 0.75 -b_qfactor:v 1.1 -c:a copy "$file_out"; then
-
-            google_speech "Video converted." &>/dev/null
-
-            log "Video conversion completed: $file_out"
-
-            output_size=$(du -m "$file_out" | cut -f1)
-            total_output_size=$((total_output_size + output_size))
-            space_saved=$((input_size - output_size))
-            total_space_saved=$((total_space_saved + space_saved))
-
-            # Extract the video name from the full path using variable expansion
-            video_name="${video##*/}"
-
-            echo -e "${YELLOW}Total space savings for \"$video_name\": ${PURPLE}$space_saved MB${NC}"
-            echo -e "${YELLOW}Total cumulative space saved: ${PURPLE}$total_space_saved MB${NC}"
-
-            rm -f "$video"
-
-            # Remove the video path from the script itself using awk
-            remove_video_path_from_script "$video"
-        else
-            google_speech "Video conversion failed." &>/dev/null
-            fail "Video conversion failed for: $video"
+        # Attempt to copy audio codec first, fallback to re-encoding if it fails
+        if ! convert_with_ffmpeg "$video" "copy" "$file_out" "$bitrate" "$bufsize" "$maxrate" "$threads"; then
+            # If the above command fails, re-encode the audio to AAC
+            if ! convert_with_ffmpeg "$video" "aac" "$file_out" "$bitrate" "$bufsize" "$maxrate" "$threads"; then
+                google_speech "Video conversion failed." &>/dev/null
+                fail "Video conversion failed for: $video"
+            fi
         fi
+
+        google_speech "Video converted." &>/dev/null
+
+        log "Video conversion completed: $file_out"
+
+        output_size=$(du -m "$file_out" | cut -f1)
+        total_output_size=$((total_output_size + output_size))
+        space_saved=$((input_size - output_size))
+        total_space_saved=$((total_space_saved + space_saved))
+
+        # Extract the video name from the full path using variable expansion
+        video_name="${video##*/}"
+
+        echo -e "${YELLOW}Total space savings for \"$video_name\": ${PURPLE}$space_saved MB${NC}"
+        echo -e "${YELLOW}Total cumulative space saved: ${PURPLE}$total_space_saved MB${NC}"
+
+        rm -f "$video"
+
+        # Remove the video path from the script itself using awk
+        remove_video_path_from_script "$video"
     done 9< "$temp_file"
 
     log "Total input size: ${total_input_size} MB"
@@ -217,4 +224,4 @@ trap cleanup EXIT
 # Check dependencies and start the video conversion process
 check_dependencies
 convert_videos
-send_notification "Video conversion process completed."
+notify-send "Video conversion process completed."
