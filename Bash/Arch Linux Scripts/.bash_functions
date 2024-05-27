@@ -378,7 +378,7 @@ myip() {
     clear
     printf "%s\n%s\n\n" \
         "LAN: $(ip route get 1.2.3.4 | awk "{print $7}")" \
-        "WAN: $(curl -s "https://checkip.amazonaws.com")"
+        "WAN: $(curl -fsS "https://checkip.amazonaws.com")"
 }
 
 # WGET COMMAND
@@ -430,7 +430,7 @@ rmf() {
 
 ## IMAGEMAGICK ##
 imow() {
-    curl -LSso "optimize-jpg.py" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.py"
+    wget --show-progress -cqO "optimize-jpg.py" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.py"
     sudo chmod +x "optimize-jpg.py"
     LD_PRELOAD=libtcmalloc.so
     if python3 optimize-jpg.py; then
@@ -489,14 +489,16 @@ rftn() {
 
 ffdl() {
     clear
-    cur -m 10 -Lso "ff.sh" "https://ffdl.optimizethis.net"
-    bash ff.sh
+    wget --show-progress -cqO "ff.sh" "https://ffdl.optimizethis.net"
+    ./ff.sh
     sudo rm ff.sh
     clear; ls -1AhFv --color --group-directories-first
 }
 
 ffs() {
-    curl -Lso "ff" "https://raw.githubusercontent.com/slyfox1186/ffmpeg-build-script/main/build-ffmpeg.sh"
+    wget --show-progress -cqO "https://raw.githubusercontent.com/slyfox1186/ffmpeg-build-script/main/build-ffmpeg.sh"
+    clear
+    ffr build-ffmpeg.sh
 }
 
 dlfs() {
@@ -1937,12 +1939,13 @@ script_repo() {
         break
         ;;
       "Install GCC Latest Version")
-        curl -LSso build-gcc.sh "https://gcc.optimizethis.net"
+        wget --show-progress -cqO "https://gcc.optimizethis.net"
+        clear
         sudo bash build-gcc.sh
         break
         ;;
       "Install Clang")
-        curl -LSso build-clang.sh "https://build-clang.optimizethis.net"
+        wget --show-progress -cqO build-clang.sh "https://build-clang.optimizethis.net"
         sudo bash build-clang.sh --help
         echo
         read -p "Enter your chosen arguments: (e.g. -c -v 17.0.6): " clang_args
@@ -1954,7 +1957,7 @@ script_repo() {
         break
         ;;
       "Install ImageMagick 7")
-        curl -LSso build-magick.sh "https://imagick.optimizethis.net"
+        wget --show-progress -cqO build-magick.sh "https://imagick.optimizethis.net"
         sudo bash build-magick.sh
         break
         ;;
@@ -1968,7 +1971,7 @@ script_repo() {
         break
         ;;
       "Install OpenSSL Latest Version")
-        curl -LSso build-openssl.sh "https://ossl.optimizethis.net"
+        wget --show-progress -cqO build-openssl.sh "https://ossl.optimizethis.net"
         echo
         read -p "Enter arguments for OpenSSL (e.g., '-v 3.1.5'): " openssl_args
         sudo bash build-openssl.sh $openssl_args
@@ -1979,12 +1982,12 @@ script_repo() {
         break
         ;;
       "Install Essential Build Tools")
-        curl -LSso build-tools.sh "https://build-tools.optimizethis.net"
+        wget --show-progress -cqO build-tools.sh "https://build-tools.optimizethis.net"
         sudo bash build-tools.sh
         break
         ;;
       "Install Aria2 with Enhanced Configurations")
-        sudo curl -LSso build-aria2.sh "https://aria2.optimizethis.net"
+        sudo wget --show-progress -cqO build-aria2.sh "https://aria2.optimizethis.net"
         sudo bash build-aria2.sh
         break
         ;;
@@ -2001,24 +2004,24 @@ script_repo() {
         break
         ;;
       "Debian Package Downloader")
-        curl -LSso debian-package-downloader.sh "https://download.optimizethis.net"
+        wget --show-progress -cqO debian-package-downloader.sh "https://download.optimizethis.net"
         echo
         read -p "Enter an apt package name (e.g., clang-15): " deb_pkg_args
         sudo bash debian-package-downloader.sh $deb_pkg_args
         break
         ;;
       "Install Tilix")
-        curl -LSso build-tilix.sh "https://tilix.optimizethis.net"
+        wget --show-progress -cqO build-tilix.sh "https://tilix.optimizethis.net"
         sudo bash build-tilix.sh
         break
         ;;
       "Install Python 3.12.0")
-        curl -LSso build-python3.sh "https://python3.optimizethis.net"
+        wget --show-progress -cqO build-python3.sh "https://python3.optimizethis.net"
         sudo bash build-python3.sh
         break
         ;;
       "Update WSL2 with the Latest Linux Kernel")
-        curl -LSso build-wsl2-kernel.sh "https://wsl.optimizethis.net"
+        wget --show-progress -cqO build-wsl2-kernel.sh "https://wsl.optimizethis.net"
         sudo bash build-wsl2-kernel.sh
         break
         ;;
@@ -2149,7 +2152,7 @@ dlmaster() {
     if [[ ! -f "$script_path" ]]; then
         echo "The required script does not exist. Downloading now."
         # Download the script
-        sudo curl -LSso "$script_path" "$script_url"    
+        sudo wget --show-progress -cqO "$script_path" "$script_url"    
         # Set the owner to root and permissions to 755
         sudo chown root:root "$script_path"
         sudo chmod 755 "$script_path"
@@ -2172,7 +2175,7 @@ adt() {
     for script in "$json_script" "$run_script"; do
         if [ ! -f "$script" ]; then
             echo "Downloading $script from GitHub..."
-            if ! curl -LSso "$script" "$repo_base/$script"; then
+            if ! wget --show-progress -cqO "$script" "$repo_base/$script"; then
                 echo "Error: Failed to download $script from GitHub." >&2
                 return 1
             fi
