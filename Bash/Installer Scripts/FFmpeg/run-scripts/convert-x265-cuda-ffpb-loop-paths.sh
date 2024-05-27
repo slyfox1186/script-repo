@@ -71,7 +71,7 @@ check_dependencies() {
             missing_pkgs+=("$pkg")
         fi
     done
-    if [ ${#missing_pkgs[@]} -ne 0; then
+    if [[ ${#missing_pkgs[@]} -ne 0 ]]; then
         fail "Missing dependencies: ${missing_pkgs[*]}. Please install them."
     fi
 }
@@ -87,20 +87,21 @@ remove_video_path_from_script() {
 
 # Function to execute ffmpeg command
 convert_with_ffmpeg() {
-    local video="$1"
-    local audio_codec="$2"
-    local file_out="$3"
-    local bitrate="$4"
-    local bufsize="$5"
-    local maxrate="$6"
-    local threads="$7"
+    local audio_codec bitrate bufsize file_out maxrate threads video
+    video="$1"
+    audio_codec="$2"
+    file_out="$3"
+    bitrate="$4"
+    bufsize="$5"
+    maxrate="$6"
+    threads="$7"
 
     ffpb -y -hide_banner -hwaccel_output_format cuda \
         -threads "$threads" -i "$video" -fps_mode:v vfr \
-        -c:v hevc_nvenc -preset medium \
-        -profile:v main10 -pix_fmt p010le -rc:v vbr -tune:v hq \
-        -b:v "${bitrate}k" -bufsize:v "${bufsize}k" -maxrate:v "${maxrate}k" \
-        -bf:v 3 -g:v 250 -b_ref_mode:v middle -qmin:v 0 -temporal-aq:v 1 \
+        -c:v hevc_nvenc -preset medium -profile:v main10 \
+        -pix_fmt p010le -rc:v vbr -tune:v hq -b:v "${bitrate}k" \
+        -bufsize:v "${bufsize}k" -maxrate:v "${maxrate}k" -bf:v 3 \
+        -g:v 250 -b_ref_mode:v middle -qmin:v 0 -temporal-aq:v 1 \
         -rc-lookahead:v 20 -i_qfactor:v 0.75 -b_qfactor:v 1.1 -c:a "$audio_codec" "$file_out"
 }
 
