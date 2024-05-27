@@ -18,7 +18,8 @@ available_programs=(
                )
 
 # Consolidated list of required packages for all programs
-MASTER_PKGS="autoconf autoconf-archive automake build-essential bzip2 ccache curl gettext libc6-dev libintl-perl libticonv-dev libtool lzip lzma lzma-dev m4 texinfo xz-utils zlib1g-dev"
+MASTER_PKGS="autoconf autoconf-archive automake build-essential bzip2 ccache curl gettext libc6-dev"
+MASTER_PKGS+=" libintl-perl libticonv-dev libtool lzip lzma lzma-dev m4 texinfo xz-utils zlib1g-dev"
 
 # Specific package lists for each program (excluding those already in MASTER_PKGS)
 BASH_PKGS="libacl1-dev libattr1-dev liblzma-dev libticonv9 libzstd-dev lzip lzop"
