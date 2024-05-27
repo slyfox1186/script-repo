@@ -5,8 +5,8 @@ temp_file=$(mktemp)
 
 # Add the video paths that FFmpeg will process to the temporary file that was created above
 cat > "$temp_file" <<'EOF'
-/path/to/video1.mp4
-/path/to/video2.mp4
+/path/to/vidoe.mkv
+/path/to/vidoe.mp4
 EOF
 
 # Define color codes
@@ -53,7 +53,7 @@ remove_video_path() {
 
 # Function to run ffmpeg command
 run_ffmpeg() {
-    local video audio_codec file_out bitrate bufsize maxrate threads
+    local audio_codec bitrate bufsize file_out maxrate threads video
     video="$1"
     audio_codec="$2"
     file_out="$3"
@@ -62,19 +62,19 @@ run_ffmpeg() {
     maxrate="$6"
     threads="$7"
 
-    ffmpeg -y -hide_banner -hwaccel_output_format cuda \
-        -threads "$threads" -i "$video" -fps_mode:v vfr \
-        -c:v hevc_nvenc -preset medium -profile:v main10 \
-        -pix_fmt p010le -rc:v vbr -tune:v hq -b:v "${bitrate}k" \
-        -bufsize:v "${bufsize}k" -maxrate:v "${maxrate}k" -bf:v 3 \
-        -g:v 250 -b_ref_mode:v middle -qmin:v 0 -temporal-aq:v 1 \
-        -rc-lookahead:v 20 -i_qfactor:v 0.75 -b_qfactor:v 1.1 \
-        -c:a "$audio_codec" "$file_out"
+    ffpb -y -hide_banner -hwaccel_output_format cuda \
+         -threads "$threads" -i "$video" -fps_mode:v vfr \
+         -c:v hevc_nvenc -preset medium -profile:v main10 \
+         -pix_fmt p010le -rc:v vbr -tune:v hq -b:v "${bitrate}k" \
+         -bufsize:v "${bufsize}k" -maxrate:v "${maxrate}k" -bf:v 3 \
+         -g:v 250 -b_ref_mode:v middle -qmin:v 0 -temporal-aq:v 1 \
+         -rc-lookahead:v 20 -i_qfactor:v 0.75 -b_qfactor:v 1.1 \
+         -c:a "$audio_codec" "$file_out"
 }
 
 # Function to handle successful conversion
 handle_success() {
-    local video file_out input_size output_size total_input_size total_output_size total_space_saved
+    local file_out input_size output_size total_input_size total_output_size total_space_saved video
 
     video="$1"
     file_out="$2"
@@ -106,9 +106,9 @@ handle_success() {
 
 # Main video conversion function
 convert_videos() {
-    local aspect_ratio bitrate bufsize file_out height length maxrate original_bitrate
-    local threads total_input_size total_output_size total_space_saved width
-    local progress total_videos
+    local aspect_ratio bitrate bufsize file_out height length
+    local maxrate original_bitrate progress threads total_input_size
+    local total_output_size total_space_saved total_videos width
 
     total_input_size=0
     total_output_size=0
