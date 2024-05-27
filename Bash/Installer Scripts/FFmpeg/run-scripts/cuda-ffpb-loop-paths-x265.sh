@@ -142,7 +142,7 @@ handle_success() {
 
     echo -e "${YELLOW}Total space savings for \"$video_name\": ${MAGENTA}$space_saved MB${NC}"
     echo -e "${YELLOW}Total cumulative space saved: ${MAGENTA}$total_space_saved MB${NC}"
-    echo -e "${YELLOW}Estimated Space Savings: ${MAGENTA}$(echo "$total_input_size - $total_output_size" | bc) MB${NC}"
+    echo -e "${YELLOW}Estimated Total Space Savings: ${MAGENTA}$(echo "$total_input_size - $total_output_size" | bc) MB${NC}"
 
     rm -f "$video"
 
