@@ -42,13 +42,13 @@ done
 log() {
     local message
     message=$1
-    echo -e "\n${GREEN}[INFO]${NC} $message\n" | tee -a "$log_file"
+    echo -e "\n${GREEN}[INFO]${NC} $message\n" | tee -a "$log_file" >/dev/null
 }
 
 fail() {
     local message
     message=$1
-    echo -e "\n${RED}[ERROR]${NC} $message\n" | tee -a "$log_file"
+    echo -e "\n${RED}[ERROR]${NC} $message\n" | tee -a "$log_file" >/dev/null
     echo "$message" >> "$error_log"
     exit 1
 }
