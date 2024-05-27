@@ -5,8 +5,8 @@ temp_file=$(mktemp)
 
 # Add the video paths that FFmpeg will process to the temporary file that was created above
 cat > "$temp_file" <<'EOF'
-/path/to/vidoe.mkv
-/path/to/vidoe.mp4
+/path/to/video.mkv
+/path/to/video.mp4
 EOF
 
 # Define color codes
@@ -20,24 +20,69 @@ NC='\033[0m' # No Color
 
 # Log functions
 log() {
-    echo -e "\\n${GREEN}[INFO]${NC} $1 $2\\n"
+    echo -e "\n${GREEN}[INFO]${NC} $1 $2\n"
 }
 
 fail() {
-    echo -e "\\n${RED}[ERROR]${NC} $1 $2\\n"
+    echo -e "\n${RED}[ERROR]${NC} $1 $2\n"
     exit 1
 }
+
+# Function to kill related processes
+kill_related_processes() {
+    local script_name
+    script_name="${0##*/}"
+
+    # Find related processes excluding the current script
+    mapfile -t script_pids < <(pgrep -f "$script_name" | grep -v "^$$\$")
+
+    # Find related processes for ffpb, ffmpeg, and google_speech
+    mapfile -t ffpb_pids < <(pgrep -f "ffpb")
+    mapfile -t ffmpeg_pids < <(pgrep -f "ffmpeg")
+    mapfile -t google_speech_pids < <(pgrep -f "google_speech")
+
+    # Combine all the related processes
+    mapfile -t all_pids < <(printf "%s\n" "${script_pids[@]}" "${ffpb_pids[@]}" "${ffmpeg_pids[@]}" "${google_speech_pids[@]}")
+    
+    if [ ${#all_pids[@]} -eq 0 ]; then
+        echo -e "${GREEN}[INFO]${NC} No related processes found."
+    else
+        log "Found ${#all_pids[@]} related process(es). Killing them..."
+        for pid in ${all_pids[@]}; do
+            if ps -p "$pid" &>/dev/null; then
+                if [[ -n ${ffpb_pids[@]} ]]; then
+                    echo -e "${YELLOW}[WARNING]${NC} Killing process - ffpb with PID: $pid"
+                    sudo kill -9 "$pid"
+                elif [[ -n ${ffmpeg_pids[@]} ]]; then
+                    echo -e "${YELLOW}[WARNING]${NC} Killing process - ffmpeg with PID: $pid"
+                    sudo kill -9 "$pid"
+                elif [[ -n ${google_speech_pids[@]} ]]; then
+                    echo -e "${YELLOW}[WARNING]${NC} Killing process - google_speech with PID: $pid"
+                    sudo kill -9 "$pid"fi
+                elif [[ -n ${script_pids[@]} ]]; then
+                    echo -e "${YELLOW}[WARNING]${NC} Killing process - script with PID: $pid"
+                    sudo kill -9 "$pid"
+                fi
+            else
+                echo -e "${YELLOW}[WARNING]${NC} Process \"$pid\" with PID $pid not found. Skipping."
+            fi
+        done
+    fi
+}
+
+# Call the function to kill related processes
+kill_related_processes
 
 # Check for required dependencies before proceeding
 check_dependencies() {
     local missing_pkgs
     missing_pkgs=()
-    for pkg in bc ffmpeg google_speech awk; do
+    for pkg in bc ffpb google_speech awk; do
         if ! command -v "$pkg" &>/dev/null; then
             missing_pkgs+=("$pkg")
         fi
     done
-    if [ ${#missing_pkgs[@]} -ne 0 ]; then
+    if [[ ${#missing_pkgs[@]} -ne 0 ]]; then
         fail "Missing dependencies: ${missing_pkgs[*]}. Please install them."
     fi
 }
@@ -97,6 +142,7 @@ handle_success() {
 
     echo -e "${YELLOW}Total space savings for \"$video_name\": ${MAGENTA}$space_saved MB${NC}"
     echo -e "${YELLOW}Total cumulative space saved: ${MAGENTA}$total_space_saved MB${NC}"
+    echo -e "${YELLOW}Estimated Space Savings: ${MAGENTA}$(echo "$total_input_size - $total_output_size" | bc) MB${NC}"
 
     rm -f "$video"
 
@@ -109,6 +155,7 @@ convert_videos() {
     local aspect_ratio bitrate bufsize file_out height length
     local maxrate original_bitrate progress threads total_input_size
     local total_output_size total_space_saved total_videos width
+    local estimated_output_size length_mins length_secs
 
     total_input_size=0
     total_output_size=0
@@ -152,13 +199,18 @@ convert_videos() {
         bufsize=$((bufsize / 1024))
         maxrate=$((maxrate / 1024))
 
-        # Ensure integer arithmetic by truncating to integers before any operations
-        length=$(printf "%.0f" "$length")
-        length=$((length / 60))
+        # Convert length to minutes and seconds
+        length=$(printf "%.0f" "$length")  # Ensure length is an integer
+        length_mins=$((length / 60))
+        length_secs=$((length % 60))
 
         # Determine the number of threads based on the CPU cores available
         threads=$(nproc --all)
         threads=$((threads>16 ? 16 : threads)) # Cap at 16 threads for efficiency
+
+        # Calculate estimated output size in megabytes (MB)
+        estimated_output_size=$(echo "$bitrate * $length / 8 / 1024" | bc -l)
+        estimated_output_size=$(printf "%.2f" "$estimated_output_size")
 
         # Extract the file name from the full path using variable substitution
         input_file="${video##*/}"
@@ -179,9 +231,10 @@ convert_videos() {
         printf "${YELLOW}Bitrate:${NC}                   ${MAGENTA}%s kbps${NC}\n" "$original_bitrate"
         printf "${YELLOW}Aspect Ratio:${NC}              ${MAGENTA}%s${NC}\n" "$aspect_ratio"
         printf "${YELLOW}Resolution:${NC}                ${MAGENTA}%sx%s${NC}\n" "$width" "$height"
-        printf "${YELLOW}Duration:${NC}                  ${MAGENTA}%s mins${NC}\n\n" "$length"
+        printf "${YELLOW}Duration:${NC}                  ${MAGENTA}%02d:%02d${NC}\n\n" "$length_mins" "$length_secs"
         printf "${YELLOW}Estimated Output Bitrate:${NC}  ${MAGENTA}%s kbps${NC}\n" "$bitrate"
         printf "${YELLOW}Estimated Output Size:${NC}     ${MAGENTA}%.2f MB${NC}\n" "$estimated_output_size"
+        printf "${YELLOW}Estimated Space Savings:${NC}    ${MAGENTA}%.2f MB${NC}\n" "$(echo "$input_size_mb - $estimated_output_size" | bc)"
         printf "\n${BLUE}::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::${NC}\n"
 
         log "Converting${NC}" "$video"
