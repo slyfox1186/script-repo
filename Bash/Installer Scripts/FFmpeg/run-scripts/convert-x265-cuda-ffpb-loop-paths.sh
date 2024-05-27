@@ -5,8 +5,8 @@ temp_file=$(mktemp)
 
 # Add the video paths that FFmpeg will process to the temporary file that was created above
 cat > "$temp_file" <<'EOF'
-/path/to/video.mkv
-/path/to/video.mp4
+/path/to/video1.mp4
+/path/to/video2.mp4
 EOF
 
 # Define color codes
@@ -62,7 +62,7 @@ run_ffmpeg() {
     maxrate="$6"
     threads="$7"
 
-    ffpb -y -hide_banner -hwaccel_output_format cuda \
+    ffmpeg -y -hide_banner -hwaccel_output_format cuda \
         -threads "$threads" -i "$video" -fps_mode:v vfr \
         -c:v hevc_nvenc -preset medium -profile:v main10 \
         -pix_fmt p010le -rc:v vbr -tune:v hq -b:v "${bitrate}k" \
@@ -74,7 +74,14 @@ run_ffmpeg() {
 
 # Function to handle successful conversion
 handle_success() {
-    local video file_out input_size total_input_size total_output_size total_space_saved
+    local video file_out input_size output_size total_input_size total_output_size total_space_saved
+
+    video="$1"
+    file_out="$2"
+    input_size="$3"
+    total_input_size="$4"
+    total_output_size="$5"
+    total_space_saved="$6"
 
     google_speech "Video converted." &>/dev/null
 
@@ -109,7 +116,7 @@ convert_videos() {
     total_videos=$(wc -l < "$temp_file")
     count=0
 
-    while read -u 9 video; do
+    while read -r -u 9 video; do
         if [[ ! -f "$video" ]]; then
             log "File not found: $video. Removing from list."
             remove_video_path "$video"
