@@ -18,7 +18,7 @@ config_file="ffpb.conf"
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 GREEN='\033[0;32m'
-PURPLE='\033[0;35m'
+MAGENTA='\033[0;35m'
 RED='\033[0;31m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
@@ -180,20 +180,20 @@ convert_videos() {
         parent_dir="${video%/*}"
 
         # Print video stats in the terminal
-        printf "\n${BLUE}::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::${NC}\n\n"
-        printf "${YELLOW}Progress:${NC} ${PURPLE}%d%%${NC}\n\n" "$progress"
-        printf "${YELLOW}Working Directory:${NC}  ${PURPLE}%s${NC}\n\n" "$PWD"
-        printf "${YELLOW}Video Path:${NC}         ${PURPLE}%s${NC}\n\n" "$parent_dir"
-        printf "${YELLOW}Input File:${NC}         ${CYAN}%s${NC}\n\n" "$input_file"
-        printf "${YELLOW}Size:${NC}               ${PURPLE}%.2f MB${NC}\n" "$input_size_mb"
-        printf "${YELLOW}Bitrate:${NC}            ${PURPLE}%s kbps${NC}\n" "$original_bitrate"
-        printf "${YELLOW}Aspect Ratio:${NC}       ${PURPLE}%s${NC}\n" "$aspect_ratio"
-        printf "${YELLOW}Resolution:${NC}         ${PURPLE}%sx%s${NC}\n" "$width" "$height"
-        printf "${YELLOW}Duration:${NC}           ${PURPLE}%s mins${NC}\n" "$length"
-        printf "\n${YELLOW}Output File:${NC}        ${CYAN}%s${NC}\n" "$output_file"
-        printf "${YELLOW}Estimated Output Bitrate:${NC}  ${PURPLE}%s kbps${NC}\n" "$estimated_bitrate"
-        printf "${YELLOW}Estimated Output Size:${NC}     ${PURPLE}%.2f MB${NC}\n" "$estimated_output_size"
-        printf "\n${BLUE}::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::${NC}\n"
+        printf "\n${BLUE}::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::${NC}\n\n"
+        printf "${YELLOW}Progress:${NC} ${MAGENTA}%d%%${NC}\n\n" "$progress"
+        printf "${YELLOW}Working Directory:${NC}         ${MAGENTA}%s${NC}\n\n" "$PWD"
+        printf "${YELLOW}Video Path:${NC}                ${MAGENTA}%s${NC}\n" "$parent_dir"
+        printf "${YELLOW}Input File:${NC}                ${CYAN}%s${NC}" "$input_file"
+        printf "\n${YELLOW}Output File:${NC}               ${CYAN}%s${NC}\n\n" "$output_file"
+        printf "${YELLOW}Size:${NC}                      ${MAGENTA}%.2f MB${NC}\n" "$input_size_mb"
+        printf "${YELLOW}Bitrate:${NC}                   ${MAGENTA}%s kbps${NC}\n" "$original_bitrate"
+        printf "${YELLOW}Aspect Ratio:${NC}              ${MAGENTA}%s${NC}\n" "$aspect_ratio"
+        printf "${YELLOW}Resolution:${NC}                ${MAGENTA}%sx%s${NC}\n" "$width" "$height"
+        printf "${YELLOW}Duration:${NC}                  ${MAGENTA}%s mins${NC}\n\n" "$length"
+        printf "${YELLOW}Estimated Output Bitrate:${NC}  ${MAGENTA}%s kbps${NC}\n" "$estimated_bitrate"
+        printf "${YELLOW}Estimated Output Size:${NC}     ${MAGENTA}%.2f MB${NC}\n" "$estimated_output_size"
+        printf "\n${BLUE}::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::${NC}\n"
 
         log "Converting $video"
 
@@ -221,8 +221,8 @@ convert_videos() {
         # Extract the video name from the full path using variable expansion
         video_name="${video##*/}"
 
-        echo -e "${YELLOW}Total space savings for \"$video_name\": ${PURPLE}$space_saved MB${NC}"
-        echo -e "${YELLOW}Total cumulative space saved: ${PURPLE}$total_space_saved MB${NC}"
+        echo -e "${YELLOW}Total space savings for \"$video_name\": ${MAGENTA}$space_saved MB${NC}"
+        echo -e "${YELLOW}Total cumulative space saved: ${MAGENTA}$total_space_saved MB${NC}"
 
         rm -f "$video"
 
