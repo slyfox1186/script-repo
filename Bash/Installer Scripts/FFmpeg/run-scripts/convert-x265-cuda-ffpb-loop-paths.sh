@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
 # Default paths file
-paths_file="paths.txt"
 log_file="conversion.log"
 
 # Define color codes
@@ -16,14 +15,12 @@ NC='\033[0m' # No Color
 # Function to show usage
 show_usage() {
     echo "Usage: $0 [-p paths_file] [-l log_file]"
-    echo "  -p paths_file   File containing the list of video paths (default: paths.txt)"
     echo "  -l log_file     Log file to save output (default: conversion.log)"
 }
 
 # Parse command-line arguments
 while getopts "p:l:h" opt; do
     case "$opt" in
-        p ) paths_file="$OPTARG" ;;
         l ) log_file="$OPTARG" ;;
         h ) show_usage; exit 0 ;;
         * ) show_usage; exit 1 ;;
@@ -118,7 +115,7 @@ convert_videos() {
     count=0
     total_videos=$(wc -l < "$temp_file")
 
-    while read -u 9 video; do
+    while read -r -u 9 video; do
         if [[ ! -f "$video" ]]; then
             log "File not found: $video. Removing from list."
             remove_video_path_from_script "$video"
