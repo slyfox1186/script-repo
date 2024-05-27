@@ -58,7 +58,7 @@ kill_related_processes() {
                     sudo kill -9 "$pid"
                 elif [[ -n ${google_speech_pids[@]} ]]; then
                     echo -e "${YELLOW}[WARNING]${NC} Killing process - google_speech with PID: $pid"
-                    sudo kill -9 "$pid"fi
+                    sudo kill -9 "$pid"
                 elif [[ -n ${script_pids[@]} ]]; then
                     echo -e "${YELLOW}[WARNING]${NC} Killing process - script with PID: $pid"
                     sudo kill -9 "$pid"
@@ -223,18 +223,18 @@ convert_videos() {
         # Print video stats in the terminal
         printf "\n${BLUE}::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::${NC}\n\n"
         printf "${YELLOW}Progress:${NC} ${MAGENTA}%d%%${NC}\n\n" "$progress"
-        printf "${YELLOW}Working Directory:${NC}         ${MAGENTA}%s${NC}\n\n" "$PWD"
-        printf "${YELLOW}Video Path:${NC}                ${MAGENTA}%s${NC}\n" "$parent_dir"
+        printf "${YELLOW}Working Directory:${NC}         ${MAGENTA}%s${NC}\n" "$PWD"
+        printf "${YELLOW}Video Path:${NC}                ${MAGENTA}%s${NC}\n\n" "$parent_dir"
         printf "${YELLOW}Input File:${NC}                ${CYAN}%s${NC}" "$input_file"
         printf "\n${YELLOW}Output File:${NC}               ${CYAN}%s${NC}\n\n" "$output_file"
         printf "${YELLOW}Size:${NC}                      ${MAGENTA}%.2f MB${NC}\n" "$input_size_mb"
-        printf "${YELLOW}Bitrate:${NC}                   ${MAGENTA}%s kbps${NC}\n" "$original_bitrate"
+        printf "${YELLOW}Bitrate:${NC}                   ${MAGENTA}%'d Kbps${NC}\n" "$((original_bitrate / 1000))"
         printf "${YELLOW}Aspect Ratio:${NC}              ${MAGENTA}%s${NC}\n" "$aspect_ratio"
         printf "${YELLOW}Resolution:${NC}                ${MAGENTA}%sx%s${NC}\n" "$width" "$height"
         printf "${YELLOW}Duration:${NC}                  ${MAGENTA}%02d:%02d${NC}\n\n" "$length_mins" "$length_secs"
         printf "${YELLOW}Estimated Output Bitrate:${NC}  ${MAGENTA}%s kbps${NC}\n" "$bitrate"
         printf "${YELLOW}Estimated Output Size:${NC}     ${MAGENTA}%.2f MB${NC}\n" "$estimated_output_size"
-        printf "${YELLOW}Estimated Space Savings:${NC}    ${MAGENTA}%.2f MB${NC}\n" "$(echo "$input_size_mb - $estimated_output_size" | bc)"
+        printf "${YELLOW}Estimated Space Savings:${NC}   ${MAGENTA}%.2f MB${NC}\n" "$(echo "$input_size_mb - $estimated_output_size" | bc)"
         printf "\n${BLUE}::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::${NC}\n"
 
         log "Converting${NC}" "$video"
