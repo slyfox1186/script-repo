@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+#shellcheck disable=SC2059
 
 # Create a temporary file to store the video paths
 temp_file=$(mktemp)
