@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-#shellcheck disable=SC2059
 
 # Create a temporary file to store the video paths
 temp_file=$(mktemp)
@@ -13,42 +12,55 @@ EOF
 
 # Default paths file
 log_file="conversion.log"
+config_file="ffpb.conf"
 
 # Define color codes
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-PURPLE='\033[0;35m'
 CYAN='\033[0;36m'
+GREEN='\033[0;32m'
+PURPLE='\033[0;35m'
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Function to show usage
 show_usage() {
-    echo "Usage: $0 [-p paths_file] [-l log_file]"
-    echo "  -l log_file     Log file to save output (default: conversion.log)"
+    echo "Usage: $0 [OPTIONS]"
+    echo
+    echo "  -c, --config  Configuration file (default: ffpb.conf)"
+    echo "  -l, --log     Log file to save output (default: conversion.log)"
+    echo "  -h, --help    Show this help menu"
+    echo
+    echo "Examples:"
+    echo "$0"
+    echo "$0 -c ffpb.conf -l conversion.log"
 }
 
 # Parse command-line arguments
-while getopts "p:l:h" opt; do
-    case "$opt" in
-        l ) log_file="$OPTARG" ;;
-        h ) show_usage; exit 0 ;;
-        * ) show_usage; exit 1 ;;
+while [[ "$#" -gt 0 ]]; do
+    case "$1" in
+        -c|--config) config_file="$2"; shift ;;
+        -l|--log) log_file="$2"; shift ;;
+        -h|--help) show_usage; exit 0 ;;
+        *) echo "Unknown parameter passed: $1"; show_usage; exit 1 ;;
     esac
+    shift
 done
 
-# Log functions
+# Load configuration file if exists
+[[ -f "$config_file" ]] && source "$config_file"
+
+# Log functions with timestamps
 log() {
     local message
-    message=$1
-    echo -e "\n${GREEN}[INFO]${NC} $message\n" | tee -a "$log_file" >/dev/null
+    message="$1"
+    echo -e "$(date '+%m-%d-%Y %H:%M:%S') ${GREEN}[INFO]${NC} $message" | tee -a "$log_file" >/dev/null
 }
 
 fail() {
     local message
-    message=$1
-    echo -e "\n${RED}[ERROR]${NC} $message\n" | tee -a "$log_file" >/dev/null
+    message="$1"
+    echo -e "$(date '+%m-%d-%Y %H:%M:%S') ${RED}[ERROR]${NC} $message" | tee -a "$log_file" >/dev/null
     echo "$message" >> "$error_log"
     exit 1
 }
@@ -77,8 +89,8 @@ check_dependencies() {
 # Function to remove a video path from the script itself
 remove_video_path_from_script() {
     local script_path video_path
-    script_path=$0
-    video_path=$1
+    script_path="$0"
+    video_path="$1"
 
     sed -i "\|$video_path|d" "$script_path"
 }
@@ -86,14 +98,15 @@ remove_video_path_from_script() {
 # Function to execute ffmpeg command
 convert_with_ffmpeg() {
     local audio_codec bitrate bufsize file_out maxrate threads video
-    video=$1
-    audio_codec=$2
-    file_out=$3
-    bitrate=$4
-    bufsize=$5
-    maxrate=$6
-    threads=$7
+    video="$1"
+    audio_codec="$2"
+    file_out="$3"
+    bitrate="$4"
+    bufsize="$5"
+    maxrate="$6"
+    threads="$7"
 
+    echo
     ffpb -y -hide_banner -hwaccel_output_format cuda \
          -threads "$threads" -i "$video" -fps_mode:v vfr \
          -c:v hevc_nvenc -preset medium -profile:v main10 \
@@ -163,10 +176,14 @@ convert_videos() {
         estimated_bitrate=$bitrate  # Bitrate is halved for output estimation
         estimated_output_size=$(echo "scale=2; ($estimated_bitrate * $length * 60) / 8 / 1024" | bc)
 
+        # Extract the parent directory of the video using variable expansion
+        parent_dir="${video%/*}"
+
         # Print video stats in the terminal
         printf "\n${BLUE}::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::${NC}\n\n"
-        printf "${YELLOW}Progress:${NC} ${PURPLE}%d%%${NC}\n" "$progress"
+        printf "${YELLOW}Progress:${NC} ${PURPLE}%d%%${NC}\n\n" "$progress"
         printf "${YELLOW}Working Directory:${NC}  ${PURPLE}%s${NC}\n\n" "$PWD"
+        printf "${YELLOW}Video Path:${NC}         ${PURPLE}%s${NC}\n\n" "$parent_dir"
         printf "${YELLOW}Input File:${NC}         ${CYAN}%s${NC}\n\n" "$input_file"
         printf "${YELLOW}Size:${NC}               ${PURPLE}%.2f MB${NC}\n" "$input_size_mb"
         printf "${YELLOW}Bitrate:${NC}            ${PURPLE}%s kbps${NC}\n" "$original_bitrate"
@@ -175,7 +192,7 @@ convert_videos() {
         printf "${YELLOW}Duration:${NC}           ${PURPLE}%s mins${NC}\n" "$length"
         printf "\n${YELLOW}Output File:${NC}        ${CYAN}%s${NC}\n" "$output_file"
         printf "${YELLOW}Estimated Output Bitrate:${NC}  ${PURPLE}%s kbps${NC}\n" "$estimated_bitrate"
-        printf "${YELLOW}Estimated Output Size:${NC}  ${PURPLE}%.2f MB${NC}\n" "$estimated_output_size"
+        printf "${YELLOW}Estimated Output Size:${NC}     ${PURPLE}%.2f MB${NC}\n" "$estimated_output_size"
         printf "\n${BLUE}::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::${NC}\n"
 
         log "Converting $video"
@@ -224,4 +241,5 @@ trap cleanup EXIT
 # Check dependencies and start the video conversion process
 check_dependencies
 convert_videos
+
 notify-send "Video conversion process completed."
