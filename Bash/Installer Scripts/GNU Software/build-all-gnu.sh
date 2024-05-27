@@ -249,7 +249,7 @@ compile_and_install() {
     sudo make install || fail "Failed execute: make install. Line: $LINENO"
     case "$prog_name" in
         libiconv)
-            sudo libtool --finish /usr/local/libiconv-1.17/lib
+            sudo libtool --finish "$install_dir/libiconv-1.17/lib"
             ;;
     esac
 }
