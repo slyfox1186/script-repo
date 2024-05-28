@@ -34,7 +34,7 @@ display_help() {
     echo "./monitor.sh --help"
     echo "./monitor.sh --directory \"/path/to/folder\""
     echo "./monitor.sh -a -d \"/path/to/folder\""
-    echo "./monitor.sh -l /path/to/logfile.log"
+    echo "./monitor.sh -d \"/path/to/folder\" -l /path/to/logfile.log"
 }
 
 # Function to parse arguments
