@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Misc/System/monitor.sh
-# Script version: 1.4
+# Script version: 1.5
 # Last update: 05-28-24
 
 ## Important information
@@ -10,6 +10,7 @@
 # Define variables
 monitor_dir="${PWD}"  # Default directory to monitor
 include_access=false  # Flag to include access events
+log_file=""           # Log file path
 
 # Define colors
 cyan='\033[36m'       # Cyan for access events
@@ -27,11 +28,13 @@ display_help() {
     echo "  -a, --access       Include \"access\" events"
     echo "  -d, --directory    Specify the directory to monitor"
     echo "  -h, --help         Display this help message"
+    echo "  -l, --log          Specify the log file to write events"
     echo
     echo -e "${yellow}Examples${magenta}:${reset}"
     echo "./monitor.sh --help"
     echo "./monitor.sh --directory \"/path/to/folder\""
     echo "./monitor.sh -a -d \"/path/to/folder\" # Adds access to the list of events to monitor"
+    echo "./monitor.sh -l /path/to/logfile.log"
 }
 
 # Function to parse arguments
@@ -49,6 +52,10 @@ parse_arguments() {
             -h|--help)
                 display_help
                 exit 0
+                ;;
+            -l|--log)
+                log_file="${2}"
+                shift 2
                 ;;
             *)
                 echo "Unknown option: ${1}"
@@ -112,7 +119,12 @@ monitor_directory() {
     while read -r event; do
         printf -v timestamp '%(%m-%d-%Y %I:%M:%S %p)T' -1
         color=$(get_color_for_event "${event}")
-        echo -e "${color}[${timestamp}] ${event}${reset}"
+        event_log="[${timestamp}] ${event}"
+        echo -e "${color}${event_log}${reset}"
+        
+        if [[ -n "${log_file}" ]]; then
+            echo "${event_log}" >> "${log_file}"
+        fi
     done
 }
 
