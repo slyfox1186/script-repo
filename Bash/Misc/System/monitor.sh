@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+## Disclaimer
+# Two sudo commands are in this script and both are used to run the APT package
+# manager to install a required package if the user chooses to. Otherwise, this should
+# be considered a script that does not require "root" access.
+
 # Define variables
 monitor_dir="/path/to/default/directory"  # Default directory to monitor
 log_file="file_changes.log"  # Log file to store changes
