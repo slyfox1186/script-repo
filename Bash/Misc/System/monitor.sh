@@ -27,13 +27,13 @@ display_help() {
     echo -e "${yellow}Options${magenta}:${reset}"
     echo "  -a, --access       Include \"access\" events"
     echo "  -d, --directory    Specify the directory to monitor"
-    echo "  -h, --help         Display this help message"
     echo "  -l, --log          Specify the log file to write events"
+    echo "  -h, --help         Display this help message"
     echo
     echo -e "${yellow}Examples${magenta}:${reset}"
     echo "./monitor.sh --help"
     echo "./monitor.sh --directory \"/path/to/folder\""
-    echo "./monitor.sh -a -d \"/path/to/folder\" # Adds access to the list of events to monitor"
+    echo "./monitor.sh -a -d \"/path/to/folder\""
     echo "./monitor.sh -l /path/to/logfile.log"
 }
 
