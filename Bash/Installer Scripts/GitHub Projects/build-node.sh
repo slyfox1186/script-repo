@@ -16,6 +16,7 @@ cyan='\033[36m'       # Cyan for access events
 green='\033[32m'      # Green for create events
 red='\033[31m'        # Red for delete events
 yellow='\033[33m'     # Yellow for modify events
+magenta='\033[35m'    # Magenta for move events
 reset='\033[0m'       # Resets the color to none
 
 # Function to display help
