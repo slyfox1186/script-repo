@@ -1,9 +1,16 @@
 #!/usr/bin/env bash
 
+# GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Misc/System/monitor.sh
+# Script version: 1.0
+# Last update: 05-28-24
+
 ## Disclaimer
 # Two sudo commands are in this script and both are used to run the APT package
 # manager to install a required package if the user chooses to. Otherwise, this should
 # be considered a script that does not require "root" access.
+
+## Important information
+# Arguments take priority over hardcoded variables
 
 # Define variables
 monitor_dir="/path/to/default/directory"  # Default directory to monitor
