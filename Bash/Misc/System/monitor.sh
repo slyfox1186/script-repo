@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 
 # GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Misc/System/monitor.sh
-# Script version: 1.2
+# Script version: 1.3
 # Last update: 05-28-24
 
 ## Important information
 # Arguments take priority over hardcoded variables
 
 # Define variables
-monitor_dir="/path/to/default/directory"  # Default directory to monitor
-include_access=false                      # Flag to include access events
+monitor_dir="$PWD"        # Default directory to monitor
+include_access=false      # Flag to include access events
 
 # Define colors
 COLOR_RESET="\033[0m"
@@ -23,8 +23,8 @@ COLOR_ACCESS="\033[36m"   # Cyan for access events
 function display_help() {
     echo "Usage: $0 [options]"
     echo "Options:"
-    echo "  -a, --access       Include access events"
     echo "  -d, --directory    Specify the directory to monitor"
+    echo "  -a, --access       Include access events"
     echo "  -h, --help         Display this help message"
 }
 
@@ -32,13 +32,13 @@ function display_help() {
 function parse_arguments() {
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
-            -a|--access)
-                include_access=true
-                shift
-                ;;
             -d|--directory)
                 monitor_dir="$2"
                 shift 2
+                ;;
+            -a|--access)
+                include_access=true
+                shift
                 ;;
             -h|--help)
                 display_help
@@ -56,7 +56,7 @@ function parse_arguments() {
 # Function to check if inotifywait is installed
 function check_inotifywait() {
     if ! command -v inotifywait &> /dev/null; then
-        echo "Error: inotifywait is not installed."
+        echo "Error: inotifywait is not installed. This command is commonly installed by your package manager inside the package \"inotify-tools\""
         exit 1
     fi
 }
@@ -96,7 +96,7 @@ function monitor_directory() {
     echo "Monitoring directory: $monitor_dir"
     inotifywait -mre "$events" "$monitor_dir" |
     while read -r event; do
-        timestamp=$(date +'%m-%d-%Y %I:%M:%S %p')
+        printf -v timestamp '%(%m-%d-%Y %I:%M:%S %p)T' -1
         color=$(get_color_for_event "$event")
         echo -e "$color[$timestamp] $event$COLOR_RESET"
     done
