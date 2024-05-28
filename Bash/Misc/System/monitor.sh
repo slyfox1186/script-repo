@@ -12,19 +12,19 @@ monitor_dir="$PWD"        # Default directory to monitor
 include_access=false      # Flag to include access events
 
 # Define colors
-COLOR_RESET="\033[0m"
+COLOR_ACCESS="\033[36m"   # Cyan for access events
 COLOR_CREATE="\033[32m"   # Green for create events
 COLOR_DELETE="\033[31m"   # Red for delete events
 COLOR_MODIFY="\033[33m"   # Yellow for modify events
 COLOR_MOVE="\033[35m"     # Magenta for move events
-COLOR_ACCESS="\033[36m"   # Cyan for access events
+COLOR_RESET="\033[0m"     # Resets the color to none
 
 # Function to display help
 function display_help() {
     echo "Usage: $0 [options]"
     echo "Options:"
+    echo "  -a, --access       Include \"access\" events"
     echo "  -d, --directory    Specify the directory to monitor"
-    echo "  -a, --access       Include access events"
     echo "  -h, --help         Display this help message"
 }
 
@@ -32,13 +32,13 @@ function display_help() {
 function parse_arguments() {
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
-            -d|--directory)
-                monitor_dir="$2"
-                shift 2
-                ;;
             -a|--access)
                 include_access=true
                 shift
+                ;;
+            -d|--directory)
+                monitor_dir="$2"
+                shift 2
                 ;;
             -h|--help)
                 display_help
@@ -65,6 +65,9 @@ function check_inotifywait() {
 function get_color_for_event() {
     local event="$1"
     case "$event" in
+        *ACCESS*)
+            echo "$COLOR_ACCESS"
+            ;;
         *CREATE*)
             echo "$COLOR_CREATE"
             ;;
@@ -76,9 +79,6 @@ function get_color_for_event() {
             ;;
         *MOVE*)
             echo "$COLOR_MOVE"
-            ;;
-        *ACCESS*)
-            echo "$COLOR_ACCESS"
             ;;
         *)
             echo "$COLOR_RESET"
