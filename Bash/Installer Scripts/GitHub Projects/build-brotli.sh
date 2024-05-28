@@ -54,43 +54,19 @@ set_flags() {
 
 # Set the path variable
 set_path() {
-    PATH="
-/usr/lib/ccache:\
-$HOME/perl5/bin:\
-$HOME/.cargo/bin:\
-$HOME/.local/bin:\
-/usr/local/sbin:\
-/usr/local/cuda/bin:\
-/usr/local/x86_64-linux-gnu/bin:\
-/usr/local/bin:\
-/usr/sbin:\
-/usr/bin:\
-/sbin:\
-/bin\
-"
+    PATH="/usr/lib/ccache:$PATH"
     export PATH
 }
 
 # Set the pkg_config_path variable
 set_pkg_config_path() {
-    PKG_CONFIG_PATH="
-/usr/local/lib64/pkgconfig:\
-/usr/local/lib/pkgconfig:\
-/usr/local/lib/usr/local/pkgconfig:\
-/usr/local/share/pkgconfig:\
-/usr/lib64/pkgconfig:\
-/usr/lib/pkgconfig:\
-/usr/lib/usr/local/pkgconfig:\
-/usr/share/pkgconfig:\
-/lib64/pkgconfig:\
-/lib/pkgconfig:\
-/lib/usr/local/pkgconfig
-"
-    export PKG_CONFIG_PATH
+    PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/pkgconfig"
+    PKG_CONFIG_PATH+=":/usr/local/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig"
+    export PATH PKG_CONFIG_PATH
 }
 
 # Exit function
-exit_fn() {
+exit_function() {
     log "Make sure to star this repository to show your support!"
     log "https://github.com/slyfox1186/script-repo"
     exit 0
@@ -318,4 +294,4 @@ if build "brotli" "$version"; then
 fi
 
 cleanup_fn
-exit_fn
+exit_function

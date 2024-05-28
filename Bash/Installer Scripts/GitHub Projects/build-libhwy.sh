@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Shellcheck source=/dev/null disable=sc2016,sc2034,sc2046,sc2066,sc2068,sc2086,sc2162,sc2317
+# shellcheck source=/dev/null disable=sc2016,sc2034,sc2046,sc2066,sc2068,sc2086,SC2162,SC2317
 
 ##  Install libhwy
 ##  Supported OS: Debian, Ubuntu
@@ -47,36 +47,10 @@ echo "========================================="
 echo "This script will utilize ($cpu_threads) CPU threads for parallel processing to accelerate the build process."
 echo
 
-# Create global variables
-PATH="\
-/usr/lib/ccache:\
-$HOME/perl5/bin:\
-$HOME/.cargo/bin:\
-$HOME/.local/bin:\
-/usr/local/sbin:\
-/usr/local/bin:\
-/usr/sbin:\
-/usr/bin:\
-/sbin:\
-/bin\
-"
-export PATH
-
-PKG_CONFIG_PATH="\
-$workspace/lib64/pkgconfig:\
-$workspace/lib/pkgconfig:\
-$workspace/lib/x86_64-linux-gnu/pkgconfig:\
-$workspace/share/pkgconfig:\
-/usr/local/lib64/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/local/lib/pkgconfig:\
-/usr/local/share/pkgconfig:\
-/usr/lib64/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/lib/pkgconfig:\
-/usr/share/pkgconfig\
-"
-export PKG_CONFIG_PATH
+PATH="/usr/lib/ccache:$PATH"
+PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/pkgconfig"
+PKG_CONFIG_PATH+=":/usr/local/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig"
+export PATH PKG_CONFIG_PATH
 
 # Define functions
 fail_fn() {
@@ -87,7 +61,7 @@ fail_fn() {
     exit 1
 }
 
-exit_fn() {
+exit_function() {
     echo
     echo "Make sure to star this repository to show your support!"
     echo "https://github.com/slyfox1186/script-repo"
@@ -372,4 +346,4 @@ sudo ldconfig
 cleanup
 
 # Display exit message
-exit_fn
+exit_function

@@ -1,23 +1,11 @@
 #!/usr/bin/env bash
 
-#################################################################################################################################
-##
 ##  Github Script: https://github.com/slyfox1186/script-repo/edit/main/util-linux/Installer%20Scripts/GNU%20Software/build-curl
-##
 ##  Purpose: Build cURL with OpenSSL QUIC enabled to support experimental HTTP3.
-##
-##  Important Info: This will install a custom version of OpenSSL that has been forked from the official branch and enables
-##                  Quic protocol. So if you do not want to mess with installing OpenSSL then do not run this script!
-##
 ##  Updated: 12.03.23
-##
 ##  Script version: 1.0
-##
-#################################################################################################################################
 
-clear
-
-if [ "${EUID}" -eq '0' ]; then
+if [ "$EUID" -eq 0 ]; then
     echo "You must run this script without root or sudo."
     exit 1
 fi
@@ -62,48 +50,14 @@ LDFLAGS='-Wl,-rpath,/usr/local/lib64'
 LIBS='-ldl -pthread -L/usr/lib/x86_64-linux-gnu -lnghttp3 -lcrypto -lssl -L/usr/local/lib -ljemalloc'
 export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS LIBS
 
-# Set the path variable
-
-PATH="\
-/usr/lib/ccache:\
-${HOME}/perl5/bin:\
-${HOME}/.cargo/bin:\
-${HOME}/.local/bin:\
-/usr/local/sbin:\
-/usr/local/cuda/bin:\
-/usr/local/x86_64-linux-gnu/bin:\
-/usr/local/bin:\
-/usr/sbin:\
-/usr/bin:\
-/sbin:\
-/bin:\
-/usr/local/games:\
-/usr/games:\
-/snap/bin\
-"
-export PATH
-
-# Set the pkg_config_path variable
-
-
-PKG_CONFIG_PATH="\
-/usr/local/lib64/pkgconfig:\
-/usr/local/lib/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/local/share/pkgconfig:\
-/usr/lib64/pkgconfig:\
-/usr/lib/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/share/pkgconfig:\
-/lib64/pkgconfig:\
-/lib/pkgconfig:\
-/lib/x86_64-linux-gnu/pkgconfig\
-"
-export PKG_CONFIG_PATH
+PATH="/usr/lib/ccache:$PATH"
+PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/pkgconfig"
+PKG_CONFIG_PATH+=":/usr/local/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig"
+export PATH PKG_CONFIG_PATH
 
 # Create functions
 
-exit_fn()
+exit_function()
 {
     printf "\n%s\n\n%s\n\n"                                       \
         'Make sure to star this repository to show your support!' \
@@ -525,4 +479,4 @@ fi
 cleanup_fn
 
 # Show exit message
-exit_fn
+exit_function

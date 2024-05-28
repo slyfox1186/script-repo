@@ -1,18 +1,9 @@
 #!/usr/bin/env bash
 
-#################################################################################################################################
-##
-##  Github Script: https://github.com/slyfox1186/script-repo/edit/main/util-linux/Installer%20Scripts/GNU%20Software/build-jemalloc
-##
+##  Github Script: https://github.com/slyfox1186/script-repo/edit/main/util-linux/Installer%20Scripts/GNU%20Software/build-jemalloc.sh
 ##  Purpose: Build jemalloc
-##
 ##  Updated: 12.03.23
-##
 ##  Script version: 1.0
-##
-#################################################################################################################################
-
-clear
 
 if [ "${EUID}" -eq '0' ]; then
     echo "You must run this script without root or sudo."

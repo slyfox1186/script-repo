@@ -1,29 +1,16 @@
 #!/usr/bin/env bash
-# Shellcheck disable=sc2016,sc2034,sc2046,sc2066,sc2068,sc2086,sc2162,sc2317
+# shellcheck disable=sc2016,sc2034,sc2046,sc2066,sc2068,sc2086,SC2162,SC2317
 
-########################################################################
-##
 ##  Install libgcrypt LTS + libgcrypt-error
-##
-##  Supported OS:
-##  - debian
-##  - ubuntu
-##
 ##  Updated: 10.14.23
-##
 ##  Script version: 1.0
-##
-########################################################################
 
-clear
-
-if [ "${EUID}" -eq '0' ]; then
+if [ "$EUID" -eq 0 ]; then
     echo "You must run this script without root or sudo."
     exit 1
 fi
 
 # Set the variables
-
 script_ver=1.0
 install_prefix=/usr/local
 cwd="$PWD"/gcrypt-build-script
@@ -65,53 +52,14 @@ printf "%s\n%s\n%s\n" \
     '=========================================' \
     "This script will utilize (${cpu_threads}) CPU threads for parallel processing to accelerate the build process."
 
-# Create global variables
-
-PATH="\
-/usr/lib/ccache:\
-${HOME}/perl5/bin:\
-${HOME}/.cargo/bin:\
-${HOME}/.local/bin:\
-/usr/local/sbin:\
-/usr/local/cuda/bin:\
-/usr/local/x86_64-linux-gnu/bin:\
-/usr/local/bin:\
-/usr/sbin:\
-/usr/bin:\
-/sbin:\
-/bin:\
-/usr/local/games:\
-/usr/games:\
-/snap/bin\
-"
-export PATH
-
-PKG_CONFIG_PATH="\
-$workspace/usr/lib/pkgconfig:\
-$workspace/lib64/pkgconfig:\
-$workspace/lib/pkgconfig:\
-$workspace/lib/x86_64-linux-gnu/pkgconfig:\
-$workspace/share/pkgconfig:\
-/usr/local/lib64/pkgconfig:\
-/usr/local/lib/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/local/share/pkgconfig:\
-/usr/lib64/pkgconfig:\
-/usr/lib/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/open-coarrays/openmpi/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/openmpi/lib/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/share/pkgconfig:\
-/lib64/pkgconfig:\
-/lib/pkgconfig:\
-/lib/x86_64-linux-gnu/pkgconfig\
-"
-export PKG_CONFIG_PATH
+PATH="/usr/lib/ccache:$PATH"
+PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/pkgconfig"
+PKG_CONFIG_PATH+=":/usr/local/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig"
+export PATH PKG_CONFIG_PATH
 
 # Define functions
 
-fail_fn()
-{
+fail_fn() {
     printf "\n%s\n%s\n%s\n\n" \
         "$1" \
         'You can enable the script'\''s debugging feature by changing the variable "debug" to "ON"' \
@@ -119,16 +67,14 @@ fail_fn()
     exit 1
 }
 
-exit_fn()
-{
+exit_function() {
     printf "\n%s\n\n%s\n\n" \
         'Make sure to star this repository to show your support!' \
         "$web_repo"
     exit 0
 }
 
-cleanup_fn()
-{
+cleanup_fn() {
     local choice
  
     printf "\n%s\n\n%s\n%s\n\n" \
@@ -150,8 +96,7 @@ cleanup_fn()
 
 # Scrape github website for the latest repo version
 
-git_1_fn()
-{
+git_1_fn() {
     local curl_cmd github_repo github_url
 
     github_repo="$1"
@@ -171,8 +116,7 @@ git_1_fn()
 
 }
 
-git_ver_fn()
-{
+git_ver_fn() {
     local v_flag v_url v_tag url_tag t_url
 
     v_url="$1"
@@ -190,8 +134,7 @@ git_ver_fn()
     git_1_fn "${v_url}" "${t_url}" 2>/dev/null
 }
 
-execute()
-{
+execute() {
     echo "$ ${*}"
 
     if [ "${debug}" = 'ON' ]; then
@@ -207,8 +150,7 @@ execute()
     fi
 }
 
-download()
-{
+download() {
     dl_path="$packages"
     dl_url="$1"
     dl_file="${2:-"${1##*/}"}"
@@ -259,8 +201,7 @@ download()
     cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir. Line: ${LINENO}"
 }
 
-build()
-{
+build() {
     printf "\n%s\n%s\n" \
         "building $1 - version $2" \
         '===================================='
@@ -278,13 +219,11 @@ build()
     return 0
 }
 
-build_done()
-{
+build_done() {
     echo "$2" > "$packages/$1.done"
 }
 
-installed()
-{
+installed() {
     return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}')
 }
 
@@ -355,4 +294,4 @@ sudo ldconfig 2>/dev/null
 cleanup_fn
 
 # Display exit message
-exit_fn
+exit_function
