@@ -25,10 +25,10 @@ display_help() {
     echo -e "${yellow}Usage${magenta}:${reset} ${0} [options]"
     echo
     echo -e "${yellow}Options${magenta}:${reset}"
-    echo "  -a, --access       Include \"access\" events"
-    echo "  -d, --directory    Specify the directory to monitor"
-    echo "  -l, --log          Specify the log file to write events"
-    echo "  -h, --help         Display this help message"
+    echo "  -a, --access             Include \"access\" events"
+    echo "  -d, --directory <path>   Specify the directory to monitor"
+    echo "  -l, --log <path>         Specify the log file to write events"
+    echo "  -h, --help               Display this help message"
     echo
     echo -e "${yellow}Examples${magenta}:${reset}"
     echo "./monitor.sh --help"
