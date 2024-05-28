@@ -1,120 +1,109 @@
 #!/usr/bin/env bash
 
-# GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Misc/System/monitor.sh
-# Script version: 1.4
+# GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-node.sh
+# Script version: 1.1
 # Last update: 05-28-24
 
-## Important information
-# Arguments take priority over hardcoded variables
+if [[ "$EUID" -eq 0 ]]; then
+    echo "You must run this script without root or with sudo."
+    exit 1
+fi
 
-# Define variables
-monitor_dir="$PWD"    # Default directory to monitor
-include_access=false  # Flag to include access events
+# ANSI color codes
+cyan='\033[0;36m'
+green='\033[0;32m'
+red='\033[0;31m'
+reset='\033[0m'
 
-# Define colors
-cyan='\033[36m'       # Cyan for access events
-green='\033[32m'      # Green for create events
-red='\033[31m'        # Red for delete events
-yellow='\033[33m'     # Yellow for modify events
-magenta='\033[35m'    # Magenta for move events
-reset='\033[0m'       # Resets the color to none
+cwd="$PWD/nodejs-build-script"
 
-# Function to display help
-display_help() {
-    echo -e "${yellow}Usage: $0 [options]"
-    echo -e "Options:"
-    echo -e "  -a, --access       Include \"access\" events"
-    echo -e "  -d, --directory    Specify the directory to monitor"
-    echo -e "  -h, --help         Display this help message${reset}"
-}
+if [[ -d "$cwd" ]]; then
+    read -p "An existing build directory was found. Do you want to delete it before continuing? (y/n): " delChoice
+    case "$delChoice" in
+        [yY]*) sudo rm -fr "$cwd" ;;
+        [nN]*) ;;
+        *) echo -e "${red}Invalid choice. Exiting.${reset}"; exit 1 ;;
+    esac
+fi
 
-# Function to parse arguments
-parse_arguments() {
-    while [[ "$#" -gt 0 ]]; do
-        case "$1" in
-            -a|--access)
-                include_access=true
-                shift
-                ;;
-            -d|--directory)
-                monitor_dir="$2"
-                shift 2
-                ;;
-            -h|--help)
-                display_help
-                exit 0
-                ;;
-            *)
-                echo "Unknown option: $1"
-                display_help
-                exit 1
-                ;;
-        esac
-    done
-}
-
-# Function to check if inotifywait is installed
-check_command() {
-    if ! command -v inotifywait &>/dev/null; then
-        echo -e "${red}[ERROR]${reset} The command inotifywait is not installed."
-        echo -e "${green}[INFO]${reset} This is commonly installed by your package manager inside the package inotify-tools"
-        exit 1
-    fi
-}
-
-# Function to get the color for an event
-get_color_for_event() {
-    local event
-    event="$1"
-    case "${event}" in
-        *ACCESS*)
-            echo "${cyan}"
-            ;;
-        *CREATE*)
-            echo "${green}"
-            ;;
-        *DELETE*)
-            echo "${red}"
-            ;;
-        *MODIFY*)
-            echo "${yellow}"
-            ;;
-        *MOVE*)
-            echo "${magenta}"
-            ;;
-        *)
-            echo "${reset}"
-            ;;
+# Function to print colored text
+print_color() {
+    local color msg
+    color="$1"
+    msg="$2"
+    case "$color" in
+        cyan) echo -e "${cyan}${msg}${reset}" ;;
+        green) echo -e "${green}${msg}${reset}" ;;
+        red) echo -e "${red}${msg}${reset}" ;;
+        *) echo -e "${msg}" ;;
     esac
 }
 
-# Main function to monitor directory
-monitor_directory() {
-    local events
-    events="create,delete,modify,move"
-    if [[ "${include_access}" = true ]]; then
-        events+=",access"
-    fi
-
-    if [[ ! -d "${monitor_dir}" ]]; then
-        echo -e "${red}[ERROR]${reset} The directory to monitor does not exist."
-        exit 1
-    fi
-
-    echo "Monitoring directory: ${monitor_dir}"
-    inotifywait -mre "${events}" "${monitor_dir}" |
-    while read -r event; do
-        printf -v timestamp '%(%m-%d-%Y %I:%M:%S %p)T' -1
-        color=$(get_color_for_event "${event}")
-        echo -e "${color}[$timestamp] ${event}${reset}"
-    done
+# Function to handle errors
+error() {
+    print_color red "Error: $1"
+    exit 1
 }
 
-# Parse arguments
-parse_arguments "$@"
+# Set optimization flags based on the CPU architecture
+arch=$(uname -m)
+optflags="-O2"
+if [[ "$arch" == "x86_64" ]]; then
+    optflags="-O3 -pipe -march=native"
+elif [[ "$arch" == "armv7l" || "$arch" == "aarch64" ]]; then
+    optflags="-O3 -mcpu=native -mtune=native"
+fi
 
-# Check if inotifywait is installed
-check_command
+PATH="/usr/lib/ccache:$PATH"
+PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/pkgconfig"
+PKG_CONFIG_PATH+=":/usr/local/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig"
+export PATH PKG_CONFIG_PATH
 
-# Monitor the directory
-monitor_directory
+# Set compiler flags
+CC="gcc"
+CXX="g++"
+CFLAGS="$optflags"
+CXXFLAGS="$optflags"
+export CC CXX CFLAGS CXXFLAGS
+
+# Get the latest LTS version of Node.js
+print_color cyan "Fetching the latest LTS version of Node.js..."
+version=$(curl -fsSL "https://nodejs.org/en/download/source-code/" | grep -oP 'node-v?\K\d+\.\d+\.\d+' || error "Failed to fetch the latest LTS version")
+print_color green "Latest LTS version: $version"
+
+# Create the build directory and change into it
+mkdir -p "$cwd"
+cd "$cwd" || error "Failed to change directory to $cwd"
+
+# Download Node.js source code
+print_color cyan "Downloading Node.js source code..."
+wget --show-progress -cqO "node-v$version.tar.gz" "https://nodejs.org/dist/v$version/node-v$version.tar.gz" || error "Failed to download Node.js source code"
+
+# Extract the source code
+print_color cyan "Extracting the source code..."
+tar -zxf "node-v$version.tar.gz" || error "Failed to extract the source code"
+cd "node-v$version" || error "Failed to change directory to node-v$version"
+
+# Configure and build Node.js
+print_color cyan "Configuring Node.js..."
+options=("--ninja" "--prefix=/usr/local" "--openssl-use-def-ca-store" "--openssl-system-ca-path=/etc/ssl/certs/cacert.pem")
+./configure "${options[@]}" || error "Failed to configure Node.js"
+
+print_color green "Node.js configuration completed successfully"
+
+print_color cyan "Building Node.js..."
+ninja "-j$(nproc --all)" -C out/Release || error "Failed to build Node.js"
+
+print_color green "Node.js build completed successfully"
+
+# Install Node.js
+print_color cyan "Installing Node.js..."
+sudo make install || error "Failed to install Node.js"
+
+print_color green "Node.js installation completed successfully"
+
+# Clean up
+print_color cyan "Cleaning up..."
+sudo rm -fr "$cwd"
+
+print_color green "Node.js $version has been successfully installed with optimizations!"
