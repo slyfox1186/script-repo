@@ -105,7 +105,7 @@ function monitor_directory() {
     echo "Monitoring directory: $monitor_dir"
     inotifywait -m -r -e modify,create,delete,move "$monitor_dir" |
     while read -r event; do
-        timestamp=$(date +'%m-%d-%Y %H:%M:%S-%p')
+        timestamp=$(date +'%m-%d-%Y %I:%M:%S %p')
         color=$(get_color_for_event "$event")
         echo -e "$color[$timestamp] $event$COLOR_RESET" | tee -a "$log_file"
     done
