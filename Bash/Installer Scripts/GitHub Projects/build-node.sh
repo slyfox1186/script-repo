@@ -1,104 +1,119 @@
 #!/usr/bin/env bash
 
-# ANSI color codes
-cyan='\033[0;36m'
-green='\033[0;32m'
-red='\033[0;31m'
-reset='\033[0m'
+# GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Misc/System/monitor.sh
+# Script version: 1.4
+# Last update: 05-28-24
 
-cwd="$PWD/nodejs-build-script"
+## Important information
+# Arguments take priority over hardcoded variables
 
-mkdir -p "$cwd"
+# Define variables
+monitor_dir="$PWD"    # Default directory to monitor
+include_access=false  # Flag to include access events
 
-cd "$cwd" || exit 1
+# Define colors
+cyan='\033[36m'       # Cyan for access events
+green='\033[32m'      # Green for create events
+red='\033[31m'        # Red for delete events
+yellow='\033[33m'     # Yellow for modify events
+reset='\033[0m'       # Resets the color to none
 
-# Function to print colored text
-print_color() {
-    case "$1" in
-        cyan)
-            color=$cyan
+# Function to display help
+display_help() {
+    echo -e "${yellow}Usage: $0 [options]"
+    echo -e "Options:"
+    echo -e "  -a, --access       Include \"access\" events"
+    echo -e "  -d, --directory    Specify the directory to monitor"
+    echo -e "  -h, --help         Display this help message${reset}"
+}
+
+# Function to parse arguments
+parse_arguments() {
+    while [[ "$#" -gt 0 ]]; do
+        case "$1" in
+            -a|--access)
+                include_access=true
+                shift
+                ;;
+            -d|--directory)
+                monitor_dir="$2"
+                shift 2
+                ;;
+            -h|--help)
+                display_help
+                exit 0
+                ;;
+            *)
+                echo "Unknown option: $1"
+                display_help
+                exit 1
+                ;;
+        esac
+    done
+}
+
+# Function to check if inotifywait is installed
+check_command() {
+    if ! command -v inotifywait &>/dev/null; then
+        echo -e "${red}[ERROR]${reset} The command inotifywait is not installed."
+        echo -e "${green}[INFO]${reset} This is commonly installed by your package manager inside the package inotify-tools"
+        exit 1
+    fi
+}
+
+# Function to get the color for an event
+get_color_for_event() {
+    local event
+    event="$1"
+    case "${event}" in
+        *ACCESS*)
+            echo "${cyan}"
             ;;
-        green)
-            color=$green
+        *CREATE*)
+            echo "${green}"
             ;;
-        red)
-            color=$red
+        *DELETE*)
+            echo "${red}"
+            ;;
+        *MODIFY*)
+            echo "${yellow}"
+            ;;
+        *MOVE*)
+            echo "${MAGENTA}"
             ;;
         *)
-            color=$reset
+            echo "${reset}"
             ;;
     esac
-    echo -e "${color}$2${reset}"
 }
 
-# Function to handle errors
-error() {
-    print_color red "Error: $1"
-    exit 1
+# Main function to monitor directory
+monitor_directory() {
+    local events
+    events="create,delete,modify,move"
+    if [[ "${include_access}" = true ]]; then
+        events+=",access"
+    fi
+
+    if [[ ! -d "${monitor_dir}" ]]; then
+        echo -e "${red}[ERROR]${reset} The directory to monitor does not exist."
+        exit 1
+    fi
+
+    echo "Monitoring directory: ${monitor_dir}"
+    inotifywait -mre "${events}" "${monitor_dir}" |
+    while read -r event; do
+        printf -v timestamp '%(%m-%d-%Y %I:%M:%S %p)T' -1
+        color=$(get_color_for_event "${event}")
+        echo -e "${color}[$timestamp] ${event}${reset}"
+    done
 }
 
-# Set optimization flags based on the CPU architecture
-arch=$(uname -m)
-if [[ "$arch" == "x86_64" ]]; then
-    optflags="-O3 -pipe -march=native"
-elif [[ "$arch" == "armv7l" || "$arch" == "aarch64" ]]; then
-    optflags="-O3 -mcpu=native -mtune=native"
-else
-    optflags="-O2"
-fi
+# Parse arguments
+parse_arguments "$@"
 
-PATH="/usr/lib/ccache:$PATH"
-PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/pkgconfig"
-PKG_CONFIG_PATH+=":/usr/local/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig"
-export PATH PKG_CONFIG_PATH
+# Check if inotifywait is installed
+check_command
 
-# Set compiler flags
-CC="gcc"
-CXX="g++"
-CFLAGS="$optflags"
-CXXFLAGS="$optflags"
-export CC CXX CFLAGS CXXFLAGS
-
-# Get the latest LTS version of Node.js
-print_color cyan "Fetching the latest LTS version of Node.js..."
-version=$(curl -fsSL "https://nodejs.org/en/download/source-code/" | grep -oP 'node-v?\K\d+\.\d+\.\d+' || error "Failed to fetch the latest LTS version")
-print_color green "Latest LTS version: $version"
-
-# Download Node.js source code
-print_color cyan "Downloading Node.js source code..."
-wget --show-progress -cqO "node-v$version.tar.gz" "https://nodejs.org/dist/v$version/node-v$version.tar.gz" || error "Failed to download Node.js source code"
-
-# Extract the source code
-print_color cyan "Extracting the source code..."
-tar -zxf "node-v$version.tar.gz" || error "Failed to extract the source code"
-cd "node-v$version"
-
-# Configure and build Node.js
-print_color cyan "Configuring Node.js..."
-options=("--ninja" "--node-builtin-modules-path=$PWD" "--enable-lto"  "--openssl-use-def-ca-store" "--openssl-system-ca-path=/etc/ssl/certs/cacert.pem" "--v8-enable-hugepage")
-if ./configure "${options[@]}"; then
-    print_color green "Node.js configuration completed successfully"
-else
-    error "Failed to configure Node.js"
-fi
-
-print_color cyan "Building Node.js..."
-if ninja "-j$(nproc --all)" -C out/Release; then
-    print_color green "Node.js build completed successfully"
-else
-    error "Failed to build Node.js"
-fi
-
-# Install Node.js
-print_color cyan "Installing Node.js..."
-if sudo ninja install -C out/Release; then
-    print_color green "Node.js installation completed successfully"
-else
-    error "Failed to install Node.js"
-fi
-
-# Clean up
-print_color cyan "Cleaning up..."
-sudo rm -fr "$cwd"
-
-print_color green "Node.js $version has been successfully installed with optimizations!"
+# Monitor the directory
+monitor_directory
