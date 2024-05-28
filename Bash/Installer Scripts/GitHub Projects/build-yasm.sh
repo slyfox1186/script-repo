@@ -1,38 +1,12 @@
-PATH="\
-/usr/lib/ccache:\
-${HOME}/perl5/bin:\
-${HOME}/.cargo/bin:\
-${HOME}/.local/bin:\
-/usr/local/sbin:\
-/usr/local/cuda/bin:\
-/usr/local/x86_64-linux-gnu/bin:\
-/usr/local/bin:\
-/usr/sbin:\
-/usr/bin:\
-/sbin:\
-/bin:\
-/usr/local/games:\
-/usr/games:\
-/snap/bin\
-"
-export PATH#!/usr/bin/env bash
-# Shellcheck disable=sc2162,sc2317
+#!/usr/bin/env bash
+# shellcheck disable=SC2162,SC2317
 
-###############################################################################################################################
-##
 ##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-yasm
-##
 ##  Purpose: Build yasm
-##
 ##  Updated: 08.31.23
-##
 ##  Script version: 1.1
-##
-###############################################################################################################################
 
-clear
-
-if [ "${EUID}" -eq '0' ]; then
+if [[ "$EUID" -eq 0 ]]; then
     echo "You must run this script without root or sudo."
     exit 1
 fi
@@ -40,120 +14,79 @@ fi
 # Set variables
 
 script_ver=1.1
-install_dir=/usr/local
-cwd="$PWD"/yasm-build-script
-packages="$cwd"/packages
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
-web_repo=https://github.com/slyfox1186/script-repo
+install_dir="/usr/local"
+cwd="$PWD/yasm-build-script"
+packages="$cwd/packages"
+version=$(curl -fsS "https://yasm.tortall.net/releases/Release1.3.0.html" | grep -oP 'yasm-\K\d+\.\d+\.\d+' | sort -ruV | head -n1)
 debug=OFF # Change THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
 
-printf "\n%s\n%s\n\n" \
-    "yasm build script - v${script_ver}" \
-    '==============================================='
+echo
+echo "yasm build script - v$script_ver"
+echo "==============================================="
+echo
 
 # Create output directory
-
-if [ ! -d "$cwd" ]; then
-    mkdir -p "$packages"
-fi
+[[ ! -d "$cwd" ]] && mkdir -p "$packages"
 
 # Set the c+cpp compilers
+CC="gcc"
+CXX="g++"
+CFLAGS="-O3 -pipe -march=native"
+CXXFLAGS="$CFLAGS"
+export CC CXX CFLAGS CXXFLAGS
 
-export CC=gcc CXX=g++
-
-# Set compiler optimization flags
-
-export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -fno-plt -march=native'
-
-# Set the path variable
-
-PATH="\
-/usr/lib/ccache:\
-${HOME}/perl5/bin:\
-${HOME}/.cargo/bin:\
-${HOME}/.local/bin:\
-/usr/local/sbin:\
-/usr/local/cuda/bin:\
-/usr/local/x86_64-linux-gnu/bin:\
-/usr/local/bin:\
-/usr/sbin:\
-/usr/bin:\
-/sbin:\
-/bin:\
-/usr/local/games:\
-/usr/games:\
-/snap/bin\
-"
-export PATH
-
-# Set the pkg_config_path variable
-
-PKG_CONFIG_PATH="\
-/usr/local/lib64/pkgconfig:\
-/usr/local/lib/pkgconfig:\
-/usr/local/lib/usr/local/pkgconfig:\
-/usr/local/share/pkgconfig:\
-/usr/lib64/pkgconfig:\
-/usr/lib/pkgconfig:\
-/usr/lib/usr/local/pkgconfig:\
-/usr/share/pkgconfig:\
-/lib64/pkgconfig:\
-/lib/pkgconfig:\
-/lib/usr/local/pkgconfig\
-"
-export PKG_CONFIG_PATH
+PATH="/usr/lib/ccache:$PATH"
+PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/pkgconfig"
+PKG_CONFIG_PATH+=":/usr/local/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig"
+export PATH PKG_CONFIG_PATH
 
 # Create functions
-
-exit_fn()
-{
-    printf "\n%s\n\n%s\n\n" \
-        'Make sure to star this repository to show your support!' \
-        "$web_repo"
+exit_function() {
+    echo
+    echo "Make sure to star this repository to show your support!"
+    echo "https://github.com/slyfox1186/script-repo"
     exit 0
 }
 
-fail_fn()
-{
-    printf "\n%s\n\n%s\n\n" \
-        "$1" \
-        "To report a bug create an issue at: $web_repo/issues"
+fail() {
+    echo "[ERROR] $1"
+    echo
+    echo "To report a bug please create an issue at:"
+    echo "https://github.com/slyfox1186/script-repo/issues"
+    echo
     exit 1
 }
 
-cleanup_fn()
-{
+cleanup() {
     local choice
 
-    printf "%s\n%s\n%s\n\n%s\n%s\n\n" \
-        '============================================' \
-        '  Do you want to clean up the build files?  ' \
-        '============================================' \
-        '[1] Yes' \
-        '[2] No'
-    read -p 'Your choices are (1 or 2): ' choice
+    echo
+    echo "============================================"
+    echo "  Do you want to clean up the build files?  "
+    echo "============================================"
+    echo
+    echo "[1] Yes"
+    echo "[2] No"
+    echo
+    read -p "Your choices are (1 or 2): " choice
+    echo
 
-    case "${choice}" in
-        1)      sudo rm -fr "$cwd";;
-        2)      echo;;
-        *)
-                clear
-                printf "%s\n\n" 'Bad user input. Reverting script...'
-                sleep 3build-yasm
-                unset choice
-                clear
-                cleanup_fn
-                ;;
+    case "$choice" in
+        1) sudo rm -fr "$cwd" "$0" ;;
+        2) ;;
+        *) unset choice
+           cleanup
+           ;;
     esac
 }
 
-build()
-{
-    printf "\n%s\n%s\n" \
-        "building $1 - version $2" \
-        '===================================='
+build() {
+    echo
+    echo "building $1 - version $2"
+    echo "===================================="
+    echo
 
-    if [ -f "$packages/$1.done" ]; then
+    if [[ -f "$packages/$1.done" ]]; then
         if grep -Fx "$2" "$packages/$1.done" >/dev/null; then
             echo "$1 version $2 already built. Remove $packages/$1.done lockfile to rebuild it."
             return 1
@@ -165,25 +98,23 @@ build()
     return 0
 }
 
-execute()
-{
-    echo "$ ${*}"
+execute() {
+    echo "$ $*"
 
-    if [ "${debug}" = 'ON' ]; then
+    if [[ "${debug}" = "ON" ]]; then
         if ! output=$("$@"); then
-            notify-send 5000 "Failed to execute: ${*}"
-            fail_fn "Failed to execute: ${*}"
+            notify-send 5000 "Failed to execute: $*"
+            fail "Failed to execute: $*"
         fi
     else
         if ! output=$("$@" 2>&1); then
-            notify-send 5000 "Failed to execute: ${*}"
-            fail_fn "Failed to execute: ${*}"
+            notify-send 5000 "Failed to execute: $*"
+            fail "Failed to execute: $*"
         fi
     fi
 }
 
-download()
-{
+download() {
     dl_path="$packages"
     dl_url="$1"
     dl_file="${2:-"${1##*/}"}"
@@ -198,7 +129,7 @@ download()
     target_file="$dl_path/$dl_file"
     target_dir="$dl_path/$output_dir"
 
-    if [ -f "${target_file}" ]; then
+    if [[ -f "${target_file}" ]]; then
         echo "The file \"$dl_file\" is already downloaded."
     else
         echo "Downloading \"${dl_url}\" saving as \"$dl_file\""
@@ -206,107 +137,68 @@ download()
             printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 10 seconds..."
             sleep 10
             if ! curl -A "$user_agent" -Lso "${target_file}" "${dl_url}"; then
-                fail_fn "The script failed to download \"$dl_file\" twice and will now exit."
+                fail "The script failed to download \"$dl_file\" twice and will now exit."
             fi
         fi
-        echo 'Download Completed'
+        echo "Download Completed"
     fi
 
-    if [ -d "$target_dir" ]; then
+    if [[ -d "$target_dir" ]]; then
         sudo rm -fr "$target_dir"
     fi
 
     mkdir -p "$target_dir"
 
-    if [ -n "$3" ]; then
+    if [[ -n "$3" ]]; then
         if ! tar -xf "${target_file}" -C "$target_dir" 2>/dev/null >/dev/null; then
             sudo rm "${target_file}"
-            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script."
+            fail "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script."
         fi
     else
         if ! tar -xf "${target_file}" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
             sudo rm "${target_file}"
-            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script."
+            fail "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script."
         fi
     fi
 
     printf "%s\n\n" "File extracted: $dl_file"
 
-    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir"
-}
-
-git_1_fn()
-{
-    local curl_cmd github_repo github_url
-
-# Scrape github website for the latest repo version
-    github_repo="$1"
-    github_url="$2"
-
-    if curl_cmd="$(curl -A "$user_agent" -m 10 -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
-        g_ver="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
-        g_ver="${g_ver#V}"
-    fi
-}
-
-git_ver_fn()
-{
-    local t_flag v_flag v_url
-
-    v_url="$1"
-    v_flag="$2"
-
-    case "${v_flag}" in
-            B)      t_flag=branches;;
-            R)      t_flag=releases;;
-            T)      t_flag=tags;;
-    esac
-
-    git_1_fn "${v_url}" "${t_flag}" 2>/dev/null
+    cd "$target_dir" || fail "Unable to change the working directory to: $target_dir"
 }
 
 # Install required apt packages
+pkgs=(
+    autogen automake binutils bison build-essential bzip2 ccache cmake
+    curl libc6-dev libintl-perl libpth-dev yasm yasm-bin lzip lzma-dev
+    nasm ninja-build texinfo yasm yasm1g-dev
+)
 
-pkgs_fn()
-{
-    pkgs=(autogen automake binutils bison build-essential bzip2 ccache cmake
-          curl libc6-dev libintl-perl libpth-dev yasm yasm-bin lzip lzma-dev
-          nasm ninja-build texinfo yasm yasm1g-dev)
+for pkg in ${pkgs[@]}; do
+    missing_pkg="$(sudo dpkg -l | grep -o "$pkg")"
 
-    for i in ${pkgs[@]}
-    do
-        missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
-    
-        if [ -z "${missing_pkg}" ]; then
-            missing_pkgs+=" ${i}"
-        fi
-    done
-    
-    if [ -n "$missing_pkgs" ]; then
-        sudo apt install $missing_pkgs
-        sudo apt -y autoremove
-        clear
-    fi
-}
+    [[ -z "$missing_pkg" ]] && missing_pkgs+="$pkg "
+done
+
+if [[ -n "$missing_pkgs" ]]; then
+    sudo apt update
+    sudo apt install $missing_pkgs
+    clear
+fi
 
 build_done() { echo "$2" > "$packages/$1.done"; }
 
 # Build program from source
-
-if build 'yasm' '1.3.0'; then
-    download 'https://github.com/yasm/yasm/archive/refs/tags/v1.3.0.tar.gz' 'yasm-1.3.0.tar.gz'
+if build "yasm" "$version"; then
+    download "http://www.tortall.net/projects/yasm/releases/yasm-$version.tar.gz" "yasm-$version.tar.gz"
     execute autoreconf -fi
-    execute cmake -B build -DCMAKE_install_dir="$install_dir" \
-                           -DCMAKE_BUILD_TYPE=Release           \
-                           -DBUILD_SHARED_LIBS=OFF              \
-                           -G Ninja -Wno-dev
+    execute cmake -B build -DCMAKE_INSTALL_DIR="$install_dir" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -G Ninja -Wno-dev
     execute ninja "-j$(nproc --all)" -C build
-    execute sudo ninja "-j$(nproc --all)" -C build install
-    build_done 'yasm' '1.3.0'
+    execute sudo ninja -C build install
+    build_done "yasm" "$version"
 fi
 
 # Prompt user to clean up files
-cleanup_fn
+cleanup
 
 # Show exit message
-exit_fn
+exit_function

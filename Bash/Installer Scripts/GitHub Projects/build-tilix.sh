@@ -34,7 +34,7 @@ box_out_banner() {
 }
 box_out_banner "Tilix Build Script - v$script_ver"
 
-exit_fn() {
+exit_function() {
     printf "\n%s\n%s\n\n" \
         "Make sure to star this repository to show your support!" \
         "https://github.com/slyfox1186/script-repo"
@@ -163,4 +163,4 @@ nautilus -w "$cwd"
 sudo rm -fr "$cwd"
 
 # SHOW EXIT MESSAGE
-exit_fn
+exit_function

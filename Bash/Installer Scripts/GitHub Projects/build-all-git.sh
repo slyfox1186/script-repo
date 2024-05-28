@@ -6,7 +6,7 @@ if [ ! -d "$cwd"/completed ]; then
     mkdir -p "$cwd"/completed
 fi
 
-exit_fn() {
+exit_function() {
     printf "\n%s\n\n%s\n\n" \
         'Make sure to star this repository to show your support!' \
         "https://github.com/slyfox1186/script-repo"
@@ -133,4 +133,4 @@ install_choice
 cleanup
 
 # Show the exit message
-exit_fn
+exit_function
