@@ -1,20 +1,14 @@
 #!/usr/bin/env bash
 
 # GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Misc/System/monitor.sh
-# Script version: 1.0
+# Script version: 1.1
 # Last update: 05-28-24
-
-## Disclaimer
-# Two sudo commands are in this script and both are used to run the APT package
-# manager to install a required package if the user chooses to. Otherwise, this should
-# be considered a script that does not require "root" access.
 
 ## Important information
 # Arguments take priority over hardcoded variables
 
 # Define variables
 monitor_dir="/path/to/default/directory"  # Default directory to monitor
-log_file="file_changes.log"  # Log file to store changes
 
 # Define colors
 COLOR_RESET="\033[0m"
@@ -52,29 +46,11 @@ function parse_arguments() {
     done
 }
 
-# Function to check if inotifywait is installed and prompt for installation if not
+# Function to check if inotifywait is installed
 function check_inotifywait() {
     if ! command -v inotifywait &> /dev/null; then
         echo "Error: inotifywait is not installed."
-        read -p "Do you want to install it now? (yes/no) " answer
-        case "$answer" in
-            [Yy]* )
-                sudo apt update
-                sudo apt -y install inotify-tools
-                if ! command -v inotifywait &>/dev/null; then
-                    echo "Installation failed. Please install inotify-tools manually."
-                    exit 1
-                fi
-                ;;
-            [Nn]* )
-                echo "Please install inotify-tools and run the script again."
-                exit 1
-                ;;
-            * )
-                echo "Please answer yes or no."
-                exit 1
-                ;;
-        esac
+        exit 1
     fi
 }
 
@@ -107,7 +83,7 @@ function monitor_directory() {
     while read -r event; do
         timestamp=$(date +'%m-%d-%Y %I:%M:%S %p')
         color=$(get_color_for_event "$event")
-        echo -e "$color[$timestamp] $event$COLOR_RESET" | tee -a "$log_file"
+        echo -e "$color[$timestamp] $event$COLOR_RESET"
     done
 }
 
