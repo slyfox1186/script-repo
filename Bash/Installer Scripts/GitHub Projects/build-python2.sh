@@ -42,44 +42,13 @@ CXXFLAGS="-g -O3 -pipe -fno-plt -march=native"
 CPPFLAGS="-I/usr/local/include -I/usr/include"
 export CFLAGS CXXFLAGS CPPFLAGS
 
-# Set the path variable
-PATH="\
-/usr/lib/ccache:\
-${HOME}/perl5/bin:\
-${HOME}/.cargo/bin:\
-${HOME}/.local/bin:\
-/usr/local/sbin:\
-/usr/local/cuda/bin:\
-/usr/local/x86_64-linux-gnu/bin:\
-/usr/local/bin:\
-/usr/sbin:\
-/usr/bin:\
-/sbin:\
-/bin:\
-/usr/local/games:\
-/usr/games:\
-/snap/bin\
-"
-export PATH
-
-# Set the pkg_config_path variable
-PKG_CONFIG_PATH="\
-/usr/local/lib64/pkgconfig:\
-/usr/local/lib/pkgconfig:\
-/usr/local/lib/usr/local/pkgconfig:\
-/usr/local/share/pkgconfig:\
-/usr/lib64/pkgconfig:\
-/usr/lib/pkgconfig:\
-/usr/lib/usr/local/pkgconfig:\
-/usr/share/pkgconfig:\
-/lib64/pkgconfig:\
-/lib/pkgconfig:\
-/lib/usr/local/pkgconfig\
-"
-export PKG_CONFIG_PATH
+PATH="/usr/lib/ccache:$PATH"
+PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/pkgconfig"
+PKG_CONFIG_PATH+=":/usr/local/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig"
+export PATH PKG_CONFIG_PATH
 
 # Create functions
-exit_fn()
+exit_function()
 {
     printf "\n%s\n\n%s\n%s\n\n"                                   \
         'The script has completed!'                               \
@@ -318,4 +287,4 @@ show_ver_fn
 cleanup_fn
 
 # Show the exit message
-exit_fn
+exit_function

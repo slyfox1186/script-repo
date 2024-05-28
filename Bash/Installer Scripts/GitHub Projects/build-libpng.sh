@@ -1,19 +1,10 @@
 #!/usr/bin/env bash
-# Shellcheck disable=sc2162,sc2317
+# shellcheck disable=SC2162,SC2317
 
-###########################################################################################################
-##
-##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-libpng
-##
+##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-libpng.sh
 ##  Purpose: Build GNU libpng
-##
 ##  Updated: 08.31.23
-##
 ##  Script version: 1.1
-##
-###########################################################################################################
-
-clear
 
 if [ "${EUID}" -eq '0' ]; then
     echo "You must run this script without root or sudo."
@@ -42,53 +33,18 @@ mkdir -p "$cwd"
 
 # Set the c+cpp compilers
 
-export CC=gcc CXX=g++
-
-# Set compiler optimization flags
-
-export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -fno-plt -march=native'
-
-# Set the path variable
-
-PATH="\
-/usr/lib/ccache:\
-${HOME}/perl5/bin:\
-${HOME}/.cargo/bin:\
-${HOME}/.local/bin:\
-/usr/local/sbin:\
-/usr/local/cuda/bin:\
-/usr/local/x86_64-linux-gnu/bin:\
-/usr/local/bin:\
-/usr/sbin:\
-/usr/bin:\
-/sbin:\
-/bin:\
-/usr/local/games:\
-/usr/games:\
-/snap/bin\
-"
-export PATH
-
-# Set the pkg_config_path variable
-
-PKG_CONFIG_PATH="\
-/usr/local/lib64/pkgconfig:\
-/usr/local/lib/pkgconfig:\
-/usr/local/lib/usr/local/pkgconfig:\
-/usr/local/share/pkgconfig:\
-/usr/lib64/pkgconfig:\
-/usr/lib/pkgconfig:\
-/usr/lib/usr/local/pkgconfig:\
-/usr/share/pkgconfig:\
-/lib64/pkgconfig:\
-/lib/pkgconfig:\
-/lib/usr/local/pkgconfig\
-"
-export PKG_CONFIG_PATH
+CC="gcc"
+CXX="g++"
+CFLAGS="-O3 -pipe -fno-plt -march=native"
+CXXFLAGS="$CFLAGS"
+PATH="/usr/lib/ccache:$PATH"
+PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/pkgconfig"
+PKG_CONFIG_PATH+=":/usr/local/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig"
+export CC CXX CFLAGS CXXFLAGSPATH PKG_CONFIG_PATH
 
 # Create functions
 
-exit_fn()
+exit_function()
 {
     printf "\n%s\n\n%s\n\n" \
         'Make sure to star this repository to show your support!' \
@@ -278,4 +234,4 @@ fi
 cleanup_fn
 
 # Show exit message
-exit_fn
+exit_function

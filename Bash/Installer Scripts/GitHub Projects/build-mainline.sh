@@ -1,19 +1,11 @@
 #!/usr/bin/env bash
-# Shellcheck disable=sc2162,sc2317
+# shellcheck disable=SC2162,SC2317
 
-#############################################################################
-##
 ##  Install Mainline from source code
-##
-##  Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GitHub%20Projects/build-mainline
-##
+##  Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer%20Scripts/GitHub%20Projects/build-mainline.sh
 ##  Github Repo: https://github.com/bkw777/mainline/tree/master
-## 
 ##  Updated: 10.03.23
-##
 ##  Script version: 1.0
-##
-#############################################################################
 
 clear
 
@@ -23,7 +15,6 @@ if [ "${EUID}" -eq '0' ]; then
 fi
 
 # Set variables
-
 script_ver=1.0
 parent_dir="$PWD"
 cwd="${parent_dir}"/mainline-build-script
@@ -34,31 +25,25 @@ printf "%s\n%s\n\n" \
     '==============================================='
 
 # Create output directory
-
 if [ ! -d "$cwd" ]; then
     mkdir -p "$cwd"
 fi
 
 # Set the c+cpp compilers
-
 export CC=gcc CXX=g++
 
 # Export compiler optimization flags
-
 export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -fno-plt -march=native'
 
 # Create functions
-
-exit_fn()
-{
+exit_function() {
     printf "\n%s\n\n%s\n\n" \
         'Make sure to star this repository to show your support!' \
         "$web_repo"
     exit 0
 }
 
-fail_fn()
-{
+fail_fn() {
     printf "\n\n%s\n\n%s\n\n%s\n\n" \
         "$1" \
         'To report a bug please create an issue at:' \
@@ -66,8 +51,7 @@ fail_fn()
     exit 1
 }
 
-cleanup_fn()
-{
+cleanup_fn() {
     local choice
 
     printf "%s\n%s\n%s\n\n%s\n%s\n\n" \
@@ -143,4 +127,4 @@ fi
 cleanup_fn
 
 # Show exit message
-exit_fn
+exit_function

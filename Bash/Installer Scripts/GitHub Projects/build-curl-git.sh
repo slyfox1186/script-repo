@@ -30,42 +30,19 @@ if [ -d "$cwd" ]; then
 fi
 mkdir -p "$cwd"
 
-CC=gcc
-CXX=g++
-CFLAGS='-g -O3 -pipe -fno-plt -march=native'
+CC="gcc"
+CXX="g++"
+CFLAGS='-O3 -pipe -march=native'
 CXXFLAGS="$CFLAGS -Wno-variadic-macros"
 CPPFLAGS='-I/usr/include/openssl -I/usr/local/include -I/usr/include/libxml2 -I/usr/include'
 export CC CXX CFLAGS CPPFLAGS CXXFLAGS
 
-PATH="\
-/usr/lib/ccache:\
-$HOME/perl5/bin:\
-$HOME/.cargo/bin:\
-$HOME/.local/bin:\
-/usr/local/sbin:\
-/usr/local/cuda/bin:\
-/usr/local/x86_64-linux-gnu/bin:\
-/usr/local/bin:\
-/usr/sbin:\
-/usr/bin:\
-/sbin:\
-/bin\
-"
-export PATH
+PATH="/usr/lib/ccache:$PATH"
+PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/pkgconfig"
+PKG_CONFIG_PATH+=":/usr/local/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig"
+export PATH PKG_CONFIG_PATH
 
-PKG_CONFIG_PATH="\
-/usr/local/ssl/lib64/pkgconfig:\
-/usr/local/lib64/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/local/lib/pkgconfig:\
-/usr/share/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/lib/pkgconfig:\
-/lib/pkgconfig\
-"
-export PKG_CONFIG_PATH
-
-exit_fn() {
+exit_function() {
     printf "\n%s\n\n%s\n\n" \
         'Make sure to star this repository to show your support!' \
         "https://github.com/slyfox1186/script-repo"
@@ -196,4 +173,4 @@ curl_ver="$(/usr/local/bin/curl --version | grep -Eo '^curl [0-9\.]+' | grep -Eo
 printf "\n%s\n" "The updated cURL version is: $curl_ver"
 
 # Show exit message
-exit_fn
+exit_function

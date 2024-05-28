@@ -27,7 +27,7 @@ sleep 2
 mkdir -p "$cwd/completed"
 
 # Set the functions
-exit_fn() {
+exit_function() {
     echo
     echo "Make sure to star this repository to show your support!"
     echo "https://github.com/slyfox1186/script-repo"
@@ -106,11 +106,11 @@ if [[ -d "$cwd/failed" ]]; then
     warn "One of the scripts failed to build successfully."
     log "You can find the failed script at: $cwd/failed"
     echo
-    exit_fn
+    exit_function
 fi
 
 # Cleanup leftover files
 sudo rm -fr "$cwd"
 
 # Display exit message
-exit_fn
+exit_function

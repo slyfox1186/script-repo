@@ -88,7 +88,7 @@ export PKG_CONFIG_PATH
 
 # Create functions
 
-exit_fn()
+exit_function()
 {
     printf "\n%s\n\n%s\n\n" \
         'Make sure to star this repository to show your support!' \
@@ -203,4 +203,4 @@ fi
 cleanup_fn
 
 # Show exit message
-exit_fn
+exit_function

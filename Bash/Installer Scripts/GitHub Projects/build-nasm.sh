@@ -34,8 +34,8 @@ else
 fi
 
 PATH="/usr/lib/ccache:$PATH"
-PKG_CONFIG_PATH="/usr/local/lib64/x86_64-linux-gnu:/usr/local/lib64/pkgconfig:/usr/local/lib/x86_64-linux-gnu/pkgconfig"
-PKG_CONFIG_PATH+=":/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig"
+PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/pkgconfig"
+PKG_CONFIG_PATH+=":/usr/local/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig"
 export PATH PKG_CONFIG_PATH
 
 # Create functions

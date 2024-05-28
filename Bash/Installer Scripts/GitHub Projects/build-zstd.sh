@@ -47,7 +47,7 @@ echo "================================================="
 echo
 
 # Create functions
-exit_fn() {
+exit_function() {
     echo
     log "The script has completed"
     log "${GREEN}Make sure to ${YELLOW}star ${GREEN}this repository to show your support!${NC}"
@@ -147,7 +147,7 @@ main_menu() {
     create_soft_links
     ld_linker_path
     cleanup
-    exit_fn
+    exit_function
 }
 
 main_menu "$@"

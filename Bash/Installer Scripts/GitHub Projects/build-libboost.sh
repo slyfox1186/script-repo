@@ -1,20 +1,11 @@
 #!/usr/bin/env bash
 
-##################################################################################################################################
-##
-##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-boost
-##
+##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-boost.sh
 ##  Purpose: build libboost
-##
 ##  Updated: 09.13.23
-##
 ##  Script version: 1.0
-##
-##################################################################################################################################
 
-clear
-
-if [ "${EUID}" -eq '0' ]; then
+if [ "$EUID" -eq 0 ]; then
     echo "You must run this script without root or sudo."
     exit 1
 fi
@@ -48,47 +39,14 @@ export CC=gcc CXX=g++
 
 export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -fno-plt -march=native'
 
-# Set the path variable
-
-PATH="\
-/usr/lib/ccache:\
-${HOME}/perl5/bin:\
-${HOME}/.cargo/bin:\
-${HOME}/.local/bin:\
-/usr/local/sbin:\
-/usr/local/cuda/bin:\
-/usr/local/x86_64-linux-gnu/bin:\
-/usr/local/bin:\
-/usr/sbin:\
-/usr/bin:\
-/sbin:\
-/bin:\
-/usr/local/games:\
-/usr/games:\
-/snap/bin\
-"
-export PATH
-
-PKG_CONFIG_PATH="\
-/usr/local/lib64/pkgconfig:\
-/usr/local/lib/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/local/share/pkgconfig:\
-/usr/lib64/pkgconfig:\
-/usr/lib/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/open-coarrays/openmpi/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/openmpi/lib/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/share/pkgconfig:\
-/lib64/pkgconfig:\
-/lib/pkgconfig:\
-/lib/x86_64-linux-gnu/pkgconfig\
-"
-export PKG_CONFIG_PATH
+PATH="/usr/lib/ccache:$PATH"
+PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/pkgconfig"
+PKG_CONFIG_PATH+=":/usr/local/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig"
+export PATH PKG_CONFIG_PATH
 
 # Create functions
 
-exit_fn()
+exit_function()
 {
     printf "\n%s\n\n%s\n\n" \
         'Make sure to star this repository to show your support!' \
@@ -175,4 +133,4 @@ fi
 cleanup_fn
 
 # Show exit message
-exit_fn
+exit_function

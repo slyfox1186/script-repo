@@ -23,36 +23,10 @@ install_dir=/usr/local
 # Set compiler variables
 export CC=gcc CXX=g++ CFLAGS='-O3 -pipe -fno-plt -fno-plt -march=native' CXXFLAGS="$CFLAGS"
 
-
-# Set path variable
-PATH="\
-/usr/lib/ccache:\
-$HOME/perl5/bin:\
-$HOME/.cargo/bin:\
-$HOME/.local/bin:\
-/usr/local/sbin:\
-/usr/local/cuda/bin:\
-/usr/local/bin:\
-/usr/sbin:\
-/usr/bin:\
-/sbin:\
-/bin:\
-/usr/local/games:\
-/usr/games:\
-/snap/bin\
-"
-export PATH
-
-# Set pkg_config_path variable
-PKG_CONFIG_PATH="\
-/usr/share/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/local/lib/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/lib/pkgconfig:\
-/lib/pkgconfig\
-"
-export PKG_CONFIG_PATH
+PATH="/usr/lib/ccache:$PATH"
+PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/pkgconfig"
+PKG_CONFIG_PATH+=":/usr/local/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig"
+export PATH PKG_CONFIG_PATH
 
 # Install required apt packages
 pkgs=(
