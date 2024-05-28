@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Misc/System/monitor.sh
-# Script version: 1.1
+# Script version: 1.2
 # Last update: 05-28-24
 
 ## Important information
@@ -9,18 +9,21 @@
 
 # Define variables
 monitor_dir="/path/to/default/directory"  # Default directory to monitor
+include_access=false                      # Flag to include access events
 
 # Define colors
 COLOR_RESET="\033[0m"
 COLOR_CREATE="\033[32m"   # Green for create events
 COLOR_DELETE="\033[31m"   # Red for delete events
 COLOR_MODIFY="\033[33m"   # Yellow for modify events
-COLOR_MOVE="\033[36m"     # Cyan for move events
+COLOR_MOVE="\033[35m"     # Magenta for move events
+COLOR_ACCESS="\033[36m"   # Cyan for access events
 
 # Function to display help
 function display_help() {
     echo "Usage: $0 [options]"
     echo "Options:"
+    echo "  -a, --access       Include access events"
     echo "  -d, --directory    Specify the directory to monitor"
     echo "  -h, --help         Display this help message"
 }
@@ -29,6 +32,10 @@ function display_help() {
 function parse_arguments() {
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
+            -a|--access)
+                include_access=true
+                shift
+                ;;
             -d|--directory)
                 monitor_dir="$2"
                 shift 2
@@ -70,6 +77,9 @@ function get_color_for_event() {
         *MOVE*)
             echo "$COLOR_MOVE"
             ;;
+        *ACCESS*)
+            echo "$COLOR_ACCESS"
+            ;;
         *)
             echo "$COLOR_RESET"
             ;;
@@ -78,8 +88,13 @@ function get_color_for_event() {
 
 # Main function to monitor directory
 function monitor_directory() {
+    local events="create,delete,modify,move"
+    if [ "$include_access" = true ]; then
+        events+=",access"
+    fi
+
     echo "Monitoring directory: $monitor_dir"
-    inotifywait -m -r -e modify,create,delete,move "$monitor_dir" |
+    inotifywait -mre "$events" "$monitor_dir" |
     while read -r event; do
         timestamp=$(date +'%m-%d-%Y %I:%M:%S %p')
         color=$(get_color_for_event "$event")
