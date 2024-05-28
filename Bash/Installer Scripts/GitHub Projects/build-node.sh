@@ -80,7 +80,7 @@ get_color_for_event() {
             echo "${yellow}"
             ;;
         *MOVE*)
-            echo "${MAGENTA}"
+            echo "${magenta}"
             ;;
         *)
             echo "${reset}"
