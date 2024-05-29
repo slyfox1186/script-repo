@@ -12,17 +12,27 @@ monitor_dir="${PWD}"  # Default directory to monitor
 include_access=false  # Flag to include access events
 log_file=""           # Log file path
 
+# Define colors
+declare -A eventcolors=(
+    [ACCESS]=$'\033[36m'   # Cyan for access events
+    [CREATE]=$'\033[32m'   # Green for create events
+    [DELETE]=$'\033[31m'   # Red for delete events
+    [MODIFY]=$'\033[33m'   # Yellow for modify events
+    [MOVE]=$'\033[35m'     # Magenta for move events
+    [RESET]=$'\033[0m'     # Resets the color to none
+)
+
 # Function to display help
 display_help() {
-    echo -e "${eventcolors[MODIFY]}Usage${eventcolors[MOVE]}:${reset} ${0} [options]"
+    echo -e "${eventcolors[MODIFY]}Usage${eventcolors[MOVE]}:${eventcolors[RESET]} ${0} [options]"
     echo
-    echo -e "${eventcolors[MODIFY]}Options${eventcolors[MOVE]}:${reset}"
+    echo -e "${eventcolors[MODIFY]}Options${eventcolors[MOVE]}:${eventcolors[RESET]}"
     echo "  -a, --access             Include \"access\" events"
     echo "  -d, --directory <path>   Specify the directory to monitor"
     echo "  -l, --log <path>         Specify the log file to write events"
     echo "  -h, --help               Display this help message"
     echo
-    echo -e "${eventcolors[MODIFY]}Examples${eventcolors[MOVE]}:${reset}"
+    echo -e "${eventcolors[MODIFY]}Examples${eventcolors[MOVE]}:${eventcolors[RESET]}"
     echo "./monitor.sh --help"
     echo "./monitor.sh --directory \"/path/to/folder\""
     echo "./monitor.sh -a -d \"/path/to/folder\""
@@ -61,21 +71,11 @@ parse_arguments() {
 # Function to check if inotifywait is installed
 check_command() {
     if ! command -v inotifywait &>/dev/null; then
-        echo -e "${eventcolors[DELETE]}[ERROR]${reset} The command inotifywait is not installed."
-        echo -e "${eventcolors[CREATE]}[INFO]${reset} This is commonly installed by your package manager inside the package inotify-tools"
+        echo -e "${eventcolors[DELETE]}[ERROR]${eventcolors[RESET]} The command inotifywait is not installed."
+        echo -e "${eventcolors[CREATE]}[INFO]${eventcolors[RESET]} This is commonly installed by your package manager inside the package inotify-tools"
         exit 1
     fi
 }
-
-# Define colors
-declare -A eventcolors=(
-    [ACCESS]=$'\033[36m'   # Cyan for access events
-    [CREATE]=$'\033[32m'   # Green for create events
-    [DELETE]=$'\033[31m'   # Red for delete events
-    [MODIFY]=$'\033[33m'   # Yellow for modify events
-    [MOVE]=$'\033[35m'     # Magenta for move events
-)
-reset='\033[0m'       # Resets the color to none
 
 # Main function to monitor directory
 monitor_directory() {
@@ -86,7 +86,7 @@ monitor_directory() {
     fi
 
     if [[ ! -d "${monitor_dir}" ]]; then
-        echo -e "${eventcolors[DELETE]}[ERROR]${reset} The directory to monitor does not exist."
+        echo -e "${eventcolors[DELETE]}[ERROR]${eventcolors[RESET]} The directory to monitor does not exist."
         exit 1
     fi
 
@@ -97,7 +97,7 @@ monitor_directory() {
         event_type=$(echo "$event" | awk '{print $2}')
         color=${eventcolors[$event_type]}
         event_log="[${timestamp}] ${event}"
-        echo -e "${color}${event_log}${reset}"
+        echo -e "${color}${event_log}${eventcolors[RESET]}"
         
         if [[ -n "${log_file}" ]]; then
             echo "${event_log}" >> "${log_file}"
