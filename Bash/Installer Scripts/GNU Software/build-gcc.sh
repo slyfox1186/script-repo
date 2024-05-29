@@ -13,7 +13,7 @@ workspace="$build_dir/workspace"
 keep_build_dir=0
 log_file=""
 selected_versions=()
-verbose=0
+verbose=1
 version=""
 versions=(10 11 12 13 14)
 
@@ -170,9 +170,18 @@ create_symlinks() {
 }
 
 find_highest_gcc_version() {
-    local versions
-    versions=$(gcc -v 2>&1 | grep "^gcc version" | grep -oP "\d+\.\d+\.\d+" | sort -V | tail -n1)
-    highest_gcc_version="${versions%%.*}"
+    local version
+    for version in 14 13 12 11 10; do
+        if command -v "gcc-$version" &>/dev/null; then
+            highest_gcc_version="$version"
+            break
+        fi
+    done
+
+    if [[ -z "$highest_gcc_version" ]]; then
+        fail "GCC is not installed. Please do that and then re-run the script."
+    fi
+
     echo "$highest_gcc_version"
 }
 
@@ -260,11 +269,11 @@ install_gcc() {
         execute autoreconf -fi
         execute ./contrib/download_prerequisites
         mkdir builddir; cd builddir || fail "Failed to change the autoconf directory to build"
-        ../configure --program-suffix="-$short_version" --with-isl=system
+        ../configure --prefix="/usr/local/gcc-$version" --program-suffix="-$short_version" --with-isl=system
 
         execute make "-j$threads"
         execute make install-strip
-        execute libtool --finish "/usr/local/gcc-$version/libexec/gcc/x86_64-linux-gnu/$short_version"
+        execute libtool --finish "/usr/local/gcc-$version/libexec/gcc/$pc_type/$short_version"
         build_done "gcc" "$version"
     fi
 
@@ -273,11 +282,13 @@ install_gcc() {
 
 build_gcc() {
     local -a common_options=() configure_options=()
-    local cuda_check os_info pc_type version
+    local cuda_check os_info version
     version="$1"
     install_dir="$2"
     shift 2
     configure_options=("$@")
+
+    os_info="$(lsb_release -si) $(lsb_release -sr)"
 
     pc_type="$(gcc -dumpmachine)"
     os_info="$(lsb_release -si) $(lsb_release -sr)"
