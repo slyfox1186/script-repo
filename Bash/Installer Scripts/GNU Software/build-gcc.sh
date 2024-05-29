@@ -14,7 +14,7 @@ workspace="$build_dir/workspace"
 keep_build_dir=0
 log_file=""
 selected_versions=()
-verbose=0
+verbose=0 # Set this to '1' to enable verbose logging.
 version=""
 versions=(10 11 12 13 14)
 
