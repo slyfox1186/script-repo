@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Misc/System/monitor.sh
-# Script version: 1.6
+# Script version: 1.7
 # Last update: 05-29-24
 
 ## Important information
@@ -14,14 +14,19 @@ log_file=""           # Log file path
 
 # Define colors
 declare -A eventcolors=(
-    [ACCESS]=$'\033[36m'   # Cyan for access events
-    [CREATE]=$'\033[32m'   # Green for create events
-    [DELETE]=$'\033[31m'   # Red for delete events
-    [MODIFY]=$'\033[33m'   # Yellow for modify events
-    [MOVE]=$'\033[35m'     # Magenta for move events
-    [MOVED_FROM]=$'\033[93m' # Light Yellow for moved from events
-    [MOVED_TO]=$'\033[93m'   # Light Yellow for moved to events
-    [RESET]=$'\033[0m'     # Resets the color to none
+    [ACCESS]=$'\033[36m'          # Cyan for access events
+    [CREATE]=$'\033[32m'          # Green for create events
+    [DELETE]=$'\033[31m'          # Red for delete events
+    [MODIFY]=$'\033[33m'          # Yellow for modify events
+    [MOVE]=$'\033[35m'            # Magenta for move events
+    [MOVED_FROM]=$'\033[95m'      # Light Magenta for moved from events
+    [MOVED_TO]=$'\033[95m'        # Light Magenta for moved to events
+    [CREATE_ISDIR]=$'\033[1;32m'  # Bold Green for create, isdir events
+    [MOVED_FROM_ISDIR]=$'\033[1;35m' # Bold Magenta for moved from, isdir events
+    [MOVED_TO_ISDIR]=$'\033[1;35m'   # Bold Magenta for moved to, isdir events
+    [DELETE_ISDIR]=$'\033[1;31m'  # Bold Red for delete, isdir events
+    [MODIFY_ISDIR]=$'\033[1;33m'  # Bold Yellow for modify, isdir events
+    [RESET]=$'\033[0m'            # Resets the color to none
 )
 
 # Function to display help
@@ -94,15 +99,15 @@ monitor_directory() {
 
     echo "Monitoring directory: ${monitor_dir}"
     inotifywait -mre "${events}" "${monitor_dir}" |
-    while read -r event; do
+    while read -r path event file; do
         printf -v timestamp '%(%m-%d-%Y %I:%M:%S %p)T' -1
-        event_type=$(echo "$event" | awk '{print $2}')
+        event_type=$(echo "$event" | tr ',' '_')
         color=${eventcolors[$event_type]}
-        event_log="[${timestamp}] ${event}"
+        event_log="[${timestamp}] ${path} ${event} ${file}"
         echo -e "${color}${event_log}${eventcolors[RESET]}"
         
         if [[ -n "${log_file}" ]]; then
-            echo "${event_log}" >> "${log_file}"
+            echo -e "${color}${event_log}${eventcolors[RESET]}" >> "${log_file}"
         fi
     done
 }
