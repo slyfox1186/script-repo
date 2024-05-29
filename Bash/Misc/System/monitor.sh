@@ -19,6 +19,8 @@ declare -A eventcolors=(
     [DELETE]=$'\033[31m'   # Red for delete events
     [MODIFY]=$'\033[33m'   # Yellow for modify events
     [MOVE]=$'\033[35m'     # Magenta for move events
+    [MOVED_FROM]=$'\033[93m' # Light Yellow for moved from events
+    [MOVED_TO]=$'\033[93m'   # Light Yellow for moved to events
     [RESET]=$'\033[0m'     # Resets the color to none
 )
 
