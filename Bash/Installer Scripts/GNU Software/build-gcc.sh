@@ -100,20 +100,15 @@ execute() {
 # Initialize log file removal
 [[ -f "$log_file" ]] && rm -f "$log_file"
 
-set_ccache_dir() {
-    if [[ -d "/usr/lib/ccache/bin" ]]; then
-        ccache_dir="/usr/lib/ccache/bin"
-    else
-        ccache_dir="/usr/lib/ccache"
-    fi
-    PATH="$ccache_dir:$workspace/bin:$PATH"
+set_path() {
+    PATH="/usr/lib/ccache:$workspace/bin:$PATH"
     export PATH
 }
 
 set_environment() {
     log "Setting environment variables..."
-    CC="gcc"
-    CXX="g++"
+    CC="gcc-$highest_gcc_version"
+    CXX="g++-$highest_gcc_version"
     CFLAGS="-O2 -pipe -fstack-protector-strong -march=native"
     CXXFLAGS="$CFLAGS"
     CPPFLAGS="-D_FORTIFY_SOURCE=2"
@@ -122,26 +117,32 @@ set_environment() {
 }
 
 install_deps() {
-    local -a missing_pkgs=()
-    local pkg pkgs
+    local -a missing_pkgs=() pkgs=()
+    local pkg
     log "Installing dependencies..."
     pkgs=(
         autoconf autoconf-archive automake binutils bison
         build-essential ccache curl flex gawk gnat libc6-dev
         libisl-dev libtool make m4 patch texinfo zlib1g-dev
     )
-    missing_pkgs=()
+
     for pkg in "${pkgs[@]}"; do
         if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
             missing_pkgs+=("$pkg")
         fi
     done
+
     if [[ -n "${missing_pkgs[*]}" ]]; then
         sudo apt update
-        sudo apt -y install $missing_pkgs
+        sudo apt -y install "${missing_pkgs[@]}"
     else
         log "All required packages are already installed."
     fi
+
+    # Enable 32-bit architecture and install necessary 32-bit libraries
+    sudo dpkg --add-architecture i386
+    sudo apt update
+    sudo apt -y install libc6-dev-i386 "lib32gcc-$highest_gcc_version-dev" "lib32stdc++-$highest_gcc_version-dev"
 }
 
 get_latest_version() {
@@ -166,6 +167,13 @@ create_symlinks() {
         sudo ln -sf "$bin_dir/$file" "$target_dir/$gcc_short_name"
         sudo chmod 755 -R "$bin_dir/$file" "$target_dir/$gcc_short_name"
     done
+}
+
+find_highest_gcc_version() {
+    local versions
+    versions=$(gcc -v 2>&1 | grep "^gcc version" | grep -oP "\d+\.\d+\.\d+" | sort -V | tail -n1)
+    highest_gcc_version="${versions%%.*}"
+    echo "$highest_gcc_version"
 }
 
 build() {
@@ -467,7 +475,8 @@ main() {
         threads=$(nproc --all)
     fi
 
-    set_ccache_dir
+    highest_gcc_version=$(find_highest_gcc_version)
+    set_path
     set_environment
     install_deps
     install_autoconf
