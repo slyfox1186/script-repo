@@ -41,13 +41,13 @@ parse_arguments() {
                 monitor_dir="${2}"
                 shift 2
                 ;;
-            -h|--help)
-                display_help
-                exit 0
-                ;;
             -l|--log)
                 log_file="${2}"
                 shift 2
+                ;;
+            -h|--help)
+                display_help
+                exit 0
                 ;;
             *)
                 echo "Unknown option: ${1}"
