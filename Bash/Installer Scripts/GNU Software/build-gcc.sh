@@ -337,7 +337,6 @@ build_gcc() {
         "--enable-offload-defaulted"
         "--enable-plugin"
         "--enable-shared"
-        "--enable-stage1-checking=all"
         "--enable-threads=posix"
         "--libdir=$install_dir/lib"
         "--libexecdir=$install_dir/libexec"
