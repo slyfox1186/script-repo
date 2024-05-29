@@ -122,7 +122,7 @@ set_environment() {
 }
 
 install_deps() {
-    local -a missing_pkgs
+    local -a missing_pkgs=()
     local pkg pkgs
     log "Installing dependencies..."
     pkgs=(
@@ -264,7 +264,7 @@ install_gcc() {
 }
 
 build_gcc() {
-    local -a common_options configure_options
+    local -a common_options=() configure_options=()
     local cuda_check os_info pc_type version
     version="$1"
     install_dir="$2"
@@ -358,7 +358,7 @@ install_autoconf() {
 }
 
 select_versions() {
-    local -a selected_versions versions
+    local -a selected_versions=() versions=()
     versions=(10 11 12 13 14)
     selected_versions=()
 
