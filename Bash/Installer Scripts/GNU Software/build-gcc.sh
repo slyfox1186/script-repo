@@ -5,7 +5,7 @@
 # Build GNU GCC
 # Versions available:  10|11|12|13|14
 # Features: Automatically sources the latest release of each version.
-# Updated: 05.11.24
+# Updated: 05.29.24
 
 build_dir="/tmp/gcc-build-script"
 packages="$build_dir/packages"
@@ -147,7 +147,7 @@ install_deps() {
 get_latest_version() {
     local version
     version="$1"
-    store_version=$(curl -fsS "https://ftp.gnu.org/gnu/gcc/" | grep -oP "gcc-${version}[0-9.]+" | sort -ruV | head -n1 | cut -d- -f2)
+    store_version=$(curl -fsS "https://ftp.gnu.org/gnu/gcc/" | grep -oP "gcc-\K${version}[0-9.]+" | sort -ruV | head -n1)
     echo "$store_version"
 }
 
@@ -454,7 +454,10 @@ summary() {
 main() {
     parse_args "$@"
 
-    [[ "$EUID" -ne 0 ]] && fail "This script must be run as root or with sudo."
+    if [[ "$EUID" -ne 0 ]]; then
+        echo "This script must be run as root or with sudo."
+        exit 1
+    fi
 
     mkdir -p "$packages" "$workspace"
 
