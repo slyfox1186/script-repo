@@ -154,13 +154,13 @@ get_latest_version() {
 }
 
 create_symlinks() {
-    local bin_dir file target_dir
+    local bin_dir file target_dir short_name
     version=$1
     bin_dir="/usr/local/gcc-$version/bin"
     target_dir="/usr/local/bin"
 
     for file in $(sudo find "$bin_dir" -type f -regex '^.*-[0-9]+$' | sort -V); do
-        short_name="${file#$bin_dir/}"
+        short_name="${file#"$bin_dir/"}"
         execute sudo ln -sf "$file" "$target_dir/$short_name"
         execute sudo chmod 755 -R "$file" "$target_dir/$short_name"
     done
@@ -265,7 +265,7 @@ install_gcc() {
         execute autoreconf -fi
         execute ./contrib/download_prerequisites
         mkdir builddir; cd builddir || fail "Failed to change the autoconf directory to build"
-        ../configure "$common_options" "$configure_options" "$gcc_options"
+        ../configure "$options"
         execute make "-j$threads"
         execute sudo make install-strip
         if [[ -d "/usr/local/gcc-$version/libexec/gcc/x86_64-pc-linux-gnu/$short_version" ]]; then
@@ -341,16 +341,19 @@ build_gcc() {
     case "$short_version" in
         9|10|11) install_gcc "$version" "$short_version" "${common_options[*]}" "${configure_options[*]}" ;;
         12) gcc_12_options=(--enable-lto --enable-offload-defaulted --with-isl=/usr --with-isl-include=/usr/include --with-isl-lib=/usr/lib/x86_64-linux-gnu -with-libiconv-prefix=/usr --with-link-serialization=2 --with-zstd="$workspace")
-            install_gcc "$version" "$os_info" "${common_options[*]}" "${configure_options[*]}" "${gcc_12_options[*]}"
+            install_gcc "$version" "$os_info" "${common_options[*]} ${configure_options[*]} ${gcc_12_options[*]}"
             ;;
         13) gcc_13_options=(--enable-cet --enable-lto --enable-link-serialization=2 --enable-offload-defaulted --with-arch-32=i686 --with-isl=/usr --with-isl-include=/usr/include --with-isl-lib=/usr/lib/x86_64-linux-gnu --with-libiconv-prefix=/usr --with-zstd="$workspace")
             install_gcc "$version" "$os_info" "${common_options[*]} ${configure_options[*]} ${gcc_13_options[*]}"
             ;;
         14) gcc_14_options=(--enable-cet --enable-lto --enable-link-serialization=2 --enable-offload-defaulted --with-arch-32=i686 --with-isl=/usr --with-isl-include=/usr/include --with-isl-lib=/usr/lib/x86_64-linux-gnu --with-libiconv-prefix=/usr --with-zstd="$workspace")
-            install_gcc "$version" "$os_info" "${common_options[*]}" "${configure_options[*]}" "${gcc_14_options[*]}"
+            install_gcc "$version" "$os_info" "${common_options[*]} ${configure_options[*]} ${gcc_14_options[*]}"
             ;;
         *)  fail "GCC version not found. Line: $LINENO" ;;
     esac
+
+    ld_linker_path "$short_version"
+    create_additional_soft_links "$install_dir"
 }
 
 cleanup() {
@@ -472,13 +475,16 @@ summary() {
 }
 
 ld_linker_path() {
-    [[ -d "$install_dir/lib64" ]] && echo "$install_dir/lib64" | sudo tee "/etc/ld.so.conf.d/custom_$prog_name.conf" >/dev/null
-    [[ -d "$install_dir/lib" ]] && echo "$install_dir/lib" | sudo tee -a "/etc/ld.so.conf.d/custom_$prog_name.conf" >/dev/null
+    local version
+    version=$1
+    [[ -d "$install_dir/lib64" ]] && echo "$install_dir/lib64" | sudo tee "/etc/ld.so.conf.d/custom_custom_gcc-$version.conf" >/dev/null
+    [[ -d "$install_dir/lib" ]] && echo "$install_dir/lib" | sudo tee -a "/etc/ld.so.conf.d/custom_custom_gcc-$version.conf" >/dev/null
     sudo ldconfig
 }
 
-create_soft_links() {
-    [[ -d "$install_dir/bin" ]] && sudo ln -sf "$install_dir/bin/"* "/usr/local/bin/"
+create_additional_soft_links() {
+    local install_dir
+    install_dir=$1
     [[ -d "$install_dir/lib/pkgconfig" ]] && sudo ln -sf "$install_dir/lib/pkgconfig/"*.pc "/usr/local/lib/pkgconfig/"
     [[ -d "$install_dir/include" ]] && sudo ln -sf "$install_dir/include/"* "/usr/local/include/"
 }
