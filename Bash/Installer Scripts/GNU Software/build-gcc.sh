@@ -16,6 +16,7 @@ selected_versions=()
 verbose=1
 version=""
 versions=(10 11 12 13 14)
+pc_type="x86_64-linux-gnu"
 
 # ANSI color codes
 GREEN='\033[1;32m'
@@ -290,9 +291,6 @@ build_gcc() {
 
     os_info="$(lsb_release -si) $(lsb_release -sr)"
 
-    pc_type="$(gcc -dumpmachine)"
-    os_info="$(lsb_release -si) $(lsb_release -sr)"
-
     log "Begin building GCC $version"
 
     common_options=(
@@ -321,7 +319,7 @@ build_gcc() {
         --enable-threads="posix"
         --libdir="$install_dir/lib"
         --libexecdir="$install_dir/libexec"
-        --program-prefix="x86_64-linux-gnu-"
+        --program-prefix="$pc_type"
         --with-abi="m64"
         --with-build-config="bootstrap-lto-lean"
         --with-default-libstdcxx-abi="new"
@@ -468,6 +466,18 @@ summary() {
     else
         echo -e "  ${YELLOW}Log file: ${CYAN}$log_file${NC}"
     fi
+}
+
+ld_linker_path() {
+    [[ -d "$install_dir/lib" ]] && echo "$install_dir/lib" | sudo tee "/etc/ld.so.conf.d/custom_$prog_name.conf" >/dev/null
+    [[ -d "$install_dir/lib64" ]] && echo "$install_dir/lib64" | sudo tee "/etc/ld.so.conf.d/custom_$prog_name.conf" >/dev/null
+    sudo ldconfig
+}
+
+create_soft_links() {
+    [[ -d "$install_dir/bin" ]] && sudo ln -sf "$install_dir/bin/"* "/usr/local/bin/"
+    [[ -d "$install_dir/lib/pkgconfig" ]] && sudo ln -sf "$install_dir/lib/pkgconfig/"*.pc "/usr/local/lib/pkgconfig/"
+    [[ -d "$install_dir/include" ]] && sudo ln -sf "$install_dir/include/"* "/usr/local/include/"
 }
 
 main() {
