@@ -2224,3 +2224,29 @@ adt() {
         echo "Batch download not initiated. Pass '--run' to start downloading."
     fi
 }
+
+# BATCAT COMMANDS
+
+bat() {
+    if command -v batcat &>/dev/null; then
+        eval "$(command -v batcat)" "$@"
+    elif command -v bat &>/dev/null; then
+        eval "$(command -v bat)" "$@"
+    else
+        echo "Installing batcat now."
+        sudo apt update
+        sudo apt -y install bat
+    fi
+}
+
+batn() {
+    if command -v batcat &>/dev/null; then
+        eval "$(command -v batcat)" -n "$@"
+    elif command -v bat &>/dev/null; then
+        eval "$(command -v bat)" -n "$@"
+    else
+        echo "Installing batcat now."
+        sudo apt update
+        sudo apt -y install bat
+    fi
+}
