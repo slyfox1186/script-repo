@@ -339,7 +339,7 @@ build_gcc() {
     log "Configuring GCC $version"
 
     case "$short_version" in
-        9|10|11) install_gcc "$version" "$short_version" "${common_options[*]}" "${configure_options[*]}" ;;
+        9|10|11) install_gcc "$version" "$short_version ${common_options[*]} ${configure_options[*]}" ;;
         12) gcc_12_options=(--enable-lto --enable-offload-defaulted --with-isl=/usr --with-isl-include=/usr/include --with-isl-lib=/usr/lib/x86_64-linux-gnu -with-libiconv-prefix=/usr --with-link-serialization=2 --with-zstd="$workspace")
             install_gcc "$version" "$os_info" "${common_options[*]} ${configure_options[*]} ${gcc_12_options[*]}"
             ;;
