@@ -14,7 +14,7 @@ workspace="$build_dir/workspace"
 keep_build_dir=0
 log_file=""
 selected_versions=()
-verbose=0 # Set this to '1' to enable verbose logging.
+verbose=1
 version=""
 versions=(10 11 12 13 14)
 
@@ -106,11 +106,17 @@ set_path() {
     export PATH
 }
 
+set_pkg_config_path() {
+    PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/pkgconfig"
+    PKG_CONFIG_PATH+=":/usr/local/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig"
+    export PKG_CONFIG_PATH
+}
+
 set_environment() {
     log "Setting environment variables..."
     CC="gcc-$highest_gcc_version"
     CXX="g++-$highest_gcc_version"
-    CFLAGS="-O2 -pipe -fstack-protector-strong -march=native"
+    CFLAGS="-O3 -pipe -fstack-protector-strong -march=native"
     CXXFLAGS="$CFLAGS"
     CPPFLAGS="-D_FORTIFY_SOURCE=2"
     LDFLAGS="-Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now -Wl,-rpath,$install_dir/lib64 -Wl,-rpath,$install_dir/lib"
@@ -143,7 +149,12 @@ install_deps() {
     # Enable 32-bit architecture and install necessary 32-bit libraries
     sudo dpkg --add-architecture i386
     sudo apt update
-    sudo apt -y install libc6-dev-i386 "lib32gcc-$highest_gcc_version-dev" "lib32stdc++-$highest_gcc_version-dev"
+    for version in $(seq 14 -1 10); do
+        if apt-cache show "lib32gcc-$version-dev" &>/dev/null && apt-cache show "lib32stdc++-$version-dev" &>/dev/null; then
+            sudo apt -y install "lib32gcc-$version-dev" "lib32stdc++-$version-dev"
+            break
+        fi
+    done
 }
 
 get_latest_version() {
@@ -154,15 +165,19 @@ get_latest_version() {
 }
 
 create_symlinks() {
-    local bin_dir file target_dir short_name
+    local bin_dir file short_name target_dir
     version=$1
     bin_dir="/usr/local/gcc-$version/bin"
     target_dir="/usr/local/bin"
+    pc_type=$(gcc -dumpmachine)
 
     for file in $(sudo find "$bin_dir" -type f -regex '^.*-[0-9]+$' | sort -V); do
-        short_name="${file#"$bin_dir/"}"
-        execute sudo ln -sf "$file" "$target_dir/$short_name"
-        execute sudo chmod 755 -R "$file" "$target_dir/$short_name"
+        if [[ ! "$file" =~ $pc_type-$pc_type ]]; then
+            short_name="${file#"$bin_dir/"}"
+            short_name="${short_name#"$pc_type-"}"
+            execute sudo ln -sf "$file" "$target_dir/$short_name"
+            execute sudo chmod 755 -R "$file" "$target_dir/$short_name"
+        fi
     done
 }
 
@@ -221,7 +236,9 @@ download() {
     target_directory="$download_path/$output_directory"
 
     if [[ -f "$target_file" ]]; then
-        echo "$download_file is already downloaded."
+        echo "$download_file is
+
+ already downloaded."
     else
         echo "Downloading \"$download_url\" saving as \"$download_file\""
         if ! curl -LSso "$target_file" "$download_url"; then
@@ -255,23 +272,24 @@ else
 fi
 
 install_gcc() {
-    local os_info short_version version
+    local options short_version version
     version=$1
-    os_info=$2
-    options="$3"
+    options=$2
 
     if build "gcc" "$version"; then
         download "https://ftp.gnu.org/gnu/gcc/gcc-$version/gcc-$version.tar.xz"
         execute autoreconf -fi
         execute ./contrib/download_prerequisites
         mkdir builddir; cd builddir || fail "Failed to change the autoconf directory to build"
-        ../configure "$options"
+        execute ../configure $options
         execute make "-j$threads"
         execute sudo make install-strip
         if [[ -d "/usr/local/gcc-$version/libexec/gcc/x86_64-pc-linux-gnu/$short_version" ]]; then
             execute sudo libtool --finish "/usr/local/gcc-$version/libexec/gcc/x86_64-pc-linux-gnu/$short_version"
         elif [[ -d "/usr/local/gcc-$version/libexec/gcc/x86_64-linux-gnu/$short_version" ]]; then
             execute sudo libtool --finish "/usr/local/gcc-$version/libexec/gcc/x86_64-linux-gnu/$short_version"
+        elif [[ -d "/usr/local/gcc-$version/libexec/gcc/$pc_type/$short_version" ]]; then
+            execute sudo libtool --finish "/usr/local/gcc-$version/libexec/gcc/$pc_type/$short_version"
         else
             fail "The script could not find the correct folder for libtool to run --finish on. Line: $LINENO"
         fi
@@ -283,12 +301,11 @@ install_gcc() {
 
 build_gcc() {
     local -a common_options=() configure_options=()
-    local cuda_check os_info version
+    local cuda_check version
     version=$1
     install_dir=$2
 
-    pc_type="x86_64-linux-gnu"
-    os_info="$(lsb_release -si) $(lsb_release -sr)"
+    pc_type=$(gcc -dumpmachine)
 
     log "Begin building GCC $version"
 
@@ -314,10 +331,13 @@ build_gcc() {
         "--enable-libstdcxx-debug"
         "--enable-libstdcxx-time=yes"
         "--enable-linker-build-id"
+        "--enable-lto"
         "--enable-multiarch"
         "--enable-multilib"
+        "--enable-offload-defaulted"
         "--enable-plugin"
         "--enable-shared"
+        "--enable-stage1-checking=all"
         "--enable-threads=posix"
         "--libdir=$install_dir/lib"
         "--libexecdir=$install_dir/libexec"
@@ -327,31 +347,27 @@ build_gcc() {
         "--with-build-config=bootstrap-lto-lean"
         "--with-default-libstdcxx-abi=new"
         "--with-gcc-major-version-only"
+        "--with-isl=/usr"
         "--with-multilib-list=m32,m64,mx32"
         "--with-system-zlib"
         "--with-target-system-zlib=auto"
         "--with-tune=native"
+        "--with-zstd=auto"
         "--without-included-gettext"
+        "$cuda_check"
     )
-
-    [[ -n "$cuda_check" ]] && common_options+=("$cuda_check")
 
     log "Configuring GCC $version"
 
     case "$short_version" in
-        9|10|11) install_gcc "$version" "$short_version ${common_options[*]} ${configure_options[*]}" ;;
-        12) gcc_12_options=(--enable-lto --enable-offload-defaulted --with-isl=/usr --with-isl-include=/usr/include --with-isl-lib=/usr/lib/x86_64-linux-gnu -with-libiconv-prefix=/usr --with-link-serialization=2 --with-zstd="$workspace")
-            install_gcc "$version" "$os_info" "${common_options[*]} ${configure_options[*]} ${gcc_12_options[*]}"
-            ;;
-        13) gcc_13_options=(--enable-cet --enable-lto --enable-link-serialization=2 --enable-offload-defaulted --with-arch-32=i686 --with-isl=/usr --with-isl-include=/usr/include --with-isl-lib=/usr/lib/x86_64-linux-gnu --with-libiconv-prefix=/usr --with-zstd="$workspace")
-            install_gcc "$version" "$os_info" "${common_options[*]} ${configure_options[*]} ${gcc_13_options[*]}"
-            ;;
-        14) gcc_14_options=(--enable-cet --enable-lto --enable-link-serialization=2 --enable-offload-defaulted --with-arch-32=i686 --with-isl=/usr --with-isl-include=/usr/include --with-isl-lib=/usr/lib/x86_64-linux-gnu --with-libiconv-prefix=/usr --with-zstd="$workspace")
-            install_gcc "$version" "$os_info" "${common_options[*]} ${configure_options[*]} ${gcc_14_options[*]}"
-            ;;
+        9|10|11) configure_options=("${common_options[*]}") ;;
+        12) configure_options=("${common_options[*]}" --with-link-serialization=2) ;;
+        13) configure_options=("${common_options[*]}" --disable--vtable-verify --enable-cet --enable-link-serialization=2 --enable-host-pie --with-arch-32=i686) ;;
+        14) configure_options=("${common_options[*]}" --enable-year2038 --disable--vtable-verify --enable-cet --enable-link-serialization=2 --enable-host-pie --with-arch-32=i686) ;;
         *)  fail "GCC version not found. Line: $LINENO" ;;
     esac
 
+    install_gcc "$version" "${configure_options[*]}"
     ld_linker_path "$short_version"
     create_additional_soft_links "$install_dir"
 }
@@ -447,11 +463,14 @@ select_versions() {
 }
 
 check_requirements() {
-    local missing_tools tools
+    local missing_tools=() tools=()
     tools=(curl make tar autoreconf autoupdate autoconf)
-    missing_tools=()
     for tool in "${tools[@]}"; do
-        if ! command -v "$tool" >/dev/null 2>&1; then
+        if ! command
+
+
+
+ -v "$tool" >/dev/null 2>&1; then
             missing_tools+=("$tool")
         fi
     done
@@ -507,6 +526,7 @@ main() {
 
     highest_gcc_version=$(find_highest_gcc_version)
     set_path
+    set_pkg_config_path
     set_environment
     install_deps
     install_autoconf
