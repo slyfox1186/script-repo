@@ -2,10 +2,11 @@
 # shellcheck disable=SC2162 source=/dev/null
 
 # GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-gcc.sh
-# Build GNU GCC
-# Versions available:  10|11|12|13|14
+# Purpose: Build GNU GCC
+# Versions available:  10-14
 # Features: Automatically sources the latest release of each version.
 # Updated: 05.29.24
+# Script version: 1.0
 
 build_dir="/tmp/gcc-build-script"
 packages="$build_dir/packages"
@@ -13,17 +14,16 @@ workspace="$build_dir/workspace"
 keep_build_dir=0
 log_file=""
 selected_versions=()
-verbose=1
+verbose=0
 version=""
 versions=(10 11 12 13 14)
-pc_type="x86_64-linux-gnu"
 
 # ANSI color codes
+CYAN='\033[0;36m'
 GREEN='\033[1;32m'
 RED='\033[0;31m'
 YELLOW='\033[1;33m'
-CYAN='\033[0;36m'
-NC='\033[0m'
+NC='\033[0m' # No color
 
 usage() {
     echo "Usage: $0 [OPTIONS]"
@@ -123,7 +123,7 @@ install_deps() {
     log "Installing dependencies..."
     pkgs=(
         autoconf autoconf-archive automake binutils bison
-        build-essential ccache curl flex gawk gnat libc6-dev
+        build-essential ccache curl flex gawk gcc gnat libc6-dev
         libisl-dev libtool make m4 patch texinfo zlib1g-dev
     )
 
@@ -154,19 +154,15 @@ get_latest_version() {
 }
 
 create_symlinks() {
-    local bin_dir file prefix source_path symlink_path target_dir
-    version="$1"
-    log "Creating symlinks for GCC $version..."
+    local bin_dir file target_dir
+    version=$1
     bin_dir="/usr/local/gcc-$version/bin"
     target_dir="/usr/local/bin"
 
-    local file gcc_long_name gcc_short_name
-
-    gcc_long_name="$(sudo find $bin_dir -type f -name 'x86_64-linux-gnu-*' | grep -oP 'x86_64-linux-gnu-[a-z+-]+-[1-3]+$')"
-    for file in ${gcc_long_name[@]}; do
-        gcc_short_name="$(echo "$file" | sed 's/^x86_64-linux-gnu-\(.*\)$/\1/')"
-        sudo ln -sf "$bin_dir/$file" "$target_dir/$gcc_short_name"
-        sudo chmod 755 -R "$bin_dir/$file" "$target_dir/$gcc_short_name"
+    for file in $(sudo find "$bin_dir" -type f -regex '^.*-[0-9]+$' | sort -V); do
+        short_name="${file#$bin_dir/}"
+        execute sudo ln -sf "$file" "$target_dir/$short_name"
+        execute sudo chmod 755 -R "$file" "$target_dir/$short_name"
     done
 }
 
@@ -238,11 +234,11 @@ download() {
         echo "Download Completed"
     fi
 
-    [[ -d "$target_directory" ]] && rm -fr "$target_directory"
+    [[ -d "$target_directory" ]] && sudo rm -fr "$target_directory"
     mkdir -p "$target_directory"
 
     if ! tar -xf "$target_file" -C "$target_directory" --strip-components 1; then
-        rm "$target_file"
+        sudo rm "$target_file"
         fail "Failed to extract the tarball \"$download_file\" and was deleted. Re-run the script to try again. Line: $LINENO"
     fi
 
@@ -259,22 +255,26 @@ else
 fi
 
 install_gcc() {
-    local version short_version os_info
-    version="$1"
-    short_version="$2"
-    os_info="$3"
-    shift 3
+    local os_info short_version version
+    version=$1
+    os_info=$2
+    options="$3"
 
     if build "gcc" "$version"; then
         download "https://ftp.gnu.org/gnu/gcc/gcc-$version/gcc-$version.tar.xz"
         execute autoreconf -fi
         execute ./contrib/download_prerequisites
         mkdir builddir; cd builddir || fail "Failed to change the autoconf directory to build"
-        ../configure --prefix="/usr/local/gcc-$version" --program-suffix="-$short_version" --with-isl=system
-
+        ../configure "$common_options" "$configure_options" "$gcc_options"
         execute make "-j$threads"
-        execute make install-strip
-        execute libtool --finish "/usr/local/gcc-$version/libexec/gcc/$pc_type/$short_version"
+        execute sudo make install-strip
+        if [[ -d "/usr/local/gcc-$version/libexec/gcc/x86_64-pc-linux-gnu/$short_version" ]]; then
+            execute sudo libtool --finish "/usr/local/gcc-$version/libexec/gcc/x86_64-pc-linux-gnu/$short_version"
+        elif [[ -d "/usr/local/gcc-$version/libexec/gcc/x86_64-linux-gnu/$short_version" ]]; then
+            execute sudo libtool --finish "/usr/local/gcc-$version/libexec/gcc/x86_64-linux-gnu/$short_version"
+        else
+            fail "The script could not find the correct folder for libtool to run --finish on. Line: $LINENO"
+        fi
         build_done "gcc" "$version"
     fi
 
@@ -284,68 +284,70 @@ install_gcc() {
 build_gcc() {
     local -a common_options=() configure_options=()
     local cuda_check os_info version
-    version="$1"
-    install_dir="$2"
-    shift 2
-    configure_options=("$@")
+    version=$1
+    install_dir=$2
 
+    pc_type="x86_64-linux-gnu"
     os_info="$(lsb_release -si) $(lsb_release -sr)"
 
     log "Begin building GCC $version"
 
+    short_version="${version%%.*}"
+
     common_options=(
-        --prefix="$install_dir"
-        --build="$pc_type"
-        --host="$pc_type"
-        --target="$pc_type"
-        --disable-assembly
-        --disable-nls
-        --disable-vtable-verify
-        --disable-werror
-        --enable-bootstrap
-        --enable-checking="release"
-        --enable-clocale="gnu"
-        --enable-default-pie
-        --enable-gnu-unique-object
-        --enable-languages="all"
-        --enable-libphobos-checking="release"
-        --enable-libstdcxx-debug
-        --enable-libstdcxx-time="yes"
-        --enable-linker-build-id
-        --enable-multiarch
-        --enable-multilib
-        --enable-plugin
-        --enable-shared
-        --enable-threads="posix"
-        --libdir="$install_dir/lib"
-        --libexecdir="$install_dir/libexec"
-        --program-prefix="$pc_type"
-        --with-abi="m64"
-        --with-build-config="bootstrap-lto-lean"
-        --with-default-libstdcxx-abi="new"
-        --with-gcc-major-version-only
-        --with-multilib-list="m32,m64,mx32"
-        --with-system-zlib
-        --with-target-system-zlib="auto"
-        --with-tune="native"
-        --without-included-gettext
-        "$cuda_check"
+        "--prefix=$install_dir"
+        "--build=$pc_type"
+        "--host=$pc_type"
+        "--target=$pc_type"
+        "--disable-assembly"
+        "--disable-isl-version-check"
+        "--disable-nls"
+        "--disable-vtable-verify"
+        "--disable-werror"
+        "--enable-bootstrap"
+        "--enable-checking=release"
+        "--enable-clocale=gnu"
+        "--enable-default-pie"
+        "--enable-gnu-unique-object"
+        "--enable-languages=all"
+        "--enable-libphobos-checking=release"
+        "--enable-libstdcxx-debug"
+        "--enable-libstdcxx-time=yes"
+        "--enable-linker-build-id"
+        "--enable-multiarch"
+        "--enable-multilib"
+        "--enable-plugin"
+        "--enable-shared"
+        "--enable-threads=posix"
+        "--libdir=$install_dir/lib"
+        "--libexecdir=$install_dir/libexec"
+        "--program-prefix=$pc_type"
+        "--program-suffix=-$short_version"
+        "--with-abi=m64"
+        "--with-build-config=bootstrap-lto-lean"
+        "--with-default-libstdcxx-abi=new"
+        "--with-gcc-major-version-only"
+        "--with-multilib-list=m32,m64,mx32"
+        "--with-system-zlib"
+        "--with-target-system-zlib=auto"
+        "--with-tune=native"
+        "--without-included-gettext"
     )
+
+    [[ -n "$cuda_check" ]] && common_options+=("$cuda_check")
 
     log "Configuring GCC $version"
 
-    short_version="${version%%.*}"
-
     case "$short_version" in
-        9|10|11) install_gcc "$version" "$short_version" "$os_info" "${common_options[@]}" "${configure_options[@]}" ;;
-        12) gcc_12_options=(--enable-lto --enable-offload-defaulted --with-isl=/usr -with-libiconv-prefix=/usr --with-link-serialization=2 --with-zstd="$workspace")
-            install_gcc "$version" "$short_version" "$os_info" "${common_options[@]}" "${configure_options[@]}" "${gcc_12_options[@]}"
+        9|10|11) install_gcc "$version" "$short_version" "${common_options[*]}" "${configure_options[*]}" ;;
+        12) gcc_12_options=(--enable-lto --enable-offload-defaulted --with-isl=/usr --with-isl-include=/usr/include --with-isl-lib=/usr/lib/x86_64-linux-gnu -with-libiconv-prefix=/usr --with-link-serialization=2 --with-zstd="$workspace")
+            install_gcc "$version" "$os_info" "${common_options[*]}" "${configure_options[*]}" "${gcc_12_options[*]}"
             ;;
-        13) gcc_13_options=(--enable-cet --enable-lto --enable-link-serialization=2 --enable-offload-defaulted --with-arch-32=i686 --with-isl=/usr --with-libiconv-prefix=/usr --with-zstd="$workspace")
-            install_gcc "$version" "$short_version" "$os_info" "${common_options[@]}" "${configure_options[@]}" "${gcc_13_options[@]}"
+        13) gcc_13_options=(--enable-cet --enable-lto --enable-link-serialization=2 --enable-offload-defaulted --with-arch-32=i686 --with-isl=/usr --with-isl-include=/usr/include --with-isl-lib=/usr/lib/x86_64-linux-gnu --with-libiconv-prefix=/usr --with-zstd="$workspace")
+            install_gcc "$version" "$os_info" "${common_options[*]} ${configure_options[*]} ${gcc_13_options[*]}"
             ;;
-        14) gcc_14_options=(--enable-cet --enable-lto --enable-link-serialization=2 --enable-offload-defaulted --with-arch-32=i686 --with-isl=/usr --with-libiconv-prefix=/usr --with-zstd="$workspace")
-            install_gcc "$version" "$short_version" "$os_info" "${common_options[@]}" "${configure_options[@]}" "${gcc_14_options[@]}"
+        14) gcc_14_options=(--enable-cet --enable-lto --enable-link-serialization=2 --enable-offload-defaulted --with-arch-32=i686 --with-isl=/usr --with-isl-include=/usr/include --with-isl-lib=/usr/lib/x86_64-linux-gnu --with-libiconv-prefix=/usr --with-zstd="$workspace")
+            install_gcc "$version" "$os_info" "${common_options[*]}" "${configure_options[*]}" "${gcc_14_options[*]}"
             ;;
         *)  fail "GCC version not found. Line: $LINENO" ;;
     esac
@@ -354,7 +356,7 @@ build_gcc() {
 cleanup() {
     if [[ "$keep_build_dir" -ne 1 ]]; then
         log "Cleaning up..."
-        rm -fr "$build_dir"
+        sudo rm -fr "$build_dir"
         log "Removed temporary build directory: $build_dir"
     else
         log "Temporary build directory retained: $build_dir"
@@ -369,9 +371,10 @@ install_autoconf() {
         mkdir build; cd build || fail "Failed to change the autoconf directory to build"
         execute ../configure --prefix="$workspace"
         execute make "-j$threads"
-        execute make install
+        execute sudo make install
         build_done "autoconf" "2.69"
     fi
+    clear
 }
 
 select_versions() {
@@ -469,8 +472,8 @@ summary() {
 }
 
 ld_linker_path() {
-    [[ -d "$install_dir/lib" ]] && echo "$install_dir/lib" | sudo tee "/etc/ld.so.conf.d/custom_$prog_name.conf" >/dev/null
     [[ -d "$install_dir/lib64" ]] && echo "$install_dir/lib64" | sudo tee "/etc/ld.so.conf.d/custom_$prog_name.conf" >/dev/null
+    [[ -d "$install_dir/lib" ]] && echo "$install_dir/lib" | sudo tee -a "/etc/ld.so.conf.d/custom_$prog_name.conf" >/dev/null
     sudo ldconfig
 }
 
@@ -483,8 +486,8 @@ create_soft_links() {
 main() {
     parse_args "$@"
 
-    if [[ "$EUID" -ne 0 ]]; then
-        echo "This script must be run as root or with sudo."
+    if [[ "$EUID" -eq 0 ]]; then
+        echo "This script must be run without root or with sudo."
         exit 1
     fi
 
