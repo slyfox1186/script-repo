@@ -91,7 +91,9 @@ get_file_type() {
 log_message() {
     local message
     message=$1
-    echo "$message" >> "$log_file"
+    if [[ -n "$log_file" ]]; then
+        echo "$message" >> "$log_file"
+    fi
 }
 
 warn() {
@@ -256,11 +258,11 @@ export output_dir quality additional_args max_file_size log_file test_run verbos
 # Function to find files
 find_files() {
     local files find_files
-    find_files='( -name *.bmp -o -name *.gif -o -name *.ico -o -name *.jfif -o -name *.jpg -o -name *.png -o -name *.tiff -o -name *.webp )'
+    find_files=''
     if [[ "$recursive" == "true" ]]; then
-        files=$(find ./ -type f $find_files ! -path "./$output_dir/*")
+        files=$(find ./ -type f \( -name '*.bmp' -o -name '*.gif' -o -name '*.ico' -o -name '*.jfif' -o -name '*.jpg' -o -name '*.png' -o -name '*.tiff' -o -name '*.webp' \) ! -path "./$output_dir/*")
     else
-        files=$(find ./ -maxdepth 1 -type f $find_files ! -path "./$output_dir/*")
+        files=$(find ./ -maxdepth 1 -type f \( -name '*.bmp' -o -name '*.gif' -o -name '*.ico' -o -name '*.jfif' -o -name '*.jpg' -o -name '*.png' -o -name '*.tiff' -o -name '*.webp' \) ! -path "./$output_dir/*")
     fi
     echo "$files"
 }
