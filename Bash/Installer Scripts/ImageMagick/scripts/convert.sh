@@ -256,7 +256,6 @@ find_files() {
     echo "$files"
 }
 
-
 # Main script
 main() {
     local img_files output_choices output_types gif_to_bmp
