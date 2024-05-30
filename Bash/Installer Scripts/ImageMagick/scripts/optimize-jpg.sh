@@ -66,7 +66,7 @@ process_image() {
     local convert_base_opts=(
         -filter Triangle -define filter:support=2
         -thumbnail "$(identify -ping -format '%wx%h' "$infile")"
-        -strip -unsharp 0.25x0.08+8.3+0.045 -dither None -posterize 136 -quality 82
+        -strip -unsharp '0.25x0.08+8.3+0.045' -dither None -posterize 136 -quality 82
         -define jpeg:fancy-upsampling=off -auto-level -enhance -interlace none
         -colorspace sRGB
     )
@@ -97,8 +97,7 @@ process_image() {
 }
 
 export -f process_image
-export overwrite_mode
-export verbose_mode
+export overwrite_mode verbose_mode
 
 # Determine the number of parallel jobs (maximum of 8)
 num_jobs=$(( $(nproc --all) > 16 ? 16 : $(nproc --all) ))
