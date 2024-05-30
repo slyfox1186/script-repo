@@ -107,6 +107,7 @@ resize_if_needed() {
 
 # Function to convert image files
 process_image() {
+set -x
     local base_name file img_height max_quality mid_quality min_quality mpc_file output_file
     local output_type size_kb sized_file sizes_dir small_height temp_dir temp_file
     local -a convert_base_opts=() png_opts=()
@@ -119,7 +120,7 @@ process_image() {
 
     resize_if_needed "$file" 512000 512000
 
-    if [[ "$file" =~ \.gif ]]; then
+    if [[ "$output_type" =~ gif ]]; then
         warn "This script does not support the processing of a GIF to WEBP."
         return 1
     fi
@@ -135,13 +136,13 @@ process_image() {
 
     convert_base_opts=(
         -thumbnail "$(identify -ping -format '%wx%h' "$file")"
-        -strip -unsharp '0.25x0.08+8.3+0.045' -dither None -posterize 136 -quality "$quality"
-        -define jpeg:fancy-upsampling=off -auto-level -enhance -interlace none -colorspace sRGB
+        "-strip -unsharp '0.25x0.08+8.3+0.045' -dither None -posterize 136 -quality $quality"
+        "-define jpeg:fancy-upsampling=off -auto-level -enhance -interlace none -colorspace sRGB"
     )
 
     png_opts=(
-        -define png:compression-filter=5 -define png:compression-level=9
-        -define png:compression-strategy=1 -define png:exclude-chunk=all
+        "-define png:compression-filter=5 -define png:compression-level=9"
+        "-define png:compression-strategy=1 -define png:exclude-chunk=all"
     )
 
     convert_image() {
@@ -202,7 +203,7 @@ process_image() {
             rm "$temp_file"
             ;;
         tiff)
-            if [[ "$output_type" =~ \.jpg ]]; then
+            if [[ "$output_type" =~ jpg ]]; then
                 convert "$file" -format tif -compress jpeg "$output_file"
             else
                 convert "$file" -format tif "$output_file"
