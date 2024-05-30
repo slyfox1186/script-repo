@@ -337,6 +337,7 @@ build_gcc() {
         "--enable-offload-defaulted"
         "--enable-plugin"
         "--enable-shared"
+        "--enable-stage1-checking=all"
         "--enable-threads=posix"
         "--libdir=$install_dir/lib"
         "--libexecdir=$install_dir/libexec"
@@ -495,8 +496,8 @@ summary() {
 ld_linker_path() {
     local version
     version=$1
-    [[ -d "$install_dir/lib64" ]] && echo "$install_dir/lib64" | sudo tee "/etc/ld.so.conf.d/custom_custom_gcc-$version.conf" >/dev/null
-    [[ -d "$install_dir/lib" ]] && echo "$install_dir/lib" | sudo tee -a "/etc/ld.so.conf.d/custom_custom_gcc-$version.conf" >/dev/null
+    [[ -d "$install_dir/lib64" ]] && echo "$install_dir/lib64" | sudo tee "/etc/ld.so.conf.d/custom_gcc-$version.conf" >/dev/null
+    [[ -d "$install_dir/lib" ]] && echo "$install_dir/lib" | sudo tee -a "/etc/ld.so.conf.d/custom_gcc-$version.conf" >/dev/null
     sudo ldconfig
 }
 
