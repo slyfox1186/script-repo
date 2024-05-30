@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 # GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Misc/System/monitor.sh
-# Script version: 1.5
-# Last update: 05-28-24
+# Script version: 1.7
+# Last update: 05-29-24
 
 ## Important information
 # Arguments take priority over hardcoded variables
@@ -13,24 +13,33 @@ include_access=false  # Flag to include access events
 log_file=""           # Log file path
 
 # Define colors
-cyan='\033[36m'       # Cyan for access events
-green='\033[32m'      # Green for create events
-red='\033[31m'        # Red for delete events
-yellow='\033[33m'     # Yellow for modify events
-magenta='\033[35m'    # Magenta for move events
-reset='\033[0m'       # Resets the color to none
+declare -A eventcolors=(
+    [ACCESS]=$'\033[36m'          # Cyan for access events
+    [CREATE]=$'\033[32m'          # Green for create events
+    [DELETE]=$'\033[31m'          # Red for delete events
+    [MODIFY]=$'\033[33m'          # Yellow for modify events
+    [MOVE]=$'\033[35m'            # Magenta for move events
+    [MOVED_FROM]=$'\033[95m'      # Light Magenta for moved from events
+    [MOVED_TO]=$'\033[95m'        # Light Magenta for moved to events
+    [CREATE_ISDIR]=$'\033[1;32m'  # Bold Green for create, isdir events
+    [MOVED_FROM_ISDIR]=$'\033[1;35m' # Bold Magenta for moved from, isdir events
+    [MOVED_TO_ISDIR]=$'\033[1;35m'   # Bold Magenta for moved to, isdir events
+    [DELETE_ISDIR]=$'\033[1;31m'  # Bold Red for delete, isdir events
+    [MODIFY_ISDIR]=$'\033[1;33m'  # Bold Yellow for modify, isdir events
+    [RESET]=$'\033[0m'            # Resets the color to none
+)
 
 # Function to display help
 display_help() {
-    echo -e "${yellow}Usage${magenta}:${reset} ${0} [options]"
+    echo -e "${eventcolors[MODIFY]}Usage${eventcolors[MOVE]}:${eventcolors[RESET]} ${0} [options]"
     echo
-    echo -e "${yellow}Options${magenta}:${reset}"
+    echo -e "${eventcolors[MODIFY]}Options${eventcolors[MOVE]}:${eventcolors[RESET]}"
     echo "  -a, --access             Include \"access\" events"
     echo "  -d, --directory <path>   Specify the directory to monitor"
     echo "  -l, --log <path>         Specify the log file to write events"
     echo "  -h, --help               Display this help message"
     echo
-    echo -e "${yellow}Examples${magenta}:${reset}"
+    echo -e "${eventcolors[MODIFY]}Examples${eventcolors[MOVE]}:${eventcolors[RESET]}"
     echo "./monitor.sh --help"
     echo "./monitor.sh --directory \"/path/to/folder\""
     echo "./monitor.sh -a -d \"/path/to/folder\""
@@ -49,13 +58,13 @@ parse_arguments() {
                 monitor_dir="${2}"
                 shift 2
                 ;;
-            -h|--help)
-                display_help
-                exit 0
-                ;;
             -l|--log)
                 log_file="${2}"
                 shift 2
+                ;;
+            -h|--help)
+                display_help
+                exit 0
                 ;;
             *)
                 echo "Unknown option: ${1}"
@@ -69,36 +78,10 @@ parse_arguments() {
 # Function to check if inotifywait is installed
 check_command() {
     if ! command -v inotifywait &>/dev/null; then
-        echo -e "${red}[ERROR]${reset} The command inotifywait is not installed."
-        echo -e "${green}[INFO]${reset} This is commonly installed by your package manager inside the package inotify-tools"
+        echo -e "${eventcolors[DELETE]}[ERROR]${eventcolors[RESET]} The command inotifywait is not installed."
+        echo -e "${eventcolors[CREATE]}[INFO]${eventcolors[RESET]} This is commonly installed by your package manager inside the package inotify-tools"
         exit 1
     fi
-}
-
-# Function to get the color for an event
-get_color_for_event() {
-    local event
-    event="${1}"
-    case "${event}" in
-        *ACCESS*)
-            echo "${cyan}"
-            ;;
-        *CREATE*)
-            echo "${green}"
-            ;;
-        *DELETE*)
-            echo "${red}"
-            ;;
-        *MODIFY*)
-            echo "${yellow}"
-            ;;
-        *MOVE*)
-            echo "${magenta}"
-            ;;
-        *)
-            echo "${reset}"
-            ;;
-    esac
 }
 
 # Main function to monitor directory
@@ -110,20 +93,21 @@ monitor_directory() {
     fi
 
     if [[ ! -d "${monitor_dir}" ]]; then
-        echo -e "${red}[ERROR]${reset} The directory to monitor does not exist."
+        echo -e "${eventcolors[DELETE]}[ERROR]${eventcolors[RESET]} The directory to monitor does not exist."
         exit 1
     fi
 
     echo "Monitoring directory: ${monitor_dir}"
     inotifywait -mre "${events}" "${monitor_dir}" |
-    while read -r event; do
+    while read -r path event file; do
         printf -v timestamp '%(%m-%d-%Y %I:%M:%S %p)T' -1
-        color=$(get_color_for_event "${event}")
-        event_log="[${timestamp}] ${event}"
-        echo -e "${color}${event_log}${reset}"
+        event_type=$(echo "$event" | tr ',' '_')
+        color=${eventcolors[$event_type]}
+        event_log="[${timestamp}] ${path} ${event} ${file}"
+        echo -e "${color}${event_log}${eventcolors[RESET]}"
         
         if [[ -n "${log_file}" ]]; then
-            echo "${event_log}" >> "${log_file}"
+            echo -e "${color}${event_log}${eventcolors[RESET]}" >> "${log_file}"
         fi
     done
 }
