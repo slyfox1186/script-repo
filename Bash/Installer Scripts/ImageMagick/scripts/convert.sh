@@ -14,7 +14,7 @@ output_dir="output"
 quality=82
 additional_args=""
 max_file_size=0
-log_file="convert.log"
+log_file=""
 recursive="false"
 parallel="false"
 verbose="false"
@@ -23,21 +23,21 @@ delete_input="false"
 webp_sizes=(1.5 2 3 4)
 icon_sizes="256,128,96,64,48,32,20,16"
 
-MAGICK_AREA_LIMIT="1GP"
+MAGICK_AREA_LIMIT="2GP"
 MAGICK_DISK_LIMIT="128GiB"
 MAGICK_FILE_LIMIT="1536"
-MAGICK_HEIGHT_LIMIT="512MP"
-MAGICK_MAP_LIMIT="32GiB"
-MAGICK_MEMORY_LIMIT="32GiB"
-MAGICK_THREAD_LIMIT="$(nproc --all)"
-MAGICK_WIDTH_LIMIT="512MP"
+MAGICK_HEIGHT_LIMIT="640MP"
+MAGICK_WIDTH_LIMIT="$MAGICK_HEIGHT_LIMIT"
+MAGICK_MAP_LIMIT="48GiB"
+MAGICK_MEMORY_LIMIT="48GiB"
+MAGICK_THREAD_LIMIT="128"
 export MAGICK_AREA_LIMIT MAGICK_DISK_LIMIT MAGICK_FILE_LIMIT MAGICK_HEIGHT_LIMIT MAGICK_MAP_LIMIT MAGICK_MEMORY_LIMIT MAGICK_THREAD_LIMIT MAGICK_WIDTH_LIMIT
 
 # Function to display the help menu
 display_help() {
     echo "Purpose:"
     echo "This script converts image files to various formats using ImageMagick."
-    echo "It supports conversions between BMP, GIF, ICO, JPG, PNG, TIFF, and WEBP formats."
+    echo "It supports conversions between BMP, ICO, JPG, PNG, TIFF, and WEBP formats."
     echo
     echo "Usage: $0 [options]"
     echo
@@ -47,7 +47,7 @@ display_help() {
     echo "  -o, --output <dir>           Set the output directory (default is 'output')"
     echo "  -a, --additional <args>      Set additional command-line arguments for ImageMagick"
     echo "  -m, --max-size <size>        Set the maximum output file size (e.g., 500KB or 1.5MB)"
-    echo "  -l, --log-file <file>        Set the log file (default is 'convert.log')"
+    echo "  -l, --log-file <file>        Set the log file (if not set, logging is disabled)"
     echo "  -r, --recursive              Search for image files recursively"
     echo "  -p, --parallel               Convert images in parallel"
     echo "  -v, --verbose                Enable verbose mode"
@@ -60,7 +60,7 @@ check_dependencies() {
     local -a missing_deps dependencies
     local dep deps_magick deps_other
 
-    dependencies=(convert gifsicle identify optipng parallel)
+    dependencies=(convert identify optipng parallel)
 
     for dep in "${dependencies[@]}"; do
         if ! command -v "$dep" &>/dev/null; then
@@ -69,13 +69,13 @@ check_dependencies() {
     done
 
     deps_magick='convert|identify'
-    deps_other='gifsicle|optipng|parallel'
+    deps_other='optipng|parallel'
 
     if [[ "${#missing_deps[@]}" -gt 0 ]]; then
         if [[ "${#missing_deps[@]}" =~ $deps_magick ]]; then
             echo "The <convert|identify> commands are commonly found in your package manager in the package \"imagemagick\""
         elif [[ "${#missing_deps[@]}" =~ $deps_other ]]; then
-            echo "The <gifsicle|optipng|parallel> commands are commonly found in your package manager in packages with the same names."
+            echo "The <optipng|parallel> commands are commonly found in your package manager in packages with the same names."
         fi
         echo -e "${RED}[ERROR]${NC} Missing dependencies: ${missing_deps[*]}"
         exit 1
@@ -130,11 +130,6 @@ process_image() {
     temp_dir=$(mktemp -d)
 
     resize_if_needed "$file" 512000 512000
-
-    if [[ "$output_type" =~ bmp ]]; then
-        warn "This script does not support the processing of a GIF to BMP."
-        return 1
-    fi
 
     if [[ "$test_run" == "true" ]]; then
         echo -e "${GREEN}[INFO] ${CYAN}[TEST RUN]${NC} $file to $output_file with quality $quality and additional args $additional_args"
@@ -200,19 +195,6 @@ process_image() {
         bmp)
             convert "$file" -strip -compress none -quality "$quality" "$output_file"
             ;;
-        gif)
-            if [[ "$output_type" == "gif" ]] && [[ "$(get_file_type "$file")" == "gif" ]]; then
-                cp "$file" "$output_file"
-                echo -e "${GREEN}[INFO]${NC} Copying $file to $output_file (no conversion needed)"
-                log_message "Copying $file to $output_file (no conversion needed)"
-                return 0
-            fi
-
-            temp_file="$(mktemp).gif"
-            convert "$file" -strip -quality "$quality" "$temp_file"
-            gifsicle --colors 256 -O3 "$temp_file" -o "$output_file"
-            rm "$temp_file"
-            ;;
         tiff)
             if [[ "$output_type" =~ jpg ]]; then
                 convert "$file" -format tif -compress jpeg "$output_file"
@@ -262,16 +244,16 @@ find_files() {
     local files find_files
     find_files=''
     if [[ "$recursive" == "true" ]]; then
-        files=$(find ./ -type f \( -name '*.bmp' -o -name '*.gif' -o -name '*.ico' -o -name '*.jfif' -o -name '*.jpg' -o -name '*.png' -o -name '*.tiff' -o -name '*.webp' \) ! -path "./$output_dir/*")
+        files=$(find ./ -type f \( -name '*.bmp' -o -name '*.ico' -o -name '*.jfif' -o -name '*.jpg' -o -name '*.png' -o -name '*.tiff' -o -name '*.webp' \) ! -path "./$output_dir/*")
     else
-        files=$(find ./ -maxdepth 1 -type f \( -name '*.bmp' -o -name '*.gif' -o -name '*.ico' -o -name '*.jfif' -o -name '*.jpg' -o -name '*.png' -o -name '*.tiff' -o -name '*.webp' \) ! -path "./$output_dir/*")
+        files=$(find ./ -maxdepth 1 -type f \( -name '*.bmp' -o -name '*.ico' -o -name '*.jfif' -o -name '*.jpg' -o -name '*.png' -o -name '*.tiff' -o -name '*.webp' \) ! -path "./$output_dir/*")
     fi
     echo "$files"
 }
 
 # Main script
 main() {
-    local img_files output_choices output_types gif_to_bmp
+    local img_files output_choices output_types
 
     # Parse arguments
     while [[ "$#" -gt 0 ]]; do
@@ -345,42 +327,21 @@ main() {
     fi
 
     # Prompt user for output file types
-    echo "Select output file types (comma-separated, e.g., bmp,gif,ico,jpg,png,tiff,webp, or all):"
+    echo "Select output file types (comma-separated, e.g., bmp,ico,jpg,png,tiff,webp, or all):"
     read -r -p "Enter your choices: " output_choices
     IFS=',' read -ra output_types <<< "$output_choices"
 
     if [[ " ${output_types[*]} " == *" all "* ]]; then
-        output_types=(bmp gif ico jpg png tiff webp)
+        output_types=(bmp ico jpg png tiff webp)
     fi
 
     # Validate output types
     for output_type in "${output_types[@]}"; do
-        if [[ ! " bmp gif ico jfif jpg png tiff webp " =~ $output_type ]]; then
+        if [[ ! " bmp ico jfif jpg png tiff webp " =~ $output_type ]]; then
             echo -e "${RED}[ERROR]${NC} Invalid output type: $output_type"
             exit 1
         fi
     done
-
-    # Check for GIF to BMP conversion
-    gif_to_bmp="false"
-    for img in $img_files; do
-        if [[ "$(get_file_type "$img")" == "gif" ]] && [[ " ${output_types[*]} " == *" bmp "* ]]; then
-            echo -e "${RED}[ERROR]${NC} Conversion from GIF to BMP is not possible with this script."
-            gif_to_bmp="true"
-            break
-        fi
-    done
-
-    if [[ "$gif_to_bmp" == "true" ]]; then
-        if [[ "${#output_types[@]}" -eq 1 ]]; then
-            exit 1
-        else
-            read -r -p "Do you want to continue processing the other file types? [y/N]: " continue_choice
-            if [[ "${continue_choice,,}" != "y" ]]; then
-                exit 0
-            fi
-        fi
-    fi
 
     # Convert files
     if [[ "$parallel" == "true" ]]; then
@@ -392,8 +353,9 @@ main() {
         for img in $img_files; do
             for output_type in "${output_types[@]}"; do
                 process_image "$img" "$output_type"
-            done
+            end
         done
+    done
     fi
 }
 
