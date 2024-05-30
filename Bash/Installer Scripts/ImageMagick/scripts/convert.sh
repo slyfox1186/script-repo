@@ -136,8 +136,7 @@ process_image() {
     convert_base_opts=(
         -thumbnail "$(identify -ping -format '%wx%h' "$file")"
         -strip -unsharp '0.25x0.08+8.3+0.045' -dither None -posterize 136 -quality "$quality"
-        -define jpeg:fancy-upsampling=off -auto-level -enhance -interlace none
-        -colorspace sRGB
+        -define jpeg:fancy-upsampling=off -auto-level -enhance -interlace none -colorspace sRGB
     )
 
     png_opts=(
