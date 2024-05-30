@@ -466,7 +466,7 @@ check_requirements() {
     local missing_tools=() tools=()
     tools=(curl make tar autoreconf autoupdate autoconf)
     for tool in "${tools[@]}"; do
-        if ! command -v "$tool" >/dev/null 2>&1; then
+        if ! command -v "$tool" &>/dev/null; then
             missing_tools+=("$tool")
         fi
     done
