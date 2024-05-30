@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2162 source=/dev/null
 
+# Warn the user about certain actions the script will take and allow them a chance to exit or continue
 echo
 echo "This script will automatically uninstall any APT package version of cargo and rustc."
 echo "The script will replace them using the RustUP command to give you the latest stable version."
@@ -16,17 +17,22 @@ echo
 read -p "Your choices are (1 or 2): " choice
 echo
 
+# Parse the user's choice
 case "$choice" in
     1) ;;
     2) exit 0 ;;
 esac
 
+# Define the master folder variables
 script_dir="$PWD"
 cwd="$script_dir/cargo-build-script"
 
+# Create the master build folder if it doesn't exist
 if [[ ! -d "$cwd" ]]; then
     mkdir -p "$cwd"
 fi
+
+# Change into the master build folder
 cd "$cwd" || exit 1
 
 # Function to check if a command exists
@@ -62,10 +68,22 @@ latest_version=$(curl -fsS "https://github.com/rust-lang/cargo/tags/" | grep -oP
 download_url="https://github.com/rust-lang/cargo/archive/refs/tags/${latest_version}.tar.gz"
 
 # Download and extract the latest Cargo release
-curl -LSso "cargo-${latest_version}.tar.gz" "$download_url"
+if [[ ! -f "cargo-${latest_version}.tar.gz" ]]; then
+    curl -LSso "cargo-${latest_version}.tar.gz" "$download_url"
+else
+    echo "The source files have already been downloaded."
+fi
+
+# Delete the source files output directory if it exists
 [[ -d "cargo-${latest_version}" ]] && sudo rm -fr "cargo-${latest_version}"
+
+# Create the source files output directory
 mkdir "cargo-${latest_version}"
+
+# Extract the source files into the output directory
 tar -zxf "cargo-${latest_version}.tar.gz" -C "cargo-${latest_version}" --strip-components 1
+
+# Change into the output directory
 cd "cargo-${latest_version}" || exit 1
 
 # Build Cargo
@@ -78,10 +96,10 @@ newly_built_cargo_file=$(find "$PWD" -type f -name cargo)
 sudo cp -f "$newly_built_cargo_file" "/usr/bin/"
 
 # Clean up the temporary directory
-cd "$script_dir" || exit 1
 rm -fr "$cwd"
 
 # Verify the installed version
 echo_version=$(cargo --version | awk '{print $2}')
 
+echo
 echo "Cargo has been successfully installed and updated to version: $echo_version"
