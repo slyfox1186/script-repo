@@ -33,17 +33,15 @@ gteds() {
 ## GET THE OS AND ARCH OF THE ACTIVE COMPUTER ##
 ################################################
 
-mypc() {
+this_pc() {
     local OS VER
-    
-    . /etc/os-release
-    OS="$name"
-    VER="${VERSION_ID}"
+    source /etc/os-release
+    OS="$NAME"
+    VER="$VERSION_ID"
 
-    clear
-    printf "%s\n%s\n\n" \
-        "Operating System: ${OS}" \
-        "Specific Version: ${VER}"
+    echo "Operating System: $OS"
+    echo "Specific Version: $VER"
+    echo
 }
 
 ###################
