@@ -35,13 +35,8 @@ fi
 # Change into the master build folder
 cd "$cwd" || exit 1
 
-# Function to check if a command exists
-command_exists() {
-    command -v "$1" &>/dev/null
-}
-
 # Ensure required tools are installed
-if ! command_exists curl; then
+if ! command -v curl &>/dev/null; then
     echo "curl is not installed. Please install it and try again."
     exit 1
 fi
