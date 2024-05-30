@@ -12,8 +12,6 @@ Welcome to Sly's Script Repository! This collection is dedicated to sharing my f
 - Windows Registry
 - XML
 
-_Last Updated: October 16, 2023_
-
 ### Supported Operating Systems
 The scripts have been tested and confirmed to work on the following operating systems:
 - Arch Linux
