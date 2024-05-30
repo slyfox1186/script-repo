@@ -15,11 +15,11 @@ quality=82
 additional_args=""
 max_file_size=0
 log_file="convert.log"
-recursive=false
-parallel=false
-verbose=false
-test_run=false
-delete_input=false
+recursive="false"
+parallel="false"
+verbose="false"
+test_run="false"
+delete_input="false"
 webp_sizes=(1.5 2 3 4)
 icon_sizes="256,128,96,64,48,32,20,16"
 
@@ -294,19 +294,19 @@ main() {
                 shift
                 ;;
             -r|--recursive)
-                recursive=true
+                recursive="true"
                 ;;
             -p|--parallel)
-                parallel=true
+                parallel="true"
                 ;;
             -v|--verbose)
-                verbose=true
+                verbose="true"
                 ;;
             -t|--test-run)
-                test_run=true
+                test_run="true"
                 ;;
             -d|--delete)
-                delete_input=true
+                delete_input="true"
                 ;;
             *)
                 echo -e "${RED}[ERROR]${NC} Invalid option: $1"
@@ -349,11 +349,11 @@ main() {
     done
 
     # Check for GIF to BMP conversion
-    gif_to_bmp=false
+    gif_to_bmp="false"
     for img in $img_files; do
         if [[ "$(get_file_type "$img")" == "gif" ]] && [[ " ${output_types[*]} " == *" bmp "* ]]; then
             echo -e "${RED}[ERROR]${NC} Conversion from GIF to BMP is not possible with this script."
-            gif_to_bmp=true
+            gif_to_bmp="true"
             break
         fi
     done
