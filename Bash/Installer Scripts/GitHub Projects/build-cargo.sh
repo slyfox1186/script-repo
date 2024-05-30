@@ -4,7 +4,7 @@
 echo
 echo "This script will automatically uninstall any APT package version of cargo and rustc."
 echo "The script will replace them using the RustUP command to give you the latest stable version."
-echo "The new binaries for rustc and cargo will be located in the directory: $HOME/.cargo/bin"
+echo "The new binaries for rustc and cargo will be located in the directory: $HOME/.cargo/bin/"
 echo "You must add that directory to your PATH which is usually done within the \".bashrc\" file."
 echo
 echo "Choose an option"
