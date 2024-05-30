@@ -73,9 +73,9 @@ cargo update
 cargo build --release --verbose
 
 # Copy the built Cargo binary to the appropriate directories
-cargo_build_dir=$(find "$PWD" -type f -name cargo)
-[[ -d "$HOME/.cargo/bin" ]] && cp -f "$cargo_build_dir" "$HOME/.cargo/bin/"
-sudo cp -f "$cargo_build_dir" "/usr/bin/"
+newly_built_cargo_file=$(find "$PWD" -type f -name cargo)
+[[ -d "$HOME/.cargo/bin" ]] && cp -f "$newly_built_cargo_file" "$HOME/.cargo/bin/"
+sudo cp -f "$newly_built_cargo_file" "/usr/bin/"
 
 # Clean up the temporary directory
 cd "$script_dir" || exit 1
