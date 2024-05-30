@@ -1,79 +1,114 @@
 #!/usr/bin/env python3
 
 import os
-import psutil
-from PIL import Image, UnidentifiedImageError
+import sys
+import argparse
 import subprocess
-from concurrent.futures import ThreadPoolExecutor
+import tempfile
+from multiprocessing import cpu_count, Pool
 
-# Increase the maximum number of pixels that can be processed by Pillow.
-Image.MAX_IMAGE_PIXELS = None  # Optionally set a specific limit
+# Constants
+MAGICK_AREA_LIMIT = "1GP"
+MAGICK_DISK_LIMIT = "128GiB"
+MAGICK_FILE_LIMIT = "1536"
+MAGICK_HEIGHT_LIMIT = "512MP"
+MAGICK_MAP_LIMIT = "32GiB"
+MAGICK_MEMORY_LIMIT = "32GiB"
+MAGICK_THREAD_LIMIT = str(cpu_count())
+MAGICK_WIDTH_LIMIT = "512MP"
+MAX_THREADS = 16  # User can set the maximum number of threads here
 
-def process_image(image_path):
-    if '-IM.jpg' in image_path:
-        print(f"Skipping already processed file: {image_path}")
-        return False
+os.environ['MAGICK_AREA_LIMIT'] = MAGICK_AREA_LIMIT
+os.environ['MAGICK_DISK_LIMIT'] = MAGICK_DISK_LIMIT
+os.environ['MAGICK_FILE_LIMIT'] = MAGICK_FILE_LIMIT
+os.environ['MAGICK_HEIGHT_LIMIT'] = MAGICK_HEIGHT_LIMIT
+os.environ['MAGICK_MAP_LIMIT'] = MAGICK_MAP_LIMIT
+os.environ['MAGICK_MEMORY_LIMIT'] = MAGICK_MEMORY_LIMIT
+os.environ['MAGICK_THREAD_LIMIT'] = MAGICK_THREAD_LIMIT
+os.environ['MAGICK_WIDTH_LIMIT'] = MAGICK_WIDTH_LIMIT
 
-    try:
-        with Image.open(image_path) as img:
-            orig_width, orig_height = img.size
-            max_width, max_height = 8000, 6000
-            scale = min(max_width / orig_width, max_height / orig_height, 1)
-            if scale < 1:
-                new_width = int(orig_width * scale)
-                new_height = int(orig_height * scale)
-                print(f"Resizing {image_path} from {orig_width}x{orig_height} to {new_width}x{new_height}...")
-                img = img.resize((new_width, new_height), Image.LANCZOS)
-                img.save(image_path, 'JPEG', quality=82)
-                print(f"Resized: {image_path}")
+# Argument parser
+def parse_arguments():
+    parser = argparse.ArgumentParser(description='Optimize JPG images.')
+    parser.add_argument('-d', '--dir', default='.', help='Specify the working directory where images are located.')
+    parser.add_argument('-o', '--overwrite', action='store_true', help='Enable overwrite mode. Original images will be overwritten.')
+    parser.add_argument('-v', '--verbose', action='store_true', help='Enable verbose output.')
+    parser.add_argument('-t', '--threads', type=int, default=MAX_THREADS, help='Specify the maximum number of threads to use (default is set by MAX_THREADS variable).')
+    return parser.parse_args()
 
-        im_output_path = os.path.splitext(image_path)[0] + '-IM.jpg'
-        command = [
-            'convert', image_path,
-            '-unsharp', '0.25x0.08+8.3+0.045',
-            '-dither', 'None',
-            '-posterize', '136',
-            '-quality', '82',
-            '-define', 'jpeg:fancy-upsampling=off',
-            '-auto-level',
-            '-enhance',
-            '-interlace', 'none',
-            '-colorspace', 'sRGB',
-            im_output_path
+# Logging function
+def log(message, verbose):
+    if verbose:
+        print(message)
+
+# Image processing function
+def process_image(args):
+    infile, overwrite_mode, verbose_mode = args
+    base_name = os.path.splitext(infile)[0]
+    extension = os.path.splitext(infile)[1]
+    with tempfile.TemporaryDirectory() as temp_dir:
+        mpc_file = os.path.join(temp_dir, f"{os.path.basename(base_name)}.mpc")
+        outfile = f"{base_name}-IM{extension}"
+
+        convert_base_opts = [
+            '-filter', 'Triangle', '-define', 'filter:support=2',
+            '-thumbnail', subprocess.check_output(['identify', '-ping', '-format', '%wx%h', infile]).decode('utf-8').strip(),
+            '-strip', '-unsharp', '0.25x0.08+8.3+0.045', '-dither', 'None', '-posterize', '136', '-quality', '82',
+            '-define', 'jpeg:fancy-upsampling=off', '-auto-level', '-enhance', '-interlace', 'none',
+            '-colorspace', 'sRGB'
         ]
 
-        subprocess.run(command, check=True)
-        print(f"Processed and saved as: {im_output_path}")
-        os.remove(image_path)
-        print(f"Removed original file: {image_path}")
-        return True
-    except subprocess.CalledProcessError as e:
-        print(f"Failed to process {image_path} with ImageMagick: {e}")
-        return False
-    except (UnidentifiedImageError, OSError) as e:
-        print(f"Skipping corrupt or invalid file: {image_path}. Error: {str(e)}")
-        return False
-    except Exception as e:
-        print(f"An error occurred while processing {image_path}: {e}")
-        return False
+        # First attempt to process with full options
+        try:
+            subprocess.run(['convert', infile] + convert_base_opts + ['-sampling-factor', '2x2', '-limit', 'area', '0', mpc_file], check=True)
+        except subprocess.CalledProcessError:
+            log(f"First attempt failed for {infile}, retrying without '-sampling-factor 2x2 -limit area 0'...", verbose_mode)
+            try:
+                subprocess.run(['convert', infile] + convert_base_opts + [mpc_file], check=True)
+            except subprocess.CalledProcessError:
+                log(f"Error: Second attempt failed for {infile} as well.", verbose_mode)
+                return
 
-def process_images(directory):
-    images = [os.path.join(directory, f) for f in sorted(os.listdir(directory)) if f.lower().endswith('.jpg') and '-IM.jpg' not in f]
-    max_workers = psutil.cpu_count(logical=True) // 2
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        results = list(executor.map(process_image, images))
-    print(f"Processing completed: {sum(results)} images successfully processed.")
+        # Final convert from MPC to output image
+        try:
+            subprocess.run(['convert', mpc_file, outfile], check=True)
+            print(f"Processed: {outfile}")
+        except subprocess.CalledProcessError:
+            print(f"Failed to process: {outfile}")
 
-def cleanup():
+        # Cleanup
+        if overwrite_mode:
+            os.remove(infile)
+
+# Main function
+def main():
+    args = parse_arguments()
+
+    # Change to the specified working directory
     try:
-        current_process = psutil.Process()
-        children = current_process.children(recursive=True)
-        for child in children:
-            if 'convert' in child.name():
-                child.terminate()
-    except Exception as e:
-        print(f"An error occurred during cleanup: {str(e)}")
+        os.chdir(args.dir)
+    except FileNotFoundError:
+        print(f"Specified directory {args.dir} does not exist. Exiting.")
+        sys.exit(1)
+
+    # Check for running processes and terminate them
+    for process in ['magick', 'convert', 'parallel']:
+        try:
+            subprocess.run(['pkill', '-x', process], check=True)
+            log(f"Terminating running process: {process}", args.verbose)
+        except subprocess.CalledProcessError:
+            pass
+
+    # Determine the number of parallel jobs
+    num_jobs = min(cpu_count(), args.threads)
+    log(f"Starting image processing with {num_jobs} parallel jobs...", args.verbose)
+
+    # Find JPG images and process them
+    jpg_files = [f for f in os.listdir(args.dir) if f.lower().endswith('.jpg') and not f.lower().endswith('-im.jpg')]
+    tasks = [(os.path.join(args.dir, f), args.overwrite, args.verbose) for f in jpg_files]
+
+    with Pool(num_jobs) as pool:
+        pool.map(process_image, tasks)
 
 if __name__ == "__main__":
-    script_directory = os.path.dirname(os.path.realpath(__file__))
-    process_images(script_directory)
+    main()
