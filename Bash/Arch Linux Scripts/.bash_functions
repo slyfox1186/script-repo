@@ -1,3 +1,7 @@
+# EXPORT WINDOWS PATHS
+PATH="$PATH:/c/Windows/System32:/c/Windows:/c/Program Files:/c/Program Files (x86):/c/Program Files (x86)/FSViewer:/c/Program Files/Notepad++:/c/Program Files/VLC"
+export PATH
+
 # EXPORT ANSI COLORS
 BLUE="\033[0;34m"
 GREEN="\033[0;32m"
@@ -8,19 +12,21 @@ export BLUE GREEN NC RED YELLOW
 
 ## WHEN LAUNCHING CERTAIN PROGRAMS FROM THE TERMINAL, SUPPRESS ANY WARNING MESSAGES ##
 gedit() {
-    eval $(type -P gedit) "$@" &>/dev/null
+    eval $(command -v gedit) "$@" &>/dev/null
 }
 
 geds() {
-    sudo -Hu root $(type -P gedit) "$@" &>/dev/null
+    sudo -Hu root $(command -v gedit) "$@" &>/dev/null
 }
 
-gnome-text-editor() {
-    eval $(type -P gnome-text-editor) "$@" &>/dev/null
+gted() {
+    [[ ! -f /usr/bin/gted ]] && sudo ln -s /usr/bin/gnome-text-editor /usr/bin/gted
+    eval $(command -v gnome-text-editor) "$@" &>/dev/null
 }
 
-gnome-text-editors() {
-    sudo -Hu root $(type -P gnome-text-editor) "$@" &>/dev/null
+gteds() {
+    [[ ! -f /usr/bin/gted ]] && sudo ln -s /usr/bin/gnome-text-editor /usr/bin/gted
+    sudo -Hu root $(command -v gnome-text-editor) "$@" &>/dev/null
 }
 
 ################################################
