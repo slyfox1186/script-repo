@@ -16,8 +16,8 @@ read -p "Your choices are (1 or 2): " choice
 echo
 
 case "$choice" in
-    [yY]*) ;;
-    [nN]*) exit 0 ;;
+    1) ;;
+    2) exit 0 ;;
 esac
 
 script_dir="$PWD"
