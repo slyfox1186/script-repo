@@ -42,22 +42,24 @@ display_help() {
     echo "Usage: $0 [options]"
     echo
     echo "Options:"
-    echo "  -h, --help                    Display the help menu"
-    echo "  -q, --quality <value>         Set the quality level (default is 82)"
-    echo "  -o, --output <dir>            Set the output directory (default is 'output')"
-    echo "  -a, --additional <args>       Set additional command-line arguments for ImageMagick"
-    echo "  -m, --max-size <size>         Set the maximum output file size (e.g., 500KB or 1.5MB)"
-    echo "  -l, --log-file <file>         Set the log file (default is 'convert.log')"
-    echo "  -r, --recursive               Search for image files recursively"
-    echo "  -p, --parallel                Convert images in parallel"
-    echo "  -v, --verbose                 Enable verbose mode"
-    echo "  -t, --test-run                Perform a test run (show actions without executing)"
-    echo "  -d, --delete                  Delete input files after processing"
+    echo "  -h, --help                   Display the help menu"
+    echo "  -q, --quality <value>        Set the quality level (default is 82)"
+    echo "  -o, --output <dir>           Set the output directory (default is 'output')"
+    echo "  -a, --additional <args>      Set additional command-line arguments for ImageMagick"
+    echo "  -m, --max-size <size>        Set the maximum output file size (e.g., 500KB or 1.5MB)"
+    echo "  -l, --log-file <file>        Set the log file (default is 'convert.log')"
+    echo "  -r, --recursive              Search for image files recursively"
+    echo "  -p, --parallel               Convert images in parallel"
+    echo "  -v, --verbose                Enable verbose mode"
+    echo "  -t, --test-run               Perform a test run (show actions without executing)"
+    echo "  -d, --delete                 Delete input files after processing"
 }
 
 # Function to check for required dependencies
 check_dependencies() {
-    local missing_deps dependencies dep
+    local -a missing_deps dependencies
+    local dep deps_magick deps_other
+
     dependencies=(convert gifsicle identify optipng parallel)
 
     for dep in "${dependencies[@]}"; do
@@ -66,7 +68,15 @@ check_dependencies() {
         fi
     done
 
-    if [[ ${#missing_deps[@]} -gt 0 ]]; then
+    deps_magick='convert|identify'
+    deps_other='gifsicle|optipng|parallel'
+
+    if [[ "${#missing_deps[@]}" -gt 0 ]]; then
+        if [[ "${#missing_deps[@]}" =~ $deps_magick ]]; then
+            echo "The <convert|identify> commands are commonly found in your package manager in the package \"imagemagick\""
+        elif [[ "${#missing_deps[@]}" =~ $deps_other ]]; then
+            echo "The <gifsicle|optipng|parallel> commands are commonly found in your package manager in packages with the same names."
+        fi
         echo -e "${RED}[ERROR]${NC} Missing dependencies: ${missing_deps[*]}"
         exit 1
     fi
