@@ -141,7 +141,7 @@ install_deps() {
 
     if [[ -n "${missing_pkgs[*]}" ]]; then
         sudo apt update
-        sudo apt -y install "${missing_pkgs[@]}"
+        sudo apt install "${missing_pkgs[@]}"
     else
         log "All required packages are already installed."
     fi
