@@ -49,7 +49,7 @@ fi
 
 # Also attempt to delete any manually installed binaries (possibly from this script)
 if [[ -f "/usr/bin/cargo" ]] || [[ -f "/usr/local/bin/cargo" ]] || [[ -f "/usr/bin/rustc" ]] || [[ -f "/usr/local/bin/rustc" ]]; then
-    sudo rm -f "/usr/bin/cargo" "/usr/local/bin/cargo" "/usr/bin/rustc" "/usr/local/bin/rustc"
+    sudo rm -f "/usr/bin/cargo" "/usr/local/bin/cargo" "/usr/bin/rustc" "/usr/local/bin/rustc" 2>/dev/null
 fi
 
 # Install RustUP
