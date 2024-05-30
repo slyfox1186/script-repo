@@ -14,6 +14,17 @@ usage() {
     echo "    $0 --overwrite -d pictures            Directly overwrite and optimize images in 'pictures' directory."
 }
 
+# Change and set ImageMagick's hard-coded limits
+MAGICK_AREA_LIMIT="1GP"
+MAGICK_DISK_LIMIT="128GiB"
+MAGICK_FILE_LIMIT="1536"
+MAGICK_HEIGHT_LIMIT="512MP"
+MAGICK_MAP_LIMIT="32GiB"
+MAGICK_MEMORY_LIMIT="32GiB"
+MAGICK_THREAD_LIMIT="$(nproc --all)"
+MAGICK_WIDTH_LIMIT="512MP"
+export MAGICK_AREA_LIMIT MAGICK_DISK_LIMIT MAGICK_FILE_LIMIT MAGICK_HEIGHT_LIMIT MAGICK_MAP_LIMIT MAGICK_MEMORY_LIMIT MAGICK_THREAD_LIMIT MAGICK_WIDTH_LIMIT
+
 # Initialize script options
 overwrite_mode=0
 verbose_mode=0
