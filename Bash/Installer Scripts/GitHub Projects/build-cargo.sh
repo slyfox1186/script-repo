@@ -42,8 +42,8 @@ fi
 
 # Uninstall the APT packages of cargo and rustc if installed
 if dpkg -s cargo rustc &>/dev/null; then
-    sudo apt-get -y purge cargo rustc
-    sudo apt-get -y autoremove
+    sudo -y apt purge cargo rustc
+    sudo apt -y autoremove
 fi
 
 # Also attempt to delete any manually installed binaries (possibly from this script)
