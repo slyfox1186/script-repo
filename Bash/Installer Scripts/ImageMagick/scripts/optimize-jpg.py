@@ -6,26 +6,23 @@ import argparse
 import subprocess
 import tempfile
 from multiprocessing import cpu_count, Pool
+from functools import partial
 
 # Constants
-MAGICK_AREA_LIMIT = "1GP"
-MAGICK_DISK_LIMIT = "128GiB"
-MAGICK_FILE_LIMIT = "1536"
-MAGICK_HEIGHT_LIMIT = "512MP"
-MAGICK_MAP_LIMIT = "32GiB"
-MAGICK_MEMORY_LIMIT = "32GiB"
-MAGICK_THREAD_LIMIT = str(cpu_count())
-MAGICK_WIDTH_LIMIT = "512MP"
-MAX_THREADS = 16  # User can set the maximum number of threads here
+MAGICK_LIMITS = {
+    'MAGICK_AREA_LIMIT': '1GP',
+    'MAGICK_DISK_LIMIT': '128GiB',
+    'MAGICK_FILE_LIMIT': '1536',
+    'MAGICK_HEIGHT_LIMIT': '512MP',
+    'MAGICK_MAP_LIMIT': '32GiB',
+    'MAGICK_MEMORY_LIMIT': '32GiB',
+    'MAGICK_THREAD_LIMIT': str(cpu_count()),
+    'MAGICK_WIDTH_LIMIT': '512MP'
+}
 
-os.environ['MAGICK_AREA_LIMIT'] = MAGICK_AREA_LIMIT
-os.environ['MAGICK_DISK_LIMIT'] = MAGICK_DISK_LIMIT
-os.environ['MAGICK_FILE_LIMIT'] = MAGICK_FILE_LIMIT
-os.environ['MAGICK_HEIGHT_LIMIT'] = MAGICK_HEIGHT_LIMIT
-os.environ['MAGICK_MAP_LIMIT'] = MAGICK_MAP_LIMIT
-os.environ['MAGICK_MEMORY_LIMIT'] = MAGICK_MEMORY_LIMIT
-os.environ['MAGICK_THREAD_LIMIT'] = MAGICK_THREAD_LIMIT
-os.environ['MAGICK_WIDTH_LIMIT'] = MAGICK_WIDTH_LIMIT
+MAX_THREADS = 16 # User can set the maximum number of threads here
+
+os.environ.update(MAGICK_LIMITS)
 
 # Argument parser
 def parse_arguments():
@@ -42,10 +39,8 @@ def log(message, verbose):
         print(message)
 
 # Image processing function
-def process_image(args):
-    infile, overwrite_mode, verbose_mode = args
-    base_name = os.path.splitext(infile)[0]
-    extension = os.path.splitext(infile)[1]
+def process_image(infile, overwrite_mode, verbose_mode):
+    base_name, extension = os.path.splitext(infile)
     with tempfile.TemporaryDirectory() as temp_dir:
         mpc_file = os.path.join(temp_dir, f"{os.path.basename(base_name)}.mpc")
         outfile = f"{base_name}-IM{extension}"
@@ -105,10 +100,9 @@ def main():
 
     # Find JPG images and process them
     jpg_files = [f for f in os.listdir(args.dir) if f.lower().endswith('.jpg') and not f.lower().endswith('-im.jpg')]
-    tasks = [(os.path.join(args.dir, f), args.overwrite, args.verbose) for f in jpg_files]
 
     with Pool(num_jobs) as pool:
-        pool.map(process_image, tasks)
+        pool.map(partial(process_image, overwrite_mode=args.overwrite, verbose_mode=args.verbose), jpg_files)
 
 if __name__ == "__main__":
     main()
