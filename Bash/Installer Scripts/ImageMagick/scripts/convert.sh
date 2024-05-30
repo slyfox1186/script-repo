@@ -58,7 +58,7 @@ display_help() {
 # Function to check for required dependencies
 check_dependencies() {
     local missing_deps dependencies dep
-    dependencies=(convert gifsicle identify optipng parallel pngcrush)
+    dependencies=(convert gifsicle identify optipng parallel)
 
     for dep in "${dependencies[@]}"; do
         if ! command -v "$dep" &>/dev/null; then
