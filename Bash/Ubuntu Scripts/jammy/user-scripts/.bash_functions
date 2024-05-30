@@ -530,7 +530,7 @@ imow() {
     wget --show-progress -cqO "optimize-jpg.py" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.py"
     sudo chmod +x "optimize-jpg.py"
     LD_PRELOAD=libtcmalloc.so
-    if python3 optimize-jpg.py; then
+    if python3 optimize-jpg.py -o; then
         sudo rm "optimize-jpg.py"
     else
         echo "Failed to process images."
