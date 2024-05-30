@@ -252,7 +252,9 @@ process_image() {
     rm -fr "$temp_dir"
 }
 
+# export functions so the parallel command will recognize it
 export -f process_image warn
+# export variables
 export output_dir quality additional_args max_file_size log_file test_run verbose delete_input
 
 # Function to find files
