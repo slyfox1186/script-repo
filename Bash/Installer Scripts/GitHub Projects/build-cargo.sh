@@ -4,6 +4,7 @@
 echo
 echo "This script will automatically uninstall any APT package version of cargo and rustc."
 echo "The script will replace them using the RustUP command to give you the latest stable version."
+echo "RustUp does not like any other versions of cargo or rustc on the computer to compete with it."
 echo "The new binaries for rustc and cargo will be located in the directory: $HOME/.cargo/bin/"
 echo "You must add that directory to your PATH which is usually done within the \".bashrc\" file."
 echo
@@ -39,13 +40,20 @@ if ! command_exists curl; then
     exit 1
 fi
 
-curl --proto '=https' --tlsv1.2 -sSf "https://sh.rustup.rs" | sh -s -- -y
-source "$HOME/.cargo/env"
-
-# Uninstall APT packages of cargo and rustc if they exist
-if command -v cargo &>/dev/null || command -v rustc &>/dev/null; then
-    sudo apt -y remove --purge cargo rustc
+# Uninstall the APT packages of cargo and rustc if installed
+if dpkg -s cargo rustc &>/dev/null; then
+    sudo apt-get -y purge cargo rustc
+    sudo apt-get -y autoremove
 fi
+
+# Also attempt to delete any manually installed binaries (possibly from this script)
+if [[ -f "/usr/bin/cargo" ]] || [[ -f "/usr/bin/rustc" ]]; then
+    sudo rm -f "/usr/bin/cargo" "/usr/bin/rustc"
+fi
+
+# Install RustUP
+curl --proto '=https' --tlsv1.2 -sSf "https://sh.rustup.rs" | sh -s -- -y &>/dev/null
+source "$HOME/.cargo/env"
 
 # Get the latest Cargo release version from GitHub
 latest_version=$(curl -fsS "https://github.com/rust-lang/cargo/tags/" | grep -oP '/releases/tag/\K\d+\.\d+\.\d+' | head -n1)
