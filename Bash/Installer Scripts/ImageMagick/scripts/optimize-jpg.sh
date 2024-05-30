@@ -101,7 +101,15 @@ export overwrite_mode
 export verbose_mode
 
 # Determine the number of parallel jobs (maximum of 8)
-num_jobs=$(( $(nproc --all) > 4 ? 4 : $(nproc --all) ))
+num_jobs=$(( $(nproc --all) > 16 ? 16 : $(nproc --all) ))
 echo "Starting image processing with $num_jobs parallel jobs..."
 
-find "$working_dir" -maxdepth 1 -type f -name "*.jpg" ! -name "*-IM.jpg" | sort -V | parallel -j "$num_jobs" process_image
+if ! find "$working_dir" -maxdepth 1 -type f -name "*.jpg" ! -name "*-IM.jpg" | sort -V | parallel -j "$num_jobs" process_image; then
+    num_jobs=$(( $(nproc --all) > 8 ? 8 : $(nproc --all) ))
+    echo "Starting image processing with $num_jobs parallel jobs..."
+    if ! find "$working_dir" -maxdepth 1 -type f -name "*.jpg" ! -name "*-IM.jpg" | sort -V | parallel -j "$num_jobs" process_image; then
+        num_jobs=$(( $(nproc --all) > 4 ? 4 : $(nproc --all) ))
+        echo "Starting image processing with $num_jobs parallel jobs..."
+        find "$working_dir" -maxdepth 1 -type f -name "*.jpg" ! -name "*-IM.jpg" | sort -V | parallel -j "$num_jobs" process_image; then
+    fi
+fi
