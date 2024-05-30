@@ -48,8 +48,8 @@ if dpkg -s cargo rustc &>/dev/null; then
 fi
 
 # Also attempt to delete any manually installed binaries (possibly from this script)
-if [[ -f "/usr/bin/cargo" ]] || [[ -f "/usr/bin/rustc" ]]; then
-    sudo rm -f "/usr/bin/cargo" "/usr/bin/rustc"
+if [[ -f "/usr/bin/cargo" ]] || [[ -f "/usr/local/bin/cargo" ]] || [[ -f "/usr/bin/rustc" ]] || [[ -f "/usr/local/bin/rustc" ]]; then
+    sudo rm -f "/usr/bin/cargo" "/usr/local/bin/cargo" "/usr/bin/rustc" "/usr/local/bin/rustc"
 fi
 
 # Install RustUP
