@@ -1161,7 +1161,9 @@ padl() {
 }
 
 ## GET FILE SIZES ##
+
 big_files() {
+  local num_results full_path size folder file suffix
   # Check if an argument is provided
   if [ -n "$1" ] && [[ "$1" =~ ^[0-9]+$ ]]; then
     num_results=$1
@@ -1172,25 +1174,24 @@ big_files() {
       read -p "Invalid input. Enter a valid number: " num_results
     done
   fi
-
   echo "Largest Folders:"
-  max_width=$(du -h -d 1 | sort -hr | head -n "$num_results" | awk '{print length($2)}' | sort -nr | head -n 1)
-  du -h -d 1 | sort -hr | head -n "$num_results" | while read -r size folder; do
+  du -h -d 1 2>/dev/null | sort -hr | head -n "$num_results" | while read -r size folder; do
     full_path=$(realpath "$folder")
-    printf "%-*s %10s\n" $((max_width + 10)) "$full_path" "$size"
-  done
-
+    suffix="${size: -1}"
+    size=$(echo "${size%?}" | awk '{printf "%d.%02d", $1, int(($1-int($1))*100)}')
+    printf "%-80s %14s%s\n" "$full_path" "$size" "$suffix"
+  done | column -t
   echo
-
   echo "Largest Files:"
-  max_width=$(find . -type f -exec du -h {} + | sort -hr | head -n "$num_results" | awk '{print length($2)}' | sort -nr | head -n 1)
-  find . -type f -exec du -h {} + | sort -hr | head -n "$num_results" | while read -r size file; do
+  find . -type f -exec du -h {} + 2>/dev/null | sort -hr | head -n "$num_results" | while read -r size file; do
     full_path=$(realpath "$file")
-    printf "%-*s %10s\n" $((max_width + 10)) "$full_path" "$size"
-  done
+    suffix="${size: -1}"
+    size=$(echo "${size%?}" | awk '{printf "%d.%02d", $1, int(($1-int($1))*100)}')
+    printf "%-80s %14s%s\n" "$full_path" "$size" "$suffix"
+  done | column -t
 }
 
-big_file () {
+big_file() {
     find . -type f -print0 | du -ha --files0-from=- | LC_ALL='C' sort -rh | head -n $1
 }
 
