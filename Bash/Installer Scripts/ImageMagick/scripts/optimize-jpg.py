@@ -9,6 +9,8 @@ from multiprocessing import cpu_count, Pool
 from functools import partial
 
 # Constants
+MAX_THREADS = 32  # User can set the maximum number of threads here
+
 MAGICK_LIMITS = {
     'MAGICK_AREA_LIMIT': '1GP',
     'MAGICK_DISK_LIMIT': '128GiB',
@@ -16,11 +18,9 @@ MAGICK_LIMITS = {
     'MAGICK_HEIGHT_LIMIT': '512MP',
     'MAGICK_MAP_LIMIT': '32GiB',
     'MAGICK_MEMORY_LIMIT': '32GiB',
-    'MAGICK_THREAD_LIMIT': str(cpu_count()),
+    'MAGICK_THREAD_LIMIT': str(MAX_THREADS),
     'MAGICK_WIDTH_LIMIT': '512MP'
 }
-
-MAX_THREADS = 32 # User can set the maximum number of threads here
 
 os.environ.update(MAGICK_LIMITS)
 
@@ -95,7 +95,7 @@ def main():
             pass
 
     # Determine the number of parallel jobs
-    num_jobs = min(cpu_count(), args.threads)
+    num_jobs = min(MAX_THREADS, args.threads)
     log(f"Starting image processing with {num_jobs} parallel jobs...", args.verbose)
 
     # Find JPG images and process them
