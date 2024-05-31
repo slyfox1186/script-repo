@@ -87,7 +87,7 @@ check_command() {
 # Main function to monitor directory
 monitor_directory() {
     local events
-    events="create,delete, modify,move"
+    events="create,delete,modify,move"
     if [[ "${include_access}" = true ]]; then
         events+=",access"
     fi
