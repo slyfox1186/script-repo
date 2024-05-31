@@ -75,6 +75,14 @@ def process_image(infile, overwrite_mode, verbose_mode):
         if overwrite_mode:
             os.remove(infile)
 
+# Function to check if google_speech is installed and send notification
+def notify_completion():
+    try:
+        import google_speech
+        subprocess.run(['google_speech', 'Image optimizations completed.'], check=True)
+    except ImportError:
+        print("google_speech package is not installed. Skipping notification.")
+
 # Main function
 def main():
     args = parse_arguments()
@@ -103,6 +111,9 @@ def main():
 
     with Pool(num_jobs) as pool:
         pool.map(partial(process_image, overwrite_mode=args.overwrite, verbose_mode=args.verbose), jpg_files)
+
+    # Notify completion if google_speech is installed
+    notify_completion()
 
 if __name__ == "__main__":
     main()
