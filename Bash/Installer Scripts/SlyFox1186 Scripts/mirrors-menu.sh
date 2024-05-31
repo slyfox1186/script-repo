@@ -1,77 +1,108 @@
 #!/usr/bin/env bash
 
+# Exit immediately if a command exits with a non-zero status
+set -e
+
+# Ensure the script is not run as root
 if [[ "$EUID" -eq 0 ]]; then
     echo "You must run this script without root or with sudo."
     exit 1
 fi
 
 # Define color variables
-GREEN='\033[0;32m'
 CYAN='\033[0;36m'
+GREEN='\033[0;32m'
 RED='\033[0;31m'
 NC='\033[0m'
 
 # Create a temporary directory for storing files
-dir=$(mktemp -d)
+temp_dir=$(mktemp -d)
 
-execute() {
-    local file url
+execution_menu() {
+    local url file
     url="$1"
     file="$2"
 
-    if curl -LSso "$dir/$file" "$url"; then
-        if [[ -f "$dir/$file" ]]; then
-            if sudo bash "$dir/$file"; then
-                sudo rm -rf "$dir"
-                echo -e "${GREEN}[SUCCESS]${NC} Execution completed successfully.\n"
-                exit 0
-            else
-                echo -e "${RED}[ERROR]${NC} Failed to execute: \"$file\"\n"
-            fi
+    # Download the chosen script
+    if curl -LSso "$temp_dir/$file" "$url"; then
+        if sudo bash "$temp_dir/$file"; then
+            echo -e "${GREEN}[SUCCESS]${NC} Mirrors successfully installed."
         else
-            echo -e "${RED}[ERROR]${NC} File not found: \"$file\"\n"
+            echo -e "${RED}[ERROR]${NC} Failed to install the mirrors."
         fi
     else
-        echo -e "${RED}[ERROR]${NC} Failed to download: \"$file\"\n"
+        echo -e "${RED}[ERROR]${NC} Failed to download the script: \"$file\""
     fi
-    read -p "Press any key to exit."
-    sudo rm -rf "$dir"
-    exit 1
+
+    # Remove the temp directory
+    sudo rm -rf "$temp_dir"
+
+    # Exit after executing the script
+    exit 0
 }
 
-display_menu() {
-    local choice OS
-    OS="$1"
-    case "$OS" in
+download_menu() {
+    local choice os
+    os="$1"
+
+    # Handle Raspberry Pi directly
+    if [[ "$os" == "raspi" ]]; then
+        execution_menu "https://raspi-mirrors.optimizethis.net" "raspi-mirrors.sh"
+        return 0
+    fi
+
+    # Handle Arch Linux directly
+    if [[ "$os" == "arch" ]]; then
+        if [[ ! -d "/etc/pacman.d" ]]; then
+            sudo mkdir -p "/etc/pacman.d"
+        fi
+        execution_menu "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/Arch%20Linux/reflector-mirror-speed-test.sh" "reflector_mirror_test.sh"
+        return 0
+    fi
+
+    case "$os" in
         ubuntu)
             echo -e "${GREEN}1)${NC} Ubuntu 24.04 - Noble Numbat"
-            echo -e "${GREEN}2)${NC} Ubuntu 23.04 - Lunar Lobster"
-            echo -e "${GREEN}3)${NC} Ubuntu 22.04 - Jammy Jellyfish"
-            echo -e "${GREEN}4)${NC} Ubuntu 20.04 - Focal Fossa"
-            echo -e "${GREEN}5)${NC} Ubuntu 18.04 - Bionic Beaver"
+            echo -e "${GREEN}2)${NC} Ubuntu 22.04 - Jammy Jellyfish"
+            echo -e "${GREEN}3)${NC} Ubuntu 20.04 - Focal Fossa"
+            echo -e "${GREEN}4)${NC} Ubuntu 18.04 - Bionic Beaver"
             ;;
         debian)
             echo -e "${GREEN}1)${NC} Debian 11 (Bullseye)"
             echo -e "${GREEN}2)${NC} Debian 12 (Bookworm)"
             ;;
     esac
+
     echo -e "${GREEN}0)${NC} Back"
     echo
-    echo -en "${CYAN}Choose the $OS release version: ${NC}"
-    read -n 1 choice
+    echo -en "${CYAN}Choose the $os release version: ${NC}"
+    read -r choice
     clear
-    case "$OS:$choice" in
-        ubuntu:1) execute "https://noble-mirrors.optimizethis.net" "noble-mirrors.sh" ;;
-        ubuntu:2) execute "https://lunar-mirrors.optimizethis.net" "lunar-mirrors.sh" ;;
-        ubuntu:3) execute "https://jammy.optimizethis.net" "jammy-mirrors.sh" ;;
-        ubuntu:4) execute "https://focal-mirrors.optimizethis.net" "focal-mirrors.sh" ;;
-        ubuntu:5) execute "https://bionic-mirrors.optimizethis.net" "bionic-mirrors.sh" ;;
-        debian:1) execute "https://bullseye-mirrors.optimizethis.net" "bullseye-mirrors.sh" ;;
-        debian:2) execute "https://bookworm-mirrors.optimizethis.net" "bookworm-mirrors.sh" ;;
-        *:0) clear ;;
-        *) clear
-           display_menu "$OS"
-           ;;
+
+    case "$os:$choice" in
+        ubuntu:1)
+            execution_menu "https://noble-mirrors.optimizethis.net" "noble-mirrors.sh"
+            ;;
+        ubuntu:2)
+            execution_menu "https://jammy.optimizethis.net" "jammy-mirrors.sh"
+            ;;
+        ubuntu:3)
+            execution_menu "https://focal-mirrors.optimizethis.net" "focal-mirrors.sh"
+            ;;
+        ubuntu:4)
+            execution_menu "https://bionic-mirrors.optimizethis.net" "bionic-mirrors.sh"
+            ;;
+        debian:1)
+            execution_menu "https://bullseye-mirrors.optimizethis.net" "bullseye-mirrors.sh"
+            ;;
+        debian:2)
+            execution_menu "https://bookworm-mirrors.optimizethis.net" "bookworm-mirrors.sh"
+            ;;
+        *)
+            clear
+            unset choice
+            download_menu
+            ;;
     esac
 }
 
@@ -86,23 +117,32 @@ main_menu() {
         echo -e "${GREEN}0)${NC} Exit"
         echo
         echo -en "${CYAN}Choose an operating system: ${NC}"
-        read -n 1 choice
+        read -r choice
         clear
         case "$choice" in
-            1) display_menu "ubuntu" ;;
-            2) display_menu "debian" ;;
-            3) execute "https://raspi-mirrors.optimizethis.net" "raspi-mirrors.sh" ;;
-            4) sudo mkdir -p "/etc/pacman.d"
-               execute "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/Arch%20Linux/reflector-mirror-speed-test.sh" "reflector_mirror_test.sh"
-               ;;
-            0) rm -rf "$dir"
-               exit 0
-               ;;
-            *) clear
-               main_menu
-               ;;
+            1)
+                download_menu "ubuntu"
+                ;;
+            2)
+                download_menu "debian"
+                ;;
+            3)
+                download_menu "raspi"
+                ;;
+            4)
+                download_menu "arch"
+                ;;
+            0)
+                sudo rm -fr "$temp_dir"
+                exit 0
+                ;;
+            *)
+                clear
+                unset choice
+                main_menu
+                ;;
         esac
     done
 }
 
-main_menu
+main_menu "$@"
