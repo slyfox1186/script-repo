@@ -20,7 +20,7 @@ MAGICK_LIMITS = {
     'MAGICK_WIDTH_LIMIT': '512MP'
 }
 
-MAX_THREADS = 16 # User can set the maximum number of threads here
+MAX_THREADS = 32 # User can set the maximum number of threads here
 
 os.environ.update(MAGICK_LIMITS)
 
