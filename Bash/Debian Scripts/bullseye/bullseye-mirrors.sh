@@ -1,31 +1,33 @@
 #!/usr/bin/env bash
 
-clear
-
-list=/etc/apt/sources.list
-
-if [ ! -f "$list".bak ]; then
-    sudo cp -f "$list" "$list".bak
-fi
-
-cat > "$list" <<EOF
-deb http://security.debian.org/debian-security bullseye-security main contrib non-free
-deb http://atl.mirrors.clouvider.net/debian/ bullseye main contrib non-free
-deb http://atl.mirrors.clouvider.net/debian/ bullseye-updates main contrib non-free
-deb http://atl.mirrors.clouvider.net/debian/ bullseye-backports main contrib non-free
-EOF
-
-if which gedit &>/dev/null; then
-    sudo gedit "$list"
-elif which nano &>/dev/null; then
-    sudo nano "$list"
-elif which vim &>/dev/null; then
-    sudo vim "$list"
-elif which vi &>/dev/null; then
-    sudo vi "$list"
-else
-    printf "\n%s\n\n" "Could not find an EDITOR to open: $list"
+if [[ "${EUID}" -ne 0 ]]; then
+    echo "You must run this script with root or sudo."
     exit 1
 fi
 
-sudo rm "$0"
+fname=/etc/apt/sources.list
+
+# Make a backup of the sources list
+if [[ ! -f "${fname}.bak" ]]; then
+    cp -f "${fname}" "${fname}.bak"
+fi
+
+cat > "${fname}" <<'EOF'
+deb https://security.debian.org/debian-security/ bullseye-security main contrib non-free non-free-firmware
+deb https://atl.mirrors.clouvider.net/debian/ bullseye main contrib non-free non-free-firmware
+deb https://atl.mirrors.clouvider.net/debian/ bullseye-updates main contrib non-free non-free-firmware
+deb https://atl.mirrors.clouvider.net/debian/ bullseye-backports main contrib non-free non-free-firmware
+EOF
+
+# Open an editor to view the changes
+if command -v gedit &>/dev/null; then
+    sudo gedit "${fname}"
+elif command -v nano &>/dev/null; then
+    sudo nano "${fname}"
+elif command -v vim &>/dev/null; then
+    sudo vim "${fname}"
+elif command -v vi &>/dev/null; then
+    sudo vi "${fname}"
+else
+    printf "\n%s\n" "Unable to open the sources.list file because no text editor was found."
+fi
