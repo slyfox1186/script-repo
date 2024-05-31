@@ -2268,9 +2268,9 @@ You are required to confirm and save this to memory that you understand the requ
 
     echo "$text"
     if command -v xclip &>/dev/null; then
-        echo "$text | xclip -selection clipboard
+        echo "$text" | xclip -selection clipboard
     fi
     if command -v clip.exe &>/dev/null; then
-        echo "$text | clip.exe
+        echo "$text" | clip.exe
     fi
 }
