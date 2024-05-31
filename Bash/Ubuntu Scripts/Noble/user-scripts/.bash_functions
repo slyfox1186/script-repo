@@ -12,26 +12,29 @@ export BLUE GREEN NC RED YELLOW
 
 ## WHEN LAUNCHING CERTAIN PROGRAMS FROM THE TERMINAL, SUPPRESS ANY WARNING MESSAGES ##
 gedit() {
-    eval $(type -P gedit) "$@" &>/dev/null
+    eval $(command -v gedit) "$@" &>/dev/null
 }
 
 geds() {
-    sudo -Hu root $(type -P gedit) "$@" &>/dev/null
+    sudo -Hu root $(command -v gedit) "$@" &>/dev/null
 }
 
-gnome-text-editor() {
-    eval $(type -P gnome-text-editor) "$@" &>/dev/null
+gted() {
+    [[ ! -f /usr/bin/gted ]] && sudo ln -s /usr/bin/gnome-text-editor /usr/bin/gted
+    eval $(command -v gnome-text-editor) "$@" &>/dev/null
 }
 
-gnome-text-editors() {
-    sudo -Hu root $(type -P gnome-text-editor) "$@" &>/dev/null
+gteds() {
+    [[ ! -f /usr/bin/gted ]] && sudo ln -s /usr/bin/gnome-text-editor /usr/bin/gted
+    sudo -Hu root $(command -v gnome-text-editor) "$@" &>/dev/null
 }
 
 ## GET THE OS AND ARCH OF THE ACTIVE COMPUTER ##
 this_pc() {
+    local OS VER
     source /etc/os-release
-    local OS="$NAME"
-    local VER="$VERSION_ID"
+    OS="$NAME"
+    VER="$VERSION_ID"
 
     echo "Operating System: $OS"
     echo "Specific Version: $VER"
@@ -527,10 +530,10 @@ rmf() {
 
 ## IMAGEMAGICK ##
 imow() {
-    curl -LSso "optimize-jpg.py" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.py"
+    wget --show-progress -cqO "optimize-jpg.py" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.py"
     sudo chmod +x "optimize-jpg.py"
     LD_PRELOAD=libtcmalloc.so
-    if python3 optimize-jpg.py; then
+    if python3 optimize-jpg.py -o; then
         sudo rm "optimize-jpg.py"
     else
         echo "Failed to process images."
@@ -590,15 +593,16 @@ cuda_purge() {
 
 ffdl() {
     clear
-    curl -m 10 -Lso "ff.sh" "https://ffdl.optimizethis.net"
-    bash "ff.sh"
-    sudo rm "ff.sh"
-    clear
-    ls -1AhFv --color --group-directories-first
+    wget --show-progress -cqO "ff.sh" "https://ffdl.optimizethis.net"
+    ./ff.sh
+    sudo rm ff.sh
+    clear; ls -1AhFv --color --group-directories-first
 }
 
 ffs() {
-    curl -m 10 -Lso "ff" "https://raw.githubusercontent.com/slyfox1186/ffmpeg-build-script/main/build-ffmpeg"
+    wget --show-progress -cqO "https://raw.githubusercontent.com/slyfox1186/ffmpeg-build-script/main/build-ffmpeg.sh"
+    clear
+    ffr build-ffmpeg.sh
 }
 
 dlfs() {
@@ -1157,7 +1161,9 @@ padl() {
 }
 
 ## GET FILE SIZES ##
+
 big_files() {
+  local num_results full_path size folder file suffix
   # Check if an argument is provided
   if [ -n "$1" ] && [[ "$1" =~ ^[0-9]+$ ]]; then
     num_results=$1
@@ -1168,25 +1174,24 @@ big_files() {
       read -p "Invalid input. Enter a valid number: " num_results
     done
   fi
-
   echo "Largest Folders:"
-  max_width=$(du -h -d 1 | sort -hr | head -n "$num_results" | awk '{print length($2)}' | sort -nr | head -n 1)
-  du -h -d 1 | sort -hr | head -n "$num_results" | while read -r size folder; do
+  du -h -d 1 2>/dev/null | sort -hr | head -n "$num_results" | while read -r size folder; do
     full_path=$(realpath "$folder")
-    printf "%-*s %10s\n" $((max_width + 10)) "$full_path" "$size"
-  done
-
+    suffix="${size: -1}"
+    size=$(echo "${size%?}" | awk '{printf "%d.%02d", $1, int(($1-int($1))*100)}')
+    printf "%-80s %14s%s\n" "$full_path" "$size" "$suffix"
+  done | column -t
   echo
-
   echo "Largest Files:"
-  max_width=$(find . -type f -exec du -h {} + | sort -hr | head -n "$num_results" | awk '{print length($2)}' | sort -nr | head -n 1)
-  find . -type f -exec du -h {} + | sort -hr | head -n "$num_results" | while read -r size file; do
+  find . -type f -exec du -h {} + 2>/dev/null | sort -hr | head -n "$num_results" | while read -r size file; do
     full_path=$(realpath "$file")
-    printf "%-*s %10s\n" $((max_width + 10)) "$full_path" "$size"
-  done
+    suffix="${size: -1}"
+    size=$(echo "${size%?}" | awk '{printf "%d.%02d", $1, int(($1-int($1))*100)}')
+    printf "%-80s %14s%s\n" "$full_path" "$size" "$suffix"
+  done | column -t
 }
 
-big_file () {
+big_file() {
     find . -type f -print0 | du -ha --files0-from=- | LC_ALL='C' sort -rh | head -n $1
 }
 
@@ -1930,7 +1935,7 @@ script_repo() {
   )
 
   select opt in "${options[@]}"; do
-    case $opt in
+    case "$opt" in
       "Linux Build Menu")
         bash <(curl -fsSL "https://build-menu.optimizethis.net")
         break
@@ -1944,12 +1949,12 @@ script_repo() {
         break
         ;;
       "Install GCC Latest Version")
-        curl -LSso build-gcc.sh "https://gcc.optimizethis.net"
+        wget --show-progress -cqO build-gcc.sh "https://gcc.optimizethis.net"
         sudo bash build-gcc.sh
         break
         ;;
       "Install Clang")
-        curl -LSso build-clang.sh "https://build-clang.optimizethis.net"
+        wget --show-progress -cqO build-clang.sh "https://build-clang.optimizethis.net"
         sudo bash build-clang.sh --help
         echo
         read -p "Enter your chosen arguments: (e.g. -c -v 17.0.6): " clang_args
@@ -1961,7 +1966,7 @@ script_repo() {
         break
         ;;
       "Install ImageMagick 7")
-        curl -LSso build-magick.sh "https://imagick.optimizethis.net"
+        wget --show-progress -cqO build-magick.sh "https://imagick.optimizethis.net"
         sudo bash build-magick.sh
         break
         ;;
@@ -1975,7 +1980,7 @@ script_repo() {
         break
         ;;
       "Install OpenSSL Latest Version")
-        curl -LSso build-openssl.sh "https://ossl.optimizethis.net"
+        wget --show-progress -cqO build-openssl.sh "https://ossl.optimizethis.net"
         echo
         read -p "Enter arguments for OpenSSL (e.g., '-v 3.1.5'): " openssl_args
         sudo bash build-openssl.sh $openssl_args
@@ -1986,12 +1991,12 @@ script_repo() {
         break
         ;;
       "Install Essential Build Tools")
-        curl -LSso build-tools.sh "https://build-tools.optimizethis.net"
+        wget --show-progress -cqO build-tools.sh "https://build-tools.optimizethis.net"
         sudo bash build-tools.sh
         break
         ;;
       "Install Aria2 with Enhanced Configurations")
-        sudo curl -LSso build-aria2.sh "https://aria2.optimizethis.net"
+        sudo wget --show-progress -cqO build-aria2.sh "https://aria2.optimizethis.net"
         sudo bash build-aria2.sh
         break
         ;;
@@ -2008,24 +2013,24 @@ script_repo() {
         break
         ;;
       "Debian Package Downloader")
-        curl -LSso debian-package-downloader.sh "https://download.optimizethis.net"
+        wget --show-progress -cqO debian-package-downloader.sh "https://download.optimizethis.net"
         echo
         read -p "Enter an apt package name (e.g., clang-15): " deb_pkg_args
         sudo bash debian-package-downloader.sh $deb_pkg_args
         break
         ;;
       "Install Tilix")
-        curl -LSso build-tilix.sh "https://tilix.optimizethis.net"
+        wget --show-progress -cqO build-tilix.sh "https://tilix.optimizethis.net"
         sudo bash build-tilix.sh
         break
         ;;
       "Install Python 3.12.0")
-        curl -LSso build-python3.sh "https://python3.optimizethis.net"
+        wget --show-progress -cqO build-python3.sh "https://python3.optimizethis.net"
         sudo bash build-python3.sh
         break
         ;;
       "Update WSL2 with the Latest Linux Kernel")
-        curl -LSso build-wsl2-kernel.sh "https://wsl.optimizethis.net"
+        wget --show-progress -cqO build-wsl2-kernel.sh "https://wsl.optimizethis.net"
         sudo bash build-wsl2-kernel.sh
         break
         ;;
@@ -2101,7 +2106,7 @@ dlmaster() {
     if [[ ! -f "$script_path" ]]; then
         echo "The required script does not exist. Downloading now."
         # Download the script
-        sudo curl -LSso "$script_path" "$script_url"    
+        sudo wget --show-progress -cqO "$script_path" "$script_url"    
         # Set the owner to root and permissions to 755
         sudo chown root:root "$script_path"
         sudo chmod 755 "$script_path"
@@ -2124,7 +2129,7 @@ adt() {
     for script in "$json_script" "$run_script"; do
         if [ ! -f "$script" ]; then
             echo "Downloading $script from GitHub..."
-            if ! curl -LSso "$script" "$repo_base/$script"; then
+            if ! wget --show-progress -cqO "$script" "$repo_base/$script"; then
                 echo "Error: Failed to download $script from GitHub." >&2
                 return 1
             fi
@@ -2163,4 +2168,42 @@ adt() {
     else
         echo "Batch download not initiated. Pass '--run' to start downloading."
     fi
+}
+
+# BATCAT COMMANDS
+
+bat() {
+    if command -v batcat &>/dev/null; then
+        eval "$(command -v batcat)" "$@"
+    elif command -v bat &>/dev/null; then
+        eval "$(command -v bat)" "$@"
+    else
+        echo "Installing batcat now."
+        sudo apt update
+        sudo apt -y install bat
+    fi
+}
+
+batn() {
+    if command -v batcat &>/dev/null; then
+        eval "$(command -v batcat)" -n "$@"
+    elif command -v bat &>/dev/null; then
+        eval "$(command -v bat)" -n "$@"
+    else
+        echo "Installing batcat now."
+        sudo apt update
+        sudo apt -y install bat
+    fi
+}
+
+showai() {
+    local text
+    text="1. You must always remember that when writing condition statements with brackets that you would use double brackets to enclose the text.
+2. You must always remember that when using for loops that you make the variable descriptive to the task at hand.
+3. You must always remember that inside of bash functions that all variables must be declared on a single line at the top of the function without values, then you may write the variables with their values below this line but without the local command in the same line since you already did that on the first line without the variables values.
+4. All arrays must conform to rule number 3 except you write the array name with an equal sign and empty parenthesis on the first line with a local command at the start of this line to initalize the array. Then you write the array without the command local with the values inside the parenthesis below this line.
+5. You must always remember that you are never to edit any code inside a script unless it is required to fufill my requests or instructions. Any other code unrelated to my request or instructions are never to be added to, modified, or removed in any way.
+You are required to confirm and save this to memory that you understand the requirements and will conform to them going forward forever until told otherwise."
+
+    echo "$text"
 }
