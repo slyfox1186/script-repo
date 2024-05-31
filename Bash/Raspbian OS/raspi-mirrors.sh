@@ -1,45 +1,38 @@
-
 #!/usr/bin/env bash
 
-if [[ "$EUID" -ne 0 ]]; then
+if [[ "${EUID}" -ne 0 ]]; then
     echo "You must run this script with root or sudo."
     exit 1
 fi
 
-<<<<<<< Updated upstream
-fname="/etc/apt/sources.list"
+fname=/etc/apt/sources.list
 
-if [[ ! -f "$fname.bak" ]]; then
-    cp -f "$fname" "$fname.bak"
-=======
-script_path=$(readlink -f "$BASH_SOURCE[0]")
-script_name=$(basename "$script_path")
-
-fname="/etc/apt/sources.list"
-
-if [ ! -f "$fname.bak" ]; then
-    cp -f "$fname" "$fname.bak"
->>>>>>> Stashed changes
+# Make a backup of the file
+if [[ ! -f "${fname}.bak" ]]; then
+    cp -f "${fname}" "${fname}.bak"
 fi
 
-cat > "$fname" <<EOF
+cat > "${fname}" <<'EOF'
+# Atlanta, GA (Custom)
 deb http://atl.mirrors.clouvider.net/debian/ bookworm main contrib non-free non-free-firmware
 deb http://atl.mirrors.clouvider.net/debian/ bookworm-updates main contrib non-free non-free-firmware
 deb http://atl.mirrors.clouvider.net/debian/ bookworm-backports main contrib non-free non-free-firmware
 
+# Official (Default)
 deb http://deb.debian.org/debian bookworm main contrib non-free non-free-firmware
 deb http://deb.debian.org/debian bookworm-updates main contrib non-free non-free-firmware
 deb http://deb.debian.org/debian bookworm-backports main contrib non-free non-free-firmware
 deb http://deb.debian.org/debian-security/ bookworm-security main contrib non-free non-free-firmware
 EOF
 
+# Open an editor to view the changes
 if command -v nano &>/dev/null; then
-    nano "$fname"
+    nano "${fname}"
 else
-    echo -e "\\nThe script failed to locate nano to open the file...\\n"
+    printf "\n%s\n" "The script failed to locate nano to open the file for viewing."
 fi
 
 script_path=$(readlink -f "${BASH_SOURCE[0]}")
-script_name=$(basename "$script_path")
+script_name="${script_path##*/}"
 
-[[ -f "$script_name" ]] && rm "$script_name"
+[[ -f "${script_name}" ]] && rm "${script_name}"
