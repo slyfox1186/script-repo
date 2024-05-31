@@ -13,10 +13,10 @@ if [[ ! -f "${fname}.bak" ]]; then
 fi
 
 cat > "${fname}" <<'EOF'
-deb https://security.debian.org/debian-security/ bookworm-security main contrib non-free non-free-firmware
 deb https://atl.mirrors.clouvider.net/debian/ bookworm main contrib non-free non-free-firmware
 deb https://atl.mirrors.clouvider.net/debian/ bookworm-updates main contrib non-free non-free-firmware
 deb https://atl.mirrors.clouvider.net/debian/ bookworm-backports main contrib non-free non-free-firmware
+deb https://security.debian.org/debian-security/ bookworm-security main contrib non-free non-free-firmware
 EOF
 
 # Open an editor to view the changes
