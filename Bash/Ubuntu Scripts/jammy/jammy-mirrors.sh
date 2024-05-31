@@ -5,9 +5,6 @@ if [[ "$EUID" -ne 0 ]]; then
     exit 1
 fi
 
-script_path=$(readlink -f "${BASH_SOURCE[0]}")
-script_name="${script_path##*/}"
-
 fname=/etc/apt/sources.list
 backup_fname="${fname}.bak"
 
@@ -24,8 +21,16 @@ deb http://security.ubuntu.com/ubuntu/ jammy-security main restricted universe m
 EOF
 
 # Open an editor to view the changes
-if command -v nano &>/dev/null; then
-    nano "$fname"
+if command -v gnome-text-editor &>/dev/null; then
+    sudo gnome-text-editor "$list"
+elif command -v gedit &>/dev/null; then
+    sudo gedit "$list"
+elif command -v nano &>/dev/null; then
+    sudo nano "$list"
+elif command -v vim &>/dev/null; then
+    sudo vim "$list"
+elif command -v vi &>/dev/null; then
+    sudo vi "$list"
 else
-    printf "\n%s\n" "The script failed to locate nano to open the file."
+    printf "\n%s\n" "Unable to open the sources.list file because no text editor was found."
 fi
