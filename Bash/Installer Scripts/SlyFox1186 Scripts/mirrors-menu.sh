@@ -35,7 +35,7 @@ execution_menu() {
     fi
 
     # Remove the temp directory
-    sudo rm -rf "$temp_dir"
+    sudo rm -fr "$temp_dir"
 
     # Exit after executing the script
     exit 0
