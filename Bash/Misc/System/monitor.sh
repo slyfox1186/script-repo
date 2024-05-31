@@ -14,19 +14,19 @@ log_file=""           # Log file path
 
 # Define colors
 declare -A eventcolors=(
-    [ACCESS]=$'\033[36m'             # Cyan for access events
-    [CREATE]=$'\033[32m'             # Green for create events
-    [DELETE]=$'\033[31m'             # Red for delete events
-    [MODIFY]=$'\033[33m'             # Yellow for modify events
-    [MOVE]=$'\033[35m'               # Magenta for move events
-    [MOVED_FROM]=$'\033[95m'         # Light Magenta for moved from events
-    [MOVED_TO]=$'\033[95m'           # Light Magenta for moved to events
-    [CREATE_ISDIR]=$'\033[1;32m'     # Bold Green for create, isdir events
+    [ACCESS]=$'\033[36m'          # Cyan for access events
+    [CREATE]=$'\033[32m'          # Green for create events
+    [DELETE]=$'\033[31m'          # Red for delete events
+    [MODIFY]=$'\033[33m'          # Yellow for modify events
+    [MOVE]=$'\033[35m'            # Magenta for move events
+    [MOVED_FROM]=$'\033[95m'      # Light Magenta for moved from events
+    [MOVED_TO]=$'\033[95m'        # Light Magenta for moved to events
+    [CREATE_ISDIR]=$'\033[1;32m'  # Bold Green for create, isdir events
     [MOVED_FROM_ISDIR]=$'\033[1;35m' # Bold Magenta for moved from, isdir events
     [MOVED_TO_ISDIR]=$'\033[1;35m'   # Bold Magenta for moved to, isdir events
-    [DELETE_ISDIR]=$'\033[1;31m'     # Bold Red for delete, isdir events
-    [MODIFY_ISDIR]=$'\033[1;33m'     # Bold Yellow for modify, isdir events
-    [RESET]=$'\033[0m'               # Resets the color to none
+    [DELETE_ISDIR]=$'\033[1;31m'  # Bold Red for delete, isdir events
+    [MODIFY_ISDIR]=$'\033[1;33m'  # Bold Yellow for modify, isdir events
+    [RESET]=$'\033[0m'            # Resets the color to none
 )
 
 # Function to display help
