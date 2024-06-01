@@ -1,15 +1,19 @@
 #!/usr/bin/env python3
 
-import os
-import sys
 import argparse
+import concurrent.futures
+import glob
+import logging
+import os
 import subprocess
+import sys
 import tempfile
-from multiprocessing import cpu_count, Pool
 from functools import partial
+from pathlib import Path
+from typing import List, Optional
 
 # Constants
-MAX_THREADS = 32  # User can set the maximum number of threads here
+MAX_THREADS = 32
 
 MAGICK_LIMITS = {
     'MAGICK_AREA_LIMIT': '1GP',
@@ -25,104 +29,107 @@ MAGICK_LIMITS = {
 os.environ.update(MAGICK_LIMITS)
 
 # Argument parser
-def parse_arguments():
+def parse_arguments() -> argparse.Namespace:
+    """Parse command-line arguments."""
     parser = argparse.ArgumentParser(description='Optimize JPG images.')
-    parser.add_argument('-d', '--dir', default='.', help='Specify the working directory where images are located.')
-    parser.add_argument('-o', '--overwrite', action='store_true', help='Enable overwrite mode. Original images will be overwritten.')
-    parser.add_argument('-v', '--verbose', action='store_true', help='Enable verbose output.')
-    parser.add_argument('-t', '--threads', type=int, default=MAX_THREADS, help='Specify the maximum number of threads to use (default is set by MAX_THREADS variable).')
+    parser.add_argument('-d', '--dir', type=Path, default=Path.cwd(),
+                        help='Specify the working directory where images are located.')
+    parser.add_argument('-o', '--overwrite', action='store_true',
+                        help='Enable overwrite mode. Original images will be overwritten.')
+    parser.add_argument('-v', '--verbose', action='store_true',
+                        help='Enable verbose output.')
+    parser.add_argument('-t', '--threads', type=int, default=MAX_THREADS,
+                        help='Specify the maximum number of threads to use.')
     return parser.parse_args()
 
-# Logging function
-def log(message, verbose):
-    if verbose:
-        print(message)
+# Logging configuration
+logging.basicConfig(level=logging.INFO, format='%(message)s')
+logger = logging.getLogger(__name__)
 
 # Image processing function
-def process_image(infile, overwrite_mode, verbose_mode):
-    base_name, extension = os.path.splitext(infile)
+def process_image(infile: Path, overwrite_mode: bool, verbose_mode: bool) -> None:
+    """Process a single image file."""
+    if infile.name.endswith('-IM.jpg') or infile.name.endswith('-IM.jpeg'):
+        logger.info(f"Skipped: {infile}")
+        return
+
+    base_name = infile.stem
     with tempfile.TemporaryDirectory() as temp_dir:
-        mpc_file = os.path.join(temp_dir, f"{os.path.basename(base_name)}.mpc")
-        outfile = f"{base_name}-IM{extension}"
+        mpc_file = Path(temp_dir) / f"{base_name}.mpc"
+        outfile = infile.with_name(f"{base_name}-IM.jpg")
 
         convert_base_opts = [
             '-filter', 'Triangle', '-define', 'filter:support=2',
-            '-thumbnail', subprocess.check_output(['identify', '-ping', '-format', '%wx%h', infile]).decode('utf-8').strip(),
-            '-strip', '-unsharp', '0.25x0.08+8.3+0.045', '-dither', 'None', '-posterize', '136', '-quality', '82',
-            '-define', 'jpeg:fancy-upsampling=off', '-auto-level', '-enhance', '-interlace', 'none',
-            '-colorspace', 'sRGB'
+            '-thumbnail', subprocess.check_output(['identify', '-ping',
+            '-format', '%wx%h', str(infile)]).decode('utf-8').strip(),
+            '-strip', '-unsharp', '0.25x0.08+8.3+0.045', '-dither', 'None',
+            '-posterize', '136', '-quality', '82', '-define', 'jpeg:fancy-upsampling=off',
+            '-auto-level', '-enhance', '-interlace', 'none', '-colorspace', 'sRGB'
         ]
 
-        # First attempt to process with full options
         try:
-            subprocess.run(['convert', infile] + convert_base_opts + ['-sampling-factor', '2x2', '-limit', 'area', '0', mpc_file], check=True)
+            subprocess.run(['convert', str(infile)] + convert_base_opts +
+                           ['-sampling-factor', '2x2', '-limit', 'area', '0', str(mpc_file)],
+                           check=True)
         except subprocess.CalledProcessError:
-            log(f"First attempt failed for {infile}, retrying without '-sampling-factor 2x2 -limit area 0'...", verbose_mode)
+            if verbose_mode:
+                logger.warning(f"First attempt failed for {infile}, retrying without '-sampling-factor 2x2 -limit area 0'...")
             try:
-                subprocess.run(['convert', infile] + convert_base_opts + [mpc_file], check=True)
+                subprocess.run(['convert', str(infile)] + convert_base_opts + [str(mpc_file)], check=True)
             except subprocess.CalledProcessError:
-                log(f"Error: Second attempt failed for {infile} as well.", verbose_mode)
+                logger.error(f"Error: Second attempt failed for {infile} as well.")
                 return
 
-        # Final convert from MPC to output image
         try:
-            subprocess.run(['convert', mpc_file, outfile], check=True)
-            print(f"Processed: {outfile}")
+            subprocess.run(['convert', str(mpc_file), str(outfile)], check=True)
+            logger.info(f"Processed: {outfile}")
         except subprocess.CalledProcessError:
-            print(f"Failed to process: {outfile}")
+            logger.error(f"Failed to process: {outfile}")
 
-        # Cleanup
         if overwrite_mode:
-            os.remove(infile)
+            infile.unlink()
 
 # Function to check if google_speech is installed and send notification
-def notify_completion():
-    google_speech_installed = True
+def notify_completion() -> bool:
+    """Check if google_speech is installed and send notification."""
     try:
         import google_speech
         subprocess.run(['google_speech', 'Image optimizations completed.'], check=True)
+        return True
     except ImportError:
-        google_speech_installed = False
-        print("google_speech package is not installed. Skipping notification.")
-
-    return google_speech_installed
+        logger.warning("google_speech package is not installed. Skipping notification.")
+        return False
 
 # Main function
-def main():
+def main() -> None:
+    """Main function."""
     args = parse_arguments()
 
     # Change to the specified working directory
-    try:
-        os.chdir(args.dir)
-    except FileNotFoundError:
-        print(f"Specified directory {args.dir} does not exist. Exiting.")
+    if not args.dir.is_dir():
+        logger.error(f"Specified directory {args.dir} does not exist. Exiting.")
         sys.exit(1)
 
-    # Check for running processes and terminate them
-    for process in ['magick', 'convert', 'parallel']:
-        try:
-            subprocess.run(['pkill', '-x', process], check=True)
-            log(f"Terminating running process: {process}", args.verbose)
-        except subprocess.CalledProcessError:
-            pass
+    os.chdir(args.dir)
+
+    # Find JPG and JPEG images and process them
+    image_files = glob.glob('*.jpg') + glob.glob('*.jpeg')
 
     # Determine the number of parallel jobs
     num_jobs = min(MAX_THREADS, args.threads)
-    log(f"Starting image processing with {num_jobs} parallel jobs...", args.verbose)
+    logger.info(f"Starting image processing with {num_jobs} parallel jobs...")
 
-    # Find JPG images and process them
-    jpg_files = [f for f in os.listdir(args.dir) if f.lower().endswith('.jpg') and not f.lower().endswith('-im.jpg')]
-
-    with Pool(num_jobs) as pool:
-        pool.map(partial(process_image, overwrite_mode=args.overwrite, verbose_mode=args.verbose), jpg_files)
+    # Process images in parallel
+    with concurrent.futures.ThreadPoolExecutor(max_workers=num_jobs) as executor:
+        futures = [executor.submit(process_image, infile, args.overwrite, args.verbose)
+                   for infile in image_files]
+        concurrent.futures.wait(futures)
 
     # Notify completion if google_speech is installed
-    google_speech_installed = notify_completion()
+    notify_completion()
 
     # Print the parent path
-    parent_path = os.path.abspath(args.dir)
-    print("\n")
-    print(f"Processing complete: {parent_path}")
+    logger.info(f"\nProcessing complete: {args.dir.absolute()}")
 
 if __name__ == "__main__":
     main()
