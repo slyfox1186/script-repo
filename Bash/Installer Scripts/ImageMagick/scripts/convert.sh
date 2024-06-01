@@ -160,36 +160,38 @@ process_image() {
     }
 
     case "$output_type" in
-        jpg)
-            mpc_file="$temp_dir/${base_name%.*}.mpc"
-            if ! convert "$file" "${convert_base_opts[@]}" -sampling-factor 2x2 -limit area 0 "$mpc_file"; then
-                [[ "$verbose" == "true" ]] && log_message "First attempt failed, retrying without '-sampling-factor 2x2 -limit area 0'..."
-                if ! convert "$file" "${convert_base_opts[@]}" "$mpc_file"; then
-                    [[ "$verbose" == "true" ]] && log_message "Error: Second attempt failed as well."
-                    rm -fr "$temp_dir"
-                    return 1
-                fi
-            fi
-            convert "$mpc_file" "$output_file"
-            ;;
         png)
-            if [[ "$max_file_size" -gt 0 ]]; then
-                temp_file="$temp_dir/temp.png"
-                size_kb=0
-                min_quality=10
-                max_quality="$quality"
-                mid_quality=0
+            if [[ "$png_output_choice" == "2" || "$png_output_choice" == "3" ]]; then
+                color=$( convert "$file" -format "%[pixel:p{0,0}]" info:- )
+                convert "$file" -alpha off -bordercolor $color -border 1 \
+                    \( +clone -fuzz 30% -fill none -floodfill +0+0 $color \
+                       -alpha extract -geometry 200% -blur 0x0.5 \
+                       -morphology erode square:1 -geometry 50% \) \
+                    -compose CopyOpacity -composite -shave 1 "${output_file%.*}-transparent.png"
+                echo -e "${GREEN}[INFO]${NC} Convert success: $file to ${output_file%.*}-transparent.png"
+                log_message "Convert success: $file to ${output_file%.*}-transparent.png"
+            fi
+            if [[ "$png_output_choice" == "1" || "$png_output_choice" == "3" ]]; then
+                if [[ "$max_file_size" -gt 0 ]]; then
+                    temp_file="$temp_dir/temp.png"
+                    size_kb=0
+                    min_quality=10
+                    max_quality="$quality"
+                    mid_quality=0
 
-                convert_image "$quality"
-                while [[ "$size_kb" -gt "$max_file_size" ]] && [[ "$min_quality" -lt "$max_quality" ]]; do
-                    mid_quality=$(( (min_quality + max_quality) / 2 ))
-                    max_quality=$(( mid_quality - 1 ))
-                    min_quality=$(( mid_quality + 1 ))
-                    convert_image "$mid_quality"
-                done
-                mv "$temp_file" "$output_file"
-            else
-                convert "$file" "${convert_base_opts[@]}" "${png_opts[@]}" "$output_file"
+                    convert_image "$quality"
+                    while [[ "$size_kb" -gt "$max_file_size" ]] && [[ "$min_quality" -lt "$max_quality" ]]; do
+                        mid_quality=$(( (min_quality + max_quality) / 2 ))
+                        max_quality=$(( mid_quality - 1 ))
+                        min_quality=$(( mid_quality + 1 ))
+                        convert_image "$mid_quality"
+                    done
+                    mv "$temp_file" "$output_file"
+                else
+                    convert "$file" "${convert_base_opts[@]}" "${png_opts[@]}" "$output_file"
+                fi
+                echo -e "${GREEN}[INFO]${NC} Convert success: $file to $output_file"
+                log_message "Convert success: $file to $output_file"
             fi
             ;;
         bmp)
@@ -215,7 +217,7 @@ process_image() {
             [[ -d "$sizes_dir" ]] && [[ -z "$(ls -A "$sizes_dir")" ]] && rm -fr "$sizes_dir"
             ;;
         ico)
-            convert -background none "$file" -define icon:auto-resize="$icon_sizes" "$output_file"
+            convert -background transparent "$file" -alpha off -define icon:auto-resize="$icon_sizes" "$output_file"
             ;;
         *)
             convert "$file" "${convert_base_opts[@]}" "$additional_args" "$output_file"
@@ -335,6 +337,17 @@ main() {
         output_types=(bmp ico jpg png tiff webp)
     fi
 
+    # Prompt user for PNG output choice if PNG is selected
+    if [[ " ${output_types[*]} " == *" png "* ]]; then
+        echo
+        echo "Select PNG output choice:"
+        echo "1. Standard conversion"
+        echo "2. Transparent PNG"
+        echo "3. Both"
+        echo
+        read -r -p "Enter your choice (1, 2, or 3): " png_output_choice
+    fi
+
     # Validate output types
     for output_type in "${output_types[@]}"; do
         if [[ ! " bmp ico jfif jpg png tiff webp " =~ $output_type ]]; then
@@ -347,15 +360,14 @@ main() {
     if [[ "$parallel" == "true" ]]; then
         export -f get_file_type log_message process_image resize_if_needed
         for output_type in "${output_types[@]}"; do
-            echo "$img_files" | tr ' ' '\n' | parallel --lb -j 16 process_image {} "$output_type"
+            echo "$img_files" | tr ' ' '\n' | parallel --lb -j 16 process_image {} "$output_type" "$png_output_choice"
         done
     else
         for img in $img_files; do
             for output_type in "${output_types[@]}"; do
-                process_image "$img" "$output_type"
-            end
+                process_image "$img" "$output_type" "$png_output_choice"
+            done
         done
-    done
     fi
 }
 
