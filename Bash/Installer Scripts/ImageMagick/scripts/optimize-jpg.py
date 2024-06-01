@@ -38,8 +38,6 @@ def parse_arguments() -> argparse.Namespace:
                         help='Enable overwrite mode. Original images will be overwritten.')
     parser.add_argument('-v', '--verbose', action='store_true',
                         help='Enable verbose output.')
-    parser.add_argument('-t', '--threads', type=int, default=MAX_THREADS,
-                        help='Specify the maximum number of threads to use.')
     return parser.parse_args()
 
 # Logging configuration
@@ -117,7 +115,7 @@ def main() -> None:
     image_files = [Path(f) for f in image_files]
 
     # Process images in parallel
-    with concurrent.futures.ThreadPoolExecutor(max_workers=args.threads) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_THREADS) as executor:
         futures = [executor.submit(process_image, infile, args.overwrite, args.verbose)
                    for infile in image_files]
         concurrent.futures.wait(futures)
