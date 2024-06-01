@@ -121,7 +121,7 @@ def main():
 
     # Print the parent path
     parent_path = os.path.abspath(args.dir)
-    print(f"Processing complete: {parent_path}")
+    print(f"\nProcessing complete: {parent_path}")
 
 if __name__ == "__main__":
     main()
