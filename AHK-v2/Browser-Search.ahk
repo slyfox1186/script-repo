@@ -39,7 +39,7 @@
     A_Clipboard := ""
 
     SendInput("^c")
-    ClipWait(0.25)
+    ClipWait(0.5)
     ; Ensure the clipboard is not empty and wait a bit more if it is
     if !(A_Clipboard)
         A_Clipboard := ClipSaved
