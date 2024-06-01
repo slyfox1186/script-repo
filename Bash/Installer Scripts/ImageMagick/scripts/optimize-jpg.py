@@ -94,7 +94,7 @@ def notify_completion() -> bool:
     """Check if google_speech is installed and send notification."""
     try:
         import google_speech
-        subprocess.run(['google_speech', 'Image optimizations completed.'], check=True)
+        subprocess.run(['google_speech', 'Image optimization completed.'], check=True)
         return True
     except ImportError:
         logger.warning("google_speech package is not installed. Skipping notification.")
