@@ -114,13 +114,10 @@ def main() -> None:
 
     # Find JPG and JPEG images and process them
     image_files = glob.glob('*.jpg') + glob.glob('*.jpeg')
-
-    # Determine the number of parallel jobs
-    num_jobs = min(MAX_THREADS, args.threads)
-    logger.info(f"Starting image processing with {num_jobs} parallel jobs...")
+    image_files = [Path(f) for f in image_files]
 
     # Process images in parallel
-    with concurrent.futures.ThreadPoolExecutor(max_workers=num_jobs) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=args.threads) as executor:
         futures = [executor.submit(process_image, infile, args.overwrite, args.verbose)
                    for infile in image_files]
         concurrent.futures.wait(futures)
