@@ -3,7 +3,6 @@
     a Google search query for regular text strings or if the text is an actual url/website/link
     then the script will send it directly to the Browser without using Google so the website loads
     directly.
-
     Instructions:
     1. Use the script WindowSpy.ahk to replace the variable 'win' with the correct text
        that identifies your default browser.
@@ -52,14 +51,10 @@
             continue
         ; searchText values that are a url/website/link will be passed directly to the browser as a non-Google search query
         if RegExMatch(searchText, "i)^(https?:\/\/)?([a-z0-9\-]+\.)+[a-z]{2,6}(\/.*)?$")
-        {
             searchThis := searchText
-        }
         else
-        {
-            ; searchText values that are not a url/website/link will be passed as a Google search query
             searchThis := "https://google.com/search?q=" . '"' . searchText . '"'
-        }
+
         ; Open the browser with the URL or search query
         Run(Browser . " --new-tab " . searchThis,, "Max")
         ; Attempt to bring the browser window to the foreground
