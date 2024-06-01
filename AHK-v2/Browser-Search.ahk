@@ -99,9 +99,8 @@
         Sleep 650 ; There is a Small delay to ensure the command is processed
     }
 
-    ; Restore the original clipboard content
-    A_Clipboard := ClipSaved
-    ClipSaved := "" ; Free the memory in case the clipboard was extensive
+    ; Free the memory in case the clipboard was extensive
+    ClipSaved := ""
 
     ; Clear the clipboard
     A_Clipboard := ""
