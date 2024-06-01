@@ -30,6 +30,7 @@
     mail.google.com
     https://github.com/slyfox1186/script-repo/
 */
+
 ^!c::
 {
     Browser := GetDefaultBrowser()
@@ -38,15 +39,8 @@
     A_Clipboard := ""
 
     SendInput("^c")
-    ClipWait(0.5)
+    ClipWait(0.25)
     ; Ensure the clipboard is not empty and wait a bit more if it is
-    if !(A_Clipboard)
-    {
-        Sleep 100 ; Extra delay to ensure the clipboard is updated
-        SendInput("^c")
-        ClipWait(0.5)
-    }
-    ; Ensure the clipboard is not empty
     if !(A_Clipboard)
         A_Clipboard := ClipSaved
 
