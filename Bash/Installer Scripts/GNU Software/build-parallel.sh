@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 
 # Purpose: Build GNU Parallel from source code
-# Updated: 04.04.24
-# Script version: 2.6
-# Optimizations: Efficiency, readability, functionality, error handling, best practices
+# Updated: 06.01.24
+# Script version: 2.7
 
 # ANSI color codes
 RED='\033[0;31m'
@@ -52,11 +51,11 @@ parse_arguments() {
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
             -v|--version)
-                DOWNLOAD_VERSION="$2"
+                version="$2"
                 shift 2
                 ;;
             -l|--latest)
-                DOWNLOAD_VERSION="latest"
+                version="latest"
                 shift
                 ;;
             -h|--help)
@@ -79,9 +78,17 @@ verify_not_root() {
 
 # Check and install missing dependencies
 check_dependencies() {
-    local missing_deps=()
-    for dep in "${DEPENDENCIES[@]}"; do
-        if ! dpkg -l "$dep" &>/dev/null; then
+    local dependencies=() missing_deps=()
+
+    dependencies=(
+        autoconf autoconf-archive autogen automake binutils bison
+        build-essential bzip2 ccache curl libc6-dev libpth-dev
+        libtool libtool-bin lzip lzma-dev m4 nasm texinfo zlib1g-dev
+        yasm
+    )
+
+    for dep in "${dependencies[@]}"; do
+        if ! dpkg -s "$dep" &>/dev/null; then
             missing_deps+=("$dep")
         fi
     done
@@ -100,10 +107,11 @@ cleanup() {
     read -p "Remove temporary build directory '$cwd'? [y/N] " response
     case "$response" in
         [yY]*|"")
-        sudo rm -rf "$cwd"
-        log "Build directory removed."
-        ;;
-        [nN]*) ;;
+            sudo rm -rf "$cwd"
+            log "Build directory removed."
+            ;;
+        [nN]*)
+            ;;
     esac
 }
 
@@ -121,28 +129,28 @@ download_and_extract() {
     cd "$cwd" || exit 1
 
     # Download the source code files
-    if [[ "$DOWNLOAD_VERSION" == "latest" ]]; then
-        ARCHIVE_URL="https://ftp.gnu.org/gnu/parallel/parallel-latest.tar.bz2"
+    if [[ "$version" == "latest" ]]; then
+        archive_url="https://ftp.gnu.org/gnu/parallel/parallel-20240522.tar.bz2"
     else
-        ARCHIVE_URL="https://ftp.gnu.org/gnu/parallel/parallel-$DOWNLOAD_VERSION.tar.bz2"
+        archive_url="https://ftp.gnu.org/gnu/parallel/parallel-$version.tar.bz2"
     fi
 
-    curl --connect-timeout 2 --retry 2 -LSso "$PROGRAM_NAME-$DOWNLOAD_VERSION.tar.bz2" "$ARCHIVE_URL"
+    curl --connect-timeout 2 --retry 2 -LSso "$prog_name-$version.tar.bz2" "$archive_url"
  
     # Extract source code
-    tar -jxf "$PROGRAM_NAME-$DOWNLOAD_VERSION.tar.bz2" --strip-components 1
+    tar -jxf "$prog_name-$version.tar.bz2" --strip-components 1
 }
 
 # Build and install
 build_and_install() {
     # Build process
-    ./configure --prefix="$INSTALL_DIR"
+    ./configure --prefix="$install_dir"
     make "-j$(nproc --all)"
     sudo make install
 
     # Create symbolic links
-    sudo ln -sf "$INSTALL_DIR/bin/parallel" "/usr/local/bin/parallel"
-    sudo ln -sf "$INSTALL_DIR/share/man/man1/parallel.1" "/usr/local/share/man/man1/parallel.1"
+    sudo ln -sf "$install_dir/bin/parallel" "/usr/local/bin/parallel"
+    sudo ln -sf "$install_dir/share/man/man1/parallel.1" "/usr/local/share/man/man1/parallel.1"
 }
 
 # Main script
@@ -150,7 +158,7 @@ main() {
     parse_arguments "$@"
     verify_not_root
     check_dependencies
-    log "Building GNU $PROGRAM_NAME from source."
+    log "Building GNU $prog_name from source."
     echo
     download_and_extract
     build_and_install
@@ -159,19 +167,11 @@ main() {
 }
 
 # Variables
-PROGRAM_NAME="parallel"
-[[ -z ${DOWNLOAD_VERSION+x} ]] && DOWNLOAD_VERSION="20240322"
-ARCHIVE_URL="https://ftp.gnu.org/gnu/parallel/$PROGRAM_NAME-$DOWNLOAD_VERSION.tar.bz2"
-cwd="$PWD/$PROGRAM_NAME-build-script"
-INSTALL_DIR="/usr/local/$PROGRAM_NAME-$DOWNLOAD_VERSION"
+prog_name="parallel"
+version=$(curl -fsS "https://ftp.gnu.org/gnu/parallel/" | grep -oP 'parallel-\K\d+' | sort -ruV | head -n1)
+archive_url="https://ftp.gnu.org/gnu/parallel/$prog_name-$version.tar.bz2"
+cwd="$PWD/$prog_name-build-script"
+install_dir="/usr/local/$prog_name-$version"
 CLEANUP="false"
-
-# Dependencies
-DEPENDENCIES=(
-    autoconf autoconf-archive autogen automake binutils bison
-    build-essential bzip2 ccache curl libc6-dev libpth-dev
-    libtool libtool-bin lzip lzma-dev m4 nasm texinfo zlib1g-dev
-    yasm
-)
 
 main "$@"
