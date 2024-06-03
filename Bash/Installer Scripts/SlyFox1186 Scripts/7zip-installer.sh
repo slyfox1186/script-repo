@@ -10,6 +10,7 @@
 readonly script_version="3.4"
 readonly working="$PWD/7zip-install-script"
 readonly install_dir="/usr/local/bin"
+readonly download_files_dir="$working/7zip-$version"
 no_cleanup=false
 
 # Ansi escape codes for colors
@@ -222,7 +223,6 @@ esac
 
 # Create variables to make the script easier to read
 tar_file="7zip-$version.tar.xz"
-output_dir="$working/7zip-$version"
 
 # Clean up any found existing installation directory
 if [[ -d "$working" ]]; then
@@ -232,24 +232,24 @@ if [[ -d "$working" ]]; then
 fi
 
 # Create the installation directory and the output folder to store the sourced files
-mkdir -p "$output_dir"
+mkdir -p "$download_files_dir"
 
 # Download the source files if not already downloaded
 [[ ! -f "$working/$tar_file" ]] && download "$url" "$working/$tar_file"
 
 # Extract the downloaded files
-if ! tar -xf "$working/$tar_file" -C "$output_dir"; then
+if ! tar -xf "$working/$tar_file" -C "$download_files_dir"; then
     fail "The script was unable to extract the archive: '$working/$tar_file'"
 fi
 
 # Copy the 7z binary file to the /usr/local/bin folder
 case "$OS" in
     linux)
-        sudo cp -f "$output_dir/7zzs" "$install_dir/7z" || fail "The script was unable to copy the static file '7zzs' to '$install_dir/7z'"
+        sudo cp -f "$download_files_dir/7zzs" "$install_dir/7z" || fail "The script was unable to copy the static file '7zzs' to '$install_dir/7z'"
         sudo chmod 755 "$install_dir/7z"
         ;;
     macos)
-        sudo cp -f "$output_dir/7zz" "$install_dir/7z" || fail "The script was unable to copy the static file '7zz' to '$install_dir/7z'"
+        sudo cp -f "$download_files_dir/7zz" "$install_dir/7z" || fail "The script was unable to copy the static file '7zz' to '$install_dir/7z'"
         sudo chmod 755 "$install_dir/7z"
         ;;
 esac
