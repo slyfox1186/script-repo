@@ -53,36 +53,53 @@ def process_image(infile: Path, overwrite_mode: bool, verbose_mode: bool) -> Non
 
     base_name = infile.stem
     with tempfile.TemporaryDirectory() as temp_dir:
-        mpc_file = Path(temp_dir) / f"{base_name}.mpc"
+        resized_image_path = Path(temp_dir) / infile.name
+
+        # Resize image if dimensions are too large
+        try:
+            img_info = subprocess.check_output(['identify', '-ping', '-format', '%wx%h', str(infile)])
+            orig_width, orig_height = map(int, img_info.decode('utf-8').strip().split('x'))
+            max_width, max_height = 8000, 6000
+
+            if orig_width > max_width or orig_height > max_height:
+                if verbose_mode:
+                    logger.info(f"Resizing {infile} from {orig_width}x{orig_height} to {max_width}x{max_height}...")
+                subprocess.run([
+                    'convert', str(infile), '-resize', f'{max_width}x{max_height}', 
+                    '-filter', 'Lanczos', '-sampling-factor', '1x1', 
+                    '-unsharp', '1.5x1+0.7+0.02', '-quality', '90', str(resized_image_path)
+                ], check=True)
+            else:
+                resized_image_path = infile
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Failed to get image dimensions or resize image: {infile}. Error: {e}")
+            return
+
         outfile = infile.with_name(f"{base_name}-IM.jpg")
 
         convert_base_opts = [
             '-filter', 'Triangle', '-define', 'filter:support=2',
             '-thumbnail', subprocess.check_output(['identify', '-ping',
-            '-format', '%wx%h', str(infile)]).decode('utf-8').strip(),
+            '-format', '%wx%h', str(resized_image_path)]).decode('utf-8').strip(),
             '-strip', '-unsharp', '0.25x0.08+8.3+0.045', '-dither', 'None',
             '-posterize', '136', '-quality', '82', '-define', 'jpeg:fancy-upsampling=off',
             '-auto-level', '-enhance', '-interlace', 'none', '-colorspace', 'sRGB'
         ]
 
         try:
-            subprocess.run(['convert', str(infile)] + convert_base_opts +
-                           ['-sampling-factor', '2x2', '-limit', 'area', '0', str(mpc_file)],
+            subprocess.run(['convert', str(resized_image_path)] + convert_base_opts +
+                           ['-sampling-factor', '2x2', '-limit', 'area', '0', str(outfile)],
                            check=True)
         except subprocess.CalledProcessError:
             if verbose_mode:
                 logger.warning(f"First attempt failed for {infile}, retrying without '-sampling-factor 2x2 -limit area 0'...")
             try:
-                subprocess.run(['convert', str(infile)] + convert_base_opts + [str(mpc_file)], check=True)
+                subprocess.run(['convert', str(resized_image_path)] + convert_base_opts + [str(outfile)], check=True)
             except subprocess.CalledProcessError:
                 logger.error(f"Error: Second attempt failed for {infile} as well.")
                 return
 
-        try:
-            subprocess.run(['convert', str(mpc_file), str(outfile)], check=True)
-            logger.info(f"Processed: {outfile}")
-        except subprocess.CalledProcessError:
-            logger.error(f"Failed to process: {outfile}")
+        logger.info(f"Processed: {outfile}")
 
         if overwrite_mode:
             infile.unlink()
