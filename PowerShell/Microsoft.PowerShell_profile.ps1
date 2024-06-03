@@ -67,5 +67,3 @@ foreach ($module in $modules) {
         Write-Error "Failed to import module ${module}: $($_.Exception.Message)"
     }
 }
-
-# Additional configurations (if any)
