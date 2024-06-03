@@ -50,7 +50,7 @@
         if !(searchText)
             continue
         ; searchText values that are a url/website/link will be passed directly to the browser as a non-Google search query
-        if RegExMatch(searchText, "i)^(https?:\/\/)?([a-z0-9\-]+\.)+[a-z]{2,6}(\/.*)?$")
+        if RegExMatch(searchText, "i)\b((?:(?:https?|ftp):\/\/)?(?:[\w-]+\.)+[a-z]{2,})(?:\/[^\s]*)?\b")
             searchThis := searchText
         else
             searchThis := "https://google.com/search?q=" . '"' . searchText . '"'
