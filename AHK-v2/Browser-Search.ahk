@@ -60,9 +60,8 @@
         ; Attempt to bring the browser window to the foreground
         If !WinExist(win)
             WinWait(win,, 2)
-        else if !WinActive(win)
-            WinActivate(win)
-        Sleep 650 ; There is a Small delay to ensure the command is processed
+        WinActivate(win)
+        Sleep 600 ; There is a Small delay to ensure the command is processed
     }
     ; Free the memory in case the clipboard was extensive
     ClipSaved := ""
