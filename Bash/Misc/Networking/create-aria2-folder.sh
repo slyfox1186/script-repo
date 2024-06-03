@@ -149,5 +149,5 @@ EOF
 
 sed -i -e 's/ http/,http/g' -i -e 's/ https/,https/g' -i -e 's/ udp/,udp/g' "$file"
 
-sudo chmod -R 700 "$DIR"
-sudo chown -R "$USER:$USER" "$DIR"
+chmod -R 700 "$DIR"
+chown -R "$USER:$USER" "$DIR"
