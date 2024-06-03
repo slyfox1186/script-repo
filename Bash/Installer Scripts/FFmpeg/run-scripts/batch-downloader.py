@@ -57,6 +57,7 @@ def batch_download_videos(video_data):
         url = video["url"]
 
         download_video(filename, path, url)
+        print('\n' + '-'*40 + '\n')  # Adding a visual separator after each download
 
 def batch_download_from_json(json_file):
     try:
