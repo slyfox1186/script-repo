@@ -2,7 +2,7 @@
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 # Set execution policy to unrestricted
-Set-ExecutionPolicy Unrestricted -Scope CurrentUser
+Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
 
 # Register PowerShell Gallery as a package source if not already registered
 $psGallerySource = Get-PackageSource -Name "PSGallery" -ErrorAction SilentlyContinue
