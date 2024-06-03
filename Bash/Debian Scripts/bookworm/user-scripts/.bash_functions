@@ -536,14 +536,13 @@ imow() {
     wget --timeout=2 --tries=2 -cqO "optimize-jpg.py" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.py"
     sudo chmod +x "optimize-jpg.py"
     LD_PRELOAD="libtcmalloc.so"
-    if python3 optimize-jpg.py -o; then
-        sudo rm -f "optimize-jpg.py"
+    if ! python3 optimize-jpg.py -o; then
+        printf "\n%s\n" "Failed to optimize images."
         if command -v google_speech &>/dev/null; then
             google_speech "Failed to optimize images." &>/dev/null
         fi
-    else
-        printf "\n%s\n" "Failed to optimize images."
     fi
+    sudo rm -f "optimize-jpg.py"
 }
 
 # Downsample image to 50% of the original dimensions using sharper settings
