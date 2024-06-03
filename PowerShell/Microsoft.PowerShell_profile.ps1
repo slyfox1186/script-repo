@@ -76,6 +76,15 @@ function Initialize-ProfileTasks {
     }
 }
 
+# Define a function to get the custom PS1 prompt format
+function Get-CustomPrompt {
+    $psVersion = $PSVersionTable.PSVersion.ToString()
+    $userName = $env:USERNAME.Split('\')[-1]
+    $majorMinorBuild = [regex]::Match($psVersion, '^\d+\.\d+\.\d+').Value
+    $previewTag = $psVersion.Split('-')[1].Split('.')[0]
+    return "$majorMinorBuild-$previewTag@$userName"
+}
+
 # Initialize profile tasks in background job
 Start-Job -ScriptBlock {
     Initialize-ProfileTasks
@@ -83,3 +92,20 @@ Start-Job -ScriptBlock {
 
 # Optionally set window title for notification
 $host.UI.RawUI.WindowTitle = "Profile Initialization Complete"
+
+# Call the aliases script
+. "$PSScriptRoot\Scripts\aliases.ps1"
+
+# Call the functions script
+. "$PSScriptRoot\Scripts\functions.ps1"
+
+# Set custom PS1 prompt format
+function Prompt {
+    $customPrompt = Get-CustomPrompt
+    $currentDirectory = (Get-Location).Path
+    Write-Host $currentDirectory -ForegroundColor Yellow
+    Write-Host $customPrompt -NoNewline -ForegroundColor Cyan
+    return "$("$" * ($nestedPromptLevel + 1)) "
+}
+
+Set-PSReadlineOption -EditMode Windows
