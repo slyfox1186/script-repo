@@ -6,7 +6,7 @@ function Initialize-ProfileTasks {
     # Set execution policy to unrestricted
     Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine
     Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-    
+
     Set-PSRepository -Name 'PSGallery' -SourceLocation 'https://www.powershellgallery.com/api/v2' -InstallationPolicy Trusted
 
     # Register PowerShell Gallery as a package source if not already registered
