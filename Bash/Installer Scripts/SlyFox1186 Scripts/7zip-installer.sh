@@ -1,17 +1,16 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2000,SC2034,SC2086 source=/dev/null
 
+# GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/SlyFox1186%20Scripts/7zip-installer.sh
 # Purpose: install the latest 7-zip package across multiple linux distributions and macos
-# Updated: 04-08-2024
-# Script version: 3.3
-# Optimized code
-
-random=$(mktemp -d)
+# Updated: 06-03-2024
+# Script version: 3.4
 
 # Set variables
-readonly script_version="3.3"
+readonly script_version="3.4"
 readonly working="$PWD/7zip-install-script"
 readonly install_dir="/usr/local/bin"
-readonly no_cleanup=false
+no_cleanup=false
 
 # Ansi escape codes for colors
 RED='\033[0;31m'
@@ -74,7 +73,7 @@ box_out_banner() {
 
 # Function to download the file with retries
 download() {
-    wget --show-progress -cqO "$2" "$1" || fail "Failed to download the file. Please try again later."
+    wget --show-progress --timeout=60 --connect-timeout=5 --tries=3 -cqO "$2" "$1" || fail "Failed to download the file. Please try again later."
 }
 
 # Function to detect the operating system and distribution
@@ -84,9 +83,9 @@ detect_os_distro() {
     else
         OS="linux"
         if [[ -f /etc/os-release ]]; then
-            . /etc/os-release
+            source /etc/os-release
             DISTRO="$ID"
-        elif command -v lsb_release >/dev/null 2>&1; then
+        elif command -v lsb_release &>/dev/null; then
             DISTRO=$(lsb_release -si | tr '[:upper:]' '[:lower:]')
         elif [[ -f /etc/redhat-release ]]; then
             DISTRO=$(awk '{print tolower($1)}' /etc/redhat-release)
@@ -112,10 +111,10 @@ install_dependencies() {
                     ;;
                 arch|manjaro)
                     sudo pacman -Syu
-                    sudo pacman -S --needed tar wget xz
+                    sudo pacman -Sy --needed --noconfirm tar wget xz
                     ;;
                 opensuse*)
-                    sudo zypper install tar wget
+                    sudo zypper install -y tar wget
                     ;;
                 *)
                     fail "Unsupported Linux distribution: $DISTRO"
@@ -185,6 +184,7 @@ while [[ "$#" -gt 0 ]]; do
     shift
 done
 
+# Display the script banner
 box_out_banner "7-Zip Install Script"
 detect_os_distro
 
@@ -194,41 +194,55 @@ if ! command -v wget &>/dev/null || ! command -v tar &>/dev/null; then
 fi
 
 # Set current version
-version="7z2405"
-
-# Clean up existing installation directory
-if [[ -d "$working" ]]; then
-    log "Deleting existing 7zip-install-script directory..."
-    rm -fr "$working"
-fi
-
-# Create the installation directory
-mkdir -p "$working"
+version="7z2406"
 
 # Detect architecture and set download url based on the operating system
 case "$OS" in
     linux)
         case "$(uname -m)" in
-            x86_64)          url="https://www.7-zip.org/a/${version}-linux-x64.tar.xz" ;;
-            i386|i686)       url="https://www.7-zip.org/a/${version}-linux-x86.tar.xz" ;;
-            aarch64*|armv8*) url="https://www.7-zip.org/a/${version}-linux-arm64.tar.xz" ;;
-            arm|armv7*)      url="https://www.7-zip.org/a/${version}-linux-arm.tar.xz" ;;
-            *)               fail "Unrecognized architecture: $(uname -m)" ;;
+            x86_64)
+                url="https://www.7-zip.org/a/${version}-linux-x64.tar.xz"
+                ;;
+            i386|i686)
+                url="https://www.7-zip.org/a/${version}-linux-x86.tar.xz"
+                ;;
+            aarch64*|armv8*)
+                url="https://www.7-zip.org/a/${version}-linux-arm64.tar.xz"
+                ;;
+            arm|armv7*)
+                url="https://www.7-zip.org/a/${version}-linux-arm.tar.xz"
+                ;;
+            *)
+                fail "Unrecognized architecture: $(uname -m)"
+                ;;
         esac
         ;;
     macos) url="https://www.7-zip.org/a/${version}-mac.tar.xz" ;;
 esac
 
+# Create variables to make the script easier to read
 tar_file="7zip-$version.tar.xz"
 output_dir="$working/7zip-$version"
+
+# Clean up any found existing installation directory
+if [[ -d "$working" ]]; then
+    log "Deleting existing 7zip-install-script directory..."
+    echo
+    rm -fr "$working"
+fi
+
+# Create the installation directory and the output folder to store the sourced files
 mkdir -p "$output_dir"
 
+# Download the source files if not already downloaded
 [[ ! -f "$working/$tar_file" ]] && download "$url" "$working/$tar_file"
 
+# Extract the downloaded files
 if ! tar -xf "$working/$tar_file" -C "$output_dir"; then
     fail "The script was unable to extract the archive: '$working/$tar_file'"
 fi
 
+# Copy the 7z binary file to the /usr/local/bin folder
 case "$OS" in
     linux)
         sudo cp -f "$output_dir/7zzs" "$install_dir/7z" || fail "The script was unable to copy the static file '7zzs' to '$install_dir/7z'"
@@ -242,13 +256,13 @@ esac
 
 echo
 log_update "7-Zip installation completed successfully."
+
+# Display the installed version
 print_version
 
+# Cleanup the leftover install files if specified by an argument
 if [[ "$no_cleanup" == false ]]; then
-    rm -fr "$working"
+    sudo rm -fr "$working" "$0"
 else
-    log "Skipping cleanup of install files as requested."
+    log "Skipped the cleanup of install files as specified."
 fi
-
-# Delete the installer script itself
-[[ -f "#0" ]] && sudo rm "$0"
