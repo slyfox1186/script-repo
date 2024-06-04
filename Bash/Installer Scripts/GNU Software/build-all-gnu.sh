@@ -181,16 +181,13 @@ required_packages() {
 set_compiler_flags() {
     CC="gcc"
     CXX="g++"
-    CFLAGS="-O3 -pipe -march=native -flto"
+    CFLAGS="-O2 -pipe -flto -march=native"
     CXXFLAGS="$CFLAGS"
     LDFLAGS="-Wl,-rpath=$install_dir/lib64:$install_dir/lib"
     PATH="/usr/lib/ccache:$PATH"
-    PKG_CONFIG_PATH="$HOME/.local/lib/pkgconfig:$HOME/.local/share/pkgconfig:/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig"
-    PKG_CONFIG_PATH+=":/usr/local/share/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig"
-    PKG_CONFIG_PATH+=":/usr/local/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/local/lib64/x86_64-linux-gnu/pkgconfig"
-    PKG_CONFIG_PATH+=":/usr/lib64/x86_64-linux-gnu/pkgconfig:/usr/local/lib/x86_64-pc-linux-gnu/pkgconfig:/usr/lib/x86_64-pc-linux-gnu/pkgconfig"
-    PKG_CONFIG_PATH+=":/usr/local/lib/pkgconfig:/usr/local/libdata/pkgconfig:/usr/libdata/pkgconfig:/usr/local/Cellar/pkgconfig"
-    PKG_CONFIG_PATH+=":/usr/local/lib/pkgconfig:/opt/local/lib/pkgconfig:/opt/lib/pkgconfig"
+    PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/lib64/pkgconfig:/usr/local/share/pkgconfig:/usr/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/share/pkgconfig"
+    PKG_CONFIG_PATH+=":/usr/local/cuda/lib64/pkgconfig:/usr/local/cuda/lib/pkgconfig:/opt/cuda/lib64/pkgconfig:/opt/cuda/lib/pkgconfig"
+    PKG_CONFIG_PATH+=":/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/i386-linux-gnu/pkgconfig:/usr/lib/arm-linux-gnueabihf/pkgconfig:/usr/lib/aarch64-linux-gnu/pkgconfig"
     export CC CXX CFLAGS CXXFLAGS LDFLAGS PATH PKG_CONFIG_PATH
 }
 

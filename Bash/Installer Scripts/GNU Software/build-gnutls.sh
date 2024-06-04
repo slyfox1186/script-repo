@@ -14,7 +14,6 @@ archive_ext="${archive_url##*.}"
 archive_name="$archive_dir.tar.$archive_ext"
 install_dir="/usr/local/$archive_dir"
 cwd="$PWD/gnutls-build-script"
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 
 # Functions
@@ -84,21 +83,23 @@ log "Creating working directory..."
 mkdir -p "$cwd"
 
 # Set compiler and flags
-export CC=gcc CXX=g++
-CFLAGS="-g -O3 -pipe -fno-plt -march=native"
-CXXFLAGS="-g -O3 -pipe -fno-plt -march=native"
-export CFLAGS CXXFLAGS
+CC="gcc"
+CXX="g++"
+CFLAGS="-O2 -pipe -march=native"
+CXXFLAGS="$CFLAGS"
+export CC CXX CFLAGS CXXFLAGS
 
 # Set PATH and PKG_CONFIG_PATH
-PATH="/usr/lib/ccache:$HOME/perl5/bin:$HOME/.cargo/bin:$HOME/.local/bin:/usr/local/sbin:/usr/local/cuda/bin:/usr/local/x86_64-linux-gnu/bin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/games:/usr/games:/snap/bin"
-export PATH
-PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/local/lib/x86_64-linux-gnu/pkgconfig:/usr/local/share/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/share/pkgconfig:/lib64/pkgconfig:/lib/pkgconfig:/lib/x86_64-linux-gnu/pkgconfig"
-export PKG_CONFIG_PATH
+PATH="/usr/lib/ccache:$PATH"
+PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/lib64/pkgconfig:/usr/local/share/pkgconfig:/usr/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/share/pkgconfig"
+PKG_CONFIG_PATH+=":/usr/local/cuda/lib64/pkgconfig:/usr/local/cuda/lib/pkgconfig:/opt/cuda/lib64/pkgconfig:/opt/cuda/lib/pkgconfig"
+PKG_CONFIG_PATH+=":/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/i386-linux-gnu/pkgconfig:/usr/lib/arm-linux-gnueabihf/pkgconfig:/usr/lib/aarch64-linux-gnu/pkgconfig"
+export PKG_CONFIG_PATH PATH
 
 # Download archive
 if [ ! -f "$cwd/$archive_name" ]; then
     log "Downloading $archive_url..."
-    curl -A "$user_agent" -Lso "$cwd/$archive_name" "$archive_url"
+    curl -Lso "$cwd/$archive_name" "$archive_url"
 else
     log "Archive already exists: $cwd/$archive_name"
 fi

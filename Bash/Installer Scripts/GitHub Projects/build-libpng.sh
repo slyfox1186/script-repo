@@ -12,7 +12,6 @@ if [ "${EUID}" -eq '0' ]; then
 fi
 
 # Set variables
-
 script_ver=1.1
 cwd="$PWD"/libpng-build-script
 install_dir=/usr/local
@@ -26,42 +25,37 @@ printf "\n%s\n%s\n\n" \
 
 # Create output directory
 
-if [ -d "$cwd" ]; then
-    sudo rm -fr "$cwd"
-fi
+[[ -d "$cwd" ]] && sudo rm -fr "$cwd"
 mkdir -p "$cwd"
 
 # Set the c+cpp compilers
-
 CC="gcc"
 CXX="g++"
-CFLAGS="-O3 -pipe -fno-plt -march=native"
+CFLAGS="-O2 -pipe -march=native"
 CXXFLAGS="$CFLAGS"
 PATH="/usr/lib/ccache:$PATH"
-PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/pkgconfig"
-PKG_CONFIG_PATH+=":/usr/local/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig"
-export CC CXX CFLAGS CXXFLAGSPATH PKG_CONFIG_PATH
+PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/lib64/pkgconfig:/usr/local/share/pkgconfig:/usr/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/share/pkgconfig"
+PKG_CONFIG_PATH+=":/usr/local/cuda/lib64/pkgconfig:/usr/local/cuda/lib/pkgconfig:/opt/cuda/lib64/pkgconfig:/opt/cuda/lib/pkgconfig"
+PKG_CONFIG_PATH+=":/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/i386-linux-gnu/pkgconfig:/usr/lib/arm-linux-gnueabihf/pkgconfig:/usr/lib/aarch64-linux-gnu/pkgconfig"
+export CC CXX CFLAGS CXXFLAGS PATH PKG_CONFIG_PATH
 
 # Create functions
 
-exit_function()
-{
+exit_function() {
     printf "\n%s\n\n%s\n\n" \
         'Make sure to star this repository to show your support!' \
         "$web_repo"
     exit 0
 }
 
-fail_fn()
-{
+fail_fn() {
     printf "\n%s\n\n%s\n\n" \
         "$1" \
         "To report a bug create an issue at: $web_repo/issues"
     exit 1
 }
 
-cleanup_fn()
-{
+cleanup_fn() {
     local choice
 
     printf "%s\n%s\n%s\n\n%s\n%s\n\n" \
@@ -86,8 +80,7 @@ cleanup_fn()
     esac
 }
 
-build()
-{
+build() {
     printf "\n%s\n%s\n" \
         "building $1 - version $2" \
         '===================================='
@@ -107,8 +100,7 @@ build()
     return 0
 }
 
-execute()
-{
+execute() {
     echo "$ ${*}"
 
     if [ "${debug}" = 'ON' ]; then
@@ -124,8 +116,7 @@ execute()
     fi
 }
 
-download()
-{
+download() {
     dl_path="$cwd"
     dl_url="$1"
     dl_file="${2:-"${1##*/}"}"
@@ -179,8 +170,7 @@ download()
 
 # Install required apt packages
 
-pkgs_fn()
-{
+pkgs_fn() {
     pkgs=(asciidoc autogen automake binutils bison build-essential bzip2 ccache cmake
           curl libc6-dev libintl-perl libpth-dev libtool libtool-bin lzip lzma-dev
           nasm ninja-build texinfo xmlto yasm zlib1g-dev)
@@ -208,18 +198,17 @@ build_done() { echo "$2" > "$cwd/$1.done"; }
 pkgs_fn
 
 # Build program from source
-
-if build 'libpng' '1.6.40'; then
-    download 'https://github.com/glennrp/libpng/archive/refs/tags/v1.6.40.tar.gz' 'libpng-1.6.40.tar.gz'
+if build "libpng" "1.6.40"; then
+    download "https://github.com/glennrp/libpng/archive/refs/tags/v1.6.40.tar.gz" "libpng-1.6.40.tar.gz"
     execute autoupdate
     execute autoreconf -fi
-    execute ./configure --prefix="$install_dir"                 \
-                         --{build,host}=x86_64-linux-gnu          \
-                         --disable-shared                         \
-                         --enable-hardware-optimizations          \
-                         --enable-unversioned-links               \
-                         --with-binconfigs                        \
-                         --with-pic                               \
+    execute ./configure --prefix="$install_dir" \
+                         --{build,host}=x86_64-linux-gnu \
+                         --disable-shared \
+                         --enable-hardware-optimizations \
+                         --enable-unversioned-links \
+                         --with-binconfigs \
+                         --with-pic \
                          --with-pkgconfigdir="${PKG_CONFIG_PATH}" \
                          --with-zlib-prefix
     execute make "-j$(nproc --all)"
@@ -227,7 +216,7 @@ if build 'libpng' '1.6.40'; then
     execute sudo make install-library-links
     execute sudo make install
     execute make distclean
-    build_done 'libpng' '1.6.40'
+    build_done "libpng" "1.6.40"
 fi
 
 # Prompt user to clean up files

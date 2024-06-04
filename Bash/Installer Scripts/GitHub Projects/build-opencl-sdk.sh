@@ -16,17 +16,21 @@ fi
 # Set the script variables
 script_ver=1.0
 archive_dir=OpenCL-SDK
-archive_url='https://github.com/KhronosGroup/OpenCL-SDK.git'
+archive_url="https://github.com/KhronosGroup/OpenCL-SDK.git"
 cwd="$PWD/opencl-sdk-build-script"
 install_dir=/usr/local
 
 # Set compiler variables
-export CC=gcc CXX=g++ CFLAGS='-O3 -pipe -fno-plt -fno-plt -march=native' CXXFLAGS="$CFLAGS"
-
+CC="gcc"
+CXX="g++"
+CFLAGS="-O2 -pipe -march=native"
+CXXFLAGS="$CFLAGS"
 PATH="/usr/lib/ccache:$PATH"
-PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/pkgconfig"
-PKG_CONFIG_PATH+=":/usr/local/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig"
-export PATH PKG_CONFIG_PATH
+PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/lib64/pkgconfig:/usr/local/share/pkgconfig:/usr/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/share/pkgconfig"
+PKG_CONFIG_PATH+=":/usr/local/cuda/lib64/pkgconfig:/usr/local/cuda/lib/pkgconfig:/opt/cuda/lib64/pkgconfig:/opt/cuda/lib/pkgconfig"
+PKG_CONFIG_PATH+=":/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/i386-linux-gnu/pkgconfig:/usr/lib/arm-linux-gnueabihf/pkgconfig:/usr/lib/aarch64-linux-gnu/pkgconfig"
+export CC CXX CFLAGS CXXFLAGS PATH PKG_CONFIG_PATH
+
 
 # Install required apt packages
 pkgs=(

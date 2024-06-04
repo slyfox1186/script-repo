@@ -24,7 +24,7 @@ log_file="$working/build.log"
 # Optimization flags
 CPU_ARCH=$(lscpu | awk -F ': +' '/Architecture/ {print $NF}')
 CPU_CORES=$(nproc --all)
-CFLAGS="-O3 -march=$CPU_ARCH -mtune=native -pipe -fno-plt -fstack-protector-strong -fstack-clash-protection -fcf-protection"
+CFLAGS="-O2 -march=$CPU_ARCH -mtune=native -pipe -fstack-protector-strong -fstack-clash-protection -fcf-protection"
 CXXFLAGS="$CFLAGS"
 LDFLAGS="-Wl,-O1 -Wl,--as-needed -Wl,--hash-style=gnu -Wl,-z,relro,-z,now"
 

@@ -32,14 +32,14 @@ fi
 # Set the compilers
 CC="gcc"
 CXX="g++"
-# Set compiler optimization flags
-CFLAGS='-g -O3 -pipe -fno-plt -march=native'
+CFLAGS="-O2 -pipe -march=native"
 CXXFLAGS="$CFLAGS"
-CPPFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include"
-LDFLAGS="-L$workspace/lib64 -L$workspace/lib -L$workspace/lib/x86_64-linux-gnu -L/usr/local/lib64"
-LDFLAGS+=' -L/usr/local/lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
+PATH="/usr/lib/ccache:$PATH"
+PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/lib64/pkgconfig:/usr/local/share/pkgconfig:/usr/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/share/pkgconfig"
+PKG_CONFIG_PATH+=":/usr/local/cuda/lib64/pkgconfig:/usr/local/cuda/lib/pkgconfig:/opt/cuda/lib64/pkgconfig:/opt/cuda/lib/pkgconfig"
+PKG_CONFIG_PATH+=":/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/i386-linux-gnu/pkgconfig:/usr/lib/arm-linux-gnueabihf/pkgconfig:/usr/lib/aarch64-linux-gnu/pkgconfig"
 MAKEFLAGS="-j$(nproc --all)"
-export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS MAKEFLAGS
+export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS MAKEFLAGS PKG_CONFIG_PATH PATH
 
 echo
 echo "libhwy build script - v$script_ver"
@@ -47,9 +47,9 @@ echo "========================================="
 echo "This script will utilize ($cpu_threads) CPU threads for parallel processing to accelerate the build process."
 echo
 
-PATH="/usr/lib/ccache:$PATH"
-PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/pkgconfig"
-PKG_CONFIG_PATH+=":/usr/local/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig"
+PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/lib64/pkgconfig:/usr/local/share/pkgconfig:/usr/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/share/pkgconfig"
+PKG_CONFIG_PATH+=":/usr/local/cuda/lib64/pkgconfig:/usr/local/cuda/lib/pkgconfig:/opt/cuda/lib64/pkgconfig:/opt/cuda/lib/pkgconfig"
+PKG_CONFIG_PATH+=":/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/i386-linux-gnu/pkgconfig:/usr/lib/arm-linux-gnueabihf/pkgconfig:/usr/lib/aarch64-linux-gnu/pkgconfig"
 export PATH PKG_CONFIG_PATH
 
 # Define functions

@@ -28,9 +28,8 @@ script_dir="$PWD"
 cwd="$script_dir/cargo-build-script"
 
 # Create the master build folder if it doesn't exist
-if [[ ! -d "$cwd" ]]; then
-    mkdir -p "$cwd"
-fi
+[[ -d "$cwd" ]] && sudo rm -fr "$cwd"
+mkdir -p "$cwd"
 
 # Change into the master build folder
 cd "$cwd" || exit 1

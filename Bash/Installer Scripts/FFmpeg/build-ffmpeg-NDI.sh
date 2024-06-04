@@ -155,7 +155,7 @@ source_flags_fn()
 {
     EXTRALIBS="-ldl -lpthread -lm -lz -L/usr/lib/x86_64-linux-gnu -lcurl -lvulkan -L$workspace/lib -llcms2 -llcms2_threaded"
     EXTRALIBS+=" -lhwy -lbrotlidec -lbrotlienc -ltesseract -L/usr/local/cuda/targets/x86_64-linux/lib -lOpenCL"
-    CXXFLAGS='-g -O3 -pipe -fno-plt -march=native -DHWY_COMPILE_ONLY_SCALAR'
+    CXXFLAGS='-g -O2 -pipe -march=native -DHWY_COMPILE_ONLY_SCALAR'
     CFLAGS="-I$workspace/include -I$workspace/include/jxl -I$workspace/include/CL -I/usr/local/include -I/usr/include"
     CFLAGS+='-I/usr/include/x86_64-linux-gnu -I/usr/include/SDL2 -I/usr/lib/x86_64-linux-gnu/pulseaudio -I/usr/include/openjpeg-2.5'
     CFLAGS+=" -I/usr/include/vk_video -I/usr/include/vulkan ${CXXFLAGS}"
@@ -2219,7 +2219,7 @@ if build 'vulkan-headers' 'git'; then
                   -DCMAKE_INSTALL_PREFIX="$workspace"        \
                   -DCMAKE_BUILD_TYPE=Release                   \
                   -DBUILD_TESTS=OFF                            \
-                  -DCMAKE_C_FLAGS='-g -O3 -pipe -fno-plt -march=native' \
+                  -DCMAKE_C_FLAGS='-g -O2 -pipe -march=native' \
                   -DCMAKE_STRIP="$(type -P strip)"             \
                   -G Ninja -Wno-devCMAKE_CXX_COMPILE
     execute ninja "-j${cpu_threads}" -C build
@@ -2779,7 +2779,7 @@ box_out_banner_images 'Installing Image Tools'
 pre_check_ver 'strukturag/libheif' '1' 'T'
 if build 'libheif' "$g_ver"; then
     download "https://github.com/strukturag/libheif/archive/refs/tags/v$g_ver.tar.gz" "libheif-$g_ver.tar.gz"
-    export {CFLAGS,CXXFLAGS}='-g -O3 -fno-lto -pipe -fno-plt -fno-plt -march=native'
+    export {CFLAGS,CXXFLAGS}='-g -O2 -fno-lto -pipe -march=native'
     libde265_libs="$(sudo find /usr -type f -name 'libde265.so')"
     if [ -f "${libde265_libs}" ] && [ ! -f '/usr/lib/x86_64-linux-gnu/libde265.so' ]; then
         sudo cp -f "${libde265_libs}" '/usr/lib/x86_64-linux-gnu'

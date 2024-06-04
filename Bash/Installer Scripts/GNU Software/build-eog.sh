@@ -134,18 +134,18 @@ log "Creating output directory..."
 mkdir -p "$cwd"
 
 # Set compiler optimization flags
-export CFLAGS="-g -O3 -pipe -fno-plt -march=native"
-export CXXFLAGS="-g -O3 -pipe -fno-plt -march=native"
-
-# Set CC and CXX variables
-export CC=gcc
-export CXX=g++
+CC="gcc"
+CXX="g++"
+CFLAGS="-O2 -pipe -march=native"
+CXXFLAGS="$CFLAGS"
+export CC CXX CFLAGS CXXFLAGS
 
 # Set the PATH variable
-export PATH="/usr/lib/ccache:$HOME/perl5/bin:$HOME/.cargo/bin:$HOME/.local/bin:/usr/local/sbin:/usr/local/cuda/bin:/usr/local/x86_64-linux-gnu/bin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/games:/usr/games:/snap/bin"
-
-# Set the PKG_CONFIG_PATH variable
-export PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/local/lib/x86_64-linux-gnu/pkgconfig:/usr/local/share/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/share/pkgconfig:/lib64/pkgconfig:/lib/pkgconfig:/lib/x86_64-linux-gnu/pkgconfig"
+PATH="/usr/lib/ccache:$PATH"
+PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/lib64/pkgconfig:/usr/local/share/pkgconfig:/usr/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/share/pkgconfig"
+PKG_CONFIG_PATH+=":/usr/local/cuda/lib64/pkgconfig:/usr/local/cuda/lib/pkgconfig:/opt/cuda/lib64/pkgconfig:/opt/cuda/lib/pkgconfig"
+PKG_CONFIG_PATH+=":/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/i386-linux-gnu/pkgconfig:/usr/lib/arm-linux-gnueabihf/pkgconfig:/usr/lib/aarch64-linux-gnu/pkgconfig"
+export PKG_CONFIG_PATH PATH
 
 # Set the LIBRARY_PATH_PKG variable
 export LIBRARY_PATH="/usr/lib/x86_64-linux-gnu:$LIBRARY_PATH"
