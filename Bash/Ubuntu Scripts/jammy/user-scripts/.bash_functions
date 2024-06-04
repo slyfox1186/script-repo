@@ -531,7 +531,15 @@ rmf() {
 ## IMAGEMAGICK ##
 
 imow() {
-    wget --timeout=2 --tries=2 -cqO "optimize-jpg.py" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.py"
+    if wget --timeout=2 --tries=2 -cqO "optimize-jpg.py" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.py"; then
+        clear
+        echo "Optimizing Images: $PWD"
+    else
+        printf "\n%s\n" "Failed to download the jpg optimization script."
+        if command -v google_speech &>/dev/null; then
+            google_speech "Failed to download the jpg optimization script." &>/dev/null
+        fi
+    fi
     sudo chmod +x "optimize-jpg.py"
     LD_PRELOAD="libtcmalloc.so"
     if ! python3 optimize-jpg.py -o; then
