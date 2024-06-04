@@ -850,12 +850,13 @@ list_ppa() {
 }
 
 ## FFMPEG COMMANDS ##
+
 ffr() {
-    sudo bash "$1" --build --enable-gpl-and-non-free --latest
+    bash "$1" --build --enable-gpl-and-non-free --latest -g
 }
 
 ffrv() {
-    sudo bash -v "$1" --build --enable-gpl-and-non-free --latest
+    bash -v "$1" --build --enable-gpl-and-non-free --latest -g
 }
 
 ## Write caching ##
@@ -864,7 +865,7 @@ wcache() {
 
     lsblk
     echo
-    read -p "Enter the drive id to turn off write caching (/dev/sdX w/o /dev/): " choice
+    read -p "Enter the drive ID to turn off write caching (/dev/sdX w/o /dev/): " choice
 
     sudo hdparm -W 0 /dev/"$choice"
 }
