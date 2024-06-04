@@ -3,7 +3,7 @@ function Initialize-ProfileTasks {
     # Ensure TLS 1.2 is used
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-    # Set execution policy to unrestricted
+    # Set execution policy to RemoteSigned
     Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine
     Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 
