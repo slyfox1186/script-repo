@@ -888,18 +888,14 @@ tar_xz_9() {
     fi
 }
 
-#####################
 ## FFMPEG COMMANDS ##
-#####################
 
 ffr() {
-    echo
-    sudo bash "$1" --build --enable-gpl-and-non-free --latest
+    bash "$1" --build --enable-gpl-and-non-free --latest -g
 }
 
 ffrv() {
-    echo
-    sudo bash -v "$1" --build --enable-gpl-and-non-free --latest
+    bash -v "$1" --build --enable-gpl-and-non-free --latest -g
 }
 
 ###################
