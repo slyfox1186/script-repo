@@ -1,13 +1,19 @@
 /*________________________________________________________________________________________________________________
 
     Purpose:
-        Open explorer to the directory path of any highlighted text or the
-        current clipboard contents when the hotkey is triggered
+        Open Explorer to the directory path of any highlighted text or the
+        current clipboard contents when the hotkey is triggered.
+    How to use:
+        High light or copy to the clipboard a full existing folder path on
+        a single or over multiple lines. The script will separate each path over
+        a multiple-line trigger and open them one at a time until there are no
+        more paths left to process.
 
 */
 
 !+e::
 {
+    win := "ahk_class CabinetWClass ahk_exe explorer.exe"
     ; Save the current Clipboard contents
     ClipSaved := A_Clipboard
     ; Clear the Clipboard in anticipation of the ClipWait command below
@@ -21,14 +27,30 @@
     if !(A_Clipboard)
         A_Clipboard := ClipSaved
 
-    ; Trim whitespace from the Clipboard text for accurate path detection
-    A_Clipboard := Trim(A_Clipboard, " `t`r`n")
-    A_Clipboard := StrReplace(A_Clipboard, "`"`"", "")
+    ; Parse the Clipboard content line by line
+    Loop Parse, A_Clipboard, "`n", "`r"
+    {
+        ; Trim whitespace from the Clipboard text for accurate path detection
+        currentPath := Trim(A_LoopField, " `t`r`n")
+        currentPath := StrReplace(currentPath, "`"`"", "")
 
-    ; Check if the Clipboard content is a valid folder path to a directory only
-    if (FileExist(A_Clipboard) == "D")
-        Run(A_WinDir . "\explorer.exe " . '"' . A_Clipboard . '"')
+        ; Check if the Clipboard content is a valid folder path to a directory only
+        if (FileExist(currentPath) == "D")
+        {
+            Run(A_WinDir . "\explorer.exe " . '"' . currentPath . '"')
 
-     ; Free the memory from the Clipboard in case it was of extensive size
-    A_Clipboard := ""
+            ; Wait for the explorer window to open, activate it, and maximize it
+            WinWaitActive(win,, 2)
+            WinActivate(win)
+            WinMaximize(win)
+
+            if !WinActive(win) ; Delay to ensure each window opens correctly and processing is smooth
+                Sleep 200
+            else
+                Sleep 400
+        }
+    }
+
+    ; Restore the original Clipboard contents
+    A_Clipboard := ClipSaved
 }
