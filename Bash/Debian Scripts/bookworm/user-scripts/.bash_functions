@@ -850,12 +850,13 @@ list_ppa() {
 }
 
 ## FFMPEG COMMANDS ##
+
 ffr() {
-    sudo bash "$1" --build --enable-gpl-and-non-free --latest
+    bash "$1" --build --enable-gpl-and-non-free --latest -g
 }
 
 ffrv() {
-    sudo bash -v "$1" --build --enable-gpl-and-non-free --latest
+    bash -v "$1" --build --enable-gpl-and-non-free --latest -g
 }
 
 ## Write caching ##
