@@ -55,7 +55,7 @@ def process_image(infile: Path, overwrite_mode: bool, verbose_mode: bool) -> Non
     with tempfile.TemporaryDirectory() as temp_dir:
         resized_image_path = Path(temp_dir) / infile.name
 
-        # Resize image if dimensions are too large
+        # Resize the image if the dimensions are too large
         try:
             img_info = subprocess.check_output(['identify', '-ping', '-format', '%wx%h', str(infile)])
             orig_width, orig_height = map(int, img_info.decode('utf-8').strip().split('x'))
@@ -65,7 +65,7 @@ def process_image(infile: Path, overwrite_mode: bool, verbose_mode: bool) -> Non
                 if verbose_mode:
                     logger.info(f"Resizing {infile} from {orig_width}x{orig_height} to {max_width}x{max_height}...")
                 subprocess.run([
-                    'convert', str(infile), '-resize', f'{max_width}x{max_height}', 
+                    'magick', str(infile), '-resize', f'{max_width}x{max_height}', 
                     '-filter', 'Lanczos', '-sampling-factor', '1x1', 
                     '-unsharp', '1.5x1+0.7+0.02', '-quality', '90', str(resized_image_path)
                 ], check=True)
@@ -87,14 +87,14 @@ def process_image(infile: Path, overwrite_mode: bool, verbose_mode: bool) -> Non
         ]
 
         try:
-            subprocess.run(['convert', str(resized_image_path)] + convert_base_opts +
+            subprocess.run(['magick', str(resized_image_path)] + convert_base_opts +
                            ['-sampling-factor', '2x2', '-limit', 'area', '0', str(outfile)],
                            check=True)
         except subprocess.CalledProcessError:
             if verbose_mode:
                 logger.warning(f"First attempt failed for {infile}, retrying without '-sampling-factor 2x2 -limit area 0'...")
             try:
-                subprocess.run(['convert', str(resized_image_path)] + convert_base_opts + [str(outfile)], check=True)
+                subprocess.run(['magick', str(resized_image_path)] + convert_base_opts + [str(outfile)], check=True)
             except subprocess.CalledProcessError:
                 logger.error(f"Error: Second attempt failed for {infile} as well.")
                 return
