@@ -31,13 +31,13 @@ Build aria2 from source code with hardening options.
 Options:
   -h, --help          Display this help message and exit
   -d, --debug         Enable debug mode for more detailed output
-  -g, --generic       Set CFLAGS to -O3 -pipe -march=generic
-  -n, --native        Set CFLAGS to -O3 -pipe -march=native (default)
+  -g, --generic       Set CFLAGS to -O2 -pipe -march=generic
+  -n, --native        Set CFLAGS to -O2 -pipe -march=native (default)
   -s, --static        Set aria2 as statically linked (ARIA2_STATIC=yes)
 
 Examples:
   $0                     # Build aria2 from source
-  $0 --debug --generic   # Build aria2 with CFLAGS set to -O3 -pipe -march=generic
+  $0 --debug --generic   # Build aria2 with CFLAGS set to -O2 -pipe -march=generic
   $0 --static            # Build aria2 from source and set as statically linked
   $0 -d -g -s            # Build aria2 with debug mode, generic tuning, and set as statically linked
 EOF
@@ -47,7 +47,7 @@ EOF
 set_compiler_options() {
     CC="gcc"
     CXX="g++"
-    CFLAGS="-O3 -pipe $CFLAGS_OPTION -fPIC -fPIE -DNDEBUG -fstack-protector-strong -Wno-unused-parameter"
+    CFLAGS="-O2 -pipe $CFLAGS_OPTION -fPIC -fPIE -DNDEBUG -fstack-protector-strong -Wno-unused-parameter"
     CXXFLAGS="$CFLAGS"
     CPPFLAGS="-I/usr/local/include -I/usr/include -D_FORTIFY_SOURCE=2"
     LDFLAGS="-Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now -Wl,-rpath,/usr/local/lib"
@@ -105,9 +105,11 @@ build_library() {
         TCMALLOC_LIBS="-L/usr/lib/x86_64-linux-gnu -ltcmalloc_minimal"
         CPPFLAGS="-I${temp_dir}/include $CPPFLAGS"
         LDFLAGS="-L${temp_dir}/lib $LDFLAGS"
-        PKG_CONFIG="$(command -v pkg-config)"
-        PKG_CONFIG_PATH="${temp_dir}/lib/pkgconfig:/usr/local/lib/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/pkgconfig:$PKG_CONFIG_PATH"
-        export CPPFLAGS LDFLAGS PKG_CONFIG PKG_CONFIG_PATH TCMALLOC_CFLAGS TCMALLOC_LIBS
+        PATH="/usr/lib/ccache:$PATH"
+        PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/lib64/pkgconfig:/usr/local/share/pkgconfig:/usr/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/share/pkgconfig"
+        PKG_CONFIG_PATH+=":/usr/local/cuda/lib64/pkgconfig:/usr/local/cuda/lib/pkgconfig:/opt/cuda/lib64/pkgconfig:/opt/cuda/lib/pkgconfig"
+        PKG_CONFIG_PATH+=":/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/i386-linux-gnu/pkgconfig:/usr/lib/arm-linux-gnueabihf/pkgconfig:/usr/lib/aarch64-linux-gnu/pkgconfig"
+        export CPPFLAGS LDFLAGS PKG_CONFIG PKG_CONFIG_PATH PATH TCMALLOC_CFLAGS TCMALLOC_LIBS
     fi
     ./configure $configure_args || fail "Failed to configure ${name}. Line ${LINENO}"
     make -j$(nproc) || fail "Failed to build ${name}. Line ${LINENO}"

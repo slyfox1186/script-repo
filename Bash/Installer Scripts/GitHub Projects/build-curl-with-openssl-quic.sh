@@ -25,29 +25,25 @@ cert_dir=/etc/ssl/certs
 pem_file=cacert.pem
 pem_out="${cert_dir}/$pem_file"
 pc_type=$(gcc -dumpmachine)
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
 web_repo=https://github.com/slyfox1186/script-repo
 
-printf "%s\n%s\n\n"                      \
+printf "%s\n%s\n\n" \
     "cURL Build Script - v${script_ver}" \
     '==============================================='
 
 # Create output directory
-
-if [ -d "$cwd" ]; then
-    sudo rm -fr "$cwd"
-fi
+[[ -d "$cwd" ]] && sudo rm -fr "$cwd"
 mkdir -p "$cwd"
 
 # Set the c/cxx compilers & set the compiler optimization flags
 
-CC=gcc
-CXX=g++
-CFLAGS='-g -O3 -pipe -fno-plt -march=native -I/usr/local/include -I/usr/include'
-CXXFLAGS='-g -O3 -pipe -fno-plt -march=native'
-CPPFLAGS='-I/usr/include/libxml2 -I/usr/local/include/nghttp2 -I/usr/local/include/nghttp3'
-LDFLAGS='-Wl,-rpath,/usr/local/lib64'
-LIBS='-ldl -pthread -L/usr/lib/x86_64-linux-gnu -lnghttp3 -lcrypto -lssl -L/usr/local/lib -ljemalloc'
+CC="gcc"
+CXX="g++"
+CFLAGS="-g -O2 -pipe -march=native -I/usr/local/include -I/usr/include"
+CXXFLAGS="-g -O2 -pipe -march=native"
+CPPFLAGS="-I/usr/include/libxml2 -I/usr/local/include/nghttp2 -I/usr/local/include/nghttp3"
+LDFLAGS="-Wl,-rpath,/usr/local/lib64"
+LIBS="-ldl -pthread -L/usr/lib/x86_64-linux-gnu -lnghttp3 -lcrypto -lssl -L/usr/local/lib -ljemalloc"
 export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS LIBS
 
 PATH="/usr/lib/ccache:$PATH"
@@ -59,8 +55,8 @@ export PATH PKG_CONFIG_PATH
 
 exit_function()
 {
-    printf "\n%s\n\n%s\n\n"                                       \
-        'Make sure to star this repository to show your support!' \
+    printf "\n%s\n\n%s\n\n" \
+        "Make sure to star this repository to show your support!" \
         "$web_repo"
     exit 0
 }
@@ -68,7 +64,7 @@ exit_function()
 fail_fn()
 {
     printf "\n%s\n\n%s\n\n" \
-        "$1"              \
+        "$1" \
         "To report a bug create an issue at: $web_repo/issues"
     exit 1
 }
@@ -77,13 +73,13 @@ cleanup_fn()
 {
     local choice
 
-    printf "%s\n%s\n%s\n\n%s\n%s\n\n"                  \
-        '============================================' \
-        '  Do you want to clean up the build files?  ' \
-        '============================================' \
-        '[1] Yes'                                      \
-        '[2] No'
-    read -p 'Your choices are (1 or 2): ' choice
+    printf "%s\n%s\n%s\n\n%s\n%s\n\n" \
+        "============================================" \
+        "  Do you want to clean up the build files?  " \
+        "============================================" \
+        "[1] Yes" \
+        "[2] No"
+    read -p "Your choices are (1 or 2): " choice
     clear
 
     case "${choice}" in
@@ -127,48 +123,42 @@ if [ -n "$missing_pkgs" ]; then
 fi
 
 # Create output directory openssl-quic
-
-if [ -d "$cwd/openssl-quic-3.1.4" ]; then
-    sudo rm -fr "$cwd/openssl-quic-3.1.4"
-fi
+[[ -d "$cwd/openssl-quic-3.1.4" ]] && sudo rm -fr "$cwd/openssl-quic-3.1.4"
 mkdir -p "$cwd/openssl-quic-3.1.4"
 
 # Download the archive file openssl-quic
-
 if [ ! -f "$cwd/openssl-quic-3.1.4.tar.gz" ]; then
-    curl -A "$user_agent" -Lso "$cwd/openssl-quic-3.1.4.tar.gz" 'https://github.com/quictls/openssl/archive/refs/tags/openssl-3.1.4-quic1.tar.gz'
+    curl -Lso "$cwd/openssl-quic-3.1.4.tar.gz" 'https://github.com/quictls/openssl/archive/refs/tags/openssl-3.1.4-quic1.tar.gz'
 fi
 
 # Extract the archive file openssl-quic
-
 if ! tar -zxf "$cwd/openssl-quic-3.1.4.tar.gz" -C "$cwd/openssl-quic-3.1.4" --strip-components 1; then
     fail_fn "Failed to extract: $cwd/openssl-quic-3.1.4.tar.gz"
 fi
 
 # Install openssl-quic
-
-printf "%s\n%s\n\n"                    \
+printf "%s\n%s\n\n" \
     "Installing OpenSSL-QUIC - v3.1.4" \
     '==============================================='
 
 cd "$cwd/openssl-quic-3.1.4" || exit 1
-./config linux-x86_64                              \
-         --prefix="$install_dir"                 \
-         --openssldir="$install_dir"             \
-         -Wl,-rpath="$install_dir"/lib64         \
-         -Wl,--enable-new-dtags                    \
-         -DOPENSSL_USE_IPV6=0                      \
-         --release                                 \
-         --with-zlib-include=/usr/include          \
+./config linux-x86_64 \
+         --prefix="$install_dir" \
+         --openssldir="$install_dir" \
+         -Wl,-rpath="$install_dir"/lib64 \
+         -Wl,--enable-new-dtags \
+         -DOPENSSL_USE_IPV6=0 \
+         --release \
+         --with-zlib-include=/usr/include \
          --with-zlib-lib=/usr/lib/x86_64-linux-gnu \
-         enable-ec_nistp_64_gcc_128                \
-         enable-egd                                \
-         enable-fips                               \
-         enable-rc5                                \
-         enable-sctp                               \
-         enable-shared                             \
-         enable-threads                            \
-         enable-zlib                               \
+         enable-ec_nistp_64_gcc_128 \
+         enable-egd \
+         enable-fips \
+         enable-rc5 \
+         enable-sctp \
+         enable-shared \
+         enable-threads \
+         enable-zlib \
          no-tests
 sed -i 's/linux-x86_64/linux-x86_64-rpath/g' 'Makefile'
 echo
@@ -204,7 +194,7 @@ fi
 
 # Install jemalloc
 
-printf "\n%s\n%s\n\n"              \
+printf "\n%s\n%s\n\n" \
     "Installing Jemalloc - v5.3.0" \
     '==============================================='
 
@@ -212,14 +202,14 @@ cd "$cwd/jemalloc-5.3.0" || exit 1
 ./autogen.sh
 cd build || exit 1
 ../configure --prefix="$install_dir" \
-             --disable-debug           \
-             --disable-doc             \
-             --disable-fill            \
-             --disable-log             \
-             --disable-prof            \
-             --disable-stats           \
-             --enable-autogen          \
-             --enable-static           \
+             --disable-debug \
+             --disable-doc \
+             --disable-fill \
+             --disable-log \
+             --disable-prof \
+             --disable-stats \
+             --enable-autogen \
+             --enable-static \
              --enable-xmalloc
 echo
 if ! make "-j$(nproc --all)"; then
@@ -262,15 +252,15 @@ fi
 
 # Install http3
 
-printf "\n%s\n%s\n\n"           \
+printf "\n%s\n%s\n\n" \
     "Installing HTTP3 - v1.1.0" \
     '==============================================='
 
 cd "$cwd/nghttp3-1.1.0" || exit 1
 autoreconf -fi
-./configure --prefix="$install_dir"            \
-            --{build,host,target}="${pc_type}"   \
-            --enable-lib-only                    \
+./configure --prefix="$install_dir" \
+            --{build,host,target}="${pc_type}" \
+            --enable-lib-only \
             --with-pic
 echo
 if ! make "-j$(nproc --all)"; then
@@ -302,21 +292,21 @@ fi
 
 # Install ngtcp2
 
-printf "\n%s\n%s\n\n"            \
+printf "\n%s\n%s\n\n" \
     "Installing ngtcp2 - v1.1.0" \
     '==============================================='
 
 cd "$cwd/ngtcp2-1.1.0" || exit 1
 ./autogen.sh
 cd build || exit 1
-../configure --prefix="$install_dir"         \
+../configure --prefix="$install_dir" \
             --{build,host,target}="${pc_type}" \
-            --enable-lib-only                  \
-            --with-pic                         \
-            --with-jemalloc                    \
-            --with-cunit                       \
-            --with-libnghttp3                  \
-            --with-libev                       \
+            --enable-lib-only \
+            --with-pic \
+            --with-jemalloc \
+            --with-cunit \
+            --with-libnghttp3 \
+            --with-libev \
             --with-openssl
 echo
 if ! make "-j$(nproc --all)"; then
@@ -329,23 +319,23 @@ fi
 
 # Install http2
 
-printf "\n%s\n%s\n\n"            \
+printf "\n%s\n%s\n\n" \
     "Installing HTTP2 - v1.58.0" \
     '==============================================='
 
 cd "$cwd/ngtcp2-1.58.0" || exit 1
 autoreconf -fi
-./configure --prefix="$install_dir"          \
+./configure --prefix="$install_dir" \
             --{build,host,target}="${pc_type}" \
-            --disable-examples                 \
-            --enable-http3                     \
-            --enable-lib-only                  \
-            --with-libxml2                     \
-            --with-openssl                     \
-            --with-pic                         \
-            --with-jemalloc                    \
-            --with-libnghttp3                  \
-            --with-libngtcp2                   \
+            --disable-examples \
+            --enable-http3 \
+            --enable-lib-only \
+            --with-libxml2 \
+            --with-openssl \
+            --with-pic \
+            --with-jemalloc \
+            --with-libnghttp3 \
+            --with-libngtcp2 \
             --with-libbpf
 echo
 if ! make "-j$(nproc --all)"; then
@@ -377,17 +367,17 @@ fi
 
 # Install c-ares
 
-printf "\n%s\n%s\n\n"             \
+printf "\n%s\n%s\n\n" \
     "Installing c-ares - v1.23.0" \
     '==============================================='
 
 cd "$cwd/c-ares-1.23.0" || exit 1
 autoreconf -fi
 cd build || exit 1
-../configure --prefix="$install_dir"           \
+../configure --prefix="$install_dir" \
                      --{build,host}="${pc_type}" \
-                     --disable-debug             \
-                     --disable-warnings          \
+                     --disable-debug \
+                     --disable-warnings \
                      --with-pic
 echo
 if ! make "-j$(nproc --all)"; then
@@ -419,7 +409,7 @@ fi
 
 # Install ca certs from curl's official website
 
-printf "\n%s\n%s\n\n"                                               \
+printf "\n%s\n%s\n\n" \
    'Install the latest security certificate from cURL'\''s website' \
    '==================================================================='
 
@@ -441,7 +431,7 @@ sudo update-ca-certificates
 
 # Build curl from source
 
-printf "\n%s\n%s\n\n"          \
+printf "\n%s\n%s\n\n" \
     "Installing cURL - v8.4.0" \
     '==============================================='
 
@@ -461,9 +451,9 @@ wopts+=('--with-'{ca-bundle="${pem_out}",ca-fallback,ca-path="${cert_dir}",secur
 autoreconf -fi
 cd build || exit 1
 ../configure --prefix="$install_dir" \
-            "${dopts[@]}"              \
-            "${eopts[@]}"              \
-            "${wopts[@]}"              \
+            "${dopts[@]}" \
+            "${eopts[@]}" \
+            "${wopts[@]}" \
             "${csuffix}"
 if ! make "-j$(nproc --all)"; then
     fail_fn "Failed to execute: make -j$(nproc --all). Line: ${LINENO}"

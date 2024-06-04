@@ -26,8 +26,7 @@ archive_dir=gc-8.2.4
 archive_url=https://github.com/ivmai/bdwgc/releases/download/v8.2.4/gc-8.2.4.tar.gz
 archive_ext="${archive_url//*.}"
 archive_name="$archive_dir.tar.${archive_ext}"
-cwd="$PWD"/garbage-collector-build-script
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
+cwd="$PWD/garbage-collector-build-script"
 web_repo=https://github.com/slyfox1186/script-repo
 
 printf "\n%s\n%s\n\n" \
@@ -35,56 +34,19 @@ printf "\n%s\n%s\n\n" \
     '==============================================='
 
 # Create output directory
-
-if [ ! -d "$cwd" ]; then
-    mkdir -p "$cwd"
-fi
+[[ -d "$cwd" ]] && sudo rm -fr "$cwd"
+mkdir -p "$cwd"
 
 # Set the c+cpp compilers
-
-export CC=gcc CXX=g++
-
-# Set compiler optimization flags
-
-export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -fno-plt -march=native'
-
-# Set the path variable
-
-PATH="\
-/usr/lib/ccache:\
-${HOME}/perl5/bin:\
-${HOME}/.cargo/bin:\
-${HOME}/.local/bin:\
-/usr/local/sbin:\
-/usr/local/cuda/bin:\
-/usr/local/x86_64-linux-gnu/bin:\
-/usr/local/bin:\
-/usr/sbin:\
-/usr/bin:\
-/sbin:\
-/bin:\
-/usr/local/games:\
-/usr/games:\
-/snap/bin\
-"
-export PATH
-
-# Set the pkg_config_path variable
-
-PKG_CONFIG_PATH="\
-/usr/local/lib64/pkgconfig:\
-/usr/local/lib/pkgconfig:\
-/usr/local/lib/"$install_dir"/pkgconfig:\
-/usr/local/share/pkgconfig:\
-/usr/lib64/pkgconfig:\
-/usr/lib/pkgconfig:\
-/usr/lib/"$install_dir"/pkgconfig:\
-/usr/share/pkgconfig:\
-/lib64/pkgconfig:\
-/lib/pkgconfig:\
-/lib/"$install_dir"/pkgconfig\
-"
-export PKG_CONFIG_PATH
+CC="gcc"
+CXX="g++"
+CFLAGS="-O2 -pipe -mtune=native"
+CXXFLAGS="$CFLAGS"
+PATH="/usr/lib/ccache:$PATH"
+PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/lib64/pkgconfig:/usr/local/share/pkgconfig:/usr/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/share/pkgconfig"
+PKG_CONFIG_PATH+=":/usr/local/cuda/lib64/pkgconfig:/usr/local/cuda/lib/pkgconfig:/opt/cuda/lib64/pkgconfig:/opt/cuda/lib/pkgconfig"
+PKG_CONFIG_PATH+=":/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/i386-linux-gnu/pkgconfig:/usr/lib/arm-linux-gnueabihf/pkgconfig:/usr/lib/aarch64-linux-gnu/pkgconfig"
+export CC CXX CFLAGS CXXFLAGS PATH PKG_CONFIG_PATH
 
 # Create functions
 
@@ -157,7 +119,7 @@ pkgs_fn()
 # Download the archive file
 
 if [ ! -f "$cwd/${archive_name}" ]; then
-    curl -A "$user_agent" -Lso "$cwd/${archive_name}" "${archive_url}"
+    curl -Lso "$cwd/${archive_name}" "${archive_url}"
 fi
 
 # Create output directory

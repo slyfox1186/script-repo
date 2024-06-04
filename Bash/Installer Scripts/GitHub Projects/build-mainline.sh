@@ -25,15 +25,18 @@ printf "%s\n%s\n\n" \
     '==============================================='
 
 # Create output directory
-if [ ! -d "$cwd" ]; then
-    mkdir -p "$cwd"
-fi
+[[ ! -d "$cwd" ]] && mkdir -p "$cwd"
 
 # Set the c+cpp compilers
-export CC=gcc CXX=g++
-
-# Export compiler optimization flags
-export {CFLAGS,CXXFLAGS}='-g -O3 -pipe -fno-plt -march=native'
+CC="gcc"
+CXX="g++"
+CFLAGS="-O2 -pipe -march=native"
+CXXFLAGS="$CFLAGS"
+PATH="/usr/lib/ccache:$PATH"
+PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/lib64/pkgconfig:/usr/local/share/pkgconfig:/usr/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/share/pkgconfig"
+PKG_CONFIG_PATH+=":/usr/local/cuda/lib64/pkgconfig:/usr/local/cuda/lib/pkgconfig:/opt/cuda/lib64/pkgconfig:/opt/cuda/lib/pkgconfig"
+PKG_CONFIG_PATH+=":/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/i386-linux-gnu/pkgconfig:/usr/lib/arm-linux-gnueabihf/pkgconfig:/usr/lib/aarch64-linux-gnu/pkgconfig"
+export CC CXX CFLAGS CXXFLAGS PATH PKG_CONFIG_PATH
 
 # Create functions
 exit_function() {

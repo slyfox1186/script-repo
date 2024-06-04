@@ -8,13 +8,11 @@ if [ "$EUID" -eq '0' ]; then
     exit 1
 fi
 
-
 if [ -f '/proc/cpuinfo' ]; then
     cpu_threads="$(grep --count ^processor '/proc/cpuinfo')"
 else
     cpu_threads="$(nproc --all)"
 fi
-
 
 script_ver=1.2
 install_prefix=/usr/local
@@ -33,54 +31,21 @@ user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Geck
 web_repo=https://github.com/slyfox1186/script-repo
 debug=OFF
 
-
 mkdir -p "$packages" "$workspace"
 
-
-CC=clang
-CXX=clang++
-LDFLAGS='-L/usr/local/lib64 -L/usr/local/lib -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib'
-CFLAGS='-g -O3 -pipe -fno-plt -march=native'
+CC="clang"
+CXX="clang++"
+LDFLAGS="-L/usr/local/lib64 -L/usr/local/lib -L/usr/lib64 -L/usr/lib -L/lib64 -L/lib"
+CFLAGS="-O2 -pipe -march=native"
 CXXFLAGS="$CFLAGS"
-CPPFLAGS='-I/usr/local/include -I/usr/include'
+CPPFLAGS="-I/usr/local/include -I/usr/include"
 export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
 
-
-PATH="\
-/usr/lib/ccache/bin:\
-/usr/lib/ccache:\
-$HOME/perl5/bin:\
-$HOME/.cargo/bin:\
-$HOME/.local/bin:\
-/usr/local/sbin:\
-/usr/local/cuda/bin:\
-/usr/local/x86_64-linux-gnu/bin:\
-/usr/local/bin:\
-/usr/sbin:\
-/usr/bin:\
-/sbin:\
-/bin:\
-/usr/local/games:\
-/usr/games:\
-/snap/bin\
-"
-export PATH
-
-
-PKG_CONFIG_PATH="\
-/usr/local/lib64/pkgconfig:\
-/usr/local/lib/pkgconfig:\
-/usr/local/lib/$install_dir/pkgconfig:\
-/usr/local/share/pkgconfig:\
-/usr/lib64/pkgconfig:\
-/usr/lib/pkgconfig:\
-/usr/lib/$install_dir/pkgconfig:\
-/usr/share/pkgconfig:\
-/lib64/pkgconfig:\
-/lib/pkgconfig:\
-/lib/$install_dirpkgconfig\
-"
-export PKG_CONFIG_PATH
+PATH="/usr/lib/ccache:$PATH"
+PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/lib64/pkgconfig:/usr/local/share/pkgconfig:/usr/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/share/pkgconfig"
+PKG_CONFIG_PATH+=":/usr/local/cuda/lib64/pkgconfig:/usr/local/cuda/lib/pkgconfig:/opt/cuda/lib64/pkgconfig:/opt/cuda/lib/pkgconfig"
+PKG_CONFIG_PATH+=":/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/i386-linux-gnu/pkgconfig:/usr/lib/arm-linux-gnueabihf/pkgconfig:/usr/lib/aarch64-linux-gnu/pkgconfig"
+export PKG_CONFIG_PATH PATH
 
 LD_LIBRARY="\
 /usr/local/lib64:\
@@ -169,51 +134,10 @@ suffix_choice_fn() {
 }
 suffix_choice_fn
 
-
 printf "%s\n%s\n%s\n" \
     "Download Tools Build Script - v$script_ver" \
-    '=========================================' \
+    "=========================================" \
     "This script will utilize ($cpu_threads) CPU threads for parallel processing to accelerate the build process."
-
-
-PATH="\
-/usr/lib/ccache:\
-$workspace/bin:\
-$HOME/.cargo/bin:\
-$HOME/.local/bin:\
-/usr/local/sbin:\
-/usr/local/bin:\
-/usr/sbin:\
-/usr/bin:\
-/sbin:\
-/bin:\
-/usr/local/cuda/bin:\
-/snap/bin\
-"
-export PATH
-
-PKG_CONFIG_PATH="\
-$workspace/usr/lib/pkgconfig:\
-$workspace/lib64/pkgconfig:\
-$workspace/lib/pkgconfig:\
-$workspace/lib/x86_64-linux-gnu/pkgconfig:\
-$workspace/share/pkgconfig:\
-/usr/local/lib64/pkgconfig:\
-/usr/local/lib/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/local/share/pkgconfig:\
-/usr/lib64/pkgconfig:\
-/usr/lib/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/open-coarrays/openmpi/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/openmpi/lib/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/share/pkgconfig:\
-/lib64/pkgconfig:\
-/lib/pkgconfig:\
-/lib/x86_64-linux-gnu/pkgconfig\
-"
-export PKG_CONFIG_PATH
-
 
 fail_fn() {
     printf "\n%s\n%s\n%s\n\n" \

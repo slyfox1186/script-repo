@@ -71,8 +71,10 @@ set_env_vars() {
     CPPFLAGS="-D_FORTIFY_SOURCE=2"
     LDFLAGS1="-Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now,-rpath,$install_dir1/lib"
     LDFLAGS2="-Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now,-rpath,$install_dir2/lib"
-    PATH="/usr/lib/ccache:$HOME/perl5/bin:$HOME/.cargo/bin:$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin"
-    PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/pkgconfig"
+    PATH="/usr/lib/ccache:$PATH"
+    PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/lib64/pkgconfig:/usr/local/share/pkgconfig:/usr/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/share/pkgconfig"
+    PKG_CONFIG_PATH+=":/usr/local/cuda/lib64/pkgconfig:/usr/local/cuda/lib/pkgconfig:/opt/cuda/lib64/pkgconfig:/opt/cuda/lib/pkgconfig"
+    PKG_CONFIG_PATH+=":/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/i386-linux-gnu/pkgconfig:/usr/lib/arm-linux-gnueabihf/pkgconfig:/usr/lib/aarch64-linux-gnu/pkgconfig"
     export CC CXX CFLAGS CPPFLAGS CXXFLAGS PATH PKG_CONFIG_PATH
 }
 

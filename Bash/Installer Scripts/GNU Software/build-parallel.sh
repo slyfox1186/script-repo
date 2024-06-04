@@ -69,6 +69,18 @@ parse_arguments() {
     done
 }
 
+set_compiler_settings() {
+    CC="gcc"
+    CXX="g++"
+    CFLAGS="-O2 -pipe -fno-plt -march=native"
+    CXXFLAGS="-O2 -pipe -fno-plt -march=native"
+    PATH="/usr/lib/ccache:$PATH"
+    PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/lib64/pkgconfig:/usr/local/share/pkgconfig:/usr/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/share/pkgconfig"
+    PKG_CONFIG_PATH+=":/usr/local/cuda/lib64/pkgconfig:/usr/local/cuda/lib/pkgconfig:/opt/cuda/lib64/pkgconfig:/opt/cuda/lib/pkgconfig"
+    PKG_CONFIG_PATH+=":/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/i386-linux-gnu/pkgconfig:/usr/lib/arm-linux-gnueabihf/pkgconfig:/usr/lib/aarch64-linux-gnu/pkgconfig"
+    export CC CFLAGS CXX CXXFLAGS PKG_CONFIG_PATH PATH
+}
+
 # Verify the script is not run as root
 verify_not_root() {
     if [[ "$EUID" -eq 0 ]]; then
@@ -158,6 +170,7 @@ main() {
     parse_arguments "$@"
     verify_not_root
     check_dependencies
+    set_compiler_settings
     log "Building GNU $prog_name from source."
     echo
     download_and_extract

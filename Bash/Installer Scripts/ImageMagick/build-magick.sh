@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2034
 
-# Script Version: 1.5
-# Updated: 05.07.24
+# Script Version: 1.6.0
+# Updated: 05.24.24
 # GitHub: https://github.com/slyfox1186/imagemagick-build-script
 # Purpose: Build ImageMagick 7 from the source code obtained from ImageMagick's official GitHub repository
 # Function: ImageMagick is the leading open-source command line image processor. It can blur, sharpen, warp, reduce total file size, ect... The possibilities are vast
@@ -15,7 +15,7 @@ if [[ "$EUID" -ne 0 ]]; then
 fi
 
 # SET GLOBAL VARIABLES
-script_ver=1.5
+script_ver="1.6.0"
 cwd="$PWD/magick-build-script"
 packages="$cwd/packages"
 workspace="$cwd/workspace"
@@ -48,8 +48,8 @@ box_out_banner_header "ImageMagick Build Script v$script_ver"
 mkdir -p "$packages" "$workspace"
 
 # SET THE COMPILERS TO USE AND THE COMPILER OPTIMIZATION FLAGS
-CC="ccache gcc"
-CXX="ccache g++"
+CC="gcc"
+CXX="g++"
 CFLAGS="-O3 -fPIC -pipe -march=native -fstack-protector-strong"
 CXXFLAGS="$CFLAGS"
 CPPFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include -D_FORTIFY_SOURCE=2"
@@ -63,25 +63,31 @@ else
     cpu_threads=$(nproc --all)
 fi
 
+# SET THE PATH
+if [[ -d /usr/lib/ccache/bin ]]; then
+    ccache_dir=/usr/lib/ccache/bin
+else
+    ccache_dir=/usr/lib/ccache
+fi
+
 # Set the path variable
-PATH="/usr/lib/ccache:$workspace/bin:$PATH"
+PATH="\
+$ccache_dir:\
+$workspace/bin:\
+$HOME/.local/bin:\
+/usr/local/sbin:\
+/usr/local/bin:\
+/usr/sbin:\
+/usr/bin:\
+/sbin:\
+/bin\
+"
 export PATH
 
-# Set the pkg_config_path variable
-PKG_CONFIG_PATH="\
-$workspace/lib64/pkgconfig:\
-$workspace/lib/x86_64-linux-gnu/pkgconfig:\
-$workspace/lib/pkgconfig:\
-$workspace/share/pkgconfig:\
-/usr/local/lib64/pkgconfig:\
-/usr/local/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/local/lib/pkgconfig:\
-/usr/local/share/pkgconfig:\
-/usr/lib64/pkgconfig:\
-/usr/lib/pkgconfig:\
-/usr/lib/x86_64-linux-gnu/pkgconfig:\
-/usr/share/pkgconfig\
-"
+# Set the PKG_CONFIG_PATH variable
+PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/lib64/pkgconfig:/usr/local/share/pkgconfig:/usr/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/share/pkgconfig"
+PKG_CONFIG_PATH+=":/usr/local/cuda/lib64/pkgconfig:/usr/local/cuda/lib/pkgconfig:/opt/cuda/lib64/pkgconfig:/opt/cuda/lib/pkgconfig"
+PKG_CONFIG_PATH+=":/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/i386-linux-gnu/pkgconfig:/usr/lib/arm-linux-gnueabihf/pkgconfig:/usr/lib/aarch64-linux-gnu/pkgconfig"
 export PKG_CONFIG_PATH
 
 exit_fn() {
@@ -375,19 +381,31 @@ find_git_repo() {
     "$set_repo" "$url" "$set_action" 2>/dev/null
 }
 
+find_git_repo "7950" "2" "T"
+
+find_ghostscript_version() {
+    version="$1"
+    # Extract numeric part of version (removing 'gs' prefix if it exists)
+    gs_modified="$(echo "$version" | sed -E 's/([0-9]+)\.([0-9]+)\.([0-9]+)/gs\1\2\3/')"
+
+    # Construct the archive URL using the original version string without dots
+    gscript_url="https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/${gs_modified}/ghostscript-${version}.tar.xz"
+}
+
 apt_pkgs() {
     local pkg pkgs missing_packages
 
     pkgs=(
         $1 alien autoconf autoconf-archive binutils bison build-essential
-        cmake curl dbus-x11 flex fontforge git gperf imagemagick jq intltool libc6
-        libcamd2 libcpu-features-dev libdmalloc-dev libdmalloc5 libfont-ttf-perl
-        libfontconfig-dev libgc-dev libgc1 libgegl-0.4-0 libgegl-common libgimp2.0-dev
-        libgl2ps-dev libglib2.0-dev libgs-dev libheif-dev libhwy-dev libjemalloc-dev
-        libjxl-dev libnotify-bin libpstoedit-dev librust-jpeg-decoder-dev librust-malloc-buf-dev
-        libsharp-dev libticonv-dev libtool libtool-bin libyuv-dev libyuv-utils libyuv0
-        lsb-release m4 meson nasm ninja-build php-dev pkg-config python3-dev yasm zlib1g-dev
-        lzip
+        cmake curl dbus-x11 flex fontforge git gperf imagemagick intltool
+        jq libc6 libcamd2 libcpu-features-dev libdmalloc-dev libdmalloc5
+        libfont-ttf-perl libfontconfig-dev libgc-dev libgc1 libgegl-0.4-0
+        libgegl-common libgimp2.0-dev libgl2ps-dev libglib2.0-dev libgs-dev
+        libheif-dev libhwy-dev libjemalloc-dev libjxl-dev libnotify-bin
+        libpstoedit-dev librust-jpeg-decoder-dev librust-malloc-buf-dev
+        libsharp-dev libticonv-dev libtool libtool-bin libyuv-dev libyuv-utils
+        libyuv0 lsb-release lzip m4 meson nasm ninja-build php-dev pkg-config
+        python3-dev yasm zlib1g-dev
     )
 
     # Initialize arrays for missing, available, and unavailable packages
@@ -606,10 +624,9 @@ if build "$repo_name" "$version"; then
 fi
 
 find_git_repo "ArtifexSoftware/ghostpdl-downloads" "1" "T"
-modify_version="${version#gs}"
-modify_version=$(sed -r 's/(..)(..)(.)/\1.\2.\3/' <<< "$modify_version")
+find_ghostscript_version "$version"
 if build "ghostscript" "$version"; then
-    download "https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/$version/ghostscript-$modify_version.tar.xz" "ghostscript-$modify_version.tar.xz"
+    download "$gscript_url" "ghostscript-$version.tar.xz"
     execute ./autogen.sh
     execute ./configure --prefix="$workspace" --with-libiconv=native
     execute make "-j$cpu_threads"
@@ -669,11 +686,7 @@ if build "freetype" "$version1"; then
     download "https://gitlab.freedesktop.org/freetype/freetype/-/archive/VER-$version/freetype-VER-$version.tar.bz2" "freetype-$version1.tar.bz2"
     extracmds=("-D"{harfbuzz,png,bzip2,brotli,zlib,tests}"=disabled")
     execute ./autogen.sh
-    execute meson setup build --prefix="$workspace" \
-                              --buildtype=release \
-                              --default-library=static \
-                              --strip \
-                              "${extracmds[@]}"
+    execute meson setup build --prefix="$workspace" --buildtype=release --default-library=static --strip "${extracmds[@]}"
     execute ninja "-j$cpu_threads" -C build
     execute ninja -C build install
     build_done "freetype" "$version1"
@@ -683,11 +696,7 @@ find_git_repo "1665" "3" "T"
 if build "libxml2" "$version"; then
     download "https://gitlab.gnome.org/GNOME/libxml2/-/archive/v$version/libxml2-v$version.tar.bz2" "libxml2-$version.tar.bz2"
     execute ./autogen.sh
-    execute cmake -B build \
-                  -DCMAKE_INSTALL_PREFIX="$workspace" \
-                  -DCMAKE_BUILD_TYPE=Release \
-                  -DBUILD_SHARED_LIBS=OFF \
-                  -G Ninja -Wno-dev
+    execute cmake -B build -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads" -C build
     execute ninja -C build install
     build_done "libxml2" "$version"

@@ -3,8 +3,8 @@
 
 # GitHub: https://github.com/slyfox1186/ffmpeg-build-script
 #
-# Script version: 3.8.2
-# Updated: 05.24.24
+# Script version: 3.8.4
+# Updated: 06.02.24
 #
 # Purpose: build ffmpeg from source code with addon development libraries
 #          also compiled from source to help ensure the latest functionality
@@ -14,14 +14,14 @@
 # Supported architecture: x86_64
 # CUDA SDK Toolkit: Updated to version 12.4.1
 
-if [[ "$EUID" -ne 0 ]]; then
-    echo "You must run this script as root or with sudo."
+if [[ "$EUID" -eq 0 ]]; then
+    echo "You must run this script without root or with sudo."
     exit 1
 fi
 
 # Define global variables
 script_name="$0"
-script_version="3.8.2"
+script_version="3.8.4"
 cwd="$PWD/ffmpeg-build-script"
 mkdir -p "$cwd" && cd "$cwd" || exit 1
 if [[ "$PWD" =~ ffmpeg-build-script\/ffmpeg-build-script ]]; then
@@ -31,6 +31,7 @@ if [[ "$PWD" =~ ffmpeg-build-script\/ffmpeg-build-script ]]; then
 fi
 packages="$cwd/packages"
 workspace="$cwd/workspace"
+google_speech_flag=false
 # Set a regex string to match and then exclude any found release candidate versions of a program. Utilize stable releases only.
 git_regex='(Rc|rc|rC|RC|alpha|beta|early|init|next|pending|pre|tentative)+[0-9]*$'
 debug=OFF
@@ -63,7 +64,7 @@ mkdir -p "$packages" "$workspace"
 
 # Set the CC/CPP compilers + customized compiler optimization flags
 source_compiler_flags() {
-    CFLAGS="-O3 -pipe -fPIC -march=native"
+    CFLAGS="-O2 -pipe -fPIC -march=native"
     CXXFLAGS="$CFLAGS"
     CPPFLAGS="-I$workspace/include -I/usr/x86_64-linux-gnu/include -D_FORTIFY_SOURCE=2"
     LDFLAGS="-L$workspace/lib64 -L$workspace/lib -Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now"
@@ -97,6 +98,9 @@ fail() {
     echo
     echo -e "${GREEN}[INFO]${NC} For help or to report a bug create an issue at: https://github.com/slyfox1186/script-repo/issues"
     echo
+    if $google_speech_flag; then
+        google_speech "The FFmpeg build script encountered a fatal error." &>/dev/null
+    fi
     exit 1
 }
 
@@ -108,7 +112,7 @@ cleanup() {
 
     case "$choice" in
         [yY]*|[yY][eE][sS]*)
-            rm -fr "$cwd"
+            sudo rm -fr "$cwd"
             ;;
         [nN]*|[nN][oO]*)
             ;;
@@ -239,12 +243,13 @@ check_ffmpeg_version() {
 }
 
 download() {
-    local download_file download_path download_url output_directory target_directory target_file
+    local download_file download_path download_url giflib_regex output_directory target_directory target_file
     download_path="$packages"
     download_url="$1"
     download_file="${2:-"${1##*/}"}"
+    giflib_regex='cfhcable\.dl\.sourceforge\.net'
 
-    if [[ "$download_file" =~ tar. ]]; then
+    if [[ "$download_file" =~ tar\. ]]; then
         output_directory="${download_file%.*}"
         output_directory="${output_directory%.*}"
     else
@@ -271,6 +276,7 @@ download() {
 
     if ! tar -xf "$target_file" -C "$target_directory" --strip-components 1 2>/dev/null; then
         rm "$target_file"
+        [[ "$download_url" =~ $giflib_regex ]] && return 0
         fail "Failed to extract the tarball \"$download_file\" and was deleted. Re-run the script to try again. Line: $LINENO"
     fi
 
@@ -496,10 +502,10 @@ library_exists() {
 
 determine_libtool_version() {
     case "$STATIC_VER" in
-        20.04|22.04|23.04|23.10|msft)
+        20.04|22.04|23.04|23.10)
             libtool_version="2.4.6"
             ;;
-        11|12|24.04)
+        11|12|24.04|msft)
             libtool_version="2.4.7"
             ;;
     esac
@@ -528,9 +534,9 @@ setup_python_venv_and_install_packages() {
 }
 
 find_cuda_json_file() {
-    if [[ -f /opt/cuda/version.json ]]; then
+    if [[ -f "/opt/cuda/version.json" ]]; then
         locate_cuda_json_file="/opt/cuda/version.json"
-    elif [[ -f /usr/local/cuda/version.json ]]; then
+    elif [[ -f "/usr/local/cuda/version.json" ]]; then
         locate_cuda_json_file="/usr/local/cuda/version.json"
     fi
 
@@ -543,14 +549,15 @@ usage() {
     echo "Usage: $script_name [options]"
     echo
     echo "Options:"
-    echo "  -h, --help                       Display usage information"
-    echo "   --compiler=<gcc|clang>          Set the default CC and CXX compiler (default: gcc)"
-    echo "  -b, --build                      Starts the build process"
-    echo "  -c, --cleanup                    Remove all working dirs"
-    echo "  -j, --jobs <number>              Set the number of CPU threads for parallel processing"
-    echo "  -l, --latest                     Force the script to build the latest version of dependencies if newer version is available"
-    echo "  -n, --enable-gpl-and-non-free    Enable GPL and non-free codecs - https://ffmpeg.org/legal.html"
-    echo "  -v, --version                    Display the current script version"
+    echo "  -h, --help                        Display usage information"
+    echo "   --compiler=<gcc|clang>           Set the default CC and CXX compiler (default: gcc)"
+    echo "  -b, --build                       Starts the build process"
+    echo "  -c, --cleanup                     Remove all working dirs"
+    echo "  -g, --google-speech               Enable Google Speech for audible error messages (google_speech must already be installed to work)."
+    echo "  -j, --jobs <number>               Set the number of CPU threads for parallel processing"
+    echo "  -l, --latest                      Force the script to build the latest version of dependencies if newer version is available"
+    echo "  -n, --enable-gpl-and-non-free     Enable GPL and non-free codecs - https://ffmpeg.org/legal.html"
+    echo "  -v, --version                     Display the current script version"
     echo
     echo "Example: bash $script_name --build --compiler=clang -j 8"
     echo
@@ -576,16 +583,20 @@ while (("$#" > 0)); do
         -n|--enable-gpl-and-non-free)
             CONFIGURE_OPTIONS+=("--enable-"{gpl,libsmbclient,libcdio,nonfree})
             NONFREE_AND_GPL=true
+            shift
             ;;
         -b|--build)
             bflag="-b"
+            shift
             ;;
         -c|--cleanup)
             cflag="-c"
             cleanup
+            shift
             ;;
         -l|--latest)
             LATEST=true
+            shift
             ;;
         --compiler=gcc|--compiler=clang)
             COMPILER_FLAG="${1#*=}"
@@ -595,12 +606,15 @@ while (("$#" > 0)); do
             threads="$2"
             shift 2
             ;;
+        -g|--google-speech)
+            google_speech_flag="true"
+            shift
+            ;;
         *)
             usage
             exit 1
             ;;
     esac
-    shift
 done
 
 if [[ -z "$threads" ]]; then
@@ -623,15 +637,6 @@ else
     fail "Invalid compiler specified. Valid options are 'gcc' or 'clang'."
 fi
 export CC CXX MAKEFLAGS
-
-if [[ -z "$bflag" ]]; then
-    if [[ -z "$cflag" ]]; then
-        usage
-        echo
-        exit 1
-    fi
-    exit 0
-fi
 
 echo
 log "Utilizing $threads CPU threads"
@@ -687,7 +692,7 @@ export PKG_CONFIG_PATH
 check_amd_gpu() {
     if lshw -C display 2>&1 | grep -Eioq "amdgpu|amd"; then
         echo "AMD GPU detected"
-    elif dpkg -l 2>&1 | grep -iq "amdgpu"; then
+    elif sudo dpkg -l 2>&1 | grep -iq "amdgpu"; then
         echo "AMD GPU detected"
     elif lspci 2>&1 | grep -i "amd"; then
         echo "AMD GPU detected"
@@ -722,18 +727,22 @@ set_java_variables() {
     source_path
     if [[ -d "/usr/lib/jvm/" ]]; then
         locate_java=$(
-                     find /usr/lib/jvm/ -type d -name "java-*-openjdk*" |
+                     sudo find /usr/lib/jvm/ -type d -name "java-*-openjdk*" |
                      sort -ruV | head -n1
                   )
     else
-        if sudo apt -y install openjdk-17-jdk-headless; then
+        latest_openjdk_version=$(
+                                 sudo apt-cache search '^openjdk-[0-9]+-jdk-headless$' |
+                                 sort -ruV | head -n1 | awk '{print $1}'
+                             )
+        if sudo apt -y install $latest_openjdk_version; then
             set_java_variables
         else
             fail "Could not install openjdk. Line: $LINENO"
         fi
     fi
     java_include=$(
-                  find /usr/lib/jvm/ -type f -name "javac" |
+                  sudo find /usr/lib/jvm/ -type f -name "javac" |
                   sort -ruV | head -n1 | xargs dirname |
                   sed 's/bin/include/'
               )
@@ -823,8 +832,8 @@ download_cuda() {
             "Ubuntu 22.04") distro="ubuntu2204"; version="12-5"; pkg_ext="pin"; pin_file="$distro/x86_64/cuda-ubuntu2204.pin"; installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_serial}_amd64.deb" ;;
             "Ubuntu 24.04")
                 echo "deb http://security.ubuntu.com/ubuntu jammy-security main universe" | tee "/etc/apt/sources.list.d/install-cuda-on-noble.list" >/dev/null
-                apt update
-                apt -y upgrade
+                sudo apt update
+                sudo apt -y upgrade
                 echo "export PATH=/usr/local/cuda/bin\${PATH:+:\${PATH}}" | tee -a "$HOME/.bashrc" >/dev/null
                 distro="ubuntu2204"; version="12-5"; pkg_ext="pin"; pin_file="$distro/x86_64/cuda-ubuntu2204.pin"; installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_serial}_amd64.deb"
                 ;;
@@ -847,19 +856,19 @@ download_cuda() {
     if [[ "$pkg_ext" == "deb" ]]; then
         package_name="$packages/nvidia-cuda/cuda-$distro-$cuda_version_number.$pkg_ext"
         wget --show-progress -cqO "$package_name" "$cuda_url/$installer_path"
-        dpkg -i "$package_name"
+        sudo dpkg -i "$package_name"
         cp -f "/var/cuda-repo-${distro}${version}-local/cuda-"*"-keyring.gpg" "/usr/share/keyrings/"
         [[ "$distro" == "debian"* ]] && add-apt-repository -y contrib
     elif [[ "$pkg_ext" == "pin" ]]; then
         wget --show-progress -cqO "/etc/apt/preferences.d/cuda-repository-pin-600" "$cuda_pin_url/$pin_file"
         package_name="$packages/nvidia-cuda/cuda-$distro-$cuda_version_number.deb"
         wget --show-progress -cqO "$package_name" "$cuda_url/$installer_path"
-        dpkg -i "$package_name"
+        sudo dpkg -i "$package_name"
         cp -f "/var/cuda-repo-${distro}-12-5-local/cuda-"*"-keyring.gpg" "/usr/share/keyrings/"
     fi
 
-    apt update
-    apt install -y cuda-toolkit-12-5
+    sudo apt update
+    sudo apt -y install cuda-toolkit-12-5
 }
 
 # Function to detect the environment and check for an NVIDIA GPU
@@ -947,11 +956,11 @@ apt_pkgs() {
 
     # Function to find the latest version of a package by pattern
     find_latest_version() {
-        apt-cache search "$1" | sort -ruV | head -n1 | awk '{print $1}'
+        sudo apt-cache search "$1" | sort -ruV | head -n1 | awk '{print $1}'
     }
 
     # Use the function to find the latest versions of specific packages
-    nvidia_driver=$(find_latest_version '^nvidia-driver-[0-9]+$')
+    nvidia_driver=$(find_latest_version '^nvidia-driver[0-9-]*$')
     nvidia_utils=$(find_latest_version '^nvidia-utils-[0-9]+$')
     openjdk_pkg=$(find_latest_version '^openjdk-[0-9]+-jdk$')
     libcpp_pkg=$(find_latest_version '^libc\+\+-[0-9]+-dev$')
@@ -1000,7 +1009,7 @@ apt_pkgs() {
 
     # Check availability of missing packages and categorize them
     for pkg in "${missing_packages[@]}"; do
-        if apt-cache show "$pkg" >/dev/null 2>&1; then
+        if sudo apt-cache show "$pkg" >/dev/null 2>&1; then
             available_packages+=("$pkg")
         else
             unavailable_packages+=("$pkg")
@@ -1020,9 +1029,9 @@ apt_pkgs() {
         log "Installing available missing packages:"
         printf "       %s\n" "${available_packages[@]}"
         echo
-        apt update
-        apt install "${available_packages[@]}"
-        apt -y autoremove
+        sudo apt update
+        sudo apt install "${available_packages[@]}"
+        sudo apt -y autoremove
         echo
     else
         log "No missing packages to install or all missing packages are unavailable."
@@ -1067,7 +1076,7 @@ check_avx512() {
 
 fix_libstd_libs() {
     local libstdc_path
-    libstdc_path=$(find /usr/lib/x86_64-linux-gnu/ -type f -name 'libstdc++.so.6.0.*' | sort -ruV | head -n1)
+    libstdc_path=$(sudo find /usr/lib/x86_64-linux-gnu/ -type f -name 'libstdc++.so.6.0.*' | sort -ruV | head -n1)
     if [[ ! -f "/usr/lib/x86_64-linux-gnu/libstdc++.so" ]] && [[ -f "$libstdc_path" ]]; then
         ln -sf "$libstdc_path" "/usr/lib/x86_64-linux-gnu/libstdc++.so"
     fi
@@ -1075,7 +1084,7 @@ fix_libstd_libs() {
 
 fix_x265_libs() {
     local x265_libs x265_libs_trim
-    x265_libs=$(find "$workspace"/lib/ -type f -name 'libx265.so.*' | sort -rV | head -n1)
+    x265_libs=$(find "$workspace/lib/" -type f -name 'libx265.so.*' | sort -rV | head -n1)
     x265_libs_trim=$(echo "$x265_libs" | sed "s:.*/::" | head -n1)
 
     cp -f "$x265_libs" "/usr/lib/x86_64-linux-gnu"
@@ -1132,7 +1141,7 @@ ubuntu_msft() {
         23.04) apt_pkgs "$ubuntu_common_pkgs $jammy_pkgs $ubuntu_wsl_pkgs" ;;
         22.04) apt_pkgs "$ubuntu_common_pkgs $jammy_pkgs $ubuntu_wsl_pkgs" ;;
         20.04) apt_pkgs "$ubuntu_common_pkgs $focal_pkgs $ubuntu_wsl_pkgs" ;;
-        *) fail "Failed to parse the Ubutnu MSFT version. Line: $LINENO" ;;
+        *) fail "Failed to parse the Ubuntu MSFT version. Line: $LINENO" ;;
     esac
 }
 
@@ -1183,7 +1192,7 @@ ubuntu_os_version() {
 clear
 
 # Test the OS and its version
-find_lsb_release=$(find /usr/bin/ -type f -name lsb_release)
+find_lsb_release=$(sudo find /usr/bin/ -type f -name lsb_release)
 
 get_os_version() {
     if [[ -f /etc/os-release ]]; then
@@ -1204,14 +1213,14 @@ get_os_version() {
 get_os_version
 
 # Check if running Windows WSL2
-if [[ $(grep -i "microsoft" /proc/version) ]]; then
+if [[ $(grep -i "Microsoft" /proc/version) ]]; then
     wsl_flag="yes_wsl"
     STATIC_OS="WSL2"
 [[ "$OS" == "WSL2" ]] && STATIC_OS="WSL2"
 fi
 
 # Use the function to find the latest versions of specific packages
-libnvidia_encode_wsl=$(apt-cache search '^libnvidia-encode[0-9]+$' | sort -ruV | head -n1 | awk '{print $1}')
+libnvidia_encode_wsl=$(sudo apt-cache search '^libnvidia-encode[0-9]+$' | sort -ruV | head -n1 | awk '{print $1}')
 wsl_common_pkgs="cppcheck libsvtav1dec-dev libsvtav1-dev libsvtav1enc-dev libyuv-utils"
 wsl_common_pkgs+=" libyuv0 libsharp-dev libdmalloc5 $libnvidia_encode_wsl"
 
@@ -1222,13 +1231,13 @@ log "Checking installation status of each package..."
 
 nvidia_encode_utils_version() {
     nvidia_utils_version=$(
-                           apt-cache search '^nvidia-utils-.*' 2>/dev/null |
+                           sudo apt-cache search '^nvidia-utils-.*' 2>/dev/null |
                            grep -oP '^nvidia-utils-[0-9]+' |
                            sort -ruV | head -n1
                        )
 
     nvidia_encode_version=$(
-                            apt-cache search '^libnvidia-encode.*' 2>&1 |
+                            sudo apt-cache search '^libnvidia-encode.*' 2>&1 |
                             grep -oP '^libnvidia-encode-[0-9-]+' |
                             sort -ruV | head -n1
                        )
@@ -1245,7 +1254,7 @@ case "$STATIC_OS" in
     Ubuntu)     ubuntu_os_version "$nvidia_encode_version" "$nvidia_utils_version" ;;
 esac
 
-# Check minimum disk space-requirements
+# Check minimum disk space requirements
 echo
 echo "Checking disk space requirements..."
 echo "========================================================"
@@ -1256,15 +1265,15 @@ echo
 # Set the JAVA variables
 set_java_variables
 
-# Check if the cuda folder exists to determine installation status
-iscuda=$(find /usr/local/cuda/ -type f -name nvcc 2>/dev/null | sort -ruV | head -n1)
-cuda_path=$(find /usr/local/cuda/ -type f -name nvcc 2>/dev/null | sort -ruV | head -n1 | grep -oP '^.*/bin?')
+# Check if the CUDA folder exists to determine the installation status
+iscuda=$(sudo find /usr/local/cuda/ -type f -name nvcc 2>/dev/null | sort -ruV | head -n1)
+cuda_path=$(sudo find /usr/local/cuda/ -type f -name nvcc 2>/dev/null | sort -ruV | head -n1 | grep -oP '^.*/bin?')
 
-# Prompt the user to install the geforce cuda sdk-toolkit
+# Prompt the user to install the GeForce CUDA SDK-Toolkit
 install_cuda
 
 # Update the ld linker search paths
-ldconfig
+sudo ldconfig
 
 #
 # Install the Global Tools
@@ -1302,16 +1311,6 @@ if build "m4" "latest"; then
     build_done "m4" "latest"
 fi
 
-if build "autoconf" "2.71"; then
-    download "https://ftp.gnu.org/gnu/autoconf/autoconf-2.71.tar.xz"
-    execute autoupdate
-    execute autoreconf -fi
-    execute ./configure --prefix="$workspace" M4="$workspace/bin/m4"
-    execute make "-j$threads"
-    execute make install
-    build_done "autoconf" "2.71"
-fi
-
 determine_libtool_version
 if build "libtool" "$libtool_version"; then
     download "https://ftp.gnu.org/gnu/libtool/libtool-$libtool_version.tar.xz"
@@ -1344,7 +1343,7 @@ find_git_repo "mesonbuild/meson" "1" "T"
 if build "meson" "$repo_version"; then
     download "https://github.com/mesonbuild/meson/archive/refs/tags/$repo_version.tar.gz" "meson-$repo_version.tar.gz"
     execute python3 setup.py build
-    execute python3 setup.py install --prefix=/usr/local
+    execute python3 setup.py install --prefix="$workspace"
     build_done "meson" "$repo_version"
 fi
 
@@ -1459,7 +1458,8 @@ if build "nasm" "$latest_nasm_version"; then
 fi
 
 if build "giflib" "5.2.2"; then
-    download "https://cytranet-dal.dl.sourceforge.net/project/giflib/giflib-5.2.2.tar.gz?viasf=1"
+    download "https://cfhcable.dl.sourceforge.net/project/giflib/giflib-5.2.2.tar.gz?viasf=1"
+    download "https://netactuate.dl.sourceforge.net/project/giflib/giflib-5.2.2.tar.gz?viasf=1"
     # Parellel building not available for this library
     execute make
     execute make PREFIX="$workspace" install
@@ -1472,7 +1472,6 @@ if [[ "$STATIC_VER" != "18.04" ]]; then
     if build "libxml2" "$repo_version"; then
         download "https://gitlab.gnome.org/GNOME/libxml2/-/archive/v$repo_version/libxml2-v$repo_version.tar.bz2" "libxml2-$repo_version.tar.bz2"
         CFLAGS+=" -DNOLIBTOOL"
-        execute ./autogen.sh
         execute cmake -B build -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_BUILD_TYPE=Release \
                       -DBUILD_SHARED_LIBS=OFF -G Ninja -Wno-dev
         execute ninja "-j$threads" -C build
@@ -1698,7 +1697,7 @@ if build "$repo_name" "${version//\$ /}"; then
     execute cmake -S . -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_BUILD_TYPE=Release \
                   -DENABLE_SHARED=OFF -DENABLE_STATIC=ON -G Ninja -Wno-dev
     execute ninja "-j$threads"
-    execute ninja "-j$threads" install
+    execute ninja install
     build_done "$repo_name" "$version"
     build_done "$repo_name" "$version"
 fi
@@ -2150,11 +2149,11 @@ if build "udfread" "$repo_version"; then
 fi
 
 set_ant_path
-git_caller "https://github.com/apache/ant.git" "ant-git" "ant"
+git_caller "https://github.com/apache/ant.git" "ant-git"
 if build "$repo_name" "${version//\$ /}"; then
     echo "Cloning \"$repo_name\" saving version \"$version\""
     git_clone "$git_url"
-    chmod 777 -R "$workspace/ant"
+    execute sudo chmod 777 -R "$workspace/ant"
     execute sh build.sh install-lite
     build_done "$repo_name" "$version"
 fi
@@ -2210,7 +2209,7 @@ if build "mediainfo-cli" "$repo_version"; then
     execute ./configure --prefix="$workspace" --enable-staticlibs --disable-shared
     execute make "-j$threads"
     execute make install
-    execute cp -f "$packages/mediainfo-cli-$repo_version/Project/GNU/CLI/mediainfo" "/usr/local/bin/"
+    execute sudo cp -f "$packages/mediainfo-cli-$repo_version/Project/GNU/CLI/mediainfo" "/usr/local/bin/"
     build_done "mediainfo-cli" "$repo_version"
 fi
 
@@ -2247,7 +2246,7 @@ if build "$repo_name" "${version//\$ /}"; then
     execute ./configure --prefix="$workspace" --static-{bin,modules} --use-{a52,faad,freetype,mad}=local --sdl-cfg="$workspace/include/SDL3"
     execute make "-j$threads"
     execute make install
-    execute cp -f bin/gcc/MP4Box /usr/local/bin
+    execute sudo cp -f bin/gcc/MP4Box /usr/local/bin
     build_done "$repo_name" "$version"
 fi
 
@@ -2256,7 +2255,7 @@ if build "svt-av1" "$repo_version"; then
     download "https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/v$repo_version/SVT-AV1-v$repo_version.tar.bz2" "svt-av1-$repo_version.tar.bz2"
     execute cmake -S . -B Build/linux -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_BUILD_TYPE=Release \
                   -DBUILD_SHARED_LIBS=OFF -DBUILD_APPS=OFF -DBUILD_{DEC,ENC}=ON -DBUILD_TESTING=OFF \
-                  -DENABLE_AVX512="$(check_avx512)" -DENABLE_NASM=ON -DNATIVE=ON -G Ninja -Wno-dev
+                  -DENABLE_AVX512="$(check_avx512)" -DNATIVE=ON -G Ninja -Wno-dev
     execute ninja "-j$threads" -C Build/linux
     execute ninja "-j$threads" -C Build/linux install
     cp -f "Build/linux/SvtAv1Enc.pc" "$workspace/lib/pkgconfig"
@@ -2270,7 +2269,7 @@ if "$NONFREE_AND_GPL"; then
     if build "x264" "$repo_short_version_1"; then
         download "https://code.videolan.org/videolan/x264/-/archive/$repo_version_1/x264-$repo_version_1.tar.bz2" "x264-$repo_short_version_1.tar.bz2"
         execute ./configure --prefix="$workspace" --bit-depth=all --chroma-format=all --enable-debug --enable-gprof \
-                            --enable-lto --enable-pic --enable-static --enable-strip --extra-cflags="-O3 -pipe -fPIC -march=native"
+                            --enable-lto --enable-pic --enable-static --enable-strip --extra-cflags="-O2 -pipe -fPIC -march=native"
         execute make "-j$threads"
         execute make install-lib-static install
         build_done "x264" "$repo_short_version_1"
@@ -2351,7 +2350,7 @@ if "$NONFREE_AND_GPL"; then
         CONFIGURE_OPTIONS+=("--nvccflags=-gencode arch=$nvidia_arch_type")
     fi
 
-    # Vaapi doesn"t work well with static links FFmpeg.
+    # Vaapi doesn't work well with static links FFmpeg.
     if [[ -z "$LDEXEFLAGS" ]]; then
         # If the libva development SDK is installed, enable vaapi.
         if library_exists "libva"; then
@@ -2493,10 +2492,10 @@ find_git_repo "strukturag/libheif" "1" "T"
 if build "libheif" "$repo_version"; then
     download "https://github.com/strukturag/libheif/archive/refs/tags/v$repo_version.tar.gz" "libheif-$repo_version.tar.gz"
     source_compiler_flags
-    CFLAGS="-O3 -pipe -fno-lto -fPIC -march=native"
-    CXXFLAGS="-O3 -pipe -fno-lto -fPIC -march=native"
+    CFLAGS="-O2 -pipe -fno-lto -fPIC -march=native"
+    CXXFLAGS="-O2 -pipe -fPIC -march=native"
     export CFLAGS CXXFLAGS
-    libde265_libs=$(find /usr/ -type f -name 'libde265.s*')
+    libde265_libs=$(sudo find /usr/ -type f -name 'libde265.s*')
     if [[ -f "$libde265_libs" ]] && [[ ! -e "/usr/lib/x86_64-linux-gnu/libde265.so" ]]; then
         ln -sf "$libde265_libs" "/usr/lib/x86_64-linux-gnu/libde265.so"
         chmod 755 "/usr/lib/x86_64-linux-gnu/libde265.so"
@@ -2551,7 +2550,7 @@ box_out_banner_ffmpeg() {
 }
 box_out_banner_ffmpeg "Building FFmpeg"
 
-# Get DXVA2 and other essential windows header files
+# Get DXVA2 and other essential Windows header files
 if [[ "$STATIC_OS" == "WSL2" ]]; then
     install_windows_hardware_acceleration
 fi
@@ -2593,12 +2592,12 @@ if build "ffmpeg" "n${repo_version}"; then
                  --pkg-config-flags="--static" --pkg-config="$workspace/bin/pkg-config" \
                  --pkgconfigdir="$workspace/lib/pkgconfig" --strip="$(type -P strip)"
     execute make "-j$threads"
-    execute make install
+    execute sudo make install
     build_done "ffmpeg" "n${repo_version}"
 fi
 
-# Execute the ldconfig command to ensure that all library changes are detected by ffmpeg
-ldconfig
+# Execute the sudo ldconfig command to ensure that all library changes are detected by ffmpeg
+sudo ldconfig
 
 # Display the version of each of the programs
 show_versions
