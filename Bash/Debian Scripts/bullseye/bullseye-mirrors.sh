@@ -45,5 +45,5 @@ elif command -v vim &>/dev/null; then
 elif command -v vi &>/dev/null; then
     sudo vi "${fname}"
 else
-    printf "\n%s\n" "Unable to open the sources.list file because no text editor was found."
+    printf "\n%s\n" "Unable to open the file sources.list because no text editor was found."
 fi
