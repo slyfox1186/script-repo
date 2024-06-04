@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-# This script finds and installs the highest available versions of GCC and Clang and sets them as default compilers.
-
 if [[ "$EUID" -ne 0 ]]; then
     echo "You must run this script as root or with sudo."
     exit 1
@@ -29,17 +27,19 @@ error() {
 print_help() {
     echo "Usage: $0 [OPTIONS]"
     echo "This script identifies, installs, and sets the highest or a specific version of Clang or GCC as the default."
+    echo "gcc-14 is only considered if the -e or --enable-gcc14 option is passed."
     echo
     echo "Options:"
     echo "  -cv, --clang-version VERSION  Set a specific version of Clang as the default."
     echo "  -gv, --gcc-version VERSION    Set a specific version of GCC as the default."
     echo "  -b,  --both                   Install and set both Clang and GCC (default if no -cv or -gv specified)."
+    echo "  -e,  --enable-gcc14           Enable gcc-14 as a valid option for GCC version."
     echo "  -h,  --help                   Display this help and exit."
     echo
     echo "Examples:"
     echo "  $0 -gv 11                    Install (if necessary) and set GCC 11 as the default version."
     echo "  $0 -cv 10                    Install (if necessary) and set Clang 10 as the default version."
-    echo "  $0 -gv 11 -cv 10 -b          Install and set both GCC 11 and Clang 10 as the default versions."
+    echo "  $0 -gv 14 -e                 Install and set GCC 14 as the default version (requires -e option)."
 }
 
 # Default settings
@@ -47,6 +47,7 @@ install_clang=false
 install_gcc=false
 version_clang=""
 version_gcc=""
+enable_gcc14=false
 
 # Parse command line arguments
 while [[ "$#" -gt 0 ]]; do
@@ -58,12 +59,19 @@ while [[ "$#" -gt 0 ]]; do
             ;;
         -gv|--gcc-version)
             version_gcc="$2"
+            if [[ "$version_gcc" -eq 14 && "$enable_gcc14" == false ]]; then
+                error "gcc-14 is not a valid option unless -e or --enable-gcc14 is specified."
+                exit 1
+            fi
             install_gcc=true
             shift
             ;;
         -b|--both)
             install_clang=true
             install_gcc=true
+            ;;
+        -e|--enable-gcc14)
+            enable_gcc14=true
             ;;
         -h|--help)
             print_help
@@ -91,7 +99,11 @@ find_highest_version() {
     compiler="$1"
     highest_version=""
 
-    available_versions=($(apt-cache search "^${compiler}-[0-9]+$" | grep -oP "${compiler}-\K\d+" | sort -nr))
+    if [[ "$compiler" == "gcc" && "$enable_gcc14" == false ]]; then
+        available_versions=($(apt-cache search "^${compiler}-[0-9]+$" | grep -oP "${compiler}-\K\d+" | grep -v "^14$" | sort -nr))
+    else
+        available_versions=($(apt-cache search "^${compiler}-[0-9]+$" | grep -oP "${compiler}-\K\d+" | sort -nr))
+    fi
 
     [[ ${#available_versions[@]} -gt 0 ]] && highest_version="${available_versions[0]}"
 
