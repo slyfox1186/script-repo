@@ -5,6 +5,7 @@ import concurrent.futures
 import glob
 import logging
 import os
+import platform
 import subprocess
 import sys
 import tempfile
@@ -38,14 +39,24 @@ def parse_arguments() -> argparse.Namespace:
                         help='Enable overwrite mode. Original images will be overwritten.')
     parser.add_argument('-v', '--verbose', action='store_true',
                         help='Enable verbose output.')
+    parser.add_argument('-n', '--no-append-text', action='store_true',
+                        help='Do not append "-IM" to the output image name.')
     return parser.parse_args()
 
 # Logging configuration
 logging.basicConfig(level=logging.INFO, format='%(message)s')
 logger = logging.getLogger(__name__)
 
+def run_command(command: List[str], verbose: bool) -> None:
+    """Run a command and optionally print its output."""
+    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    if verbose:
+        print(result.stdout)
+        print(result.stderr, file=sys.stderr)
+        print()  # Blank line to separate commands
+
 # Image processing function
-def process_image(infile: Path, overwrite_mode: bool, verbose_mode: bool) -> None:
+def process_image(infile: Path, overwrite_mode: bool, verbose_mode: bool, no_append_text: bool) -> None:
     """Process a single image file."""
     if infile.name.endswith('-IM.jpg') or infile.name.endswith('-IM.jpeg'):
         logger.info(f"Skipped: {infile}")
@@ -57,68 +68,66 @@ def process_image(infile: Path, overwrite_mode: bool, verbose_mode: bool) -> Non
 
         # Resize the image if the dimensions are too large
         try:
-            img_info = subprocess.check_output(['identify', '-ping', '-format', '%wx%h', str(infile)])
-            orig_width, orig_height = map(int, img_info.decode('utf-8').strip().split('x'))
-            max_width, max_height = 8000, 6000
-
-            if orig_width > max_width or orig_height > max_height:
-                if verbose_mode:
-                    logger.info(f"Resizing {infile} from {orig_width}x{orig_height} to {max_width}x{max_height}...")
-                subprocess.run([
-                    'magick', str(infile), '-resize', f'{max_width}x{max_height}', 
-                    '-filter', 'Lanczos', '-sampling-factor', '1x1', 
-                    '-unsharp', '1.5x1+0.7+0.02', '-quality', '90', str(resized_image_path)
-                ], check=True)
+            img_info = subprocess.check_output([
+                'magick', 'identify', '-format', '%wx%h', str(infile)
+            ]).decode('utf-8').strip()
+            width, height = map(int, img_info.split('x'))
+            if width > 5120 or height > 5120:
+                run_command([
+                    'magick', 'convert', str(infile),
+                    '-resize', '5120x5120>',
+                    str(resized_image_path)
+                ], verbose_mode)
             else:
                 resized_image_path = infile
         except subprocess.CalledProcessError as e:
-            logger.error(f"Failed to get image dimensions or resize image: {infile}. Error: {e}")
+            logger.error(f"Error processing {infile}: {e}")
             return
 
-        outfile = infile.with_name(f"{base_name}-IM.jpg")
+        outfile_suffix = '' if no_append_text else '-IM'
+        outfile = infile.with_name(f"{base_name}{outfile_suffix}.jpg")
 
-        convert_base_opts = [
-            '-filter', 'Triangle', '-define', 'filter:support=2',
-            '-thumbnail', subprocess.check_output(['identify', '-ping',
-            '-format', '%wx%h', str(resized_image_path)]).decode('utf-8').strip(),
-            '-strip', '-unsharp', '0.25x0.08+8.3+0.045', '-dither', 'None',
-            '-posterize', '136', '-quality', '82', '-define', 'jpeg:fancy-upsampling=off',
-            '-auto-level', '-enhance', '-interlace', 'none', '-colorspace', 'sRGB'
-        ]
-
+        # Compress the image
         try:
-            subprocess.run(['magick', str(resized_image_path)] + convert_base_opts +
-                           ['-sampling-factor', '2x2', '-limit', 'area', '0', str(outfile)],
-                           check=True)
-        except subprocess.CalledProcessError:
-            if verbose_mode:
-                logger.warning(f"First attempt failed for {infile}, retrying without '-sampling-factor 2x2 -limit area 0'...")
-            try:
-                subprocess.run(['magick', str(resized_image_path)] + convert_base_opts + [str(outfile)], check=True)
-            except subprocess.CalledProcessError:
-                logger.error(f"Error: Second attempt failed for {infile} as well.")
-                return
+            run_command([
+                'magick', 'convert', str(resized_image_path),
+                '-strip', '-interlace', 'JPEG', '-quality', '85%',
+                str(outfile)
+            ], verbose_mode)
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Error compressing {infile}: {e}")
+            return
 
         logger.info(f"Processed: {outfile}")
 
         if overwrite_mode:
             infile.unlink()
 
+def install_packages_if_needed() -> None:
+    """Install required packages if running on a Debian-based system."""
+    try:
+        subprocess.run(['google_speech', '--version'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+    except subprocess.CalledProcessError:
+        if os.path.exists('/usr/bin/apt'):
+            try:
+                subprocess.run(['sudo', 'apt', 'update'], check=True)
+                subprocess.run(['sudo', 'apt', 'install', '-y', 'sox', 'libsox-dev'], check=True)
+            except subprocess.CalledProcessError as e:
+                logger.error(f"Failed to install required packages: {e}")
+                sys.exit(1)
+
 # Function to check if google_speech is installed and send notification
 def notify_completion() -> bool:
     """Check if google_speech is installed and send notification."""
+    install_packages_if_needed()
     try:
         import google_speech
         subprocess.run(['google_speech', 'Image optimization completed.'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
         
-        # Store the equivalent of the bash command in the variable win_path
         win_path = subprocess.check_output(['wslpath', '-w', str(Path.cwd())]).decode('utf-8').strip()
         
-        # Print a blank line
         print()
-        
-        # Echo the Windows Path to the terminal
-        print(f"Windows Path:        {win_path}")
+        print(f"Windows Path: {win_path}")
         
         return True
     except ImportError:
@@ -143,7 +152,7 @@ def main() -> None:
 
     # Process images in parallel
     with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_THREADS) as executor:
-        futures = [executor.submit(process_image, infile, args.overwrite, args.verbose)
+        futures = [executor.submit(process_image, infile, args.overwrite, args.verbose, args.no_append_text)
                    for infile in image_files]
         concurrent.futures.wait(futures)
 
