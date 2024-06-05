@@ -110,6 +110,16 @@ def notify_completion() -> bool:
     try:
         import google_speech
         subprocess.run(['google_speech', 'Image optimization completed.'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+        
+        # Store the equivalent of the bash command in the variable win_path
+        win_path = subprocess.check_output(['wslpath', '-w', str(Path.cwd())]).decode('utf-8').strip()
+        
+        # Print a blank line
+        print()
+        
+        # Echo the Windows Path to the terminal
+        print(f"Windows Path:        {win_path}")
+        
         return True
     except ImportError:
         logger.warning("google_speech package is not installed. Skipping notification.")
