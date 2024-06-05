@@ -13,7 +13,6 @@
 OpenPowerShellHere()
 {
     static wt := "C:\Users\" A_UserName "\AppData\Local\Microsoft\WindowsApps\wt.exe"
-    static wsl := A_WinDir . "\System32\wsl.exe"
     static win := "ahk_class CASCADIA_HOSTING_WINDOW_CLASS ahk_exe WindowsTerminal.exe"
     static pshell := FileExist(A_ProgramFiles "\PowerShell\7-preview\pwsh.exe") ? A_ProgramFiles "\PowerShell\7-preview\pwsh.exe" 
                      : FileExist(A_ProgramFiles "\PowerShell\7\pwsh.exe") ? A_ProgramFiles "\PowerShell\7\pwsh.exe" 
