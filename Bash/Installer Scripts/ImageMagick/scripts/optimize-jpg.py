@@ -10,8 +10,8 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import List
 from termcolor import colored
+from typing import List
 
 # Constants
 MAX_THREADS = os.cpu_count()
