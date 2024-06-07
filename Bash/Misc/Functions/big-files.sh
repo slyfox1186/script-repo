@@ -4,61 +4,32 @@
 # Example: To get the 5 largest folders and files in the directory execute: big_files 5
 
 big_files() {
-    local count
-
-    if [[ -n "$1" ]]; then
-        count=$1
-    else
-        read -p "Enter how many files to list in the results: " count
-        echo
-    fi
-
-    echo "$count largest files"
-    echo
-
-    sudo find "$PWD" -type f -exec du -bh {} + | sort -hr | awk '
-        function display_size(size, unit, path) {
-            if (unit ~ /G$/) {
-                printf("%s %s\n", size, path)
-            } else if (unit ~ /M$/) {
-                printf("%s MB %s\n", size, path)
-            } else if (unit ~ /K$/) {
-                printf("%s KB %s\n", size, path)
-            } else {
-                printf("%s %s %s\n", size, unit, path)
-            }
-        }
-
-        {
-            file_path = ""
-            for (i = 3; i <= NF; i++) {
-                file_path = file_path " " $i
-            }
-            display_size($1, $2, file_path)
-        }
-    ' | head -n"$count"
-
-    echo
-    echo "$count largest folders"
-    echo
-
-    sudo du -bh "$PWD" 2>/dev/null | sort -hr | awk '
-        function display_size(size, unit, path) {
-            if (unit ~ /G$/) {
-                printf("%s %s\n", size, path)
-            } else if (unit ~ /M$/) {
-                printf("%s MB %s\n", size, path)
-            } else if (unit ~ /K$/) {
-                printf("%s KB %s\n", size, path)
-            } else {
-                printf("%s %s %s\n", size, unit, path)
-            }
-        }
-
-        {
-            display_size($1, $2, $3)
-        }
-    ' | head -n"$count"
+  local num_results full_path size folder file suffix
+  # Check if an argument is provided
+  if [ -n "$1" ] && [[ "$1" =~ ^[0-9]+$ ]]; then
+    num_results=$1
+  else
+    # Prompt the user to enter the number of results
+    read -p "Enter the number of results to display: " num_results
+    while ! [[ "$num_results" =~ ^[0-9]+$ ]]; do
+      read -p "Invalid input. Enter a valid number: " num_results
+    done
+  fi
+  echo "Largest Folders:"
+  du -h -d 1 2>/dev/null | sort -hr | head -n "$num_results" | while read -r size folder; do
+    full_path=$(realpath "$folder")
+    suffix="${size: -1}"
+    size=$(echo "${size%?}" | awk '{printf "%d.%02d", $1, int(($1-int($1))*100)}')
+    printf "%-80s %14s%s\n" "$full_path" "$size" "$suffix"
+  done | column -t
+  echo
+  echo "Largest Files:"
+  find . -type f -exec du -h {} + 2>/dev/null | sort -hr | head -n "$num_results" | while read -r size file; do
+    full_path=$(realpath "$file")
+    suffix="${size: -1}"
+    size=$(echo "${size%?}" | awk '{printf "%d.%02d", $1, int(($1-int($1))*100)}')
+    printf "%-80s %14s%s\n" "$full_path" "$size" "$suffix"
+  done | column -t
 }
 
 big_files 5
