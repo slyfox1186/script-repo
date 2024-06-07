@@ -533,7 +533,20 @@ rmf() {
 imow() {
     if wget --timeout=2 --tries=2 -cqO "optimize-jpg.py" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.py"; then
         clear
-        echo "Optimizing Images: $PWD"
+        box_out_banner() {
+            input_char=$(echo "$@" | wc -c)
+            line=$(for i in $(seq 0 "$input_char"); do printf "-"; done)
+            tput bold
+            line="$(tput setaf 3)$line"
+            space="${line//-/ }"
+            echo " $line"
+            printf "|" ; echo -n "$space" ; printf "%s\n" "|";
+            printf "| " ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" " |";
+            printf "|" ; echo -n "$space" ; printf "%s\n" "|";
+            echo " $line"
+            tput sgr 0
+        }
+        box_out_banner "Optimizing Images: $PWD"
         echo
     else
         printf "\n%s\n" "Failed to download the jpg optimization script."
@@ -548,8 +561,11 @@ imow() {
         if command -v google_speech &>/dev/null; then
             google_speech "Failed to optimize images." &>/dev/null
         fi
+        sudo rm -f "optimize-jpg.py"
+    else
+        sudo rm -f "optimize-jpg.py"
+        exit
     fi
-    sudo rm -f "optimize-jpg.py"
 }
 
 # Downsample image to 50% of the original dimensions using sharper settings
