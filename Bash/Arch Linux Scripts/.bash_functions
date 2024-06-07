@@ -434,6 +434,7 @@ imow() {
     if wget --timeout=2 --tries=2 -cqO "optimize-jpg.py" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.py"; then
         clear
         echo "Optimizing Images: $PWD"
+        echo
     else
         printf "\n%s\n" "Failed to download the jpg optimization script."
         if command -v google_speech &>/dev/null; then
