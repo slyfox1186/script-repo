@@ -110,7 +110,7 @@ def check_and_install_apt_packages() -> None:
             sys.exit(1)
 
 def create_virtualenv() -> None:
-    """Create a Python virtual environment and install google_speech."""
+    """Create a Python virtual environment and install required packages."""
     logging.info(colored(f"Creating Python virtual environment at {VENV_PATH}...", 'yellow'))
     os.makedirs(VENV_PATH, exist_ok=True)
     subprocess.run(['python3', '-m', 'venv', VENV_PATH], check=True)
@@ -239,10 +239,10 @@ def process_image(infile: Path, overwrite_mode: bool, verbose_mode: bool, no_app
             infile.unlink()
 
 def notify_completion() -> None:
-    """Check if google_speech is installed and send notification."""
+    """Check if google_speech and termcolor are installed and send notification."""
     check_and_install_apt_packages()
 
-    if not check_package_installed(GOOGLE_SPEECH_PACKAGE):
+    if not check_package_installed(GOOGLE_SPEECH_PACKAGE) or not check_package_installed(TERMCOLOR_PACKAGE):
         create_virtualenv()
 
     try:
