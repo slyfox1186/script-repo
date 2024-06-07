@@ -2,10 +2,10 @@
 
 ##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-aria2.sh
 ##  Purpose: Build aria2 from source code with hardening options
-##  Updated: 06.07.24
-##  Script version: 2.9
+##  Updated: 05.24.24
+##  Script version: 2.8
 
-script_ver="2.9"
+script_ver="2.8"
 
 echo "aria2 build script - version $script_ver"
 echo "==============================================="
@@ -55,6 +55,7 @@ set_compiler_options() {
 }
 
 print_env() {
+    echo
     log "Environment variables:"
     log "CC=$CC"
     log "CXX=$CXX"
@@ -62,6 +63,7 @@ print_env() {
     log "CXXFLAGS=$CXXFLAGS"
     log "CPPFLAGS=$CPPFLAGS"
     log "LDFLAGS=$LDFLAGS"
+    echo
 }
 
 install_packages() {
@@ -156,14 +158,18 @@ start_build() {
     mkdir -p "${temp_dir}"
     cd "${temp_dir}" || exit 1
 
+    echo
     log "Building libgpg-error..."
     build_library "libgpg-error" "https://gnupg.org/ftp/gcrypt/libgpg-error/" "--prefix=${temp_dir} --enable-static --disable-shared"
+    echo
     log "Building c-ares..."
     build_library "c-ares" "https://github.com/c-ares/c-ares/releases/download/cares-1_29_0/c-ares-1.29.0.tar.gz" "--prefix=${temp_dir} --enable-static --disable-shared"
+    echo
     log "Building sqlite3..."
     build_library "sqlite3" "https://github.com/sqlite/sqlite/tags/" "--prefix=${temp_dir} --enable-static --disable-shared"
     install_ca_certs
     fix_tcmalloc_lib
+    echo
     log "Building aria2..."
     build_library "aria2" "https://github.com/aria2/aria2/tags/" "--prefix=/usr/local --enable-static --disable-nls --enable-libaria2 --disable-shared --without-gnutls --with-openssl --enable-lto --with-tcmalloc --with-libiconv-prefix=/usr --with-ca-bundle=$certs_ssl_dir --enable-profile-guided-optimization"
 }
@@ -175,7 +181,7 @@ main() {
     fi
 
     for arg in "$@"; do
-        case $arg in
+        case "$arg" in
             -d|--debug)
                 set -x
                 shift
@@ -207,6 +213,7 @@ main() {
     print_env
     install_packages
     start_build
+    echo
     log "Aria2 build process completed successfully."
 }
 
