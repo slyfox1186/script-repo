@@ -2,10 +2,10 @@
 
 ##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-aria2.sh
 ##  Purpose: Build aria2 from source code with hardening options
-##  Updated: 05.24.24
-##  Script version: 2.8
+##  Updated: 06.07.24
+##  Script version: 2.9
 
-script_ver="2.8"
+script_ver="2.9"
 
 echo "aria2 build script - version $script_ver"
 echo "==============================================="
@@ -31,13 +31,13 @@ Build aria2 from source code with hardening options.
 Options:
   -h, --help          Display this help message and exit
   -d, --debug         Enable debug mode for more detailed output
-  -g, --generic       Set CFLAGS to -O2 -pipe -march=generic
+  -g, --generic       Set CFLAGS to -O2 -pipe -mtune=generic
   -n, --native        Set CFLAGS to -O2 -pipe -march=native (default)
   -s, --static        Set aria2 as statically linked (ARIA2_STATIC=yes)
 
 Examples:
   $0                     # Build aria2 from source
-  $0 --debug --generic   # Build aria2 with CFLAGS set to -O2 -pipe -march=generic
+  $0 --debug --generic   # Build aria2 with CFLAGS set to -O2 -pipe -mtune=generic
   $0 --static            # Build aria2 from source and set as statically linked
   $0 -d -g -s            # Build aria2 with debug mode, generic tuning, and set as statically linked
 EOF
@@ -77,47 +77,6 @@ install_packages() {
     log "Installation of required packages completed."
 }
 
-build_library() {
-    local name url configure_args version
-    name="$1"
-    url="$2"
-    configure_args="$3"
-    if [[ "${name}" == "sqlite3" ]]; then
-        version=$(curl -fsSL "${url}" | grep -oP 'href="[^"]*-\K[\d.]+(?=\.tar\.)' | head -n1)
-        curl -Lso "${name}-${version}.tar.gz" "https://github.com/sqlite/sqlite/archive/refs/tags/version-${version}.tar.gz"
-    elif [[ "${name}" == "aria2" ]]; then
-        version=$(curl -fsSL "${url}" | grep -oP 'href="[^"]*-\K[\d.]+(?=\.tar\.)' | head -n1)
-        curl -Lso "${name}-${version}.tar.gz" "https://github.com/aria2/aria2/archive/refs/tags/release-${version}.tar.gz"
-    elif [[ "${name}" == "libxml2" ]]; then
-        version=$(curl -fsSL "${url}" | grep -oP 'href="[^"]*\K\d+\.\d+\.\d+(?=\.tar\.gz)' | head -n1)
-        curl -Lso "${name}-${version}.tar.gz" "https://github.com/GNOME/libxml2/archive/refs/tags/v${version}.tar.gz"
-    else
-        version=$(curl -fsSL "${url}" | grep -oP 'href="[^"]*-\K[\d.]+(?=\.tar\.)' | head -n1)
-        curl -Lso "${name}-${version}.tar.gz" "${url}/${name}-${version}.tar.gz"
-    fi
-    mkdir -p "${name}-${version}"
-    tar -zxf "${name}-${version}.tar.gz" -C "${name}-${version}" --strip-components 1
-    cd "${name}-${version}" || exit 1
-    if [[ "${name}" == "aria2" ]]; then
-        autoreconf -fi
-        sed -i "s/1, 16/1, 128/g" "src/OptionHandlerFactory.cc"
-        TCMALLOC_CFLAGS="-I/usr/include"
-        TCMALLOC_LIBS="-L/usr/lib/x86_64-linux-gnu -ltcmalloc_minimal"
-        CPPFLAGS="-I${temp_dir}/include $CPPFLAGS"
-        LDFLAGS="-L${temp_dir}/lib $LDFLAGS"
-        PATH="/usr/lib/ccache:$PATH"
-        PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/lib64/pkgconfig:/usr/local/share/pkgconfig:/usr/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/share/pkgconfig"
-        PKG_CONFIG_PATH+=":/usr/local/cuda/lib64/pkgconfig:/usr/local/cuda/lib/pkgconfig:/opt/cuda/lib64/pkgconfig:/opt/cuda/lib/pkgconfig"
-        PKG_CONFIG_PATH+=":/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/i386-linux-gnu/pkgconfig:/usr/lib/arm-linux-gnueabihf/pkgconfig:/usr/lib/aarch64-linux-gnu/pkgconfig"
-        export CPPFLAGS LDFLAGS PKG_CONFIG PKG_CONFIG_PATH PATH TCMALLOC_CFLAGS TCMALLOC_LIBS
-    fi
-    ./configure $configure_args || fail "Failed to configure ${name}. Line ${LINENO}"
-    make -j$(nproc) || fail "Failed to build ${name}. Line ${LINENO}"
-    sudo make install || fail "Failed to install ${name}. Line ${LINENO}"
-    cd ../
-}
-
-# Install ca certs from curl's official website
 install_ca_certs() {
     local certs_ssl_dir="/etc/ssl/certs/cacert.pem"
     if [[ ! -f "$certs_ssl_dir" ]]; then
@@ -138,6 +97,59 @@ fix_tcmalloc_lib() {
     fi
 }
 
+build_library() {
+    local name url configure_args version
+    name="$1"
+    url="$2"
+    configure_args="$3"
+
+    case "${name}" in
+        aria2)
+            version=$(curl -fsSL "${url}" | grep -oP 'href="[^"]*-\K[\d.]+(?=\.tar\.)' | head -n1)
+            curl -Lso "${name}-${version}.tar.gz" "https://github.com/aria2/aria2/archive/refs/tags/release-${version}.tar.gz"
+            ;;
+        c-ares)
+            version=$(basename "${url}" | grep -oP '\d+\.\d+\.\d+(?=\.tar\.gz)')
+            curl -Lso "${name}-${version}.tar.gz" "${url}"
+            ;;
+        libxml2)
+            version=$(curl -fsSL "${url}" | grep -oP 'href="[^"]*\K\d+\.\d+\.\d+(?=\.tar\.gz)' | head -n1)
+            curl -Lso "${name}-${version}.tar.gz" "https://github.com/GNOME/libxml2/archive/refs/tags/v${version}.tar.gz"
+            ;;
+        sqlite3)
+            version=$(curl -fsSL "${url}" | grep -oP 'href="[^"]*-\K[\d.]+(?=\.tar\.)' | head -n1)
+            curl -Lso "${name}-${version}.tar.gz" "https://github.com/sqlite/sqlite/archive/refs/tags/version-${version}.tar.gz"
+            ;;
+        *)
+            version=$(curl -fsSL "${url}" | grep -oP 'href="[^"]*-\K[\d.]+(?=\.tar\.)' | head -n1)
+            curl -Lso "${name}-${version}.tar.gz" "${url}/${name}-${version}.tar.gz"
+            ;;
+    esac
+
+    mkdir -p "${name}-${version}"
+    tar -zxf "${name}-${version}.tar.gz" -C "${name}-${version}" --strip-components 1
+    cd "${name}-${version}" || exit 1
+
+    if [[ "${name}" == "aria2" ]]; then
+        autoreconf -fi
+        sed -i "s/1, 16/1, 128/g" "src/OptionHandlerFactory.cc"
+        TCMALLOC_CFLAGS="-I/usr/include"
+        TCMALLOC_LIBS="-L/usr/lib/x86_64-linux-gnu -ltcmalloc_minimal"
+        CPPFLAGS="-I${temp_dir}/include $CPPFLAGS"
+        LDFLAGS="-L${temp_dir}/lib $LDFLAGS"
+        PATH="/usr/lib/ccache:$PATH"
+        PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/lib64/pkgconfig:/usr/local/share/pkgconfig:/usr/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/share/pkgconfig"
+        PKG_CONFIG_PATH+=":/usr/local/cuda/lib64/pkgconfig:/usr/local/cuda/lib/pkgconfig:/opt/cuda/lib64/pkgconfig:/opt/cuda/lib/pkgconfig"
+        PKG_CONFIG_PATH+=":/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/i386-linux-gnu/pkgconfig:/usr/lib/arm-linux-gnueabihf/pkgconfig:/usr/lib/aarch64-linux-gnu/pkgconfig"
+        export CPPFLAGS LDFLAGS PKG_CONFIG PKG_CONFIG_PATH PATH TCMALLOC_CFLAGS TCMALLOC_LIBS
+    fi
+
+    ./configure $configure_args || fail "Failed to configure ${name}. Line ${LINENO}"
+    make -j$(nproc) || fail "Failed to build ${name}. Line ${LINENO}"
+    sudo make install || fail "Failed to install ${name}. Line ${LINENO}"
+    cd ../
+}
+
 start_build() {
     local temp_dir
     temp_dir="/tmp/aria2-$$"
@@ -147,7 +159,7 @@ start_build() {
     log "Building libgpg-error..."
     build_library "libgpg-error" "https://gnupg.org/ftp/gcrypt/libgpg-error/" "--prefix=${temp_dir} --enable-static --disable-shared"
     log "Building c-ares..."
-    build_library "c-ares" "https://c-ares.haxx.se/download/" "--prefix=${temp_dir} --enable-static --disable-shared"
+    build_library "c-ares" "https://github.com/c-ares/c-ares/releases/download/cares-1_29_0/c-ares-1.29.0.tar.gz" "--prefix=${temp_dir} --enable-static --disable-shared"
     log "Building sqlite3..."
     build_library "sqlite3" "https://github.com/sqlite/sqlite/tags/" "--prefix=${temp_dir} --enable-static --disable-shared"
     install_ca_certs
