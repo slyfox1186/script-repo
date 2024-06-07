@@ -1,14 +1,26 @@
-# EXPORT WINDOWS PATHS
-PATH="$PATH:/c/Windows/System32:/c/Windows:/c/Program Files:/c/Program Files (x86):/c/Program Files (x86)/FSViewer:/c/Program Files/Notepad++:/c/Program Files/VLC"
-export PATH
-
 # EXPORT ANSI COLORS
-BLUE="\033[0;34m"
-GREEN="\033[0;32m"
-RED="\033[0;31m"
-YELLOW="\033[0;33m"
-NC="\033[0m" # No Color
-export BLUE GREEN NC RED YELLOW
+BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[0;33m'
+NC='\033[0m' # No Color
+export BLUE CYAN GREEN RED YELLOW NC
+
+# CREATE GLOBAL FUNCTIONS
+box_out_banner() {
+    input_char=$(echo "$@" | wc -c)
+    line=$(for i in $(seq 0 "$input_char"); do printf "-"; done)
+    tput bold
+    line="$(tput setaf 3)$line"
+    space="${line//-/ }"
+    echo " $line"
+    printf "|" ; echo -n "$space" ; printf "%s\n" "|";
+    printf "| " ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" " |";
+    printf "|" ; echo -n "$space" ; printf "%s\n" "|";
+    echo " $line"
+    tput sgr 0
+}
 
 ## WHEN LAUNCHING CERTAIN PROGRAMS FROM THE TERMINAL, SUPPRESS ANY WARNING MESSAGES ##
 gedit() {
@@ -530,20 +542,6 @@ rmf() {
 
 ## IMAGEMAGICK ##
 
-box_out_banner() {
-    input_char=$(echo "$@" | wc -c)
-    line=$(for i in $(seq 0 "$input_char"); do printf "-"; done)
-    tput bold
-    line="$(tput setaf 3)$line"
-    space="${line//-/ }"
-    echo " $line"
-    printf "|" ; echo -n "$space" ; printf "%s\n" "|";
-    printf "| " ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" " |";
-    printf "|" ; echo -n "$space" ; printf "%s\n" "|";
-    echo " $line"
-    tput sgr 0
-}
-
 imow() {
     local -f box_out_banner
     if wget --timeout=2 --tries=2 -cqO "optimize-jpg.py" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.py"; then
@@ -871,11 +869,11 @@ list_ppa() {
 ## FFMPEG COMMANDS ##
 
 ffr() {
-    bash "$1" --build --enable-gpl-and-non-free --latest -g
+    sudo bash "$1" --build --enable-gpl-and-non-free --latest
 }
 
 ffrv() {
-    bash -v "$1" --build --enable-gpl-and-non-free --latest -g
+    bash -v "$1" --build --enable-gpl-and-non-free --latest
 }
 
 ## Write caching ##

@@ -1,14 +1,26 @@
-# EXPORT WINDOWS PATHS
-PATH="$PATH:/c/Windows/System32:/c/Windows:/c/Program Files:/c/Program Files (x86):/c/Program Files (x86)/FSViewer:/c/Program Files/Notepad++:/c/Program Files/VLC"
-export PATH
-
 # EXPORT ANSI COLORS
-BLUE="\033[0;34m"
-GREEN="\033[0;32m"
-RED="\033[0;31m"
-YELLOW="\033[0;33m"
-NC="\033[0m" # No Color
-export BLUE GREEN NC RED YELLOW
+BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[0;33m'
+NC='\033[0m' # No Color
+export BLUE CYAN GREEN RED YELLOW NC
+
+# CREATE GLOBAL FUNCTIONS
+box_out_banner() {
+    input_char=$(echo "$@" | wc -c)
+    line=$(for i in $(seq 0 "$input_char"); do printf "-"; done)
+    tput bold
+    line="$(tput setaf 3)$line"
+    space="${line//-/ }"
+    echo " $line"
+    printf "|" ; echo -n "$space" ; printf "%s\n" "|";
+    printf "| " ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" " |";
+    printf "|" ; echo -n "$space" ; printf "%s\n" "|";
+    echo " $line"
+    tput sgr 0
+}
 
 ## WHEN LAUNCHING CERTAIN PROGRAMS FROM THE TERMINAL, SUPPRESS ANY WARNING MESSAGES ##
 gedit() {
@@ -530,20 +542,6 @@ rmf() {
 
 ## IMAGEMAGICK ##
 
-box_out_banner() {
-    input_char=$(echo "$@" | wc -c)
-    line=$(for i in $(seq 0 "$input_char"); do printf "-"; done)
-    tput bold
-    line="$(tput setaf 3)$line"
-    space="${line//-/ }"
-    echo " $line"
-    printf "|" ; echo -n "$space" ; printf "%s\n" "|";
-    printf "| " ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" " |";
-    printf "|" ; echo -n "$space" ; printf "%s\n" "|";
-    echo " $line"
-    tput sgr 0
-}
-
 imow() {
     local -f box_out_banner
     if wget --timeout=2 --tries=2 -cqO "optimize-jpg.py" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.py"; then
@@ -871,11 +869,11 @@ list_ppa() {
 ## FFMPEG COMMANDS ##
 
 ffr() {
-    bash "$1" --build --enable-gpl-and-non-free --latest -g
+    sudo bash "$1" --build --enable-gpl-and-non-free --latest
 }
 
 ffrv() {
-    bash -v "$1" --build --enable-gpl-and-non-free --latest -g
+    bash -v "$1" --build --enable-gpl-and-non-free --latest
 }
 
 ## Write caching ##
@@ -884,7 +882,7 @@ wcache() {
 
     lsblk
     echo
-    read -p "Enter the drive ID to turn off write caching (/dev/sdX w/o /dev/): " choice
+    read -p "Enter the drive id to turn off write caching (/dev/sdX w/o /dev/): " choice
 
     sudo hdparm -W 0 /dev/"$choice"
 }
@@ -1950,6 +1948,24 @@ sai() {
     fi
 }
 
+bat() {
+    if [[ -z "$1" ]]; then
+        read -p "Enter the file path: " filename
+    else
+        filename="$1"
+    fi
+    batcat "$filename"
+}
+
+batn() {
+    if [[ -z "$1" ]]; then
+        read -p "Enter the file path: " filename
+    else
+        filename="$1"
+    fi
+    batcat -n "$filename"
+}
+
 
 # GitHub Script-Repo Script Menu
 script_repo() {
@@ -2161,6 +2177,47 @@ dlmaster() {
 
     # Run the script
     python3 "$script_path"
+}
+
+# Create Aria2 Batch Downloader Javavscript file
+
+adt() {
+    # Set the path to the Python script
+    script_path="add_video_to_json.py"
+
+    # Check if the Python script exists
+    if [ ! -f "$script_path" ]; then
+        echo "Python script not found. Downloading from GitHub..."
+        if ! wget --show-progress -cqO "$script_path" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Python3/create-json-file-batch-processing-aria2.py"; then
+            echo "Error: Failed to download the Python script from GitHub." >&2
+            return 1
+        fi
+        echo "Python script downloaded successfully."
+    fi
+
+    # Prompt for video details
+    read -p "Enter the filename: " filename
+    read -p "Enter the extension: " extension
+    read -p "Enter the path: " path
+    read -p "Enter the URL: " url
+
+    # Validate input
+    if [[ -z "$filename" || -z "$extension" || -z "$path" || -z "$url" ]]; then
+        echo "Error: All fields are required. Please provide valid input." >&2
+        return 1
+    fi
+
+    # Call the Python script with the provided arguments
+    echo "Calling Python script to add video details to JSON file..."
+    if output=$(python3 "$script_path" "$filename" "$extension" "$path" "$url" 2>&1); then
+        echo "Video details added successfully:"
+        echo "$output"
+    else
+        echo "Error: Failed to add video details to JSON file." >&2
+        echo "Python script error output:" >&2
+        echo "$output" >&2
+        return 1
+    fi
 }
 
 # Aria2c batch downloader
