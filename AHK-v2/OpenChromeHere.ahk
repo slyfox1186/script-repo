@@ -30,7 +30,7 @@
     https://github.com/slyfox1186/script-repo/
 */
 
-^!c::
+^!c Up::
 {
     Browser := GetDefaultBrowser()
     win := "ahk_class Chrome_WidgetWin_1 ahk_exe chrome.exe"
@@ -57,11 +57,8 @@
 
         ; Open the browser with the URL or search query
         Run(Browser . " --new-tab " . searchThis,, "Max")
-        ; Attempt to bring the browser window to the foreground
-        If !WinExist(win)
-            WinWait(win,, 2)
-        WinActivate(win)
-        Sleep 600 ; There is a Small delay to ensure the command is processed
+        WinWaitActive(win,, 2)
+        Sleep 700 ; There is a small delay to ensure the command is processed
     }
     ; Free the memory in case the clipboard was extensive
     ClipSaved := ""
