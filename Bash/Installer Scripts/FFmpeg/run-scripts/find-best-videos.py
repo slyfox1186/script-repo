@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
-import os
+
 import argparse
 import concurrent.futures
+import os
+import pandas as pd
 import subprocess
 
 def show_help():
@@ -11,7 +13,6 @@ def show_help():
 
     Options:
       -d, --display-values  Include quality values in the output log.
-      -h, --help            Display this help message and exit.
     """
     print(help_text)
 
@@ -52,36 +53,76 @@ def find_mp4_files(search_dir):
                 mp4_files.append(os.path.join(root, file))
     return mp4_files
 
+def format_percentage(value):
+    return "{:.2f}%".format(value)
+
+def calculate_quality_changes(log_content):
+    lines = log_content.strip().split('\n')[2:]
+    data = []
+    for line in lines:
+        parts = line.split()
+        rank = int(parts[2])
+        path = ' '.join(parts[4:])
+        data.append((rank, path))
+    
+    df = pd.DataFrame(data, columns=['Weighted Rank', 'Path'])
+    df['Change in Quality %'] = df['Weighted Rank'].pct_change() * 100
+    df['Cumulative % Difference'] = df['Change in Quality %'].cumsum()
+    
+    df.loc[0, 'Change in Quality %'] = 0
+    df.loc[0, 'Cumulative % Difference'] = 0
+    
+    df['Change in Quality %'] = df['Change in Quality %'].apply(format_percentage)
+    df['Cumulative % Difference'] = df['Cumulative % Difference'].apply(format_percentage)
+    
+    return df
+
+def log_sorted_videos_with_quality_changes(log_file_path):
+    with open(log_file_path, 'r') as file:
+        log_content = file.read()
+    
+    df = calculate_quality_changes(log_content)
+    
+    max_path_length = df['Path'].str.len().max()
+    path_column_width = max(36, max_path_length)
+    
+    with open(log_file_path, 'w') as file:
+        file.write("Video files sorted by quality (best to worst):\n\n")
+        file.write("+--------------------------+-------------------------+------------------------+{}+\n".format('-' * (path_column_width + 2)))
+        file.write("| Cumulative % Difference  | Change in Quality %     | Weighted Rank          | Path{} |\n".format(' ' * (path_column_width - 4)))
+        file.write("+--------------------------+-------------------------+------------------------+{}+\n".format('-' * (path_column_width + 2)))
+        for _, row in df.iterrows():
+            file.write(f"| {row['Cumulative % Difference']:<24} | {row['Change in Quality %']:<23} | {row['Weighted Rank']:<22} | {row['Path']:<{path_column_width}} |\n")
+            file.write("+--------------------------+-------------------------+------------------------+{}+\n".format('-' * (path_column_width + 2)))
+
 def main():
     parser = argparse.ArgumentParser(description="Rank MP4 videos by quality.")
     parser.add_argument('directory', metavar='DIRECTORY', type=str, help='Directory to search for MP4 files.')
     parser.add_argument('-d', '--display-values', action='store_true', help='Include quality values in the output log.')
     args = parser.parse_args()
 
-    if not os.path.isdir(args.directory):
-        show_help()
-        exit(1)
-
-    mp4_files = find_mp4_files(args.directory)
-    video_qualities = {}
-
+    search_dir = args.directory
+    mp4_files = find_mp4_files(search_dir)
+    
     with concurrent.futures.ThreadPoolExecutor() as executor:
-        futures = [executor.submit(get_video_quality, file) for file in mp4_files]
-        for future in concurrent.futures.as_completed(futures):
+        future_to_file = {executor.submit(get_video_quality, file): file for file in mp4_files}
+        results = []
+        for future in concurrent.futures.as_completed(future_to_file):
             file, quality = future.result()
-            if file and quality is not None:
-                video_qualities[file] = quality
-
-    sorted_videos = sorted(video_qualities.items(), key=lambda x: x[1], reverse=True)
-
+            if quality is not None:
+                results.append((file, quality))
+    
+    results.sort(key=lambda x: x[1], reverse=True)
+    
     with open('video_quality_log.txt', 'w') as log_file:
         log_file.write("Video files sorted by quality (best to worst):\n\n")
-        for video, quality in sorted_videos:
+        for video, quality in results:
             if args.display_values:
                 log_file.write(f"Weighted Rank: {quality} Path: {video}\n")
             else:
                 log_file.write(f"Path: {video}\n")
-
+    
+    log_sorted_videos_with_quality_changes('video_quality_log.txt')
     print("Log file generated: video_quality_log.txt")
 
 if __name__ == '__main__':
