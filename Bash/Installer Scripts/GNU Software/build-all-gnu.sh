@@ -13,9 +13,9 @@ NC='\033[0m'
 
 # List of available programs
 available_programs=(
-                    autoconf autoconf-archive automake bash gawk gettext grep gzip libiconv
-                    libtool make nano parallel pkg-config sed tar texinfo wget which
-               )
+    autoconf autoconf-archive automake bash gawk grep gzip libiconv
+    libtool make nano parallel pkg-config sed tar texinfo wget which
+)
 
 # Consolidated list of required packages for all programs
 MASTER_PKGS="autoconf autoconf-archive automake build-essential bzip2 ccache curl gettext libc6-dev"
@@ -32,7 +32,6 @@ PKG_CONFIG_PKGS="libglib2.0-dev libpopt-dev"
 SED_PKGS="autopoint autotools-dev libaudit-dev librust-polling-dev valgrind"
 TAR_PKGS="libacl1-dev libattr1-dev libbz2-dev liblzma-dev libticonv9 libzstd-dev lzip lzop"
 LIBICONV_PKGS="libgettextpo-dev"
-GETTEXT_PKGS="libgettextpo-dev"
 PARALLEL_PKGS="autogen binutils bison lzip yasm"
 WGET_PKGS="gfortran libcurl4-openssl-dev libexpat1-dev libgcrypt20-dev libgpgme-dev libssl-dev libunistring-dev"
 WHICH_PKGS="curl gcc make tar"
@@ -110,51 +109,48 @@ required_packages() {
     pkgs=($MASTER_PKGS)
 
     if [[ "$1" == "all" ]]; then
-        pkgs+=($BASH_PKGS $GAWK_PKGS $GREP_PKGS $GZIP_PKGS $MAKE_PKGS $NANO_PKGS $PKG_CONFIG_PKGS $SED_PKGS $TAR_PKGS $LIBICONV_PKGS $GETTEXT_PKGS $PARALLEL_PKGS $WGET_PKGS $WHICH_PKGS)
+        pkgs+=("$BASH_PKGS" "$GAWK_PKGS" "$GREP_PKGS" "$GZIP_PKGS" "$MAKE_PKGS" "$NANO_PKGS" "$PKG_CONFIG_PKGS" "$SED_PKGS" "$TAR_PKGS" "$LIBICONV_PKGS" "$PARALLEL_PKGS" "$WGET_PKGS" "$WHICH_PKGS")
     else
         for prog in "${progs[@]}"; do
             case "$prog" in
                 bash)
-                    pkgs+=($BASH_PKGS)
+                    pkgs+=("$BASH_PKGS")
                     ;;
                 gawk)
-                    pkgs+=($GAWK_PKGS)
+                    pkgs+=("$GAWK_PKGS")
                     ;;
                 grep)
-                    pkgs+=($GREP_PKGS)
+                    pkgs+=("$GREP_PKGS")
                     ;;
                 gzip)
-                    pkgs+=($GZIP_PKGS)
+                    pkgs+=("$GZIP_PKGS")
                     ;;
                 make)
-                    pkgs+=($MAKE_PKGS)
+                    pkgs+=("$MAKE_PKGS")
                     ;;
                 nano)
-                    pkgs+=($NANO_PKGS)
+                    pkgs+=("$NANO_PKGS")
                     ;;
                 pkg-config)
-                    pkgs+=($PKG_CONFIG_PKGS)
+                    pkgs+=("$PKG_CONFIG_PKGS")
                     ;;
                 sed)
-                    pkgs+=($SED_PKGS)
+                    pkgs+=("$SED_PKGS")
                     ;;
                 tar)
-                    pkgs+=($TAR_PKGS)
+                    pkgs+=("$TAR_PKGS")
                     ;;
                 libiconv)
-                    pkgs+=($LIBICONV_PKGS)
-                    ;;
-                gettext)
-                    pkgs+=($GETTEXT_PKGS)
+                    pkgs+=("$LIBICONV_PKGS")
                     ;;
                 parallel)
-                    pkgs+=($PARALLEL_PKGS)
+                    pkgs+=("$PARALLEL_PKGS")
                     ;;
                 wget)
-                    pkgs+=($WGET_PKGS)
+                    pkgs+=("$WGET_PKGS")
                     ;;
                 which)
-                    pkgs+=($WHICH_PKGS)
+                    pkgs+=("$WHICH_PKGS")
                     ;;
             esac
         done
@@ -181,13 +177,11 @@ required_packages() {
 set_compiler_flags() {
     CC="gcc"
     CXX="g++"
-    CFLAGS="-O2 -pipe -flto -march=native"
+    CFLAGS="-O2 -pipe -march=native"
     CXXFLAGS="$CFLAGS"
-    LDFLAGS="-Wl,-rpath=$install_dir/lib64:$install_dir/lib"
+    LDFLAGS="-Wl,-rpath=$install_dir/lib"
     PATH="/usr/lib/ccache:$PATH"
-    PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/lib64/pkgconfig:/usr/local/share/pkgconfig:/usr/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/share/pkgconfig"
-    PKG_CONFIG_PATH+=":/usr/local/cuda/lib64/pkgconfig:/usr/local/cuda/lib/pkgconfig:/opt/cuda/lib64/pkgconfig:/opt/cuda/lib/pkgconfig"
-    PKG_CONFIG_PATH+=":/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/i386-linux-gnu/pkgconfig:/usr/lib/arm-linux-gnueabihf/pkgconfig:/usr/lib/aarch64-linux-gnu/pkgconfig"
+    PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/lib64/pkgconfig:/usr/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig"
     export CC CXX CFLAGS CXXFLAGS LDFLAGS PATH PKG_CONFIG_PATH
 }
 
@@ -199,7 +193,7 @@ get_latest_version_url() {
             version=$(curl -fsS "https://pkgconfig.freedesktop.org/releases/" | grep -oP "pkg-config-\K\d+([\d.])+(?=\.tar\.)" | sort -ruV | head -n1)
             ;;
         autoconf)
-            version="2.71"
+            version="2.72"
             ;;
         *)
             version=$(curl -fsS "https://ftp.gnu.org/gnu/$prog_name/" | grep -oP "$prog_name-\K([0-9.]+)(?=\.tar\.)" | sort -ruV | head -n1)
@@ -248,7 +242,7 @@ configure_build() {
     cd build || fail "Failed to cd into the build directory. Line: $LINENO"
     case "$prog_name" in
         pkg-config)
-            ../configure --prefix="$install_dir" --with-pc-path="$PKG_CONFIG_PATH" || fail "Failed to execute: configure. Line: $LINENO"
+            ../configure --prefix="$install_dir" --with-pc-path="$PKG_CONFIG_PATH" || fail "Failed to execute the pkg-config configure script. Line: $LINENO"
             ;;
         *)
             ../configure --prefix="$install_dir" --disable-nls || fail "Failed to execute: configure. Line: $LINENO"
@@ -257,11 +251,12 @@ configure_build() {
 }
 
 compile_and_install() {
+    local version=$1
     make "-j$(nproc --all)" || fail "Failed to execute: make build. Line: $LINENO"
     sudo make install || fail "Failed execute: make install. Line: $LINENO"
     case "$prog_name" in
         libiconv)
-            sudo libtool --finish "$install_dir/libiconv-1.17/lib"
+            sudo libtool --finish "$install_dir/libiconv-$version/lib"
             ;;
     esac
 }
@@ -275,9 +270,8 @@ create_soft_links() {
 ld_linker_path() {
     local ld_file="/etc/ld.so.conf.d/custom_libs.conf"
     if [[ ! -f "$ld_file" ]]; then
-        echo -e "$install_dir/lib64\n$install_dir/lib" | sudo tee "$ld_file" >/dev/null
+        echo -e "$install_dir/lib" | sudo tee "$ld_file" >/dev/null
     else
-        grep -qxF "$install_dir/lib64" "$ld_file" || echo "$install_dir/lib64" | sudo tee -a "$ld_file" >/dev/null
         grep -qxF "$install_dir/lib" "$ld_file" || echo "$install_dir/lib" | sudo tee -a "$ld_file" >/dev/null
     fi
     sudo ldconfig
@@ -298,14 +292,14 @@ build_program() {
         version=$(get_latest_version_url "$prog_name")
     fi
     archive_name="$prog_name-$version"
-    install_dir="/usr/local/$archive_name"
+    install_dir="/usr/local/programs/$archive_name"
     cwd="/tmp/$prog_name-build-script"
     tar_file="$archive_name.$(date +%s)"
     mkdir -p "$cwd/$archive_name/build"
     set_compiler_flags
     download_and_extract
     configure_build
-    compile_and_install
+    compile_and_install "$version"
     ld_linker_path
     create_soft_links
     cleanup
