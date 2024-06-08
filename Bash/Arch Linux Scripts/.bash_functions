@@ -443,7 +443,6 @@ rmf() {
 ## IMAGEMAGICK ##
 
 imow() {
-    local -f box_out_banner
     if wget --timeout=2 --tries=2 -cqO "optimize-jpg.py" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.py"; then
         clear
         box_out_banner "Optimizing Images: $PWD"
@@ -1491,6 +1490,7 @@ rsrd() {
 
 sc() {
     local f fname input_char line space
+    local -f box_out_banner
     clear
 
     if [ -z "$@" ]; then
@@ -1502,21 +1502,8 @@ sc() {
 
     for f in ${fname[@]}
     do
-        box_out_banner()
-        {
-            input_char=$(echo "$@" | wc -c)
-            line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
-            tput bold
-            line="$(tput setaf 3)$line"
-            space=${line//-/ }
-            echo " $line"
-            printf "|" ; echo -n "$space" ; printf "%s\n" "|";
-            printf "| " ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" " |";
-            printf "|" ; echo -n "$space" ; printf "%s\n" "|";
-            echo " $line"
-            tput sgr 0
-        }
         box_out_banner "Parsing: $f"
+        echo
         shellcheck --color=always -x --severity=warning --source-path="$HOME:$HOME/tmp:/etc:/usr/local/lib64:/usr/local/lib:/usr/local64:/usr/lib:/lib64:/lib:/lib32" "$f"
         echo
     done
