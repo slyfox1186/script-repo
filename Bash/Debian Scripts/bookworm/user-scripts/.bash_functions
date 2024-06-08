@@ -543,7 +543,6 @@ rmf() {
 ## IMAGEMAGICK ##
 
 imow() {
-    local -f box_out_banner
     if wget --timeout=2 --tries=2 -cqO "optimize-jpg.py" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.py"; then
         clear
         box_out_banner "Optimizing Images: $PWD"
@@ -1402,6 +1401,7 @@ rsrd() {
 ## SHELLCHECK ##
 sc() {
     local file files input_char line space
+    local -f box_out_banner
 
     if [[ -z "$*" ]]; then
         read -p "Input the FILE path to check: " files
@@ -1411,20 +1411,8 @@ sc() {
     fi
 
     for file in ${files[@]}; do
-        box_out_banner() {
-            input_char=$(echo "$@" | wc -c)
-            line=$(for i in $(seq 0 ${input_char}); do printf "-"; done)
-            tput bold
-            line=$(tput setaf 3)"$line"
-            space=${line//-/ }
-            echo " $line"
-            printf "|" ; echo -n "$space" ; echo "|"
-            printf "| " ;tput setaf 4; echo -n "$@"; tput setaf 3 ; echo " |"
-            printf "|" ; echo -n "$space" ; echo "|"
-            echo " $line"
-            tput sgr 0
-        }
         box_out_banner "Parsing: $file"
+        echo
         shellcheck --color=always -x --severity=warning --source-path="$PATH:$HOME/tmp:/etc:/usr/local/lib64:/usr/local/lib:/usr/local64:/usr/lib:/lib64:/lib:/lib32" "$file"
         echo
     done
@@ -1518,7 +1506,7 @@ show_rpath() {
     fi
 
     clear
-    sudo chrpath -l "$(type -p ${find_rpath})"
+    sudo chrpath -l "$(command -v ${find_rpath})"
 }
 
 ######################################
