@@ -29,18 +29,16 @@ GOTO :EOF
 :ADD_REG
 REM [ * ] >> FILES ONLY
 REG ADD "HKCR\*\shell\CopyLinuxPath" /ve /d "Copy Linux Path" /f
-REG ADD "HKCR\*\shell\CopyLinuxPath" /v "Extended" /d "" /f
 REG ADD "HKCR\*\shell\CopyLinuxPath" /v "Icon" /d "C:\Program Files\WSL\wsl.exe" /f
-REG ADD "HKCR\*\shell\CopyLinuxPath" /v "Position" /d "Top"  /f
-REG ADD "HKCR\*\shell\CopyLinuxPath\command" /d "wsl.exe -- wslpath -u \"%%1\" | tr -d '\n' | clip.exe" /f
+REG ADD "HKCR\*\shell\CopyLinuxPath" /v "Position" /d "Middle"  /f
+REG ADD "HKCR\*\shell\CopyLinuxPath\command" /d "\"C:\Program Files\WSL\wsl.exe\" -- wslpath -u \"%%1\" | tr -d '\n' | clip.exe" /f
 REG ADD "HKCR\*\shell\CopyLinuxPath" /v "SeparatorBefore" /t REG_SZ /d "" /f
 REG ADD "HKCR\*\shell\CopyLinuxPath" /v "SeparatorAfter" /t REG_SZ /d "" /f
 REM [ Directory ] >> DIRECTORIES/FOLDERS ONLY
 REG ADD "HKCR\Directory\shell\CopyLinuxPath" /ve /d "Copy Linux Path" /f
-REG ADD "HKCR\Directory\shell\CopyLinuxPath" /v "Extended" /d "" /f
 REG ADD "HKCR\Directory\shell\CopyLinuxPath" /v "Icon" /d "C:\Program Files\WSL\wsl.exe" /f
-REG ADD "HKCR\Directory\shell\CopyLinuxPath" /v "Position" /d "Top" /f
-REG ADD "HKCR\Directory\shell\CopyLinuxPath\command" /d "wsl.exe -- wslpath -u \"%%V\" | tr -d '\n' | clip.exe" /f
+REG ADD "HKCR\Directory\shell\CopyLinuxPath" /v "Position" /d "Middle" /f
+REG ADD "HKCR\Directory\shell\CopyLinuxPath\command" /d "\"C:\Program Files\WSL\wsl.exe\" -- wslpath -u \"%%V\" | tr -d '\n' | clip.exe" /f
 REG ADD "HKCR\Directory\shell\CopyLinuxPath" /v "SeparatorBefore" /t REG_SZ /d "" /f
 REG ADD "HKCR\Directory\shell\CopyLinuxPath" /v "SeparatorAfter" /t REG_SZ /d "" /f
 GOTO :EOF
