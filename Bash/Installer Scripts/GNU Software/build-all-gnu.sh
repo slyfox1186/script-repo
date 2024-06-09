@@ -2,8 +2,8 @@
 
 # GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-all-gnu.sh
 # Purpose: Build various GNU programs from source code
-# Updated: 05.27.24
-# Version: 1.2
+# Updated: 05.09.24
+# Version: 1.3
 
 CYAN='\033[0;36m'
 GREEN='\033[0;32m'
@@ -13,25 +13,24 @@ NC='\033[0m'
 
 # List of available programs
 available_programs=(
-    autoconf autoconf-archive automake bash gawk grep gzip libiconv
+    autoconf autoconf-archive automake bash gawk grep gzip
     libtool make nano parallel pkg-config sed tar texinfo wget which
 )
 
 # Consolidated list of required packages for all programs
-MASTER_PKGS="autoconf autoconf-archive automake build-essential bzip2 ccache curl gettext libc6-dev"
-MASTER_PKGS+=" libintl-perl libticonv-dev libtool lzip lzma lzma-dev m4 texinfo xz-utils zlib1g-dev"
+MASTER_PKGS="autoconf autoconf-archive automake build-essential bzip2 ccache curl libc6-dev"
+MASTER_PKGS+=" libintl-perl libtool lzip lzma lzma-dev m4 texinfo xz-utils zlib1g-dev"
 
 # Specific package lists for each program (excluding those already in MASTER_PKGS)
-BASH_PKGS="libacl1-dev libattr1-dev liblzma-dev libticonv8 libzstd-dev lzip lzop"
+BASH_PKGS="libacl1-dev libattr1-dev liblzma-dev libzstd-dev lzip lzop"
 GAWK_PKGS="libgmp-dev libmpfr-dev libreadline-dev libsigsegv-dev lzip"
 GREP_PKGS="libltdl-dev libsigsegv-dev"
 GZIP_PKGS="libzstd-dev zstd"
-MAKE_PKGS="libdmalloc-dev libsigsegv2 libticonv8"
+MAKE_PKGS="libdmalloc-dev libsigsegv2"
 NANO_PKGS="libncurses5-dev libpth-dev nasm"
 PKG_CONFIG_PKGS="libglib2.0-dev libpopt-dev"
 SED_PKGS="autopoint autotools-dev libaudit-dev librust-polling-dev valgrind"
-TAR_PKGS="libacl1-dev libattr1-dev libbz2-dev liblzma-dev libticonv8 libzstd-dev lzip lzop"
-LIBICONV_PKGS="libgettextpo-dev"
+TAR_PKGS="libacl1-dev libattr1-dev libbz2-dev liblzma-dev libzstd-dev lzip lzop"
 PARALLEL_PKGS="autogen binutils bison lzip yasm"
 WGET_PKGS="gfortran libcurl4-openssl-dev libexpat1-dev libgcrypt20-dev libgpgme-dev libssl-dev libunistring-dev"
 WHICH_PKGS="curl gcc make tar"
@@ -109,7 +108,7 @@ required_packages() {
     pkgs=($MASTER_PKGS)
 
     if [[ "$1" == "all" ]]; then
-        pkgs+=("$BASH_PKGS" "$GAWK_PKGS" "$GREP_PKGS" "$GZIP_PKGS" "$MAKE_PKGS" "$NANO_PKGS" "$PKG_CONFIG_PKGS" "$SED_PKGS" "$TAR_PKGS" "$LIBICONV_PKGS" "$PARALLEL_PKGS" "$WGET_PKGS" "$WHICH_PKGS")
+        pkgs+=("$BASH_PKGS" "$GAWK_PKGS" "$GREP_PKGS" "$GZIP_PKGS" "$MAKE_PKGS" "$NANO_PKGS" "$PKG_CONFIG_PKGS" "$SED_PKGS" "$TAR_PKGS" "$PARALLEL_PKGS" "$WGET_PKGS" "$WHICH_PKGS")
     else
         for prog in "${progs[@]}"; do
             case "$prog" in
@@ -129,7 +128,7 @@ required_packages() {
                     pkgs+=("$MAKE_PKGS")
                     ;;
                 nano)
-                    pkgs+=("$NANO_PKGS")
+                    pkks+=("$NANO_PKGS")
                     ;;
                 pkg-config)
                     pkgs+=("$PKG_CONFIG_PKGS")
@@ -139,9 +138,6 @@ required_packages() {
                     ;;
                 tar)
                     pkgs+=("$TAR_PKGS")
-                    ;;
-                libiconv)
-                    pkgs+=("$LIBICONV_PKGS")
                     ;;
                 parallel)
                     pkgs+=("$PARALLEL_PKGS")
@@ -188,17 +184,7 @@ set_compiler_flags() {
 get_latest_version_url() {
     local prog_name version
     prog_name=$1
-    case "$prog_name" in
-        pkg-config)
-            version=$(curl -fsS "https://pkgconfig.freedesktop.org/releases/" | grep -oP "pkg-config-\K\d+([\d.])+(?=\.tar\.)" | sort -ruV | head -n1)
-            ;;
-        autoconf)
-            version="2.72"
-            ;;
-        *)
-            version=$(curl -fsS "https://ftp.gnu.org/gnu/$prog_name/" | grep -oP "$prog_name-\K([0-9.]+)(?=\.tar\.)" | sort -ruV | head -n1)
-            ;;
-    esac
+    version=$(curl -fsS "https://ftp.gnu.org/gnu/$prog_name/" | grep -oP "$prog_name-\K([0-9.]+)(?=\.tar\.)" | sort -ruV | head -n1)
     if [[ -z "$version" ]]; then
         fail "Failed to find the latest version for $prog_name. Please check the program name or the GNU FTP server."
     fi
@@ -225,27 +211,60 @@ configure_build() {
     cd "$cwd/$archive_name" || fail "Failed to cd into $cwd/$archive_name. Line: $LINENO"
     
     case "$prog_name" in
-        bash|libtool|nano|libiconv)
+        autoconf)
+            ./configure --prefix="$install_dir" || fail "Failed to execute: configure. Line: $LINENO"
             ;;
-        pkg-config|which)
+        bash)
+            ./configure --prefix="$install_dir" --enable-static-link --enable-multibyte || fail "Failed to execute: configure. Line: $LINENO"
+            ;;
+        findutils)
+            ./configure --prefix="$install_dir" --enable-threads=posix --disable-nls || fail "Failed to execute: configure. Line: $LINENO"
+            ;;
+        gawk)
+            ./configure --prefix="$install_dir" --disable-nls --with-readline=/usr --with-mpfr=/usr || fail "Failed to execute: configure. Line: $LINENO"
+            ;;
+        grep)
+            ./configure --prefix="$install_dir" --disable-nls --enable-threads=posix --with-libsigsegv --with-libsigsegv-prefix=/usr || fail "Failed to execute: configure. Line: $LINENO"
+            ;;
+        gzip)
+            ./configure --prefix="$install_dir" --disable-gcc-warnings --enable-silent-rules || fail "Failed to execute: configure. Line: $LINENO"
+            ;;
+        libtool)
+            ./configure --prefix="$install_dir" --enable-ltdl-install || fail "Failed to execute: configure. Line: $LINENO"
+            ;;
+        make)
+            ./configure --prefix="$install_dir" --disable-nls --enable-year2038 --with-dmalloc --with-libsigsegv-prefix=/usr || fail "Failed to execute: configure. Line: $LINENO"
+            ;;
+        nano)
+            ./configure --prefix="$install_dir" --enable-utf8 || fail "Failed to execute: configure. Line: $LINENO"
+            ;;
+        pkg-config)
+            ./configure --prefix="$install_dir" --with-internal-glib --disable-nls || fail "Failed to execute: configure. Line: $LINENO"
+            ;;
+        sed)
+            ./configure --prefix="$install_dir" --enable-threads=posix --disable-nls || fail "Failed to execute: configure. Line: $LINENO"
+            ;;
+        tar)
+            ./configure --prefix="$install_dir" --disable-nls --disable-gcc-warnings --with-bzip2="$(command -v bzip2)" \
+                        --with-lzip="$(command -v lzip)" --with-lzma="$(command -v lzma)" --with-xz="$(command -v xz)" \
+                        --with-zstd="$(command -v zstd)" --with-lzop="$(command -v lzop)" --with-gzip="$(command -v gzip)" || fail "Failed to execute: configure. Line: $LINENO"
+            ;;
+        wget)
+            autoreconf -fi -I /usr/share/aclocal || fail "Failed to execute: autoreconf. Line: $LINENO"
+            ./configure --prefix="$install_dir" --with-ssl=openssl --with-libssl-prefix="$cwd" --with-metalink \
+                        --with-libunistring-prefix=/usr --with-libcares --without-ipv6 --disable-nls || fail "Failed to execute: configure. Line: $LINENO"
+            ;;
+        which)
             autoconf || fail "Failed to execute: autoconf. Line: $LINENO"
+            ./configure --prefix="$install_dir" || fail "Failed to execute: configure. Line: $LINENO"
             ;;
         make|wget)
             autoreconf -fi -I /usr/share/aclocal || fail "Failed to execute: autoreconf. Line: $LINENO"
+            ./configure --prefix="$install_dir" || fail "Failed to execute: configure. Line: $LINENO"
             ;;
         *)
             autoreconf -fi || fail "Failed to execute: autoreconf. Line: $LINENO"
-            ;;
-    esac
-    
-    mkdir -p build
-    cd build || fail "Failed to cd into the build directory. Line: $LINENO"
-    case "$prog_name" in
-        pkg-config)
-            ../configure --prefix="$install_dir" --with-pc-path="$PKG_CONFIG_PATH" || fail "Failed to execute the pkg-config configure script. Line: $LINENO"
-            ;;
-        *)
-            ../configure --prefix="$install_dir" --disable-nls || fail "Failed to execute: configure. Line: $LINENO"
+            ./configure --prefix="$install_dir" --disable-nls || fail "Failed to execute: configure. Line: $LINENO"
             ;;
     esac
 }
@@ -254,11 +273,6 @@ compile_and_install() {
     local version=$1
     make "-j$(nproc --all)" || fail "Failed to execute: make build. Line: $LINENO"
     sudo make install || fail "Failed execute: make install. Line: $LINENO"
-    case "$prog_name" in
-        libiconv)
-            sudo libtool --finish "$install_dir/libiconv-$version/lib"
-            ;;
-    esac
 }
 
 create_soft_links() {
