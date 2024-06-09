@@ -22,15 +22,15 @@ MASTER_PKGS="autoconf autoconf-archive automake build-essential bzip2 ccache cur
 MASTER_PKGS+=" libintl-perl libticonv-dev libtool lzip lzma lzma-dev m4 texinfo xz-utils zlib1g-dev"
 
 # Specific package lists for each program (excluding those already in MASTER_PKGS)
-BASH_PKGS="libacl1-dev libattr1-dev liblzma-dev libticonv9 libzstd-dev lzip lzop"
+BASH_PKGS="libacl1-dev libattr1-dev liblzma-dev libticonv8 libzstd-dev lzip lzop"
 GAWK_PKGS="libgmp-dev libmpfr-dev libreadline-dev libsigsegv-dev lzip"
 GREP_PKGS="libltdl-dev libsigsegv-dev"
 GZIP_PKGS="libzstd-dev zstd"
-MAKE_PKGS="libdmalloc-dev libsigsegv2 libticonv9"
+MAKE_PKGS="libdmalloc-dev libsigsegv2 libticonv8"
 NANO_PKGS="libncurses5-dev libpth-dev nasm"
 PKG_CONFIG_PKGS="libglib2.0-dev libpopt-dev"
 SED_PKGS="autopoint autotools-dev libaudit-dev librust-polling-dev valgrind"
-TAR_PKGS="libacl1-dev libattr1-dev libbz2-dev liblzma-dev libticonv9 libzstd-dev lzip lzop"
+TAR_PKGS="libacl1-dev libattr1-dev libbz2-dev liblzma-dev libticonv8 libzstd-dev lzip lzop"
 LIBICONV_PKGS="libgettextpo-dev"
 PARALLEL_PKGS="autogen binutils bison lzip yasm"
 WGET_PKGS="gfortran libcurl4-openssl-dev libexpat1-dev libgcrypt20-dev libgpgme-dev libssl-dev libunistring-dev"
