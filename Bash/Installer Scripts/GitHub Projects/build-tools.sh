@@ -264,6 +264,7 @@ current_ninja_version=$(ninja --version 2>/dev/null)
 current_meson_version=$(meson --version 2>/dev/null)
 current_go_version=$(search_for_golang_version)
 
+echo
 log "Current versions:"
 log "CMake: $current_cmake_version"
 log "Ninja: $current_ninja_version"
@@ -276,6 +277,7 @@ latest_ninja_version=$(curl -fsS "https://github.com/ninja-build/ninja/tags" | g
 latest_meson_version=$(curl -fsS "https://github.com/mesonbuild/meson/tags" | grep -oP '\/tag\/\K\d\.\d+\.\d' | sed 's/"//g' | sort -ruV | head -n1)
 latest_go_version=$(curl -fsS https://go.dev/dl/ | grep -oP 'go\K[0-9]+\.[0-9]+\.[0-9]+' | sort -rV | uniq | head -n1)
 
+echo
 log "Latest versions:"
 log "CMake: $latest_cmake_version"
 log "Ninja: $latest_ninja_version"
