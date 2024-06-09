@@ -177,7 +177,7 @@ def process_image(infile: Path, overwrite_mode: bool, verbose_mode: bool, no_app
                     else:
                         new_width = MAX_HEIGHT
                         new_height = int(orig_height * MAX_HEIGHT / orig_width)
-                run_command(['magick', 'convert', str(infile), '-resize', f'{new_width}x{new_height}', str(resized_image_path)], verbose_mode)
+                run_command(['magick', str(infile), '-resize', f'{new_width}x{new_height}', str(resized_image_path)], verbose_mode)
             else:
                 resized_image_path = infile
         except subprocess.CalledProcessError as e:
@@ -215,7 +215,7 @@ def process_image(infile: Path, overwrite_mode: bool, verbose_mode: bool, no_app
         else:
             # Compress the image
             compress_command = [
-                'magick', 'convert', str(resized_image_path),
+                'magick', str(resized_image_path),
                 '-strip', '-interlace', 'JPEG', '-quality', f'{quality}%',
                 str(outfile)
             ]
