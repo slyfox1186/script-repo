@@ -61,7 +61,7 @@ required_packages() {
     pkgs=(
         autoconf automake build-essential gettext libacl1-dev
         libattr1-dev libbz2-dev libintl-perl liblzma-dev libtool
-        lzip lzop libzstd-dev libticonv9 xz-utils zlib1g-dev
+        lzip lzop libzstd-dev libticonv8 xz-utils zlib1g-dev
     )
 
     missing_pkgs=()

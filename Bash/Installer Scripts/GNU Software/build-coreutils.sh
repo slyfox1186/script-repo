@@ -58,7 +58,7 @@ cleanup() {
 required_packages() {
     local -a missing_pkgs pkgs
     local pkg
-    pkgs=(autoconf automake build-essential ccache libticonv9 libltdl-dev)
+    pkgs=(autoconf automake build-essential ccache libticonv8 libltdl-dev)
 
     missing_pkgs=()
     for pkg in "${pkgs[@]}"; do

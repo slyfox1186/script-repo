@@ -50,7 +50,7 @@ required_packages() {
     log "Installing dependencies..."
     pkgs=(
          autoconf automake build-essential gettext libdmalloc-dev
-         libintl-perl libsigsegv2 libticonv9 libtool lzip texinfo
+         libintl-perl libsigsegv2 libticonv8 libtool lzip texinfo
     )
 
     missing_pkgs=()
