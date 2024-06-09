@@ -29,6 +29,10 @@ usage() {
     echo -e "  -p, --prepend          Specify text to prepend to the output file name. Ignored if --overwrite is used."
     echo -e "  -o, --overwrite        Overwrite the input file instead of creating a new one."
     echo -e "  -v, --verbose          Enable verbose output." # Verbose option described
+    echo
+    echo "Examples:"
+    echo "./fix-start-of-video.sh -v -i \"video.mp4\""
+    echo "./fix-start-of-video.sh -o -v -i \"video.mp4\""
     exit 1
 }
 
