@@ -21,7 +21,9 @@ def convert_to_wsl_path(path):
     except subprocess.CalledProcessError:
         return path
 
-def get_video_quality(file_path):
+def get_video_quality(file_path, verbose=False):
+    if verbose:
+        print(f"Processing video: {file_path}")
     try:
         result = subprocess.run(
             ['ffprobe', '-v', 'error', '-select_streams', 'v:0', 
@@ -56,16 +58,21 @@ def get_video_quality(file_path):
 
         return file_path, quality
     except subprocess.CalledProcessError as e:
-        print(f"Error processing {file_path}: {e}")
+        if verbose:
+            print(f"Error processing {file_path}: {e}")
         return file_path, 0
 
-def find_mp4_files(root_dir):
+def find_mp4_files(root_dir, verbose=False):
+    if verbose:
+        print(f"Searching for MP4 files in directory: {root_dir}")
     mp4_files = []
     for dirpath, _, filenames in os.walk(root_dir):
         for filename in filenames:
             if filename.lower().endswith('.mp4'):
                 full_path = os.path.join(dirpath, filename)
                 mp4_files.append(full_path)
+    if verbose:
+        print(f"Found {len(mp4_files)} MP4 files.")
     return mp4_files
 
 def create_bash_script(input_log_file, output_playlist_file):
@@ -140,6 +147,7 @@ def main():
     parser.add_argument('-p', '--plain', action='store_true', help="Only output file paths without any other strings")
     parser.add_argument('-f', '--force-linux-path', action='store_true', help="Force output to use Linux paths even if running under WSL")
     parser.add_argument('-c', '--create-playlist', action='store_true', help="Create and run a Bash script to create a VLC playlist file from results.txt")
+    parser.add_argument('-v', '--verbose', action='store_true', help="Enable verbose output")
     args = parser.parse_args()
 
     root_dir = args.root_dir
@@ -147,12 +155,13 @@ def main():
     plain_output = args.plain
     force_linux_path = args.force_linux_path
     create_playlist_flag = args.create_playlist
+    verbose = args.verbose
 
-    mp4_files = find_mp4_files(root_dir)
+    mp4_files = find_mp4_files(root_dir, verbose)
 
     video_qualities = []
     with ThreadPoolExecutor() as executor:
-        future_to_file = {executor.submit(get_video_quality, file): file for file in mp4_files}
+        future_to_file = {executor.submit(get_video_quality, file, verbose): file for file in mp4_files}
         for future in as_completed(future_to_file):
             file, quality = future.result()
             video_qualities.append((file, quality))
