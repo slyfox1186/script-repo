@@ -98,7 +98,7 @@ remove_video_path() {
 
 # Function to run ffmpeg command
 run_ffmpeg() {
-    local audio_codec bitrate bufsize file_out maxrate threads video
+    local audio_codec bitrate bufsize file_out maxrate start_time threads video
     video="$1"
     audio_codec="$2"
     file_out="$3"
@@ -106,9 +106,10 @@ run_ffmpeg() {
     bufsize="$5"
     maxrate="$6"
     threads="$7"
+    start_time="$8"
 
     ffpb -y -hide_banner -hwaccel_output_format cuda \
-         -threads "$threads" -i "$video" -fps_mode:v vfr \
+         -threads "$threads" -i "$video" -ss "$start_time" -fps_mode:v vfr \
          -c:v hevc_nvenc -preset medium -profile:v main10 \
          -pix_fmt p010le -rc:v vbr -tune:v hq -b:v "${bitrate}k" \
          -bufsize:v "${bufsize}k" -maxrate:v "${maxrate}k" -bf:v 3 \
@@ -153,7 +154,7 @@ handle_success() {
 # Main video conversion function
 convert_videos() {
     local aspect_ratio bitrate bufsize file_out height length
-    local maxrate original_bitrate progress threads total_input_size
+    local maxrate original_bitrate progress start_time threads total_input_size
     local total_output_size total_space_saved total_videos width
     local estimated_output_size length_mins length_secs
 
@@ -179,6 +180,9 @@ convert_videos() {
         length=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$video")
         original_bitrate=$(ffprobe -v error -show_entries format=bit_rate -of default=nk=1:nw=1 "$video")
         width=$(ffprobe -v error -select_streams v:0 -show_entries stream=width -of csv=s=x:p=0 "$video")
+
+        # Find the first timestamp
+        start_time=$(ffprobe -v error -select_streams v:0 -show_entries frame=best_effort_timestamp_time -of default=nk=1:nw=1 -read_intervals "%+#1" "$video")
 
         file_out="${video%.*} (x265).${video##*.}"
 
@@ -243,11 +247,11 @@ convert_videos() {
         total_input_size=$((total_input_size + input_size))
 
         # Conversion using ffmpeg with HEVC codec
-        if run_ffmpeg "$video" "copy" "$file_out" "$bitrate" "$bufsize" "$maxrate" "$threads"; then
+        if run_ffmpeg "$video" "copy" "$file_out" "$bitrate" "$bufsize" "$maxrate" "$threads" "$start_time"; then
             handle_success "$video" "$file_out" "$input_size" "$total_input_size" "$total_output_size" "$total_space_saved"
         else
             # Fallback to AAC audio encoding if copying fails
-            if run_ffmpeg "$video" "aac" "$file_out" "$bitrate" "$bufsize" "$maxrate" "$threads"; then
+            if run_ffmpeg "$video" "aac" "$file_out" "$bitrate" "$bufsize" "$maxrate" "$threads" "$start_time"; then
                 handle_success "$video" "$file_out" "$input_size" "$total_input_size" "$total_output_size" "$total_space_saved"
             else
                 google_speech "Video conversion failed." &>/dev/null
