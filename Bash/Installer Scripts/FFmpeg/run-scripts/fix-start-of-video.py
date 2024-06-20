@@ -3,6 +3,7 @@
 import argparse
 import os
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -17,6 +18,7 @@ class Colors:
     NC = '\033[0m'
 
 MAX_PARALLEL = 2  # Default maximum number of parallel jobs
+temp_files = []   # List to store temporary files
 
 def parse_args():
     script_name = os.path.basename(sys.argv[0])
@@ -82,6 +84,24 @@ def get_keyframe_time(file_path, time_offset):
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     return result.stdout.decode('utf-8').strip().split('\n')[0]
 
+def cleanup_temp_files():
+    global temp_files
+    for temp_file in temp_files:
+        try:
+            os.remove(temp_file)
+            log(f"Deleted temporary file {temp_file}", Colors.GREEN)
+        except Exception as e:
+            log(f"Error deleting temporary file {temp_file}: {e}", Colors.RED)
+    temp_files = []
+
+def handle_exit(signum, frame):
+    log("Termination signal received. Cleaning up...", Colors.YELLOW)
+    cleanup_temp_files()
+    sys.exit(0)
+
+signal.signal(signal.SIGINT, handle_exit)
+signal.signal(signal.SIGTERM, handle_exit)
+
 def process_video(file_path, start, end, prepend_text, append_text, overwrite, verbose):
     try:
         duration = get_video_duration(file_path)
@@ -101,23 +121,39 @@ def process_video(file_path, start, end, prepend_text, append_text, overwrite, v
     temp_output_dir = Path(file_path).parent
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=extension, dir=temp_output_dir) as temp_output:
+        temp_files.append(temp_output.name)
         command = ['ffmpeg', '-y', '-hide_banner', '-ss', start_time, '-i', file_path,
                    '-to', end_time, '-c', 'copy', temp_output.name]
 
         if subprocess.run(command).returncode == 0:
             if overwrite:
                 shutil.move(temp_output.name, file_path)
+                temp_files.remove(temp_output.name)
                 log(f"Successfully processed and overwritten {file_path}", Colors.GREEN)
             else:
                 shutil.move(temp_output.name, final_output)
+                temp_files.remove(temp_output.name)
                 log(f"Successfully processed {file_path} into {final_output}", Colors.GREEN)
         else:
             log(f"Failed to process {file_path}", Colors.RED)
             os.remove(temp_output.name)
+            temp_files.remove(temp_output.name)
 
 def main():
     args = parse_args()
 
+    # Output the settings
+    log("Settings:", Colors.YELLOW)
+    log(f"  Input file: {args.input}", Colors.YELLOW)
+    log(f"  File list: {args.file}", Colors.YELLOW)
+    log(f"  Start trim: {args.start} seconds", Colors.YELLOW)
+    log(f"  End trim: {args.end} seconds", Colors.YELLOW)
+    log(f"  Append text: {args.append}", Colors.YELLOW)
+    log(f"  Prepend text: {args.prepend}", Colors.YELLOW)
+    log(f"  Overwrite: {args.overwrite}", Colors.YELLOW)
+    log(f"  Verbose: {args.verbose}", Colors.YELLOW)
+    log(f"  Threads: {args.threads}", Colors.YELLOW)
+    
     video_files = []
     if args.file:
         with open(args.file, 'r') as f:
