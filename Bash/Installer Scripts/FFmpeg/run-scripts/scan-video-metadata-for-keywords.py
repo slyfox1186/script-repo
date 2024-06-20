@@ -5,6 +5,7 @@ import sys
 import argparse
 import ffmpeg
 import logging
+import multiprocessing
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
 
@@ -26,8 +27,11 @@ def search_file(file_path, search_terms):
         logging.error(f"Error message: {str(e)}")
     return matches
 
-def search_files(directory, search_terms, output_file, max_workers=4):
+def search_files(directory, search_terms, output_file, max_workers=None):
     mp4_files = [os.path.join(root, file) for root, dirs, files in os.walk(directory) for file in files if file.endswith(".mp4")]
+
+    if max_workers is None:
+        max_workers = multiprocessing.cpu_count()
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = [executor.submit(search_file, file_path, search_terms) for file_path in mp4_files]
@@ -54,8 +58,6 @@ def main():
                         help='comma-separated list of words to search for')
     parser.add_argument('-o', '--output', metavar='output_file', type=str,
                         help='path to the output file (optional)')
-    parser.add_argument('-t', '--threads', metavar='max_workers', type=int, default=4,
-                        help='maximum number of worker threads (default: 4)')
     parser.add_argument('-v', '--verbose', action='store_true',
                         help='enable verbose logging')
     args = parser.parse_args()
@@ -68,7 +70,7 @@ def main():
     search_terms = [term.strip().lower() for term in args.search_terms.split(',')]
     current_directory = os.path.dirname(os.path.abspath(__file__))
 
-    search_files(current_directory, search_terms, args.output, args.threads)
+    search_files(current_directory, search_terms, args.output)
 
 if __name__ == '__main__':
     main()
