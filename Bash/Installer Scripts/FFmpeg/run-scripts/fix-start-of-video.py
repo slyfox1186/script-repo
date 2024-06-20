@@ -101,7 +101,7 @@ def process_video(file_path, start, end, prepend_text, append_text, overwrite, v
     temp_output_dir = Path(file_path).parent
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=extension, dir=temp_output_dir) as temp_output:
-        command = ['ffmpeg', '-y', '-hide_banner', '-ss', start_time, '-i', file_path,
+        command = ['ffmpeg', '-y', '-loglevel 16', '-hide_banner', '-ss', start_time, '-i', file_path,
                    '-to', end_time, '-c', 'copy', temp_output.name]
 
         if subprocess.run(command).returncode == 0:
