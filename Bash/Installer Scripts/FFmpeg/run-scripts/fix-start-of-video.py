@@ -61,7 +61,7 @@ def parse_args():
         6. Trim a single video file and change the output file name:
            ./{script_name} -i video.mp4 --start 10 --end 5 -p new- -a -new
 
-        7. Batch process multiple files using an input text file:
+        7. Batch process, overwrite, and utilize two threads using an input text file:
            ./{script_name} -o -t=2 -l="fix-start-of-video.txt"
         """)
         sys.exit(0)
@@ -142,14 +142,18 @@ def process_video(file_path, start, end, prepend_text, append_text, overwrite, v
 def main():
     args = parse_args()
 
+    # Adjust prepend and append text based on the overwrite flag
+    prepend_text = '' if args.overwrite else args.prepend
+    append_text = '' if args.overwrite else args.append
+
     # Output the settings
     log("Settings:", Colors.YELLOW)
     log(f"  Input file: {args.input}", Colors.YELLOW)
     log(f"  File list: {args.file}", Colors.YELLOW)
     log(f"  Start trim: {args.start} seconds", Colors.YELLOW)
     log(f"  End trim: {args.end} seconds", Colors.YELLOW)
-    log(f"  Append text: {args.append}", Colors.YELLOW)
-    log(f"  Prepend text: {args.prepend}", Colors.YELLOW)
+    log(f"  Append text: {append_text}", Colors.YELLOW)
+    log(f"  Prepend text: {prepend_text}", Colors.YELLOW)
     log(f"  Overwrite: {args.overwrite}", Colors.YELLOW)
     log(f"  Verbose: {args.verbose}", Colors.YELLOW)
     log(f"  Threads: {args.threads}", Colors.YELLOW)
@@ -171,7 +175,7 @@ def main():
     max_parallel = args.threads if args.threads else MAX_PARALLEL
 
     with ThreadPoolExecutor(max_workers=max_parallel) as executor:
-        futures = {executor.submit(process_video, file_path, args.start, args.end, args.prepend, args.append, args.overwrite, args.verbose): file_path for file_path in video_files}
+        futures = {executor.submit(process_video, file_path, args.start, args.end, prepend_text, append_text, args.overwrite, args.verbose): file_path for file_path in video_files}
 
         for future in as_completed(futures):
             file_path = futures[future]
