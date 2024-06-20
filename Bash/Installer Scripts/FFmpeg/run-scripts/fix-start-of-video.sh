@@ -15,6 +15,7 @@ single_input_file="" # New variable for directly passed video file
 trim_start=0 # Duration to trim from the start in seconds
 trim_end=0 # Duration to trim from the end in seconds
 verbose=0 # Verbose flag added
+batch_mode=0 # Flag to indicate batch processing
 
 # Function to display usage
 usage() {
@@ -52,7 +53,7 @@ while true; do
     case "$1" in
         -f | --file ) file_list="$2"; shift 2 ;;
         -i | --input ) single_input_file="$2"; shift 2 ;;
-        -l | --list ) input_list="$2"; shift 2 ;;
+        -l | --list ) input_list="$2"; batch_mode=1; shift 2 ;;
         --start ) trim_start="$2"; shift 2 ;;
         --end ) trim_end="$2"; shift 2 ;;
         -a | --append ) append_text="$2"; shift 2 ;;
@@ -148,8 +149,8 @@ while true; do
         [[ -n "$formatted_start_time" ]] && trim_start_cmd="-ss \"$formatted_start_time\""
         [[ -n "$formatted_end_time" ]] && trim_end_cmd="-to \"$formatted_end_time\""
 
-        # Prompt user before processing
-        if [[ $verbose -eq 1 ]]; then
+        # Prompt user before processing in interactive mode
+        if [[ "$verbose" -eq 1 && "$batch_mode" -eq 0 ]]; then
             read -p "Proceed with trimming? (y/n) " choice
             echo    # Move to a new line
             if [[ "$choice" != [Yy] ]]; then
@@ -177,10 +178,18 @@ while true; do
                 continue
             fi
         fi
-        read -p "Press Enter to continue..."
-        clear
+
+        # In interactive mode, prompt user to continue
+        if [[ "$batch_mode" -eq 0 ]]; then
+            read -p "Press Enter to continue..."
+            clear
+        fi
     done
     single_input_file="" # Reset single_input_file for next iteration
+    # If in batch mode, exit after processing all files
+    if [[ "$batch_mode" -eq 1 ]]; then
+        break
+    fi
 done
 
 echo -e "${GREEN}Processing completed.${NC}"
