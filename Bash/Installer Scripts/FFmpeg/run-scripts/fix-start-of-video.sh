@@ -156,13 +156,22 @@ while true; do
             temp_output=$(mktemp /tmp/ffmpeg.XXXXXX)
             temp_output+=".$extension"
             command="ffmpeg -hide_banner $trim_start_cmd -y -i \"$input_file\" $trim_end_cmd -c copy \"$temp_output\""
-            eval $command && mv "$temp_output" "$input_file"
-            echo -e "${GREEN}Successfully processed and overwritten $input_file${NC}\\n"
+            if eval $command && mv "$temp_output" "$input_file"; then
+                echo -e "${GREEN}Successfully processed and overwritten $input_file${NC}\\n"
+            else
+                echo -e "${RED}Failed to process $input_file${NC}\\n"
+                continue
+            fi
         else
             command="ffmpeg -hide_banner $trim_start_cmd -y -i \"$input_file\" $trim_end_cmd -c copy \"$final_output\""
-            eval $command
-            echo -e "${GREEN}Successfully processed $input_file into $final_output${NC}\\n"
+            if eval $command; then
+                echo -e "${GREEN}Successfully processed $input_file into $final_output${NC}\\n"
+            else
+                echo -e "${RED}Failed to process $input_file${NC}\\n"
+                continue
+            fi
         fi
+        read -p "Press Enter to continue..."
         clear
     done
     single_input_file="" # Reset single_input_file for next iteration
