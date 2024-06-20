@@ -10,6 +10,7 @@ overwrite=0
 append_text="-trimmed"
 prepend_text=""
 file_list=""
+input_list="" # New variable for list of video paths
 single_input_file="" # New variable for directly passed video file
 trim_start=0 # Duration to trim from the start in seconds
 trim_end=0 # Duration to trim from the end in seconds
@@ -17,12 +18,13 @@ verbose=0 # Verbose flag added
 
 # Function to display usage
 usage() {
-    echo -e "${GREEN}Usage: $0 [-f <file_list> | -i <input_file>] [--start <trim_start_seconds>] [--end <trim_end_seconds>] [--append <append_text>] [--prepend <prepend_text>] [--overwrite] [--verbose]${NC}"
+    echo -e "${GREEN}Usage: $0 [-f <file_list> | -i <input_file> | -l <input_list>] [--start <trim_start_seconds>] [--end <trim_end_seconds>] [--append <append_text>] [--prepend <prepend_text>] [--overwrite] [--verbose]${NC}"
     echo
     echo -e "Options:"
     echo -e "  -h, --help             Display this help message."
     echo -e "  -f, --file             Specify the path to the text file containing the list of video files."
     echo -e "  -i, --input            Specify the path to a single video file directly."
+    echo -e "  -l, --list             Specify the path to a text file containing the full paths to the video files."
     echo -e "      --start            Duration in seconds to trim from the start of the video."
     echo -e "      --end              Duration in seconds to trim from the end of the video."
     echo -e "  -a, --append           Specify text to append to the output file name. Ignored if --overwrite is used."
@@ -33,6 +35,7 @@ usage() {
     echo "Examples:"
     echo "./fix-start-of-video.sh -v -i \"video.mp4\""
     echo "./fix-start-of-video.sh -o -v -i \"video.mp4\""
+    echo "./fix-start-of-video.sh -l \"video_list.txt\""
     exit 1
 }
 
@@ -40,7 +43,7 @@ usage() {
 [[ -f video-processing.log ]] && rm video-processing.log
 
 # Parse options
-TEMP=$(getopt -o f:i:a:p:ovh --long file:,input:,start:,end:,append:,prepend:,overwrite,verbose,help -n 'script.sh' -- "$@")
+TEMP=$(getopt -o f:i:l:a:p:ovh --long file:,input:,list:,start:,end:,append:,prepend:,overwrite,verbose,help -n 'script.sh' -- "$@")
 if [ $? != 0 ]; then echo "Failed to parse options... exiting." >&2; exit 1; fi
 
 eval set -- "$TEMP"
@@ -49,6 +52,7 @@ while true; do
     case "$1" in
         -f | --file ) file_list="$2"; shift 2 ;;
         -i | --input ) single_input_file="$2"; shift 2 ;;
+        -l | --list ) input_list="$2"; shift 2 ;;
         --start ) trim_start="$2"; shift 2 ;;
         --end ) trim_end="$2"; shift 2 ;;
         -a | --append ) append_text="$2"; shift 2 ;;
@@ -81,12 +85,14 @@ prompt_for_input() {
 # Loop to process videos and prompt for new input
 while true; do
     video_files=()
-    if [[ -z "$single_input_file" && -z "$file_list" ]]; then
+    if [[ -z "$single_input_file" && -z "$file_list" && -z "$input_list" ]]; then
         prompt_for_input
     elif [[ -n "$single_input_file" ]]; then
         video_files+=("$single_input_file")
     elif [[ -n "$file_list" && -f "$file_list" ]]; then
         mapfile -t video_files < "$file_list"
+    elif [[ -n "$input_list" && -f "$input_list" ]]; then
+        mapfile -t video_files < "$input_list"
     else
         echo -e "${RED}Error: No input video or file list provided, or file does not exist.${NC}"
         usage
