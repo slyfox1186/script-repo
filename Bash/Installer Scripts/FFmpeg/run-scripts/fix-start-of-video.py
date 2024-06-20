@@ -98,7 +98,9 @@ def main():
         log("Error: No input video or file list provided, or file does not exist.", Colors.RED)
         sys.exit(1)
 
-    with ThreadPoolExecutor(max_workers=args.threads) as executor:
+    max_parallel = args.threads if args.threads else MAX_PARALLEL
+
+    with ThreadPoolExecutor(max_workers=max_parallel) as executor:
         futures = {executor.submit(process_video, file_path, args.start, args.end, args.prepend, args.append, args.overwrite, args.verbose): file_path for file_path in video_files}
         
         for future in as_completed(futures):
