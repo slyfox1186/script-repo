@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 
-import os
-import sys
 import argparse
-import subprocess
-import tempfile
-from pathlib import Path
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import os
 import shutil
+import subprocess
+import sys
+import tempfile
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
 
 # Color codes for terminal output
 class Colors:
@@ -19,7 +19,11 @@ class Colors:
 MAX_PARALLEL = 2  # Default maximum number of parallel jobs
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Trim start and end of video files.")
+    script_name = os.path.basename(sys.argv[0])
+    parser = argparse.ArgumentParser(
+        description="Trim start and end of video files.",
+        formatter_class=argparse.RawTextHelpFormatter
+    )
     parser.add_argument('-f', '--file', type=str, help='Path to the text file containing the list of video files.')
     parser.add_argument('-i', '--input', type=str, help='Path to a single video file.')
     parser.add_argument('-l', '--list', type=str, help='Path to a text file containing the full paths to the video files.')
@@ -30,7 +34,37 @@ def parse_args():
     parser.add_argument('-o', '--overwrite', action='store_true', help='Overwrite the input file instead of creating a new one.')
     parser.add_argument('-v', '--verbose', action='store_true', help='Enable verbose output.')
     parser.add_argument('-t', '--threads', type=int, default=MAX_PARALLEL, help='Number of threads for parallel processing.')
-    return parser.parse_args()
+    parser.add_argument('-e', '--examples', action='store_true', help='Show command line examples.')
+    args = parser.parse_args()
+
+    if args.examples:
+        print(f"""
+        Command Line Examples:
+
+        1. Trim a single video file:
+           ./{script_name} -i video.mp4 --start 10 --end 5
+
+        2. Trim video files listed in a text file:
+           ./{script_name} -f video_list.txt --start 10 --end 5
+
+        3. Trim video files listed in a text file with verbose output:
+           ./{script_name} -f video_list.txt --start 10 --end 5 -v
+
+        4. Trim a single video file and overwrite the original:
+           ./{script_name} -i video.mp4 --start 10 --end 5 -o
+
+        5. Trim a single video file and specify number of threads:
+           ./{script_name} -i video.mp4 --start 10 --end 5 -t 4
+
+        6. Trim a single video file and change the output file name:
+           ./{script_name} -i video.mp4 --start 10 --end 5 -p new- -a -new
+
+        7. Batch process multiple files using an input text file:
+           ./{script_name} -o -t=2 -l="fix-start-of-video.txt"
+        """)
+        sys.exit(0)
+
+    return args
 
 def log(message, color=Colors.NC):
     print(f"{color}{message}{Colors.NC}")
@@ -102,7 +136,7 @@ def main():
 
     with ThreadPoolExecutor(max_workers=max_parallel) as executor:
         futures = {executor.submit(process_video, file_path, args.start, args.end, args.prepend, args.append, args.overwrite, args.verbose): file_path for file_path in video_files}
-        
+
         for future in as_completed(futures):
             file_path = futures[future]
             try:
