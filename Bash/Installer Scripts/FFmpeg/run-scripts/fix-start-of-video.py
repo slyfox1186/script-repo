@@ -16,7 +16,7 @@ class Colors:
     YELLOW = '\033[1;33m'
     NC = '\033[0m'
 
-MAX_PARALLEL = 4  # Default maximum number of parallel jobs
+MAX_PARALLEL = 2  # Default maximum number of parallel jobs
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Trim start and end of video files.")
