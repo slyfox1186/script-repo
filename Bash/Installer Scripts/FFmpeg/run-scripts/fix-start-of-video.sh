@@ -154,8 +154,7 @@ while true; do
 
         temp_output_dir="$(dirname "$input_file")"
         if [[ $overwrite -eq 1 ]]; then
-            temp_output="$temp_output_dir/ffmpeg.$(basename "$input_file").XXXXXX"
-            temp_output=$(mktemp "$temp_output")
+            temp_output=$(mktemp "$temp_output_dir/ffmpeg.XXXXXX.$extension")
             command="ffmpeg -hide_banner $trim_start_cmd -y -i \"$input_file\" $trim_end_cmd -c copy \"$temp_output\""
             if eval $command && mv "$temp_output" "$input_file"; then
                 echo -e "${GREEN}Successfully processed and overwritten $input_file${NC}\\n"
