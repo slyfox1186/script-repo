@@ -246,7 +246,7 @@ alias update-grub='grub-mkconfig -o /boot/grub/grub.cfg'
 alias install='clear; pacman -S --needed --noconfirm'
 alias remove='clear; pacman -R --noconfirm'
 alias qpkg='clear; pacman -Ql'
-alias update='clear; pacman -Syu'
+alias update='clear; pacman -Syu --noconfirm'
 
 # GITHUB SCRIPTS
 alias gus="bash <(curl -fsSL https://user-scripts.optimizethis.net)"
