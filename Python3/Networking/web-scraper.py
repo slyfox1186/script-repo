@@ -37,6 +37,9 @@ def scrape_content(content, base_url):
         # Adjust the selector based on the website structure
         articles = soup.find_all('h3')
 
+        print(f"Website: {base_url}")
+        print("-" * 40)
+        print()
         for article in articles:
             title = article.get_text(strip=True)
             link = article.find('a')
@@ -46,6 +49,7 @@ def scrape_content(content, base_url):
                 print(f"Title: {title}")
                 print(f"Link: {full_link}")
                 print()
+        print("=" * 40)
     except Exception as e:
         logging.error(f"Error parsing content from {base_url}: {e}")
 
