@@ -48,18 +48,18 @@ display_help() {
 
 # Function to parse arguments
 parse_arguments() {
-    while [[ "${#}" -gt 0 ]]; do
-        case "${1}" in
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
             -a|--access)
                 include_access=true
                 shift
                 ;;
             -d|--directory)
-                monitor_dir="${2}"
+                monitor_dir="$2"
                 shift 2
                 ;;
             -l|--log)
-                log_file="${2}"
+                log_file="$2"
                 shift 2
                 ;;
             -h|--help)
@@ -67,7 +67,7 @@ parse_arguments() {
                 exit 0
                 ;;
             *)
-                echo "Unknown option: ${1}"
+                echo "Unknown option: $1"
                 display_help
                 exit 1
                 ;;
@@ -86,34 +86,30 @@ check_command() {
 
 # Main function to monitor directory
 monitor_directory() {
-    local events
-    events="create,delete,modify,move"
-    if [[ "${include_access}" = true ]]; then
-        events+=",access"
-    fi
+    local events="create,delete,modify,move"
+    [[ "$include_access" = true ]] && events+=",access"
 
-    if [[ ! -d "${monitor_dir}" ]]; then
+    if [[ ! -d "$monitor_dir" ]]; then
         echo -e "${eventcolors[DELETE]}[ERROR]${eventcolors[RESET]} The directory to monitor does not exist."
         exit 1
     fi
 
-    echo "Monitoring directory: ${monitor_dir}"
-    inotifywait -mre "${events}" "${monitor_dir}" |
+    echo "Monitoring directory: $monitor_dir"
+    inotifywait -mre "$events" "$monitor_dir" |
     while read -r path event file; do
-        printf -v timestamp '%(%m-%d-%Y %I:%M:%S %p)T' -1
-        event_type=$(echo "$event" | tr ',' '_')
-        color=${eventcolors[$event_type]}
-        event_log="[${timestamp}] ${path} ${event} ${file}"
+        local timestamp color event_log
+        timestamp=$(date +'%m-%d-%Y %I:%M:%S %p')
+        event=$(echo "$event" | tr ',' '_')
+        color=${eventcolors[$event]:-${eventcolors[RESET]}}
+        event_log="[$timestamp] $path $event $file"
         echo -e "${color}${event_log}${eventcolors[RESET]}"
         
-        if [[ -n "${log_file}" ]]; then
-            echo -e "${color}${event_log}${eventcolors[RESET]}" >> "${log_file}"
-        fi
+        [[ -n "$log_file" ]] && echo -e "${color}${event_log}${eventcolors[RESET]}" >> "$log_file"
     done
 }
 
 # Parse arguments
-parse_arguments "${@}"
+parse_arguments "$@"
 
 # Check if inotifywait is installed
 check_command
