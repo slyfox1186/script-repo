@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# GitHub: 
+# GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-perl.sh
 # Purpose: Install the latest PERL version from source code
 # Updated: 06.21.24
 
