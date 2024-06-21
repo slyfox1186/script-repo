@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+# GitHub: 
+# Purpose: Install the latest PERL version from source code
+# Updated: 06.21.24
+
 # Variables
 base_url="https://github.com/Perl/perl5"
 tags_url="${base_url}/tags"
@@ -26,7 +30,7 @@ function check_dependencies {
 }
 
 function get_latest_even_version {
-    latest_even_version=$(curl -sL "$tags_url" | grep -oP '/Perl/perl5/releases/tag/v\K[0-9]+\.[0-9]*[02468]\.[0-9]+' | head -1)
+    latest_even_version=$(curl -fSs "$tags_url" | grep -oP '/Perl/perl5/releases/tag/v\K[0-9]+\.[0-9]*[02468]\.[0-9]+' | head -1)
     if [[ -z "$latest_even_version" ]]; then
         log_message "Error: Unable to fetch the latest even Perl version."
         exit 1
@@ -39,20 +43,37 @@ function download_and_extract {
     local tarball="${tarball_url}/${version}.tar.gz"
     mkdir -p "$build_dir"
     log_message "Downloading Perl $version..."
-    curl -fsSo "$build_dir/${version}.tar.gz" "$tarball"
+    if ! curl -Lso "$build_dir/${version}.tar.gz" "$tarball"; then
+        log_message "Error: Failed to download $tarball"
+        exit 1
+    fi
+    log_message "Verifying download integrity..."
+    if ! tar -tzf "$build_dir/${version}.tar.gz" &>/dev/null; then
+        log_message "Error: Downloaded tarball is corrupted"
+        exit 1
+    fi
     log_message "Extracting Perl $version..."
-    tar -xzf "$build_dir/${version}.tar.gz" -C "$build_dir"
+    if ! tar -xzf "$build_dir/${version}.tar.gz" -C "$build_dir"; then
+        log_message "Error: Failed to extract $build_dir/${version}.tar.gz"
+        exit 1
+    fi
 }
 
 function build_and_install {
     local version="$1"
-    cd "$build_dir/perl5-${version#v}" || exit
+    cd "$build_dir/perl5-${version#v}" || { log_message "Error: Directory $build_dir/perl5-${version#v} does not exist"; exit 1; }
     log_message "Configuring Perl $version..."
     ./Configure -des -Dprefix="$install_dir"
     log_message "Building Perl $version..."
-    make -j"$(nproc)"
+    if ! make -j"$(nproc)"; then
+        log_message "Error: Build failed"
+        exit 1
+    fi
     log_message "Installing Perl $version..."
-    sudo make install
+    if ! sudo make install; then
+        log_message "Error: Installation failed"
+        exit 1
+    fi
 }
 
 function create_symlink {
