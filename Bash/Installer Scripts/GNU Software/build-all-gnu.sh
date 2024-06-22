@@ -276,9 +276,20 @@ compile_and_install() {
 }
 
 create_soft_links() {
-    sudo ln -sf "$install_dir/bin/"* "/usr/local/bin/"
-    sudo ln -sf "$install_dir/lib/pkgconfig/"*.pc "/usr/local/lib/pkgconfig/"
-    sudo ln -sf "$install_dir/include/"* "/usr/local/include/"
+    # Check and link files in the bin directory
+    if [ -d "$install_dir/bin" ] && [ "$(find "$install_dir/bin" -type f | wc -l)" -gt 0 ]; then
+        sudo ln -sf "$install_dir/bin/"* "/usr/local/bin/"
+    fi
+
+    # Check and link .pc files in the lib/pkgconfig directory
+    if [ -d "$install_dir/lib/pkgconfig" ] && [ "$(find "$install_dir/lib/pkgconfig" -name '*.pc' | wc -l)" -gt 0 ]; then
+        sudo ln -sf "$install_dir/lib/pkgconfig/"*.pc "/usr/local/lib/pkgconfig/"
+    fi
+
+    # Check and link files in the include directory
+    if [ -d "$install_dir/include" ] && [ "$(find "$install_dir/include" -type f | wc -l)" -gt 0 ]; then
+        sudo ln -sf "$install_dir/include/"* "/usr/local/include/"
+    fi
 }
 
 ld_linker_path() {
