@@ -10,7 +10,7 @@ REQUIREMENTS_FILE="$VENV_PATH/requirements.txt"
 pip_packages=(
     argparse async async-lru async-openai async-timeout attr attrs bcrypt
     beautifulsoup4 brotli bs4 colorama contrib cryptography Cython eval
-    executing fabric ffmpeg-python ffpb Flask >= 3.0.0 fuzzywuzzy google-speech
+    executing fabric ffmpeg-python ffpb Flask>=3.0.0 fuzzywuzzy google-speech
     Levenshtein modules nltk openai pandas psutil pydantic pygments PyOpenGL pyparsing
     pyppeteer pyproj pyproject pyproject_hooks pyqt5 pyquery PyTestpymediainfo==4.0
     python-dotenv python-Levenshtein python-whois redis regex requests requests-html
