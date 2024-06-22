@@ -2,8 +2,8 @@
 
 # GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-all-gnu.sh
 # Purpose: Build various GNU programs from source code
-# Updated: 06.09.24
-# Version: 1.3
+# Updated: 06.22.24
+# Version: 1.4
 
 CYAN='\033[0;36m'
 GREEN='\033[0;32m'
@@ -85,7 +85,7 @@ while [[ "$#" -gt 0 ]]; do
     shift
 done
 
-# Check for root user
+# Check for the root user
 if [[ "$EUID" -eq 0 ]]; then
     echo "You must run this script without root or sudo."
     exit 1
@@ -184,9 +184,13 @@ set_compiler_flags() {
 get_latest_version_url() {
     local prog_name version
     prog_name=$1
-    version=$(curl -fsS "https://ftp.gnu.org/gnu/$prog_name/" | grep -oP "$prog_name-\K([0-9.]+)(?=\.tar\.)" | sort -ruV | head -n1)
+    if [[ "$prog_name" == "pkg-config" ]]; then
+        version=$(curl -fsS "https://pkgconfig.freedesktop.org/releases/" | grep -oP 'pkg-config-\K[0-9]+\.[0-9\.]+(?=\.tar\.gz)' | sort -ruV | head -n1)
+    else
+        version=$(curl -fsS "https://ftp.gnu.org/gnu/$prog_name/" | grep -oP "$prog_name-\K([0-9.]+)(?=\.tar\.)" | sort -ruV | head -n1)
+    fi
     if [[ -z "$version" ]]; then
-        fail "Failed to find the latest version for $prog_name. Please check the program name or the GNU FTP server."
+        fail "Failed to find the latest version for $prog_name. Please check the program name or the respective server."
     fi
     echo "$version"
 }
