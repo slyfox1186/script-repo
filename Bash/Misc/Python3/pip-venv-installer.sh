@@ -13,9 +13,9 @@ pip_packages=(
     executing fabric ffmpeg-python ffpb "Flask>=3.0.0" fuzzywuzzy google-speech
     Levenshtein modules nltk openai pandas psutil pydantic pygments PyOpenGL pyparsing
     pyppeteer pyproj pyproject pyproject_hooks pyqt5 pyquery PyTest python-dotenv
-    PyTest "pymediainfo==4.0" python-Levenshtein python-whois redis regex requests requests-html
-    "selenium>=4.18.0" service setuptools soupsieve sqlparse termcolor tk toml urllib3
-    venv_dependencies virtualenv wheel whois
+    PyTest "pymediainfo==4.0" python-Levenshtein python-whois redis regex requests
+    requests-html scrapy "selenium>=4.18.0" service setuptools soupsieve sqlparse
+    termcolor tk toml urllib3 venv_dependencies virtualenv wheel whois
 )
 
 # Activate the virtual environment
