@@ -13,8 +13,8 @@ NC='\033[0m'
 
 # List of available programs
 available_programs=(
-    autoconf autoconf-archive automake bash gawk grep gzip
-    libtool make nano parallel pkg-config sed tar texinfo wget which
+    autoconf autoconf-archive bash gawk grep gzip libtool
+    make nano parallel pkg-config sed tar texinfo wget which
 )
 
 # Consolidated list of required packages for all programs
