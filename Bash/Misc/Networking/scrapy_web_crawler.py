@@ -1,6 +1,10 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# Function to prompt user for input
+# GitHub:
+# Purpose: Crawl webpages and output to results.txt
+# Updated: 06.22.24
+
+# Function to prompt the user for input
 prompt() {
     local prompt_text=$1
     local variable_name=$2
