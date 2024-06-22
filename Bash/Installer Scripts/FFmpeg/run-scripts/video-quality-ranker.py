@@ -6,7 +6,6 @@ import subprocess
 import re
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from urllib.parse import quote
 
 def is_wsl():
     try:
@@ -41,17 +40,21 @@ def get_video_quality(file_path, verbose=False):
         frame_rate = re.search(r'avg_frame_rate=(\d+/\d+)', output).group(1)
         codec_name = re.search(r'codec_name=(\w+)', output).group(1)
 
+        # Calculate frame rate
         num, denom = map(int, frame_rate.split('/'))
         frame_rate = num / denom if denom != 0 else 0
 
-        quality = (width * height * frame_rate * bit_rate) / 1_000_000
+        # A more sophisticated metric for quality
+        # Factors: Resolution, Bit Rate, Frame Rate, Codec
+        quality = (width * height * frame_rate * bit_rate) / 1_000_000  # Adjusted metric for quality
 
+        # Adjust quality score based on codec (example adjustment)
         if codec_name in ["h265", "hevc"]:
-            quality *= 1.5
+            quality *= 1.5  # H.265/HEVC has better quality at lower bit rates
         elif codec_name in ["h264", "avc"]:
-            quality *= 1.2
+            quality *= 1.2  # H.264/AVC is very efficient
         elif codec_name in ["vp9"]:
-            quality *= 1.3
+            quality *= 1.3  # VP9 is also very efficient
 
         return file_path, quality
     except subprocess.CalledProcessError as e:
@@ -74,38 +77,43 @@ def find_mp4_files(root_dir, verbose=False):
 
 def create_bash_script(input_log_file, output_playlist_file):
     bash_script_content = f"""#!/bin/bash
+# Usage function
 usage() {{
     echo "Usage: $0 -i <input_log_file> -o <output_playlist_file>"
     exit 1
 }}
+# Parse arguments
 while getopts ":i:o:" opt; do
     case $opt in
-        i) input_log_file="$OPTARG" ;;
-        o) output_playlist_file="$OPTARG" ;;
-        *) usage ;;
+        i) input_log_file="$OPTARG"
+        ;;
+        o) output_playlist_file="$OPTARG"
+        ;;
+        *) usage
+        ;;
     esac
 done
+# Check if input and output files are provided
 if [ -z "$input_log_file" ] || [ -z "$output_playlist_file" ]; then
     usage
 fi
+# Check if input file exists
 if [ ! -f "$input_log_file" ]; then
     echo "Input log file does not exist."
     exit 1
 fi
+# Create VLC playlist file
 echo "<?xml version=\\"1.0\\" encoding=\\"UTF-8\\"?>" > "$output_playlist_file"
 echo "<playlist xmlns=\\"http://xspf.org/ns/0/\\" xmlns:vlc=\\"http://www.videolan.org/vlc/playlist/ns/0/\\" version=\\"1\\">" >> "$output_playlist_file"
 echo "    <title>Playlist</title>" >> "$output_playlist_file"
 echo "    <trackList>" >> "$output_playlist_file"
 count=0
 while IFS= read -r line; do
-    escaped_line=$(echo "$line" | sed 's/&/\\&amp;/g; s/</\\&lt;/g; s/>/\\&gt;/g; s/'"'"'/\\&apos;/g; s/"/\\&quot;/g')
-    escaped_line=$(echo "$escaped_line" | sed 's|\\\\|/|g')
-    escaped_line=$(echo "$escaped_line" | sed 's|:/:||g')
-    escaped_line=$(echo "$escaped_line" | sed 's|%|%25|g')
-    escaped_line=$(echo "$escaped_line" | sed 's| |%20|g')
-    escaped_line=$(echo "$escaped_line" | sed 's|#|%23|g')
+    # Escape special characters and format the path for VLC
+    escaped_line=$(echo "$line" | sed 's/ /%20/g' | sed 's/(/%28/g' | sed 's/)/%29/g' | sed 's/!/%21/g' | sed "s/'/%27/g" | sed 's/,/%2C/g' | sed 's/\\\\/\\//g' | sed 's/&/\\&amp;/g')
     echo "        <track>" >> "$output_playlist_file"
     echo "            <location>file:///$escaped_line</location>" >> "$output_playlist_file"
+    echo "            <duration></duration>" >> "$output_playlist_file"  # Duration is left empty as it needs to be calculated separately if needed
     echo "            <extension application=\\"http://www.videolan.org/vlc/playlist/0\\">" >> "$output_playlist_file"
     echo "                <vlc:id>$count</vlc:id>" >> "$output_playlist_file"
     echo "            </extension>" >> "$output_playlist_file"
@@ -127,7 +135,10 @@ rm "$0"
     with open(bash_script_path, "w") as bash_script_file:
         bash_script_file.write(bash_script_content)
     
+    # Make the script executable
     os.chmod(bash_script_path, 0o755)
+
+    # Run the Bash script
     subprocess.run(["/bin/bash", bash_script_path, "-i", input_log_file, "-o", output_playlist_file])
 
 def main():
@@ -168,24 +179,33 @@ def main():
     for i, (file, quality) in enumerate(video_qualities, start=1):
         if wsl:
             file = convert_to_wsl_path(file)
-        file_path = Path(file).as_posix()
         if plain_output:
-            output_lines.append(f"{file_path}\n")
+            output_lines.append(f"{file}\n")
         else:
-            output_lines.append(f"{i:<4}  {quality:<13.1f}  {file_path}\n")
+            output_lines.append(f"{i:<4}  {quality:<13.1f}  {file}\n")
 
     output = ''.join(output_lines)
     print(output)
 
     if log_file:
-        with open(log_file, 'w', encoding='utf-8') as f:
-            f.write(output)
+        log_output_lines = []
+        for i, (file, quality) in enumerate(video_qualities, start=1):
+            if wsl:
+                file = convert_to_wsl_path(file)
+            if plain_output:
+                log_output_lines.append(f"{file}\n")
+            else:
+                log_output_lines.append(f"{i:<4}  {quality:<13.1f}  {file}\n")
+        
+        log_output = ''.join(log_output_lines)
+        with open(log_file, 'w') as f:
+            f.write(log_output)
 
     if create_playlist_flag:
         input_log_file = "results.txt"
         output_playlist_file = "vlc_playlist.xspf"
-        with open(input_log_file, 'w', encoding='utf-8') as results_file:
-            results_file.write(''.join([line for line in output_lines if line.strip()]))
+        with open(input_log_file, 'w') as results_file:
+            results_file.write(''.join([line for line in output_lines if line.strip()]))  # Write only non-empty lines to results.txt
         create_bash_script(input_log_file, output_playlist_file)
 
 if __name__ == "__main__":
