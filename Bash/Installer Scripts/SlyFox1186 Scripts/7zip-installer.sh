@@ -195,7 +195,7 @@ if ! command -v wget &>/dev/null || ! command -v tar &>/dev/null; then
 fi
 
 # Set current version
-version="7z2406"
+version="7z2407"
 
 # Detect architecture and set download url based on the operating system
 case "$OS" in
