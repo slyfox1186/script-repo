@@ -27,7 +27,7 @@ def get_video_quality(file_path, verbose=False):
     try:
         result = subprocess.run(
             ['ffprobe', '-v', 'error', '-select_streams', 'v:0', 
-             '-show_entries', 'stream=width,height,bit_rate,avg_frame_rate,codec_name', 
+             '-show_entries', 'stream=width,height,bit_rate,avg_frame_rate,codec_name,duration', 
              '-of', 'default=noprint_wrappers=1', file_path],
             capture_output=True,
             text=True,
@@ -39,6 +39,7 @@ def get_video_quality(file_path, verbose=False):
         bit_rate = int(re.search(r'bit_rate=(\d+)', output).group(1))
         frame_rate = re.search(r'avg_frame_rate=(\d+/\d+)', output).group(1)
         codec_name = re.search(r'codec_name=(\w+)', output).group(1)
+        duration = float(re.search(r'duration=(\d+\.?\d*)', output).group(1))
 
         # Calculate frame rate
         num, denom = map(int, frame_rate.split('/'))
@@ -56,11 +57,11 @@ def get_video_quality(file_path, verbose=False):
         elif codec_name in ["vp9"]:
             quality *= 1.3  # VP9 is also very efficient
 
-        return file_path, quality
+        return file_path, quality, duration
     except subprocess.CalledProcessError as e:
         if verbose:
             print(f"Error processing {file_path}: {e}")
-        return file_path, 0
+        return file_path, 0, 0
 
 def find_mp4_files(root_dir, verbose=False):
     if verbose:
@@ -108,12 +109,12 @@ echo "<playlist xmlns=\\"http://xspf.org/ns/0/\\" xmlns:vlc=\\"http://www.videol
 echo "    <title>Playlist</title>" >> "$output_playlist_file"
 echo "    <trackList>" >> "$output_playlist_file"
 count=0
-while IFS= read -r line; do
+while IFS=',' read -r line duration; do
     # Escape special characters and format the path for VLC
     escaped_line=$(echo "$line" | sed 's/ /%20/g' | sed 's/(/%28/g' | sed 's/)/%29/g' | sed 's/!/%21/g' | sed "s/'/%27/g" | sed 's/,/%2C/g' | sed 's/\\\\/\\//g' | sed 's/&/\\&amp;/g')
     echo "        <track>" >> "$output_playlist_file"
     echo "            <location>file:///$escaped_line</location>" >> "$output_playlist_file"
-    echo "            <duration></duration>" >> "$output_playlist_file"  # Duration is left empty as it needs to be calculated separately if needed
+    echo "            <duration>$(printf "%.0f" "$duration")</duration>" >> "$output_playlist_file"
     echo "            <extension application=\\"http://www.videolan.org/vlc/playlist/0\\">" >> "$output_playlist_file"
     echo "                <vlc:id>$count</vlc:id>" >> "$output_playlist_file"
     echo "            </extension>" >> "$output_playlist_file"
@@ -164,8 +165,8 @@ def main():
     with ThreadPoolExecutor() as executor:
         future_to_file = {executor.submit(get_video_quality, file, verbose): file for file in mp4_files}
         for future in as_completed(future_to_file):
-            file, quality = future.result()
-            video_qualities.append((file, quality))
+            file, quality, duration = future.result()
+            video_qualities.append((file, quality, duration))
 
     video_qualities.sort(key=lambda x: x[1], reverse=True)
 
@@ -176,7 +177,7 @@ def main():
         output_lines.append(f"Folder Path: {os.path.abspath(root_dir)}\n")
         output_lines.append("Rank  Quality        File Path\n")
         output_lines.append("----  -------------  ---------\n")
-    for i, (file, quality) in enumerate(video_qualities, start=1):
+    for i, (file, quality, _) in enumerate(video_qualities, start=1):
         if wsl:
             file = convert_to_wsl_path(file)
         if plain_output:
@@ -189,7 +190,7 @@ def main():
 
     if log_file:
         log_output_lines = []
-        for i, (file, quality) in enumerate(video_qualities, start=1):
+        for i, (file, quality, _) in enumerate(video_qualities, start=1):
             if wsl:
                 file = convert_to_wsl_path(file)
             if plain_output:
@@ -205,7 +206,10 @@ def main():
         input_log_file = "results.txt"
         output_playlist_file = "vlc_playlist.xspf"
         with open(input_log_file, 'w') as results_file:
-            results_file.write(''.join([line for line in output_lines if line.strip()]))  # Write only non-empty lines to results.txt
+            for file, _, duration in video_qualities:
+                if wsl:
+                    file = convert_to_wsl_path(file)
+                results_file.write(f"{file},{duration}\n")
         create_bash_script(input_log_file, output_playlist_file)
 
 if __name__ == "__main__":

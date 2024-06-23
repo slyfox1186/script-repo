@@ -2,8 +2,8 @@
 
 # GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-all-gnu.sh
 # Purpose: Build various GNU programs from source code
-# Updated: 06.09.24
-# Version: 1.3
+# Updated: 06.22.24
+# Version: 1.4
 
 CYAN='\033[0;36m'
 GREEN='\033[0;32m'
@@ -13,8 +13,8 @@ NC='\033[0m'
 
 # List of available programs
 available_programs=(
-    autoconf autoconf-archive automake bash gawk grep gzip
-    libtool make nano parallel pkg-config sed tar texinfo wget which
+    autoconf autoconf-archive bash gawk grep gzip libtool
+    make nano parallel pkg-config sed tar texinfo wget which
 )
 
 # Consolidated list of required packages for all programs
@@ -85,7 +85,7 @@ while [[ "$#" -gt 0 ]]; do
     shift
 done
 
-# Check for root user
+# Check for the root user
 if [[ "$EUID" -eq 0 ]]; then
     echo "You must run this script without root or sudo."
     exit 1
@@ -184,9 +184,13 @@ set_compiler_flags() {
 get_latest_version_url() {
     local prog_name version
     prog_name=$1
-    version=$(curl -fsS "https://ftp.gnu.org/gnu/$prog_name/" | grep -oP "$prog_name-\K([0-9.]+)(?=\.tar\.)" | sort -ruV | head -n1)
+    if [[ "$prog_name" == "pkg-config" ]]; then
+        version=$(curl -fsS "https://pkgconfig.freedesktop.org/releases/" | grep -oP 'pkg-config-\K[0-9]+\.[0-9\.]+(?=\.tar\.gz)' | sort -ruV | head -n1)
+    else
+        version=$(curl -fsS "https://ftp.gnu.org/gnu/$prog_name/" | grep -oP "$prog_name-\K([0-9.]+)(?=\.tar\.)" | sort -ruV | head -n1)
+    fi
     if [[ -z "$version" ]]; then
-        fail "Failed to find the latest version for $prog_name. Please check the program name or the GNU FTP server."
+        fail "Failed to find the latest version for $prog_name. Please check the program name or the respective server."
     fi
     echo "$version"
 }
@@ -276,9 +280,20 @@ compile_and_install() {
 }
 
 create_soft_links() {
-    sudo ln -sf "$install_dir/bin/"* "/usr/local/bin/"
-    sudo ln -sf "$install_dir/lib/pkgconfig/"*.pc "/usr/local/lib/pkgconfig/"
-    sudo ln -sf "$install_dir/include/"* "/usr/local/include/"
+    # Check and link files in the bin directory
+    if [ -d "$install_dir/bin" ] && [ "$(find "$install_dir/bin" -type f | wc -l)" -gt 0 ]; then
+        sudo ln -sf "$install_dir/bin/"* "/usr/local/bin/"
+    fi
+
+    # Check and link .pc files in the lib/pkgconfig directory
+    if [ -d "$install_dir/lib/pkgconfig" ] && [ "$(find "$install_dir/lib/pkgconfig" -name '*.pc' | wc -l)" -gt 0 ]; then
+        sudo ln -sf "$install_dir/lib/pkgconfig/"*.pc "/usr/local/lib/pkgconfig/"
+    fi
+
+    # Check and link files in the include directory
+    if [ -d "$install_dir/include" ] && [ "$(find "$install_dir/include" -type f | wc -l)" -gt 0 ]; then
+        sudo ln -sf "$install_dir/include/"* "/usr/local/include/"
+    fi
 }
 
 ld_linker_path() {
