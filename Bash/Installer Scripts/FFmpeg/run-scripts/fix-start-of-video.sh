@@ -31,7 +31,7 @@ usage() {
     echo -e "  -a, --append           Specify text to append to the output file name. Ignored if --overwrite is used."
     echo -e "  -p, --prepend          Specify text to prepend to the output file name. Ignored if --overwrite is used."
     echo -e "  -o, --overwrite        Overwrite the input file instead of creating a new one."
-    echo -e "  -v, --verbose          Enable verbose output." # Verbose option described
+    echo -e "  -v, --verbose          Enable verbose output."
     echo
     echo "Examples:"
     echo "./fix-start-of-video.sh -v -i \"video.mp4\""
@@ -51,7 +51,7 @@ eval set -- "$TEMP"
 
 while true; do
     case "$1" in
-        -f | --file ) file_list="$2"; shift 2 ;;
+        -f | --file ) file_list="$2"; batch_mode=1; shift 2 ;;
         -i | --input ) single_input_file="$2"; shift 2 ;;
         -l | --list ) input_list="$2"; batch_mode=1; shift 2 ;;
         --start ) trim_start="$2"; shift 2 ;;
@@ -59,7 +59,7 @@ while true; do
         -a | --append ) append_text="$2"; shift 2 ;;
         -p | --prepend ) prepend_text="$2"; shift 2 ;;
         -o | --overwrite ) overwrite=1; append_text=""; prepend_text=""; shift ;;
-        -v | --verbose ) verbose=1; shift ;; # Verbose option handled
+        -v | --verbose ) verbose=1; shift ;;
         -h | --help ) usage; shift ;;
         -- ) shift; break ;;
         * ) break ;;
