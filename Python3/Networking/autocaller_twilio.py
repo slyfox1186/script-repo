@@ -53,7 +53,7 @@ def make_calls(max_loops):
                 print(f"Reached maximum loops ({max_loops}). Stopping the autodialer.")
                 break
 
-            # Wait for specified duration before making the next call
+            # Wait for a specified duration before making the next call
             time.sleep(SLEEP_DURATION)
 
     except KeyboardInterrupt:
