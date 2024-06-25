@@ -58,8 +58,8 @@ set_env_vars() {
 apt_pkgs() {
     local pkgs=(
         autoconf autoconf-archive autotools-dev build-essential curl libcurl4 libcurl4-openssl-dev
-        libc-ares-dev libnghttp2-dev libpsl-dev libssh2-1-dev libssl-dev libtool libzstd-dev
-        pkg-config zlib1g-dev
+        libc-ares-dev libldap-dev libnghttp2-dev libpsl-dev libssh2-1-dev libssl-dev libtool
+        libzstd-dev pkg-config zlib1g-dev
     )
 
     missing_packages=()
