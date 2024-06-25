@@ -20,6 +20,13 @@ MAX_LOOPS = 'inf'  # Set to 'inf' for infinite loops, or a number for a finite n
 # Sleep duration between each call (in seconds)
 SLEEP_DURATION = 1  # Adjust as needed, e.g., 0.5 for half a second, 2 for two seconds, etc.
 
+# Message to say during the call (multi-line text)
+SAY_MESSAGE = """
+This is an important message from your automated system.
+Please listen carefully as we provide important information.
+Thank you for your attention.
+"""
+
 # Function to initiate the call
 def make_calls(max_loops):
     # Initialize Twilio client outside the loop
@@ -29,9 +36,9 @@ def make_calls(max_loops):
 
     try:
         while True:
-            # Make a call using Twilio API
+            # Make a call using Twilio API with SAY_MESSAGE
             call = client.calls.create(
-                twiml='<Response><Say>You are being spammed!</Say></Response>',
+                twiml=f'<Response><Say>{SAY_MESSAGE}</Say></Response>',
                 to=to_number,
                 from_=twilio_number
             )
