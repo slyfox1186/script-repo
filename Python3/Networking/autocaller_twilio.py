@@ -17,6 +17,9 @@ to_number = '<NUMBER_TO_CALL_HERE>'
 # Number of loops to execute (set to 'inf' for infinite loops)
 MAX_LOOPS = 'inf'  # Set to 'inf' for infinite loops, or a number for a finite number of loops
 
+# Sleep duration between each call (in seconds)
+SLEEP_DURATION = 1  # Adjust as needed, e.g., 0.5 for half a second, 2 for two seconds, etc.
+
 # Function to initiate the call
 def make_calls(max_loops):
     # Initialize Twilio client outside the loop
@@ -43,8 +46,8 @@ def make_calls(max_loops):
                 print(f"Reached maximum loops ({max_loops}). Stopping the autodialer.")
                 break
 
-            # Wait for one second before making the next call
-            time.sleep(1)
+            # Wait for specified duration before making the next call
+            time.sleep(SLEEP_DURATION)
 
     except KeyboardInterrupt:
         print("\nStopping the autodialer.")
