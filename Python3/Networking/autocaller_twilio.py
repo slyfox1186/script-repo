@@ -1,0 +1,57 @@
+#!/usr/bin/env python3
+
+from twilio.rest import Client
+import time
+import sys
+
+# Twilio Account SID and Auth Token from your Twilio account
+account_sid = '<ACCOUNT_SID_HERE>'
+auth_token = '<AUTH_TOKEN_HERE>'
+
+# Twilio phone number (purchased or verified on Twilio)
+twilio_number = '<TWILIO_NUMBER_HERE>'
+
+# Phone number to call (recipient's number)
+to_number = '<NUMBER_TO_CALL_HERE>'
+
+# Number of loops to execute (set to 'inf' for infinite loops)
+MAX_LOOPS = 'inf'  # Set to 'inf' for infinite loops, or a number for a finite number of loops
+
+# Function to initiate the call
+def make_calls(max_loops):
+    # Initialize Twilio client outside the loop
+    client = Client(account_sid, auth_token)
+
+    loop_count = 0
+
+    try:
+        while True:
+            # Make a call using Twilio API
+            call = client.calls.create(
+                twiml='<Response><Say>You are being spammed!</Say></Response>',
+                to=to_number,
+                from_=twilio_number
+            )
+
+            print(f"Calling {to_number}... Call SID: {call.sid}")
+
+            # Increment loop count
+            loop_count += 1
+
+            # Check if reached maximum loops
+            if max_loops != 'inf' and loop_count >= int(max_loops):
+                print(f"Reached maximum loops ({max_loops}). Stopping the autodialer.")
+                break
+
+            # Wait for one second before making the next call
+            time.sleep(1)
+
+    except KeyboardInterrupt:
+        print("\nStopping the autodialer.")
+        sys.exit(0)
+    except Exception as e:
+        print(f"Error occurred: {str(e)}")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    make_calls(MAX_LOOPS)
