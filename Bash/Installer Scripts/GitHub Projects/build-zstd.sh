@@ -27,7 +27,7 @@ archive_name="$prog_name-$version"
 archive_url="https://github.com/facebook/$prog_name/archive/refs/tags/v$version.tar.gz"
 archive_ext="${archive_url//*.}"
 tar_file="$archive_name.tar.$archive_ext"
-install_dir="/usr/local/$archive_name"
+install_dir="/usr/local/programs/$archive_name"
 cwd="$PWD/$archive_name-build-script"
 
 
