@@ -23,7 +23,7 @@ archive_name="$prog_name-$version"
 archive_url="https://ftp.gnu.org/gnu/libiconv/$archive_name.tar.gz"
 archive_ext="${archive_url##*.}"
 tar_file="$archive_name.tar.$archive_ext"
-install_dir="/usr/local"
+install_dir="/usr/local/programs"
 cwd="$PWD/$prog_name-build-script"
 
 # Enhanced logging and error handling

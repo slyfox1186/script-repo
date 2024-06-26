@@ -31,7 +31,7 @@ program_name="pkg-config"
 version="0.29.2"
 cwd="$PWD/pkg-config-build"
 working="$cwd/working"
-install_dir="/usr/local/$program_name-$version"
+install_dir="/usr/local/programs/$program_name-$version"
 
 CC="ccache gcc"
 CXX="ccache g++"

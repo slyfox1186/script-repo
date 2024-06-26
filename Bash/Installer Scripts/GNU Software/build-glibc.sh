@@ -18,7 +18,7 @@ archive_url="https://ftp.gnu.org/gnu/glibc/$archive_dir.tar.xz"
 archive_ext="${archive_url##*.}"
 archive_name="$archive_dir.tar.$archive_ext"
 working="/tmp/glibc-build-script"
-install_dir="/usr/local/$archive_dir"
+install_dir="/usr/local/programs/$archive_dir"
 log_file="$working/build.log"
 
 # Optimization flags

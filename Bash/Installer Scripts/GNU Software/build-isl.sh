@@ -17,8 +17,7 @@ script_ver="2.0"
 archive_dir="isl-git"
 archive_url="https://repo.or.cz/isl.git"
 cwd="$PWD/isl-build-script"
-install_dir="/usr/local/$archive_dir"
-web_repo="https://github.com/slyfox1186/script-repo"
+install_dir="/usr/local/programs/$archive_dir"
 
 # Functions
 log() {
@@ -36,7 +35,7 @@ warn() {
 fail() {
     if [ "$silent" != true ]; then
         echo -e "${RED}ERROR: $1${NC}"
-        echo -e "${RED}To report a bug, create an issue at: $web_repo/issues${NC}"
+        echo -e "${RED}To report a bug, create an issue at: https://github.com/slyfox1186/script-repo/issues${NC}"
     fi
     exit 1
 }
@@ -189,5 +188,5 @@ fi
 
 if [ "$silent" != true ]; then
     log "isl build script completed successfully!"
-    log "Make sure to star this repository to show your support: $web_repo"
+    log "Make sure to star this repository to show your support: https://github.com/slyfox1186/script-repo"
 fi

@@ -15,7 +15,7 @@ NC='\033[0m'
 script_ver=1.5
 prog_name="wget"
 default_version=$(curl -fsS "https://ftp.gnu.org/gnu/wget/" | grep -oP 'wget-1\.[\d.]+(?=\.tar\.[a-z]+)' | sort -ruV | head -n1)
-install_dir="/usr/local/$prog_name-$default_version"
+install_dir="/usr/local/programs/$prog_name-$default_version"
 install_dir="${install_dir//wget-wget-/wget-}"
 cwd="$PWD/$prog_name-build-script"
 compiler="gcc"

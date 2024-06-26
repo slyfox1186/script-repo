@@ -16,9 +16,8 @@ NC='\033[0m'
 script_ver=2.0
 archive_dir=eog
 archive_url="https://download.gnome.org/sources/eog/44/eog-44.3.tar.xz"
-install_dir="/usr/local/$archive_dir-44.3"
+install_dir="/usr/local/programs/$archive_dir-44.3"
 cwd="$PWD/$archive_dir-build-script"
-web_repo="https://github.com/slyfox1186/script-repo"
 log_file="$cwd/build.log"
 
 # Function to display usage information
@@ -58,7 +57,7 @@ fail() {
     local timestamp
     timestamp=$(date +'%m.%d.%Y %I:%M:%S %p')
     echo -e "${RED}[$timestamp] ERROR:${NC} $message" | tee -a "$log_file"
-    echo -e "${RED}To report a bug, create an issue at:${NC} $web_repo/issues"
+    echo -e "${RED}To report a bug, create an issue at:${NC} https://github.com/slyfox1186/script-repo/issues"
     exit 1
 }
 

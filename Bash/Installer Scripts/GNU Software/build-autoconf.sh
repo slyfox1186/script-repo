@@ -10,7 +10,7 @@ trap 'echo "Error occurred at line: $LINENO"; exit 1' ERR
 
 version="2.71" # Default version
 program_name="autoconf" 
-install_prefix="/usr/local/${program_name}-${version}"
+install_prefix="/usr/local/programs/${program_name}-${version}"
 verbose="0"
 build_dir=""
 

@@ -18,7 +18,7 @@ archive_url="https://ftp.gnu.org/gnu/ncurses/${archive_dir}.tar.gz"
 archive_ext="${archive_url##*.}"
 archive_name="$archive_dir.tar.$archive_ext"
 cwd="$PWD/ncurses-build-script"
-install_dir="/usr/local/$archive_dir"
+install_dir="/usr/local/programs/$archive_dir"
 
 # Functions
 log() {

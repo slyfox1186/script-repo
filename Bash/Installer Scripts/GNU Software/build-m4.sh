@@ -19,7 +19,7 @@ archive_url="https://ftp.gnu.org/gnu/m4/m4-latest.tar.xz"
 archive_ext="${archive_url##*.}"
 archive_name="$archive_dir.tar.$archive_ext"
 cwd="$PWD/m4-build-script"
-install_dir="/usr/local/m4-latest"
+install_dir="/usr/local/programs/m4-latest"
 
 # Functions
 log() {

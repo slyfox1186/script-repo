@@ -26,9 +26,8 @@ archive_url="https://github.com/AcademySoftwareFoundation/Imath/archive/refs/tag
 archive_ext="${archive_url##*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
 cwd="$PWD/imath-build-script"
-install_dir="/usr/local/$archive_dir"
+install_dir="/usr/local/programs/$archive_dir"
 user_agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
-web_repo="https://github.com/slyfox1186/script-repo"
 
 # Functions
 log() {
@@ -46,7 +45,7 @@ warn() {
 fail() {
     if [ "$silent" != true ]; then
         echo -e "${RED}ERROR: $1${NC}"
-        echo -e "${RED}To report a bug, create an issue at: $web_repo/issues${NC}"
+        echo -e "${RED}To report a bug, create an issue at: https://github.com/slyfox1186/script-repo/issues${NC}"
     fi
     exit 1
 }
@@ -201,5 +200,5 @@ fi
 
 if [ "$silent" != true ]; then
     log "imath build script completed successfully!"
-    log "Make sure to star this repository to show your support: $web_repo"
+    log "Make sure to star this repository to show your support: https://github.com/slyfox1186/script-repo"
 fi

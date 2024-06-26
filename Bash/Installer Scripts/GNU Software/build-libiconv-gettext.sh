@@ -30,8 +30,8 @@ archive_ext1="${archive_url1//*.}"
 archive_ext2="${archive_url2//*.}"
 tar_file1="$archive_name1.tar.$archive_ext1"
 tar_file2="$archive_name2.tar.$archive_ext2"
-install_dir1="/usr/local"
-install_dir2="/usr/local"
+install_dir1="/usr/local/programs"
+install_dir2="/usr/local/programs"
 cwd="$PWD/$prog_name1-$prog_name2-build-script"
 
 # Enhanced logging and error handling

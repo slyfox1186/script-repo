@@ -16,7 +16,7 @@ archive_url="https://ftp.gnu.org/gnu/autoconf-archive/$archive_dir.tar.xz"
 archive_ext="${archive_url//*.}"
 archive_name="$archive_dir.tar.$archive_ext"
 cwd="$PWD/autoconf-archive-build-script"
-install_dir="/usr/local"
+install_dir="/usr/local/programs"
 
 # Create output directory
 [[ -d "$cwd" ]] && sudo rm -fr "$cwd"

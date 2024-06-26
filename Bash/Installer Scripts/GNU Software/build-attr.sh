@@ -17,7 +17,7 @@ archive_url="https://download.savannah.gnu.org/releases/attr/$archive_dir.tar.gz
 archive_ext="${archive_url//*.}"
 archive_name="$archive_dir.tar.$archive_ext"
 cwd="$PWD/attr-build-script"
-install_dir=/usr/local
+install_dir="/usr/local/programs"
 
 echo "attr build script version $script_ver"
 echo "==============================================="
