@@ -17,7 +17,7 @@ archive_dir="pkg-config-0.29.2"
 archive_url="https://pkgconfig.freedesktop.org/releases/$archive_dir.tar.gz"
 archive_name="${archive_dir}.tar.${archive_url##*.}"
 cwd="$PWD/pkg-config-build-script"
-install_dir="/usr/local/$archive_dir"
+install_dir="/usr/local/programs/$archive_dir"
 
 # Create logging functions
 log() {

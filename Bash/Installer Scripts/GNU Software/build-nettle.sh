@@ -18,7 +18,7 @@ archive_url="https://ftp.gnu.org/gnu/nettle/nettle-3.9.1.tar.gz"
 archive_ext="${archive_url##*.}"
 archive_name="$archive_dir.tar.$archive_ext"
 cwd="$PWD/nettle-build-script"
-install_dir="/usr/local/$archive_dir"
+install_dir="/usr/local/programs/$archive_dir"
 
 # Functions
 log() {

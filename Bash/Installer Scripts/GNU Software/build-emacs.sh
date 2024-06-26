@@ -20,7 +20,7 @@ ARCHIVE_URL="https://ftp.gnu.org/gnu/${PROGRAM}/${ARCHIVE_DIR}.tar.xz"
 ARCHIVE_EXT="${ARCHIVE_URL##*.}"
 ARCHIVE_NAME="${ARCHIVE_DIR}.tar.${ARCHIVE_EXT}"
 CWD="${PWD}/${PROGRAM}-build-script"
-INSTALL_DIR="/usr/local/${PROGRAM}-${VERSION}"
+INSTALL_DIR="/usr/local/programs/${PROGRAM}-${VERSION}"
 
 fail() {
     echo -e "${RED}[FAIL] $1${NC}" | tee -a "$LOG_FILE"

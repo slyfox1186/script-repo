@@ -15,7 +15,7 @@ NC='\033[0m' # No Color
 script_ver=2.4
 prog_name="grep"
 default_version=$(curl -fsS "https://ftp.gnu.org/gnu/$prog_name/" | grep -oP '\d\.[\d.]+(?=\.tar\.[a-z]+)' | sort -ruV | head -n1)
-install_dir="/usr/local"
+install_dir="/usr/local/programs"
 cwd="$PWD/$prog_name-build-script" 
 compiler="gcc"
 

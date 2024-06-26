@@ -17,8 +17,7 @@ archive_dir="which-2.21"
 archive_url="https://ftp.gnu.org/gnu/which/$archive_dir.tar.gz"
 archive_name="$archive_dir.tar.${archive_url##*.}"
 cwd="$PWD/which-build-script"
-install_dir="/usr/local/$archive_dir"
-web_repo="https://github.com/slyfox1186/script-repo"
+install_dir="/usr/local/programs/$archive_dir"
 autoconf_url="https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-autoconf-2.69.sh"
 
 # Create logging functions
@@ -32,7 +31,7 @@ warn() {
 
 fail() {
     echo -e "${RED}[ERROR] $1${NC}"
-    echo "To report a bug, create an issue at: $web_repo/issues"
+    echo "To report a bug, create an issue at: https://github.com/slyfox1186/script-repo/issues"
     exit 1
 }
 
@@ -54,8 +53,8 @@ display_info() {
 set_compiler_flags() {
     CC="gcc"
     CXX="g++"
-    CFLAGS="-O3 -pipe -fno-plt -march=native"
-    CXXFLAGS="-O3 -pipe -fno-plt -march=native"
+    CFLAGS="-O2 -pipe -fno-plt -march=native"
+    CXXFLAGS="$CFLAGS"
     CPPFLAGS="-D_FORTIFY_SOURCE=2"
     LDFLAGS="-Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now,-rpath,$install_dir/lib"
     export CC CXX CFLAGS CXXFLAGS CPPFLAGS LDFLAGS
@@ -189,7 +188,7 @@ display_help() {
     echo "  The compiled program will be installed in $install_dir"
     echo "  Soft links will be created in /usr/local/bin for easy access to the program."
     echo
-    echo "Report bugs to: $web_repo/issues"
+    echo "Report bugs to: https://github.com/slyfox1186/script-repo/issues"
     exit 0
 }
 

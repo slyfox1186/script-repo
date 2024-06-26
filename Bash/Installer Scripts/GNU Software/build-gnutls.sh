@@ -12,9 +12,8 @@ archive_dir=guile-gnutls-4.0.0
 archive_url=https://ftp.gnu.org/gnu/gnutls/$archive_dir.tar.gz
 archive_ext="${archive_url##*.}"
 archive_name="$archive_dir.tar.$archive_ext"
-install_dir="/usr/local/$archive_dir"
+install_dir="/usr/local/programs/$archive_dir"
 cwd="$PWD/gnutls-build-script"
-web_repo=https://github.com/slyfox1186/script-repo
 
 # Functions
 log() {
@@ -27,7 +26,7 @@ warn() {
 
 fail() {
     echo -e "${RED}[$(date +'%Y-%m-%d %H:%M:%S')] ERROR: $1${NC}"
-    echo -e "${RED}To report a bug create an issue at: $web_repo/issues${NC}"
+    echo -e "${RED}To report a bug create an issue at: https://github.com/slyfox1186/script-repo/issues${NC}"
     exit 1
 }
 

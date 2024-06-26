@@ -184,7 +184,7 @@ prog_name="parallel"
 version=$(curl -fsS "https://ftp.gnu.org/gnu/parallel/" | grep -oP 'parallel-\K\d+' | sort -ruV | head -n1)
 archive_url="https://ftp.gnu.org/gnu/parallel/$prog_name-$version.tar.bz2"
 cwd="$PWD/$prog_name-build-script"
-install_dir="/usr/local/$prog_name-$version"
+install_dir="/usr/local/programs/$prog_name-$version"
 CLEANUP="false"
 
 main "$@"

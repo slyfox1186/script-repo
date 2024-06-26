@@ -156,7 +156,7 @@ main_menu() {
     prog_name="make"
     version=$(curl -fsS "https://ftp.gnu.org/gnu/$prog_name/" | grep -oP 'make-\K([0-9.])+(?=\.tar\..*)' | sort -ruV | head -n1)
     archive_name="$prog_name-$version"
-    install_dir="/usr/local/$archive_name"
+    install_dir="/usr/local/programs/$archive_name"
     cwd="$PWD/$archive_name-build-script"
 
     # Create output directory

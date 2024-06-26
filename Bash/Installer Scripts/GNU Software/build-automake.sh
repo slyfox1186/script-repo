@@ -10,7 +10,7 @@ version="1.1"
 program_name=automake
 program_version="1.16.5"
 archive_url="https://ftp.gnu.org/gnu/automake/$program_name-$program_version.tar.xz"
-install_prefix=/usr/local
+install_prefix="/usr/local/programs"
 build_dir="/tmp/$program_name-$version-build"
 verbose=0
 

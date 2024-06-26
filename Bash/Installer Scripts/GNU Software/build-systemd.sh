@@ -12,7 +12,7 @@ archive_dir="systemd-v255"
 archive_url="https://github.com/systemd/systemd/archive/refs/tags/v255.tar.gz"
 archive_name="${archive_dir}.tar.${archive_url##*.}"
 cwd="$PWD/systemd-build-script"
-install_dir="/usr/local/$archive_dir"
+install_dir="/usr/local/programs/$archive_dir"
 
 # Create logging functions
 log() {
@@ -48,8 +48,8 @@ display_info() {
 set_compiler_flags() {
     CC="gcc"
     CXX="g++"
-    CFLAGS="-g -O3 -pipe -fno-plt -march=native"
-    CXXFLAGS="-g -O3 -pipe -fno-plt -march=native"
+    CFLAGS="-g -O2 -pipe -fno-plt -march=native"
+    CXXFLAGS="-g -O2 -pipe -fno-plt -march=native"
     CPPFLAGS="-D_FORTIFY_SOURCE=2"
     LDFLAGS="-Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now,-rpath,$install_dir/lib"
     export CC CXX CFLAGS CXXFLAGS CPPFLAGS LDFLAGS

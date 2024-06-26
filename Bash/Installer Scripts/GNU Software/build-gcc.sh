@@ -14,7 +14,7 @@ workspace="$build_dir/workspace"
 keep_build_dir=0
 log_file=""
 selected_versions=()
-verbose=1
+verbose=0
 version=""
 versions=(10 11 12 13 14)
 
