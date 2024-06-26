@@ -5,8 +5,8 @@
 # Purpose: Build GNU GCC
 # Versions available:  10-14
 # Features: Automatically sources the latest release of each version.
-# Updated: 05.29.24
-# Script version: 1.0
+# Updated: 06.26.24
+# Script version: 1.1
 
 build_dir="/tmp/gcc-build-script"
 packages="$build_dir/packages"
@@ -14,7 +14,7 @@ workspace="$build_dir/workspace"
 keep_build_dir=0
 log_file=""
 selected_versions=()
-verbose=0
+verbose=1
 version=""
 versions=(10 11 12 13 14)
 
@@ -117,11 +117,11 @@ set_environment() {
     log "Setting environment variables..."
     CC="gcc-$highest_gcc_version"
     CXX="g++-$highest_gcc_version"
-    CFLAGS="-O2 -pipe -fstack-protector-strong -march=native"
+    CFLAGS="-O2 -pipe -march=native -I/usr/local/include -I/usr/include"
     CXXFLAGS="$CFLAGS"
     CPPFLAGS="-D_FORTIFY_SOURCE=2"
-    LDFLAGS="-Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now -Wl,-rpath,$install_dir/lib64 -Wl,-rpath,$install_dir/lib"
-    export CC CXX CFLAGS CXXFLAGS CPPFLAGS LDFLAGS
+    LDFLAGS="-L/usr/lib/x86_64-linux-gnu -Wl,-rpath,$install_dir/lib64 -Wl,-rpath,$install_dir/lib"
+    export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
 }
 
 install_deps() {
