@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 
-import socket
-import threading
-from queue import Queue
 import argparse
-import os
 import ipaddress
 import logging
+import os
+import socket
+import threading
 from colorama import Fore, Style, init
+from queue import Queue
 from tabulate import tabulate
 
 # Initialize colorama
@@ -97,7 +97,6 @@ def get_args():
     parser.add_argument(
         '-p', '--ports',
         type=str,
-        required=True,
         help='Port or port range to scan. Use format start-end for a range or a single port number.'
     )
     parser.add_argument(
@@ -123,21 +122,25 @@ if __name__ == '__main__':
         print(f"{Fore.RED}No valid IP addresses provided. Exiting.{Style.RESET_ALL}")
         exit(1)
 
-    if '-' in args.ports:
-        try:
-            start_port, end_port = map(int, args.ports.split('-'))
-            ports = range(start_port, end_port + 1)
-        except ValueError:
-            logging.error("Invalid port range format. Use start-end.")
-            print(f"{Fore.RED}Invalid port range format. Use start-end.{Style.RESET_ALL}")
-            exit(1)
+    if args.ports:
+        if '-' in args.ports:
+            try:
+                start_port, end_port = map(int, args.ports.split('-'))
+                ports = range(start_port, end_port + 1)
+            except ValueError:
+                logging.error("Invalid port range format. Use start-end.")
+                print(f"{Fore.RED}Invalid port range format. Use start-end.{Style.RESET_ALL}")
+                exit(1)
+        else:
+            try:
+                ports = int(args.ports)
+            except ValueError:
+                logging.error("Invalid port format. Provide a single port number or a range.")
+                print(f"{Fore.RED}Invalid port format. Provide a single port number or a range.{Style.RESET_ALL}")
+                exit(1)
     else:
-        try:
-            ports = int(args.ports)
-        except ValueError:
-            logging.error("Invalid port format. Provide a single port number or a range.")
-            print(f"{Fore.RED}Invalid port format. Provide a single port number or a range.{Style.RESET_ALL}")
-            exit(1)
+        # Default port range
+        ports = range(1, 1024)  # Default to well-known ports (1-1023)
 
     num_threads = min(os.cpu_count() * 5, 100)  # Increase thread count for faster scanning
     main(valid_targets, ports, num_threads, args.verbose)
