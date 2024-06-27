@@ -19,22 +19,22 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 print_lock = threading.Lock()
 queue = Queue()
 
-results = []
+results = {}
 
 def port_scan(ip, port, verbose=False):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.settimeout(5)  # Increase timeout to 5 seconds
+        s.settimeout(0.5)  # Reduce timeout to 0.5 seconds for faster response
         try:
             s.connect((ip, port))
             with print_lock:
-                results.append([ip, port, 'open'])
+                results[(ip, port)] = 'open'
                 if verbose:
                     logging.info(f"{ip}:{port} is open.")
         except (socket.timeout, socket.error) as e:
             if verbose:
                 logging.info(f"{ip}:{port} is closed or filtered. Reason: {e}")
             with print_lock:
-                results.append([ip, port, 'closed or filtered'])
+                results[(ip, port)] = 'closed or filtered'
 
 def threader(verbose):
     while True:
@@ -71,13 +71,14 @@ def print_results():
             f"{Fore.CYAN}Port{Style.RESET_ALL}",
             f"{Fore.CYAN}Status{Style.RESET_ALL}"
         ]
+        sorted_results = sorted(results.items(), key=lambda x: (x[0][0], x[0][1]))
         table = [
             [
                 f"{Fore.YELLOW}{host}{Style.RESET_ALL}",
                 f"{Fore.YELLOW}{port}{Style.RESET_ALL}",
                 f"{Fore.YELLOW}{status}{Style.RESET_ALL}" if status == 'open' else status
             ]
-            for host, port, status in results
+            for (host, port), status in sorted_results
         ]
         print(tabulate(table, headers, tablefmt="pretty"))
     else:
@@ -137,5 +138,5 @@ if __name__ == '__main__':
             print(f"{Fore.RED}Invalid port format. Provide a single port number or a range.{Style.RESET_ALL}")
             exit(1)
 
-    num_threads = min(os.cpu_count(), 100)  # Limit the number of threads to avoid overwhelming the system
+    num_threads = min(os.cpu_count() * 5, 100)  # Increase thread count for faster scanning
     main(valid_targets, ports, num_threads, args.verbose)
