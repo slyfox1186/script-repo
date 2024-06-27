@@ -64,6 +64,11 @@ def port_scan(ip, port, protocol, verbose=False):
         elif protocol == 'udp':
             results[(ip, port, 'UDP')] = udp_status
 
+def ip_range(start_ip, end_ip):
+    start = ipaddress.IPv4Address(start_ip)
+    end = ipaddress.IPv4Address(end_ip)
+    return [str(ipaddress.IPv4Address(ip)) for ip in range(int(start), int(end) + 1)]
+
 def threader(protocol, verbose):
     while True:
         ip, port = queue.get()
@@ -100,17 +105,22 @@ def print_results():
             f"{Fore.CYAN}Protocol{Style.RESET_ALL}",
             f"{Fore.CYAN}Status{Style.RESET_ALL}"
         ]
+        
         sorted_results = sorted(results.items(), key=lambda x: (x[0][0], x[0][1]))
-        table = [
-            [
-                f"{Fore.YELLOW}{host}{Style.RESET_ALL}",
+        ip_groups = {}
+        
+        for (host, port, proto), status in sorted_results:
+            if host not in ip_groups:
+                ip_groups[host] = []
+            ip_groups[host].append([
                 f"{Fore.YELLOW}{port}{Style.RESET_ALL}",
                 f"{Fore.YELLOW}{proto}{Style.RESET_ALL}",
                 f"{Fore.GREEN}{status}{Style.RESET_ALL}" if status == 'open' else f"{Fore.RED}{status}{Style.RESET_ALL}"
-            ]
-            for (host, port, proto), status in sorted_results
-        ]
-        print(tabulate(table, headers, tablefmt="pretty"))
+            ])
+        
+        for ip, data in ip_groups.items():
+            print(f"\n{Fore.GREEN}Results for IP: {Fore.YELLOW}{ip}{Style.RESET_ALL}")
+            print(tabulate(data, headers[1:], tablefmt="pretty"))
     else:
         print(f"{Fore.YELLOW}No open ports found.{Style.RESET_ALL}")
 
@@ -121,7 +131,7 @@ def get_args():
         type=str,
         nargs='+',
         required=True,
-        help='Target host(s) to scan, separated by space.'
+        help='Target host(s) or IP range to scan, separated by space. Use format start-end for IP range.'
     )
     parser.add_argument(
         '-p', '--ports',
@@ -146,12 +156,20 @@ if __name__ == '__main__':
     args = get_args()
     valid_targets = []
     for target in args.targets:
-        try:
-            ip = ipaddress.ip_address(target)
-            valid_targets.append(str(ip))
-        except ValueError:
-            logging.error(f"Invalid IP address: {target}")
-            print(f"{Fore.RED}Invalid IP address: {target}{Style.RESET_ALL}")
+        if '-' in target:
+            try:
+                start_ip, end_ip = target.split('-')
+                valid_targets.extend(ip_range(start_ip, end_ip))
+            except ValueError:
+                logging.error(f"Invalid IP range format: {target}")
+                print(f"{Fore.RED}Invalid IP range format: {target}{Style.RESET_ALL}")
+        else:
+            try:
+                ip = ipaddress.ip_address(target)
+                valid_targets.append(str(ip))
+            except ValueError:
+                logging.error(f"Invalid IP address: {target}")
+                print(f"{Fore.RED}Invalid IP address: {target}{Style.RESET_ALL}")
 
     if not valid_targets:
         logging.error("No valid IP addresses provided. Exiting.")
