@@ -23,20 +23,20 @@ queue = Queue()
 results = {}
 
 def port_scan(ip, port, protocol, verbose=False):
+    tcp_status, udp_status = None, None
+
     if protocol in ['tcp', 'both']:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.settimeout(0.5)  # Reduce timeout to 0.5 seconds for faster response
             try:
                 s.connect((ip, port))
-                with print_lock:
-                    results[(ip, port, 'TCP')] = 'open'
-                    if verbose:
-                        logging.info(f"{ip}:{port} (TCP) is open.")
+                tcp_status = 'open'
+                if verbose:
+                    logging.info(f"{ip}:{port} (TCP) is open.")
             except (socket.timeout, socket.error) as e:
+                tcp_status = 'closed or filtered'
                 if verbose:
                     logging.info(f"{ip}:{port} (TCP) is closed or filtered. Reason: {e}")
-                with print_lock:
-                    results[(ip, port, 'TCP')] = 'closed or filtered'
 
     if protocol in ['udp', 'both']:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
@@ -44,15 +44,25 @@ def port_scan(ip, port, protocol, verbose=False):
             try:
                 s.sendto(b'', (ip, port))
                 s.recvfrom(1024)
-                with print_lock:
-                    results[(ip, port, 'UDP')] = 'open'
-                    if verbose:
-                        logging.info(f"{ip}:{port} (UDP) is open.")
+                udp_status = 'open'
+                if verbose:
+                    logging.info(f"{ip}:{port} (UDP) is open.")
             except (socket.timeout, socket.error) as e:
+                udp_status = 'closed or filtered'
                 if verbose:
                     logging.info(f"{ip}:{port} (UDP) is closed or filtered. Reason: {e}")
-                with print_lock:
-                    results[(ip, port, 'UDP')] = 'closed or filtered'
+
+    with print_lock:
+        if protocol == 'both':
+            if tcp_status == udp_status:
+                results[(ip, port, 'both')] = tcp_status
+            else:
+                results[(ip, port, 'TCP')] = tcp_status
+                results[(ip, port, 'UDP')] = udp_status
+        elif protocol == 'tcp':
+            results[(ip, port, 'TCP')] = tcp_status
+        elif protocol == 'udp':
+            results[(ip, port, 'UDP')] = udp_status
 
 def threader(protocol, verbose):
     while True:
