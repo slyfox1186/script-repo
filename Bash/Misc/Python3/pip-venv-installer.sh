@@ -15,7 +15,7 @@ pip_packages=(
     Levenshtein modules nltk openai pandas psutil pydantic pygments PyOpenGL pyparsing
     pyppeteer pyproj pyproject pyproject_hooks pyqt5 pyquery PyTest python-dotenv
     PyTest "pymediainfo==4.0" python-Levenshtein python-whois redis regex requests
-    requests-html scrapy "selenium>=4.18.0" service setuptools soupsieve sqlparse
+    requests-html rich scrapy "selenium>=4.18.0" service setuptools soupsieve sqlparse
     termcolor tk toml urllib3 venv_dependencies virtualenv wheel whois
 )
 
