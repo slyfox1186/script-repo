@@ -22,33 +22,50 @@ queue = Queue()
 
 results = {}
 
-def port_scan(ip, port, verbose=False):
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.settimeout(0.5)  # Reduce timeout to 0.5 seconds for faster response
-        try:
-            s.connect((ip, port))
-            with print_lock:
-                results[(ip, port)] = 'open'
+def port_scan(ip, port, protocol, verbose=False):
+    if protocol in ['tcp', 'both']:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.settimeout(0.5)  # Reduce timeout to 0.5 seconds for faster response
+            try:
+                s.connect((ip, port))
+                with print_lock:
+                    results[(ip, port, 'TCP')] = 'open'
+                    if verbose:
+                        logging.info(f"{ip}:{port} (TCP) is open.")
+            except (socket.timeout, socket.error) as e:
                 if verbose:
-                    logging.info(f"{ip}:{port} is open.")
-        except (socket.timeout, socket.error) as e:
-            if verbose:
-                logging.info(f"{ip}:{port} is closed or filtered. Reason: {e}")
-            with print_lock:
-                results[(ip, port)] = 'closed or filtered'
+                    logging.info(f"{ip}:{port} (TCP) is closed or filtered. Reason: {e}")
+                with print_lock:
+                    results[(ip, port, 'TCP')] = 'closed or filtered'
 
-def threader(verbose):
+    if protocol in ['udp', 'both']:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.settimeout(0.5)  # Reduce timeout to 0.5 seconds for faster response
+            try:
+                s.sendto(b'', (ip, port))
+                s.recvfrom(1024)
+                with print_lock:
+                    results[(ip, port, 'UDP')] = 'open'
+                    if verbose:
+                        logging.info(f"{ip}:{port} (UDP) is open.")
+            except (socket.timeout, socket.error) as e:
+                if verbose:
+                    logging.info(f"{ip}:{port} (UDP) is closed or filtered. Reason: {e}")
+                with print_lock:
+                    results[(ip, port, 'UDP')] = 'closed or filtered'
+
+def threader(protocol, verbose):
     while True:
         ip, port = queue.get()
         try:
-            port_scan(ip, port, verbose)
+            port_scan(ip, port, protocol, verbose)
         except Exception as e:
             logging.error(f"Error scanning {ip}:{port} - {e}")
         queue.task_done()
 
-def main(targets, ports, num_threads, verbose):
+def main(targets, ports, num_threads, protocol, verbose):
     for _ in range(num_threads):
-        t = threading.Thread(target=threader, args=(verbose,))
+        t = threading.Thread(target=threader, args=(protocol, verbose))
         t.daemon = True
         t.start()
 
@@ -70,6 +87,7 @@ def print_results():
         headers = [
             f"{Fore.CYAN}Host{Style.RESET_ALL}",
             f"{Fore.CYAN}Port{Style.RESET_ALL}",
+            f"{Fore.CYAN}Protocol{Style.RESET_ALL}",
             f"{Fore.CYAN}Status{Style.RESET_ALL}"
         ]
         sorted_results = sorted(results.items(), key=lambda x: (x[0][0], x[0][1]))
@@ -77,9 +95,10 @@ def print_results():
             [
                 f"{Fore.YELLOW}{host}{Style.RESET_ALL}",
                 f"{Fore.YELLOW}{port}{Style.RESET_ALL}",
+                f"{Fore.YELLOW}{proto}{Style.RESET_ALL}",
                 f"{Fore.YELLOW}{status}{Style.RESET_ALL}" if status == 'open' else status
             ]
-            for (host, port), status in sorted_results
+            for (host, port, proto), status in sorted_results
         ]
         print(tabulate(table, headers, tablefmt="pretty"))
     else:
@@ -98,6 +117,13 @@ def get_args():
         '-p', '--ports',
         type=str,
         help='Port or port range to scan. Use format start-end for a range or a single port number.'
+    )
+    parser.add_argument(
+        '-P', '--protocol',
+        type=str,
+        choices=['tcp', 'udp', 'both'],
+        default='both',
+        help='Specify protocol: tcp, udp, or both (default: both)'
     )
     parser.add_argument(
         '-v', '--verbose',
@@ -143,4 +169,4 @@ if __name__ == '__main__':
         ports = range(1, 1024)  # Default to well-known ports (1-1023)
 
     num_threads = min(os.cpu_count() * 5, 100)  # Increase thread count for faster scanning
-    main(valid_targets, ports, num_threads, args.verbose)
+    main(valid_targets, ports, num_threads, args.protocol, args.verbose)
