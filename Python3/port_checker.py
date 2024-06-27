@@ -106,7 +106,7 @@ def print_results():
                 f"{Fore.YELLOW}{host}{Style.RESET_ALL}",
                 f"{Fore.YELLOW}{port}{Style.RESET_ALL}",
                 f"{Fore.YELLOW}{proto}{Style.RESET_ALL}",
-                f"{Fore.YELLOW}{status}{Style.RESET_ALL}" if status == 'open' else status
+                f"{Fore.GREEN}{status}{Style.RESET_ALL}" if status == 'open' else f"{Fore.RED}{status}{Style.RESET_ALL}"
             ]
             for (host, port, proto), status in sorted_results
         ]
