@@ -1,5 +1,7 @@
 Windows Registry Editor Version 5.00
 
+; https://github.com/slyfox1186/script-repo/blob/main/Registry/context-menu/copy-as-path-add.reg
+
 ;%%%%%%%%%%%%%%%% COPY PATH NO QUOTES %%%%%%%%%%%%%%%%
 
 ;hex(2) below deciphers as:
