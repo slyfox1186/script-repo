@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+# Author: SlyFox1186
+# GitHub: https://github.com/slyfox1186/script-repo/blob/main/Python3/Networking/port_checker.py
+
 import argparse
 import ipaddress
 import logging
