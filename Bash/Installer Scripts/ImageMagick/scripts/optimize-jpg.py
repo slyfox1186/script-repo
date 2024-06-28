@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+# GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.py
+
 import argparse
 import concurrent.futures
 import glob
@@ -176,7 +178,7 @@ def process_image(infile: Path, overwrite_mode: bool, verbose_mode: bool, no_app
                         new_width = int(orig_width * MAX_WIDTH / orig_height)
                     else:
                         new_width = MAX_HEIGHT
-                        new_height = int(orig_height * MAX_HEIGHT / orig_width)
+                        new_height = int(orig_height * MAX_WIDTH / orig_width)
                 run_command(['magick', str(infile), '-resize', f'{new_width}x{new_height}', str(resized_image_path)], verbose_mode)
             else:
                 resized_image_path = infile
@@ -275,6 +277,15 @@ def main() -> None:
     else:
         image_files = list(Path(args.dir).glob('*.jpg')) + list(Path(args.dir).glob('*.jpeg'))
 
+    # Dictionary to keep track of input and corresponding output file paths
+    file_dict = {}
+    for infile in image_files:
+        base_name = infile.stem
+        output_dir = infile.parent
+        outfile_suffix = '' if args.no_append_text else '-IM'
+        outfile = output_dir / f"{base_name}{outfile_suffix}.{args.format}"
+        file_dict[str(infile)] = str(outfile)
+
     # Process images in parallel
     with concurrent.futures.ThreadPoolExecutor(max_workers=min(args.threads, MAX_THREADS)) as executor:
         futures = {executor.submit(process_image, infile, args.overwrite, args.verbose, args.no_append_text, args.format, args.quality, args.backup, args.preserve_metadata, args.recursive, args.dir): infile for infile in image_files}
@@ -284,6 +295,17 @@ def main() -> None:
                 future.result()
             except Exception as e:
                 logging.error(colored(f"Error processing {infile}: {e}", 'red'))
+
+    # Check for leftover input files
+    for infile, outfile in file_dict.items():
+        if os.path.exists(infile):
+            if os.path.exists(outfile):
+                # Remove leftover input file if output file exists
+                os.remove(infile)
+            else:
+                # Reprocess file if output file does not exist
+                infile_path = Path(infile)
+                process_image(infile_path, args.overwrite, args.verbose, args.no_append_text, args.format, args.quality, args.backup, args.preserve_metadata, args.recursive, args.dir)
 
     # Notify completion if google_speech is installed
     notify_completion()
