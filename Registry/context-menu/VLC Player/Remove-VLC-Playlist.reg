@@ -1,0 +1,10 @@
+Windows Registry Editor Version 5.00
+
+[-HKEY_CLASSES_ROOT\SystemFileAssociations\.avi\shell\AddToVLCPlaylist]
+[-HKEY_CLASSES_ROOT\SystemFileAssociations\.flv\shell\AddToVLCPlaylist]
+[-HKEY_CLASSES_ROOT\SystemFileAssociations\.mkv\shell\AddToVLCPlaylist]
+[-HKEY_CLASSES_ROOT\SystemFileAssociations\.mov\shell\AddToVLCPlaylist]
+[-HKEY_CLASSES_ROOT\SystemFileAssociations\.mp4\shell\AddToVLCPlaylist]
+[-HKEY_CLASSES_ROOT\SystemFileAssociations\.wmv\shell\AddToVLCPlaylist]
+[-HKEY_CLASSES_ROOT\SystemFileAssociations\.webm\shell\AddToVLCPlaylist]
+
