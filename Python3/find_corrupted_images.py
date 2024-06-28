@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 
-import os
-import sys
-import subprocess
 import concurrent.futures
 import multiprocessing
+import os
+import subprocess
+import sys
 from tqdm import tqdm
 
 # Constants
