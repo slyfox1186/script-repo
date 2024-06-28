@@ -1,0 +1,64 @@
+Windows Registry Editor Version 5.00
+
+[HKEY_CLASSES_ROOT\SystemFileAssociations\.avi\shell\AddToVLCPlaylist]
+@="VLC Playlist"
+"Extended"=-
+"Icon"="C:\\Program Files\\VLC\\vlc.exe,0"
+"Position"="Middle"
+
+[HKEY_CLASSES_ROOT\SystemFileAssociations\.avi\AddToVLCPlaylist\command]
+@="\"C:\\Program Files\\VLC\\vlc.exe\" --started-from-file --playlist-enqueue \"%1\" %*"
+
+[HKEY_CLASSES_ROOT\SystemFileAssociations\.flv\shell\AddToVLCPlaylist]
+@="VLC Playlist"
+"Extended"=-
+"Icon"="C:\\Program Files\\VLC\\vlc.exe,0"
+"Position"="Middle"
+
+[HKEY_CLASSES_ROOT\SystemFileAssociations\.flv\AddToVLCPlaylist\command]
+@="\"C:\\Program Files\\VLC\\vlc.exe\" --started-from-file --playlist-enqueue \"%1\" %*"
+
+[HKEY_CLASSES_ROOT\SystemFileAssociations\.mkv\shell\AddToVLCPlaylist]
+@="VLC Playlist"
+"Extended"=-
+"Icon"="C:\\Program Files\\VLC\\vlc.exe,0"
+"Position"="Middle"
+
+[HKEY_CLASSES_ROOT\SystemFileAssociations\.mkv\AddToVLCPlaylist\command]
+@="\"C:\\Program Files\\VLC\\vlc.exe\" --started-from-file --playlist-enqueue \"%1\" %*"
+
+[HKEY_CLASSES_ROOT\SystemFileAssociations\.mov\shell\AddToVLCPlaylist]
+@="VLC Playlist"
+"Extended"=-
+"Icon"="C:\\Program Files\\VLC\\vlc.exe,0"
+"Position"="Middle"
+
+[HKEY_CLASSES_ROOT\SystemFileAssociations\.mov\AddToVLCPlaylist\command]
+@="\"C:\\Program Files\\VLC\\vlc.exe\" --started-from-file --playlist-enqueue \"%1\" %*"
+
+[HKEY_CLASSES_ROOT\SystemFileAssociations\.mp4\shell\AddToVLCPlaylist]
+@="VLC Playlist"
+"Extended"=-
+"Icon"="C:\\Program Files\\VLC\\vlc.exe,0"
+"Position"="Middle"
+
+[HKEY_CLASSES_ROOT\SystemFileAssociations\.mp4\AddToVLCPlaylist\command]
+@="\"C:\\Program Files\\VLC\\vlc.exe\" --started-from-file --playlist-enqueue \"%1\" %*"
+
+[HKEY_CLASSES_ROOT\SystemFileAssociations\.wmv\shell\AddToVLCPlaylist]
+@="VLC Playlist"
+"Extended"=-
+"Icon"="C:\\Program Files\\VLC\\vlc.exe,0"
+"Position"="Middle"
+
+[HKEY_CLASSES_ROOT\SystemFileAssociations\.wmv\AddToVLCPlaylist\command]
+@="\"C:\\Program Files\\VLC\\vlc.exe\" --started-from-file --playlist-enqueue \"%1\" %*"
+
+[HKEY_CLASSES_ROOT\SystemFileAssociations\.webm\shell\AddToVLCPlaylist]
+@="VLC Playlist"
+"Extended"=-
+"Icon"="C:\\Program Files\\VLC\\vlc.exe,0"
+"Position"="Middle"
+
+[HKEY_CLASSES_ROOT\SystemFileAssociations\.webm\AddToVLCPlaylist\command]
+@="\"C:\\Program Files\\VLC\\vlc.exe\" --started-from-file --playlist-enqueue \"%1\" %*"
