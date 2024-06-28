@@ -11,6 +11,16 @@ from tqdm import tqdm
 OUTPUT_FILE = "corrupted_images_by_color.txt"
 NUM_CPUS = multiprocessing.cpu_count()
 
+def check_imagemagick_installed():
+    try:
+        subprocess.run(["identify", "-version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+    except subprocess.CalledProcessError:
+        print("ImageMagick is not installed. Please install ImageMagick to use this script.", file=sys.stderr)
+        sys.exit(1)
+    except FileNotFoundError:
+        print("ImageMagick is not installed. Please install ImageMagick to use this script.", file=sys.stderr)
+        sys.exit(1)
+
 def check_image_validity(image_path):
     try:
         result = subprocess.run(
@@ -32,6 +42,8 @@ def get_all_jpg_images(directory):
     return jpg_files
 
 def main():
+    check_imagemagick_installed()
+    
     script_dir = os.path.dirname(os.path.abspath(__file__))
     output_file_path = os.path.join(script_dir, OUTPUT_FILE)
     
