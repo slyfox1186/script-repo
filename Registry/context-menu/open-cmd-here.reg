@@ -1,6 +1,7 @@
 Windows Registry Editor Version 5.00
 
 ; ADD OPEN CMD AS ADMINISTRATOR TO WINDOWS EXPLORER CONTEXT MENU
+; https://github.com/slyfox1186/script-repo/blob/main/Registry/context-menu/open-cmd-here.reg
 
 [HKEY_CLASSES_ROOT\*\shell\CMDAsAdmin]
 @="Open CMD Here"
@@ -12,7 +13,7 @@ Windows Registry Editor Version 5.00
 "SeparatorAfter"=""
 
 [HKEY_CLASSES_ROOT\*\shell\CMDAsAdmin\command]
-@="cmd.exe /D /C ECHO|SET/P=\"%W\"|powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -Args '/D /C \"\"\"PUSHD',$([char]34+$Input+[char]34),'^&^& START /MAX cmd.exe /T:0A /K\"\"\"PROMPT $P$G$_$G' -Verb RunAs\""
+@="cmd.exe /d /c powershell.exe -NoP -W H -C \"Start-Process cmd.exe -ArgumentList '/d /c start /max cmd.exe /t:0a /k pushd \\\"%W\\\"' -Verb RunAs\""
 
 [HKEY_CLASSES_ROOT\DesktopBackground\Shell\CMDAsAdmin]
 @="Open CMD Here"
@@ -24,7 +25,7 @@ Windows Registry Editor Version 5.00
 "SeparatorAfter"=""
 
 [HKEY_CLASSES_ROOT\DesktopBackground\Shell\CMDAsAdmin\command]
-@="cmd.exe /D /C ECHO|SET/P=\"%V\"|powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -Args '/D /C, \"\"\"PUSHD',$([char]34+$Input+[char]34),'^&^& START /MAX cmd.exe /T:0A /K\"\"\"PROMPT $P$G$_$G' -Verb RunAs\""
+@="cmd.exe /d /c powershell.exe -NoP -W H -C \"Start-Process cmd.exe -ArgumentList '/d /c start /max cmd.exe /t:0a /k pushd \\\"%V\\\"' -Verb RunAs\""
 
 [HKEY_CLASSES_ROOT\Directory\shell\CMDAsAdmin]
 @="Open CMD Here"
@@ -36,7 +37,7 @@ Windows Registry Editor Version 5.00
 "SeparatorAfter"=""
 
 [HKEY_CLASSES_ROOT\Directory\shell\CMDAsAdmin\command]
-@="cmd.exe /D /C ECHO|SET/P=\"%1\"|powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -Args '/D /C \"\"\"PUSHD',$([char]34+$Input+[char]34),'^&^& START /MAX cmd.exe /T:0A /K\"\"\"PROMPT $P$G$_$G' -Verb RunAs\""
+@="cmd.exe /d /c powershell.exe -NoP -W H -C \"Start-Process cmd.exe -ArgumentList '/d /c start /max cmd.exe /t:0a /k pushd \\\"%V\\\"' -Verb RunAs\""
 
 [HKEY_CLASSES_ROOT\Directory\Background\shell\CMDAsAdmin]
 @="Open CMD Here"
@@ -48,7 +49,7 @@ Windows Registry Editor Version 5.00
 "SeparatorAfter"=""
 
 [HKEY_CLASSES_ROOT\Directory\Background\shell\CMDAsAdmin\command]
-@="cmd.exe /D /C ECHO|SET/P=\"%V\"|powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -Args '/D /C \"\"\"PUSHD',$([char]34+$Input+[char]34),'^&^& START /MAX cmd.exe /T:0A /K\"\"\"PROMPT $P$G$_$G' -Verb RunAs\""
+@="cmd.exe /d /c powershell.exe -NoP -W H -C \"Start-Process cmd.exe -ArgumentList '/d /c start /max cmd.exe /t:0a /k pushd \\\"%V\\\"' -Verb RunAs\""
 
 [HKEY_CLASSES_ROOT\Drive\shell\CMDAsAdmin]
 @="Open CMD Here"
@@ -60,7 +61,7 @@ Windows Registry Editor Version 5.00
 "SeparatorAfter"=""
 
 [HKEY_CLASSES_ROOT\Drive\shell\CMDAsAdmin\command]
-@="cmd.exe /D /C ECHO|SET/P=\"%1\"|powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -Args '/D /C \"\"\"PUSHD',$([char]34+$Input+[char]34),'^&^& START /MAX cmd.exe /T:0A /K\"\"\"PROMPT $P$G$_$G' -Verb RunAs\""
+@="cmd.exe /d /c powershell.exe -NoP -W H -C \"Start-Process cmd.exe -ArgumentList '/d /c start /max cmd.exe /t:0a /k pushd \\\"%L\\\"' -Verb RunAs\""
 
 [HKEY_CLASSES_ROOT\LibraryFolder\background\shell\CMDAsAdmin]
 @="Open CMD Here"
@@ -72,7 +73,7 @@ Windows Registry Editor Version 5.00
 "SeparatorAfter"=""
 
 [HKEY_CLASSES_ROOT\LibraryFolder\background\shell\CMDAsAdmin\command]
-@="cmd.exe /D /C ECHO|SET/P=\"%V\"|powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -Args '/D /C \"\"\"PUSHD',$([char]34+$Input+[char]34),'^&^& START /MAX cmd.exe /T:0A /K\"\"\"PROMPT $P$G$_$G' -Verb RunAs\""
+@="cmd.exe /d /c echo|set/p=\"%V\"|powershell.exe -NoP -W H -C \"Start-Process cmd.exe -Args '/d /c \"\"\"pushd',$([char]34+$Input+[char]34),'^&^& start /max cmd.exe /t:0a /k\"\"\"prompt $P$G$_$G' -Verb RunAs\""
 
 ; To allow mapped drives to be available in command prompt
 [HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System]
