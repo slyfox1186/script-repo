@@ -1,6 +1,7 @@
 Windows Registry Editor Version 5.00
 
 ; REMOVE RESET PERMISSIONS
+; https://github.com/slyfox1186/script-repo/blob/main/Registry/context-menu/Explorer/remove-reset-file-permissions.reg
 
 [-HKEY_CLASSES_ROOT\*\shell\ResetPermissions]
 [-HKEY_CLASSES_ROOT\Directory\shell\ResetPermissions]
