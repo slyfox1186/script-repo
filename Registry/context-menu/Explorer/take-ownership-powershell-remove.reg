@@ -1,0 +1,6 @@
+﻿Windows Registry Editor Version 5.00
+
+; REMOVE TAKE OWNERSHIP
+
+[-HKEY_CLASSES_ROOT\AllFileSystemObjects\shell\Take_Ownership]
+
