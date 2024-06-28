@@ -1,5 +1,7 @@
 Windows Registry Editor Version 5.00
 
+; https://github.com/slyfox1186/script-repo/blob/main/Registry/context-menu/copy-as-path-remove.reg
+
 ; REMOVE COPY AS PATH
 
 [-HKEY_CLASSES_ROOT\AllFilesystemObjects\shell\Copy Path No Quotes]
