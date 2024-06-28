@@ -5,11 +5,11 @@ import ipaddress
 import logging
 import os
 import socket
+import subprocess
 import threading
 from colorama import Fore, Style, init
 from queue import Queue
 from tabulate import tabulate
-import subprocess
 
 # Initialize colorama
 init(autoreset=True)
