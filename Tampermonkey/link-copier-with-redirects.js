@@ -1,7 +1,5 @@
 /* jshint esversion: 8 */
-
-// https://greasyfork.org/en/scripts/494987-link-copier-with-redirects
-
+ 
 // ==UserScript==
 // @name         Link Copier with Redirects
 // @namespace    http://tampermonkey.net/
