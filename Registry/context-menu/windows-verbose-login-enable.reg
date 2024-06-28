@@ -1,6 +1,7 @@
 Windows Registry Editor Version 5.00
 
 ; ENABLE VERBOSE LOGIN
+; https://github.com/slyfox1186/script-repo/blob/main/Registry/context-menu/windows-verbose-login-enable.reg 
 
 [HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System]
 "VerboseStatus"=dword:00000001
