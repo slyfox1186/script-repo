@@ -147,7 +147,7 @@ def threader(protocol, verbose):
             logging.error(f"Error scanning {ip}:{port} - {e}")
         queue.task_done()
 
-def main(targets, ports, num_threads, protocol, verbose):
+def main(targets, ports, num_threads, protocol, verbose, output_file):
     for _ in range(num_threads):
         t = threading.Thread(target=threader, args=(protocol, verbose))
         t.daemon = True
@@ -168,9 +168,9 @@ def main(targets, ports, num_threads, protocol, verbose):
 
     queue.join()
     print("\nScanning completed.")
-    print_results()
+    print_results(output_file)
 
-def print_results():
+def print_results(output_file):
     if results:
         headers = [
             f"{Fore.CYAN}Host{Style.RESET_ALL}",
@@ -194,6 +194,7 @@ def print_results():
         for ip, data in ip_groups.items():
             print(f"\n{Fore.GREEN}Results for IP: {Fore.YELLOW}{ip}{Style.RESET_ALL}")
             print(tabulate(data, headers[1:], tablefmt="pretty"))
+
     else:
         print(f"{Fore.YELLOW}No open ports found.{Style.RESET_ALL}")
     
@@ -203,6 +204,30 @@ def print_results():
         data = [[f"{Fore.YELLOW}{idx + 1}{Style.RESET_ALL}", f"{Fore.YELLOW}{ip}{Style.RESET_ALL}"] for idx, ip in enumerate(unreachable_ips)]
         print(f"\n{Fore.RED}Unreachable IP Addresses:{Style.RESET_ALL}")
         print(tabulate(data, headers, tablefmt="pretty"))
+
+    if output_file:
+        with open(output_file, 'w') as f:
+            if results:
+                headers = ["Host", "Port", "Protocol", "Status"]
+                sorted_results = sorted(results.items(), key=lambda x: (x[0][0], x[0][1]))
+                ip_groups = {}
+                
+                for (host, port, proto), status in sorted_results:
+                    if host not in ip_groups:
+                        ip_groups[host] = []
+                    ip_groups[host].append([port, proto, status])
+                
+                for ip, data in ip_groups.items():
+                    f.write(f"Results for IP: {ip}\n")
+                    f.write(tabulate(data, headers[1:], tablefmt="plain"))
+                    f.write("\n\n")
+            
+            if unreachable_ips:
+                headers = ["Number", "Address"]
+                data = [[idx + 1, ip] for idx, ip in enumerate(unreachable_ips)]
+                f.write("Unreachable IP Addresses:\n")
+                f.write(tabulate(data, headers, tablefmt="plain"))
+                f.write("\n\n")
 
 def get_args():
     parser = argparse.ArgumentParser(description="The best Python Port Open Checker in the World!")
@@ -228,6 +253,11 @@ def get_args():
         '-v', '--verbose',
         action='store_true',
         help='Enable verbose mode to display closed or filtered ports.'
+    )
+    parser.add_argument(
+        '-o', '--output',
+        type=str,
+        help='File to store the scan results.'
     )
     return parser.parse_args()
 
@@ -261,4 +291,4 @@ if __name__ == '__main__':
         ports = range(1, 1024)  # Default to well-known ports (1-1023)
 
     num_threads = min(os.cpu_count() * 5, 100)  # Increase thread count for faster scanning
-    main(valid_targets, ports, num_threads, args.protocol, args.verbose)
+    main(valid_targets, ports, num_threads, args.protocol, args.verbose, args.output)
