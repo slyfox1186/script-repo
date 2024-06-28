@@ -1,0 +1,32 @@
+Windows Registry Editor Version 5.00
+
+; ADD RESET PERMISSIONS
+
+[HKEY_CLASSES_ROOT\*\shell\ResetPermissions]
+@="Reset Permissions"
+"Extended"=-
+"HasLUAShield"=""
+"NoWorkingDirectory"=""
+"Position"="Middle"
+
+[HKEY_CLASSES_ROOT\*\shell\ResetPermissions\command]
+@="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -Args '/D /C icacls.exe \\\"%1\\\" /reset' -Verb RunAs\""
+
+[HKEY_CLASSES_ROOT\Directory\shell\ResetPermissions]
+@="Reset Permissions"
+"Extended"=-
+"HasLUAShield"=""
+"NoWorkingDirectory"=""
+"Position"="Middle"
+"SubCommands"=""
+
+[HKEY_CLASSES_ROOT\Directory\shell\ResetPermissions\shell\01RootFolder]
+@="Folder Only"
+[HKEY_CLASSES_ROOT\Directory\shell\ResetPermissions\shell\01RootFolder\command]
+@="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -Args '/D /C icacls.exe \\\"%1\\\" /reset' -Verb RunAs\""
+
+[HKEY_CLASSES_ROOT\Directory\shell\ResetPermissions\shell\02AllFolders]
+@="All"
+[HKEY_CLASSES_ROOT\Directory\shell\ResetPermissions\shell\02AllFolders\command]
+@="powershell.exe -NoP -W Hidden -C \"Start-Process cmd.exe -Args '/D /C icacls.exe \\\"%1\\\" /reset /T /C /L /Q' -Verb RunAs\""
+
