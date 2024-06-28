@@ -1,5 +1,7 @@
 Windows Registry Editor Version 5.00
 
+; https://github.com/slyfox1186/script-repo/blob/main/Registry/context-menu/VLC%20Player/Add-VLC-Playlist.reg
+
 [HKEY_CLASSES_ROOT\SystemFileAssociations\.avi\shell\AddToVLCPlaylist]
 @="VLC Playlist"
 "Extended"=-
