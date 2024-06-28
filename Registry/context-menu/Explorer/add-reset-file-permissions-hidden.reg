@@ -1,6 +1,7 @@
 Windows Registry Editor Version 5.00
 
 ; ADD RESET PERMISSIONS
+; https://github.com/slyfox1186/script-repo/blob/main/Registry/context-menu/Explorer/add-reset-file-permissions-hidden.reg
 
 [HKEY_CLASSES_ROOT\*\shell\ResetPermissions]
 @="Reset Permissions"
