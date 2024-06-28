@@ -9,6 +9,7 @@ import threading
 from colorama import Fore, Style, init
 from queue import Queue
 from tabulate import tabulate
+import subprocess
 
 # Initialize colorama
 init(autoreset=True)
@@ -21,6 +22,33 @@ print_lock = threading.Lock()
 queue = Queue()
 
 results = {}
+unreachable_ips = []
+
+def is_reachable(ip, timeout=1):
+    """
+    Check if an IP address is reachable by trying to connect to TCP port 80.
+    If that fails, try to ping the IP address.
+    """
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.settimeout(timeout)
+            s.connect((ip, 80))
+            s.close()
+            return True
+    except (socket.timeout, socket.error):
+        pass
+    
+    # Fallback to ping if TCP port 80 check fails
+    try:
+        output = subprocess.run(
+            ["ping", "-c", "1", "-W", str(timeout), ip],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+        return output.returncode == 0
+    except Exception as e:
+        logging.error(f"Error pinging {ip} - {e}")
+        return False
 
 def port_scan(ip, port, protocol, verbose=False):
     tcp_status, udp_status = None, None
@@ -73,6 +101,40 @@ def parse_cidr(cidr):
     network = ipaddress.ip_network(cidr, strict=False)
     return [str(ip) for ip in network.hosts()]
 
+def parse_targets(targets):
+    """
+    Parse target IP addresses. Handles single IPs, ranges, and CIDR notation.
+    """
+    valid_targets = []
+    for target in targets.split(','):
+        target = target.strip()
+        if '/' in target:
+            try:
+                cidr_ips = parse_cidr(target)
+                valid_targets.extend(cidr_ips)
+                logging.info(f"Parsed CIDR {target} into IPs: {cidr_ips}")
+            except ValueError:
+                logging.error(f"Invalid CIDR format: {target}")
+                print(f"{Fore.RED}Invalid CIDR format: {target}{Style.RESET_ALL}")
+        elif '-' in target:
+            try:
+                start_ip, end_ip = target.split('-')
+                range_ips = ip_range(start_ip, end_ip)
+                valid_targets.extend(range_ips)
+                logging.info(f"Parsed range {target} into IPs: {range_ips}")
+            except ValueError:
+                logging.error(f"Invalid IP range format: {target}")
+                print(f"{Fore.RED}Invalid IP range format: {target}{Style.RESET_ALL}")
+        else:
+            try:
+                ip = ipaddress.ip_address(target)
+                valid_targets.append(str(ip))
+                logging.info(f"Added single IP address: {ip}")
+            except ValueError:
+                logging.error(f"Invalid IP address: {target}")
+                print(f"{Fore.RED}Invalid IP address: {target}{Style.RESET_ALL}")
+    return valid_targets
+
 def threader(protocol, verbose):
     while True:
         ip, port = queue.get()
@@ -89,16 +151,20 @@ def main(targets, ports, num_threads, protocol, verbose):
         t.start()
 
     for target in targets:
-        if isinstance(ports, range):
-            print(f"\n{Fore.GREEN}Scanning for open:{Style.RESET_ALL} {Fore.YELLOW}{target}{Style.RESET_ALL} {Fore.RED}port{Style.RESET_ALL} {Fore.YELLOW}{ports.start} - {ports.stop - 1}{Style.RESET_ALL}")
-            for port in ports:
-                queue.put((target, port))
+        if is_reachable(target):
+            if isinstance(ports, range):
+                print(f"\n{Fore.GREEN}Scanning for open:{Style.RESET_ALL} {Fore.YELLOW}{target}{Style.RESET_ALL} {Fore.RED}port{Style.RESET_ALL} {Fore.YELLOW}{ports.start} - {ports.stop - 1}{Style.RESET_ALL}")
+                for port in ports:
+                    queue.put((target, port))
+            else:
+                print(f"\n{Fore.GREEN}Scanning for open:{Style.RESET_ALL} {Fore.YELLOW}{target}{Style.RESET_ALL} {Fore.RED}port{Style.RESET_ALL} {Fore.YELLOW}{ports}{Style.RESET_ALL}")
+                queue.put((target, ports))
         else:
-            print(f"\n{Fore.GREEN}Scanning for open:{Style.RESET_ALL} {Fore.YELLOW}{target}{Style.RESET_ALL} {Fore.RED}port{Style.RESET_ALL} {Fore.YELLOW}{ports}{Style.RESET_ALL}")
-            queue.put((target, ports))
+            unreachable_ips.append(target)
+            logging.warning(f"{Fore.RED}Host {target} is not reachable. Skipping...{Style.RESET_ALL}")
 
     queue.join()
-    print("\nScanning completed.\n")
+    print("\nScanning completed.")
     print_results()
 
 def print_results():
@@ -127,15 +193,21 @@ def print_results():
             print(tabulate(data, headers[1:], tablefmt="pretty"))
     else:
         print(f"{Fore.YELLOW}No open ports found.{Style.RESET_ALL}")
+    
+    if unreachable_ips:
+        unreachable_ips.sort(key=lambda ip: ipaddress.ip_address(ip))
+        headers = [f"{Fore.CYAN}Number{Style.RESET_ALL}", f"{Fore.CYAN}Address{Style.RESET_ALL}"]
+        data = [[f"{Fore.YELLOW}{idx + 1}{Style.RESET_ALL}", f"{Fore.YELLOW}{ip}{Style.RESET_ALL}"] for idx, ip in enumerate(unreachable_ips)]
+        print(f"\n{Fore.RED}Unreachable IP Addresses:{Style.RESET_ALL}")
+        print(tabulate(data, headers, tablefmt="pretty"))
 
 def get_args():
     parser = argparse.ArgumentParser(description="The best Python Port Open Checker in the World!")
     parser.add_argument(
         '-t', '--targets',
         type=str,
-        nargs='+',
         required=True,
-        help='Target host(s) or IP range to scan, separated by space. Use format start-end for IP range or CIDR notation.'
+        help='Target host(s) or IP range to scan. Use comma-separated list for multiple targets. Supports single IP, IP range (start-end), and CIDR notation.'
     )
     parser.add_argument(
         '-p', '--ports',
@@ -158,33 +230,7 @@ def get_args():
 
 if __name__ == '__main__':
     args = get_args()
-    valid_targets = []
-    for target in args.targets:
-        if '/' in target:
-            try:
-                cidr_ips = parse_cidr(target)
-                valid_targets.extend(cidr_ips)
-                logging.info(f"Parsed CIDR {target} into IPs: {cidr_ips}")
-            except ValueError:
-                logging.error(f"Invalid CIDR format: {target}")
-                print(f"{Fore.RED}Invalid CIDR format: {target}{Style.RESET_ALL}")
-        elif '-' in target:
-            try:
-                start_ip, end_ip = target.split('-')
-                range_ips = ip_range(start_ip, end_ip)
-                valid_targets.extend(range_ips)
-                logging.info(f"Parsed range {target} into IPs: {range_ips}")
-            except ValueError:
-                logging.error(f"Invalid IP range format: {target}")
-                print(f"{Fore.RED}Invalid IP range format: {target}{Style.RESET_ALL}")
-        else:
-            try:
-                ip = ipaddress.ip_address(target)
-                valid_targets.append(str(ip))
-                logging.info(f"Added single IP address: {ip}")
-            except ValueError:
-                logging.error(f"Invalid IP address: {target}")
-                print(f"{Fore.RED}Invalid IP address: {target}{Style.RESET_ALL}")
+    valid_targets = parse_targets(args.targets)
 
     if not valid_targets:
         logging.error("No valid IP addresses provided. Exiting.")
