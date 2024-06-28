@@ -69,6 +69,10 @@ def ip_range(start_ip, end_ip):
     end = ipaddress.IPv4Address(end_ip)
     return [str(ipaddress.IPv4Address(ip)) for ip in range(int(start), int(end) + 1)]
 
+def parse_cidr(cidr):
+    network = ipaddress.ip_network(cidr, strict=False)
+    return [str(ip) for ip in network.hosts()]
+
 def threader(protocol, verbose):
     while True:
         ip, port = queue.get()
@@ -131,7 +135,7 @@ def get_args():
         type=str,
         nargs='+',
         required=True,
-        help='Target host(s) or IP range to scan, separated by space. Use format start-end for IP range.'
+        help='Target host(s) or IP range to scan, separated by space. Use format start-end for IP range or CIDR notation.'
     )
     parser.add_argument(
         '-p', '--ports',
@@ -156,10 +160,20 @@ if __name__ == '__main__':
     args = get_args()
     valid_targets = []
     for target in args.targets:
-        if '-' in target:
+        if '/' in target:
+            try:
+                cidr_ips = parse_cidr(target)
+                valid_targets.extend(cidr_ips)
+                logging.info(f"Parsed CIDR {target} into IPs: {cidr_ips}")
+            except ValueError:
+                logging.error(f"Invalid CIDR format: {target}")
+                print(f"{Fore.RED}Invalid CIDR format: {target}{Style.RESET_ALL}")
+        elif '-' in target:
             try:
                 start_ip, end_ip = target.split('-')
-                valid_targets.extend(ip_range(start_ip, end_ip))
+                range_ips = ip_range(start_ip, end_ip)
+                valid_targets.extend(range_ips)
+                logging.info(f"Parsed range {target} into IPs: {range_ips}")
             except ValueError:
                 logging.error(f"Invalid IP range format: {target}")
                 print(f"{Fore.RED}Invalid IP range format: {target}{Style.RESET_ALL}")
@@ -167,6 +181,7 @@ if __name__ == '__main__':
             try:
                 ip = ipaddress.ip_address(target)
                 valid_targets.append(str(ip))
+                logging.info(f"Added single IP address: {ip}")
             except ValueError:
                 logging.error(f"Invalid IP address: {target}")
                 print(f"{Fore.RED}Invalid IP address: {target}{Style.RESET_ALL}")
