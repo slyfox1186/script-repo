@@ -1,10 +1,11 @@
+
 #!/usr/bin/env bash
 # shellcheck disable=SC2068,SC2162,SC2317 source=/dev/null
 
 # GitHub: https://github.com/slyfox1186/ffmpeg-build-script
 #
-# Script version: 3.9.1
-# Updated: 06.19.24
+# Script version: 3.9.2
+# Updated: 06.27.24
 #
 # Purpose: build ffmpeg from source code with addon development libraries
 #          also compiled from source to help ensure the latest functionality
@@ -21,7 +22,7 @@ fi
 
 # Define global variables
 script_name="${0##*/}"
-script_version="3.9.1"
+script_version="3.9.2"
 cwd="$PWD/ffmpeg-build-script"
 mkdir -p "$cwd" && cd "$cwd" || exit 1
 if [[ "$PWD" =~ ffmpeg-build-script\/ffmpeg-build-script ]]; then
@@ -1042,7 +1043,9 @@ apt_pkgs() {
         python3-venv ragel re2c scons texi2html texinfo tk-dev unzip valgrind wget xmlto
     )
 
-    [[ "$OS" == "Debian" ]] && pkgs+=("nvidia-smi")
+    if [[ "$OS" == "Debian" ]] && [[ "$is_nvidia_gpu_present" == "NVIDIA GPU detected" ]]; then
+        pkgs+=("nvidia-smi")
+    fi
 
     # Initialize arrays for missing, available, and unavailable packages
     available_packages=()
@@ -1089,6 +1092,8 @@ apt_pkgs() {
         echo
     fi
 
+    amd_gpu_test=$(check_amd_gpu)
+    check_nvidia_gpu
     if [[ -n "$amd_gpu_test" ]] && [[ "$is_nvidia_gpu_present" == "NVIDIA GPU not detected" ]]; then
         return 0
     else
@@ -1627,7 +1632,6 @@ find_git_repo "harfbuzz/harfbuzz" "1" "T"
 if build "harfbuzz" "$repo_version"; then
     download "https://github.com/harfbuzz/harfbuzz/archive/refs/tags/$repo_version.tar.gz" "harfbuzz-$repo_version.tar.gz"
     extracmds=("-D"{benchmark,cairo,docs,glib,gobject,icu,introspection,tests}"=disabled")
-    execute ./autogen.sh
     execute meson setup build --prefix="$workspace" --buildtype=release --default-library=static --strip "${extracmds[@]}"
     execute ninja "-j$threads" -C build
     execute ninja -C build install
