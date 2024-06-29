@@ -38,5 +38,4 @@
                 MsgBox("The folder does not exist!",, "T1")
         }
     }
-    reload
 }
