@@ -101,20 +101,52 @@ port_manager() {
             if [[ "$port" =~ ^[0-9]+$ ]]; then
                 if ss -tuln | grep -q ":$port "; then
                     echo "Port $port is listening."
-                elif sudo iptables -L INPUT -n | grep -q "dpt:$port"; then
+                elif sudo iptables -C INPUT -p tcp --dport "$port" -j ACCEPT &>/dev/null || 
+                     sudo iptables -C INPUT -p udp --dport "$port" -j ACCEPT &>/dev/null; then
                     echo "Port $port is allowed in the firewall but not currently listening."
                 else
-                    echo "Port $port is not open or allowed in the firewall."
+                    # Check for port ranges
+                    if sudo iptables-save | grep -qE "(-A|-I) INPUT .* --dports [0-9]+:[0-9]+ .*-j ACCEPT" &&
+                       awk -v port="$port" '
+                       $1 ~ /^(-A|-I)$/ && $2 == "INPUT" && $0 ~ /--dports/ {
+                           split($0, a, "--dports ");
+                           split(a[2], b, " ");
+                           split(b[1], range, ":");
+                           if (port >= range[1] && port <= range[2]) 
+                               exit 0;
+                       }
+                       END {exit 1}
+                       ' <(sudo iptables-save); then
+                        echo "Port $port is allowed in the firewall (within a port range) but not currently listening."
+                    else
+                        echo "Port $port is not open or allowed in the firewall."
+                    fi
                 fi
             elif [[ "$port" =~ ^[0-9]+-[0-9]+$ ]]; then
                 IFS='-' read -ra RANGE <<< "$port"
                 for ((i=RANGE[0]; i<=RANGE[1]; i++)); do
                     if ss -tuln | grep -q ":$i "; then
                         echo "Port $i is listening."
-                    elif sudo iptables -L INPUT -n | grep -q "dpt:$i"; then
+                    elif sudo iptables -C INPUT -p tcp --dport "$i" -j ACCEPT &>/dev/null || 
+                         sudo iptables -C INPUT -p udp --dport "$i" -j ACCEPT &>/dev/null; then
                         echo "Port $i is allowed in the firewall but not currently listening."
                     else
-                        echo "Port $i is not open or allowed in the firewall."
+                        # Check for port ranges
+                        if sudo iptables-save | grep -qE "(-A|-I) INPUT .* --dports [0-9]+:[0-9]+ .*-j ACCEPT" &&
+                           awk -v port="$i" '
+                           $1 ~ /^(-A|-I)$/ && $2 == "INPUT" && $0 ~ /--dports/ {
+                               split($0, a, "--dports ");
+                               split(a[2], b, " ");
+                               split(b[1], range, ":");
+                               if (port >= range[1] && port <= range[2]) 
+                                   exit 0;
+                           }
+                           END {exit 1}
+                           ' <(sudo iptables-save); then
+                            echo "Port $i is allowed in the firewall (within a port range) but not currently listening."
+                        else
+                            echo "Port $i is not open or allowed in the firewall."
+                        fi
                     fi
                 done
             else
