@@ -282,61 +282,29 @@ fix_key() {
     fi
 }
 
-# TAKE OWNERSHIP COMMAND #
+# TAKE OWNERSHIP COMMANDS
+
 toa() {
     sudo chown -R "$USER":"$USER" "$PWD"
     sudo chmod -R 744 "$PWD"
     clear; ls -1AvhF --color --group-directories-first
 }
 
-tod() {
-    local directory
+town() {
+    local files
+    files=("$@")
 
-    if [[ -z "$1" ]]; then
-        read -p "Enter the folder name/path: " directory
-    else
-        directory="$1"
-    fi
-
-    sudo chown -R "$USER:$USER" "$directory"
-    sudo chmod -R 744 "$directory"
-
-    clear; ls -1AhFv --color --group-directories-first
-}
-
-tof() {
-    # Check if a filename is provided as an argument
-    if [[ "$#" -ne 1 ]]; then
-        echo "Usage: change_ownership_and_permissions <file>"
-        return 1
-    fi
-
-    # Check if the file exists
-    if [[ ! -f "$1" ]]; then
-        echo "Error: File \"$1\" does not exist."
-        return 1
-    fi
-
-    # Change ownership of the file to the current user
-    user=$(whoami)
-    sudo chown "$user" "$1"
-
-    # Verify if the ownership has been changed successfully
-    if [[ $? -ne 0 ]]; then
-        echo "Error: Failed to change ownership of \"$1\"."
-        return 1
-    fi
-
-    # Change permissions to chmod 777
-    sudo chmod 777 "$1"
-
-    # Verify if the permissions have been changed successfully
-    if [[ $? -eq 0 ]]; then
-        echo "Ownership and permissions of \"$1\" have been changed to $user and chmod 777."
-    else
-        echo "Error: Failed to change permissions of \"$1\"."
-        return 1
-    fi
+    for file in "${files[@]}"; do
+        if [[ -e "$file" ]]; then
+            if sudo chmod 755 "$file" && sudo chown "$USER":"$USER" "$file"; then
+                echo "Successfully changed ownership and permissions of: $file"
+            else
+                echo "Failed to change ownership and permissions of: $file"
+            fi
+        else
+            echo "File does not exist: $file"
+        fi
+    done
 }
 
 # DPKG COMMANDS #
