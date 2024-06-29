@@ -2401,7 +2401,7 @@ port_manager() {
         fi
     }
 
-    # Check if specific ports are open or allowed in firewall
+    # Check if specific ports are open or allowed in the firewall
     check_port() {
         if [[ -z "$port_number" ]]; then
             echo "Error: Port number(s) not specified."
@@ -2482,6 +2482,7 @@ port_manager() {
                         done
                     fi
                 done
+                echo "Attempting to restart the firewall. This may take a moment..."
                 sudo ufw reload
             fi
         elif command -v firewall-cmd &>/dev/null; then
@@ -2501,12 +2502,13 @@ port_manager() {
                         done
                     fi
                 done
+                echo "Attempting to restart the firewall. This may take a moment..."
                 sudo firewall-cmd --reload
             fi
         fi
     }
 
-    # Close an open port and remove firewall rule
+    # Close an open port and remove the firewall rule
     close_port() {
         if [[ -z "$port_number" ]]; then
             echo "Error: Port number not specified."
@@ -2534,7 +2536,7 @@ port_manager() {
                                 echo "Process using port $port has been terminated."
                                 log_action "Terminated process $pid using port $port"
                             else
-                                echo "Error: Failed to terminate process using port $port."
+                                echo "Error: Failed to terminate the process using port $port."
                             fi
                         fi
                     fi
@@ -2559,7 +2561,7 @@ port_manager() {
                                     echo "Process using port $i has been terminated."
                                     log_action "Terminated process $pid using port $i"
                                 else
-                                    echo "Error: Failed to terminate process using port $i."
+                                    echo "Error: Failed to terminate the process using port $i."
                                 fi
                             fi
                         fi
@@ -2584,6 +2586,7 @@ port_manager() {
                     done
                 fi
             done
+            echo "Attempting to restart the firewall. This may take a moment..."
             sudo ufw reload
         elif command -v firewall-cmd &>/dev/null; then
             for port in "${ADDR[@]}"; do
@@ -2600,6 +2603,7 @@ port_manager() {
                     done
                 fi
             done
+            echo "Attempting to restart the firewall. This may take a moment..."
             sudo firewall-cmd --reload
         fi
     }
