@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Author: SlyFox1186
-# GitHub: 
+# GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Misc/Functions/port_manager.sh
 # Updated: 06-29-2024
 
 port_manager() {
