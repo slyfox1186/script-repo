@@ -35,7 +35,7 @@
                 Sleep(500)
             }
             else
-                MsgBox("The folder does not exist!", "Error", "T1")
+                MsgBox("The folder does not exist!",, "T1")
         }
     }
     reload
