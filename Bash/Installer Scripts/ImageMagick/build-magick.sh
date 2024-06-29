@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2034
 
-# Script Version: 1.0.1
-# Updated: 06.04.24
+# Script Version: 1.1.0
+# Updated: 06.25.24
 # GitHub: https://github.com/slyfox1186/imagemagick-build-script
 # Purpose: Build ImageMagick 7 from the source code obtained from ImageMagick's official GitHub repository
-# Supported OS: Debian (11|12) | Ubuntu (20|22|23|24).04
+# Supported OS: Debian (11|12) | Ubuntu (20|22|24).04
 
 if [[ "$EUID" -ne 0 ]]; then
     echo "This script must be run as root or with sudo."
@@ -13,7 +13,7 @@ if [[ "$EUID" -ne 0 ]]; then
 fi
 
 # SET GLOBAL VARIABLES
-script_ver="1.0.1"
+script_ver="1.1.0"
 cwd="$PWD/magick-build-script"
 packages="$cwd/packages"
 workspace="$cwd/workspace"
@@ -367,6 +367,27 @@ find_git_repo() {
     "$set_repo" "$url" "$set_action" 2>/dev/null
 }
 
+download_fonts() {
+    font_urls=(
+        "https://github.com/dejavu-fonts/dejavu-fonts.git"
+        "https://github.com/adobe-fonts/source-code-pro.git"
+        "https://github.com/adobe-fonts/source-sans-pro.git"
+        "https://github.com/adobe-fonts/source-serif-pro.git"
+        "https://github.com/googlefonts/roboto.git"
+        "https://github.com/mozilla/Fira.git"
+    )
+    for font_url in "${font_urls[@]}"; do
+        repo_name="${font_url##*/}"
+        repo_name="${repo_name%.git}"
+        git_caller "$font_url" "$repo_name"
+        if build "$repo_name" "$version"; then
+            git_clone "$git_url" "$repo_name"
+            execute cp -fr . "/usr/share/fonts/truetype/"
+            build_done "$repo_name" "$version"
+        fi
+    done
+}
+
 find_ghostscript_version() {
     version="$1"
     # Extract the numeric part of the version (removing the prefix text 'gs' if it exists)
@@ -560,6 +581,7 @@ if build "pkg-config" "$version"; then
     download "https://pkgconfig.freedesktop.org/releases/pkg-config-$version.tar.gz"
     execute autoconf
     execute ./configure --prefix="$workspace" \
+                        --with-internal-glib \
                         --with-pc-path="$PKG_CONFIG_PATH" \
                         CFLAGS="-I$workspace/include" \
                         LDFLAGS="-L$workspace/lib64 -L$workspace/lib"
@@ -571,7 +593,7 @@ fi
 find_git_repo "libsdl-org/libtiff" "1" "T"
 if build "libtiff" "$version"; then
     download "https://codeload.github.com/libsdl-org/libtiff/tar.gz/refs/tags/v$version" "libtiff-$version.tar.gz"
-    execute ./autogen.sh
+    execute autoreconf -fi
     execute ./configure --prefix="$workspace" --enable-cxx --with-pic
     execute make "-j$cpu_threads"
     execute make install
@@ -600,7 +622,7 @@ if build "$repo_name" "${version//\$ /}"; then
                   -DENABLE_{SHARED,STATIC}=ON \
                   -G Ninja -Wno-dev
     execute ninja "-j$cpu_threads"
-    execute ninja "-j$cpu_threads" install
+    execute ninja install
     build_done "$repo_name" "$version"
 fi
 
@@ -858,14 +880,8 @@ if build "lcms2" "$version"; then
     build_done "lcms2" "$version"
 fi
 
-git_caller "https://github.com/dejavu-fonts/dejavu-fonts.git" "dejavu-fonts-git"
-if build "$repo_name" "${version//\$ /}"; then
-    git_clone "$git_url" "$repo_name"
-    wget -cqP "resources" "http://www.unicode.org/Public/UNIDATA/UnicodeData.txt" "http://www.unicode.org/Public/UNIDATA/Blocks.txt"
-    execute ln -sf "$fc_dir/fc-lang" "resources/fc-lang"
-    execute make "-j$cpu_threads" full-ttf
-    build_done "$repo_name" "$version"
-fi
+# Download and install fonts
+download_fonts
 
 # Determine whether of not to install autotrace
 set_autotrace
@@ -898,9 +914,11 @@ if build "imagemagick" "$version"; then
                          --enable-hugepages \
                          --enable-legacy-support \
                          --enable-opencl \
-                         --with-dejavu-font-dir=/usr/share/fonts/truetype/dejavu \
                          --with-dmalloc \
-                         --with-fontpath=/usr/share/fonts \
+                         --with-fontpath=/usr/share/fonts/truetype \
+                         --with-dejavu-font-dir=/usr/share/fonts/truetype/dejavu \
+                         --with-gs-font-dir=/usr/share/fonts/ghostscript \
+                         --with-urw-base35-font-dir=/usr/share/fonts/type1/urw-base35 \
                          --with-fpx \
                          --with-gslib \
                          --with-gvc \
@@ -914,7 +932,6 @@ if build "imagemagick" "$version"; then
                          --with-quantum-depth=16 \
                          --with-rsvg \
                          --with-tcmalloc \
-                         --with-urw-base35-font-dir=/usr/share/fonts/type1/urw-base35 \
                          --with-utilities \
                          --with-autotrace \
                          CFLAGS="$CFLAGS -DCL_TARGET_OPENCL_VERSION=300" \
