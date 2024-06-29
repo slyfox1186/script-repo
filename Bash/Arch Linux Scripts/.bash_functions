@@ -201,31 +201,29 @@ mvf() {
     clear; ls -1AhFv --color --group-directories-first
 }
 
-##########################
-# TAKE OWNERSHIP COMMAND #
-##########################
+# TAKE OWNERSHIP COMMANDS
 
 toa() {
-    clear
-    sudo chown -R "$USER":wheel "$PWD"
+    sudo chown -R "$USER":"$USER" "$PWD"
     sudo chmod -R 744 "$PWD"
     clear; ls -1AvhF --color --group-directories-first
 }
 
-tod() {
-    local directory
-    clear
+town() {
+    local files
+    files=("$@")
 
-    if [ -z "$1" ]; then
-        read -p 'Enter the folder name/path: ' directory
-    else
-        directory="$1"
-    fi
-
-    sudo chown -R "$USER":wheel "$directory"
-    sudo chmod -R 744 "$directory"
-
-    clear; ls -1AvhF --color --group-directories-first
+    for file in "${files[@]}"; do
+        if [[ -e "$file" ]]; then
+            if sudo chmod 755 "$file" && sudo chown "$USER":"$USER" "$file"; then
+                echo "Successfully changed ownership and permissions of: $file"
+            else
+                echo "Failed to change ownership and permissions of: $file"
+            fi
+        else
+            echo "File does not exist: $file"
+        fi
+    done
 }
 
 #################
