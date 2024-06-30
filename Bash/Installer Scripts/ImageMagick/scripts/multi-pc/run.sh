@@ -92,12 +92,18 @@ if ! ssh $REMOTE_SSH "[ -f $PYTHON_ENV_REMOTE ]"; then
     ssh $REMOTE_SSH "python3 -m venv ~/python-venv/myenv && source ~/python-venv/myenv/bin/activate && pip install -r /path/to/requirements.txt" || { echo "Error: Failed to create the virtual environment on the remote machine."; exit 1; }
 fi
 
+# Ensure the scripts are in the local temporary directory
+if [[ ! -f "$LOCAL_TEMP_DIR/$OPTIMIZE_SCRIPT" || ! -f "$LOCAL_TEMP_DIR/$DISTRIBUTE_SCRIPT" ]]; then
+    echo "Error: Scripts not found in the temporary directory."
+    exit 1
+fi
+
 # Copy the scripts to the remote machine
-scp $LOCAL_TEMP_DIR/$OPTIMIZE_SCRIPT $REMOTE_SSH:$REMOTE_TEMP_DIR/
-scp $LOCAL_TEMP_DIR/$DISTRIBUTE_SCRIPT $REMOTE_SSH:$REMOTE_TEMP_DIR/
+scp "$LOCAL_TEMP_DIR/$OPTIMIZE_SCRIPT" "$REMOTE_SSH:$REMOTE_TEMP_DIR/"
+scp "$LOCAL_TEMP_DIR/$DISTRIBUTE_SCRIPT" "$REMOTE_SSH:$REMOTE_TEMP_DIR/"
 
 # Run the distribute_files.py script to distribute the files
-$PYTHON_ENV_LOCAL $LOCAL_TEMP_DIR/$DISTRIBUTE_SCRIPT "$IMAGE_DIR" "$REMOTE_TEMP_DIR" "$REMOTE_USER" "$REMOTE_IP"
+$PYTHON_ENV_LOCAL "$LOCAL_TEMP_DIR/$DISTRIBUTE_SCRIPT" "$IMAGE_DIR" "$REMOTE_TEMP_DIR" "$REMOTE_USER" "$REMOTE_IP"
 
 # Define the commands to run in parallel
 local_cmd="$PYTHON_ENV_LOCAL $LOCAL_TEMP_DIR/$OPTIMIZE_SCRIPT $OVERWRITE -d \"$IMAGE_DIR\" -t \"\$(nproc --all)\""
