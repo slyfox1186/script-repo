@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
-import argparse
-import multiprocessing
 import os
-import shutil
 import subprocess
 import sys
+import argparse
+import multiprocessing
+import shutil
 
 def get_remote_cpu_count(remote_user, remote_ip):
     try:
@@ -47,7 +47,7 @@ def distribute_files(image_dir, remote_dir, local_cpu_count, remote_cpu_count, r
     for file in remote_files:
         subprocess.run(["scp", file, f"{remote_user}@{remote_ip}:{remote_dir}"])
 
-def main(image_dir, remote_dir, remote_user, remote_ip, script_path):
+def main(image_dir, remote_dir, remote_user, remote_ip):
     # Get local CPU count
     local_cpu_count = multiprocessing.cpu_count()
     print(f"Local CPU count: {local_cpu_count}")
@@ -68,7 +68,6 @@ if __name__ == "__main__":
     parser.add_argument("remote_dir", help="Remote image directory")
     parser.add_argument("remote_user", help="Remote user")
     parser.add_argument("remote_ip", help="Remote IP address")
-    parser.add_argument("script_path", help="Path to the directory containing the script")
     args = parser.parse_args()
 
-    main(args.image_dir, args.remote_dir, args.remote_user, args.remote_ip, args.script_path)
+    main(args.image_dir, args.remote_dir, args.remote_user, args.remote_ip)
