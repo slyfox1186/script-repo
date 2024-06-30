@@ -74,7 +74,7 @@ remote_packages=("libjpeg62" "libjpeg62-dev")
 for pkg in "${remote_packages[@]}"; do
     if ! is_remote_package_installed "$pkg"; then
         echo "Installing $pkg on the remote machine..."
-        ssh $REMOTE_SSH "sudo apt-get update && sudo apt-get install -y $pkg"
+        ssh $REMOTE_SSH "sudo apt-get update && sudo apt-get install -y $pkg" || { echo "Error: Failed to install $pkg on the remote machine."; exit 1; }
     else
         echo "$pkg is already installed on the remote machine."
     fi
