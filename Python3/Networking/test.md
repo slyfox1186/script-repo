@@ -131,7 +131,7 @@ The script has been designed with several safety measures to ensure it is consid
 5. **No Persistent Changes (Optional)**: The script includes an optional `-n` or `--no-fstab` argument to prevent modifications to the `/etc/fstab` file for users who do not want persistent mounting.
 6. **User Feedback**: Provides clear and detailed feedback to the user during execution, ensuring a user-friendly experience.
 
-## Important Safety Inforamtion
+## Other Important Safety Information
 Remember to keep your system and shared folders secure by using strong passwords and only sharing with trusted networks and users.
 It is **ALWAYS** recommended to pass arguments instead of hardcoding sensitive information like usernames and passwords in a script.
 
