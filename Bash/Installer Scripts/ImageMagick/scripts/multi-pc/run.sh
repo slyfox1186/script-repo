@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Check if at least one argument is provided
 if [[ "$#" -eq 0 ]]; then
@@ -36,21 +36,19 @@ if [[ -z "$IMAGE_DIR" ]]; then
     exit 1
 fi
 
-REMOTE_DIR="/home/jman/tmp/image_processing/remote_pics"
 REMOTE_USER="jman"
 REMOTE_IP="192.168.50.25"
 REMOTE_SSH="$REMOTE_USER@$REMOTE_IP"
 OPTIMIZE_SCRIPT="optimize-jpg.py"
 DISTRIBUTE_SCRIPT="distribute_files.py"
-PYTHON_ENV_LOCAL="$HOME/python-venv/myenv/bin/python"
-PYTHON_ENV_REMOTE="/home/jman/python-venv/myenv/bin/python"
 
-# Ensure the remote directory exists
-ssh $REMOTE_SSH "mkdir -p $REMOTE_DIR"
+# Create random temporary directories
+LOCAL_TEMP_DIR=$(mktemp -d /tmp/imoww_local.XXXXXX)
+REMOTE_TEMP_DIR=$(ssh $REMOTE_SSH "mktemp -d /tmp/imoww_remote.XXXXXX")
 
 # Copy the scripts to the remote machine
-scp $OPTIMIZE_SCRIPT $REMOTE_SSH:/home/jman/tmp/image_processing/
-scp $DISTRIBUTE_SCRIPT $REMOTE_SSH:/home/jman/tmp/image_processing/
+scp $OPTIMIZE_SCRIPT $REMOTE_SSH:$REMOTE_TEMP_DIR/
+scp $DISTRIBUTE_SCRIPT $REMOTE_SSH:$REMOTE_TEMP_DIR/
 
 # Function to check if a package is installed on a machine
 is_package_installed() {
@@ -82,38 +80,41 @@ for pkg in "${packages[@]}"; do
 done
 
 # Check if the Python environment exists locally
-if [[ ! -f "$PYTHON_ENV_LOCAL" ]]; then
+if [[ ! -f "$HOME/python-venv/myenv/bin/python" ]]; then
     echo "Python environment not found locally. Creating virtual environment..."
     python3 -m venv ~/python-venv/myenv && source ~/python-venv/myenv/bin/activate && pip install -r requirements.txt || { echo "Error: Failed to create the virtual environment locally."; exit 1; }
 fi
 
 # Check if the Python environment exists on the remote machine
-if ! ssh $REMOTE_SSH "[ -f $PYTHON_ENV_REMOTE ]"; then
+if ! ssh $REMOTE_SSH "[ -f $HOME/python-venv/myenv/bin/python ]"; then
     echo "Python environment not found on the remote machine. Creating virtual environment..."
-    ssh $REMOTE_SSH "python3 -m venv ~/python-venv/myenv && source ~/python-venv/myenv/bin/activate && pip install -r /path/to/requirements.txt" || { echo "Error: Failed to create the virtual environment on the remote machine."; exit 1; }
+    if ! ssh $REMOTE_SSH "python3 -m venv ~/python-venv/myenv && source ~/python-venv/myenv/bin/activate && pip install -r /path/to/requirements.txt"; then
+        echo "Error: Failed to create the virtual environment on the remote machine."
+        exit 1
+    fi
 fi
 
 # Run the distribute_files.py script to distribute the files
-$PYTHON_ENV_LOCAL $DISTRIBUTE_SCRIPT "$IMAGE_DIR" "$REMOTE_DIR" "$REMOTE_USER" "$REMOTE_IP"
+$HOME/python-venv/myenv/bin/python $DISTRIBUTE_SCRIPT "$IMAGE_DIR" "$REMOTE_TEMP_DIR" "$REMOTE_USER" "$REMOTE_IP"
 
 # Define the commands to run in parallel
-local_cmd="$PYTHON_ENV_LOCAL $OPTIMIZE_SCRIPT $OVERWRITE -d \"$IMAGE_DIR\" -t \"\$(nproc --all)\""
-remote_cmd="ssh $REMOTE_SSH \"$PYTHON_ENV_REMOTE /home/jman/tmp/image_processing/$OPTIMIZE_SCRIPT $OVERWRITE -d $REMOTE_DIR -t \$(nproc)\""
+local_cmd="$HOME/python-venv/myenv/bin/python $OPTIMIZE_SCRIPT $OVERWRITE -d \"$IMAGE_DIR\" -t \"\$(nproc --all)\""
+remote_cmd="ssh $REMOTE_SSH \"$HOME/python-venv/myenv/bin/python $REMOTE_TEMP_DIR/$OPTIMIZE_SCRIPT $OVERWRITE -d $REMOTE_TEMP_DIR -t \$(nproc)\""
 
 # Run both commands in parallel
 parallel ::: "$local_cmd" "$remote_cmd"
 
 # Sync the processed files back from the remote machine to the local machine
-rsync -avz --remove-source-files "$REMOTE_SSH:$REMOTE_DIR/" "$IMAGE_DIR/"
-
-# Check if the rsync was successful
-if [ $? -eq 0 ]; then
+if rsync -avz --remove-source-files "$REMOTE_SSH:$REMOTE_TEMP_DIR/" "$IMAGE_DIR/"; then
     echo "Files successfully transferred back to local machine."
     
     # Delete any remaining files in the remote directory
-    ssh $REMOTE_SSH "find $REMOTE_DIR -type f -delete"
+    ssh $REMOTE_SSH "find $REMOTE_TEMP_DIR -type f -delete"
     
     echo "Cleaned up remote directory."
 else
     echo "Error: Failed to transfer files from remote machine."
 fi
+
+# Clean up local temporary directory
+rm -fr "$LOCAL_TEMP_DIR"
