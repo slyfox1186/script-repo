@@ -7,20 +7,22 @@ import os
 import shlex
 import subprocess
 import sys
-import threading
 import time
+import threading
+
+# Share names to mount
+SHARE_NAMES = [
+    "Documents",
+    "NP",
+    "Users",
+    "Youtube-Download"
+]
 
 # Hardcoded default values
 DEFAULT_IP_ADDRESS = ''
 DEFAULT_USERNAME = ''
 DEFAULT_PASSWORD = ''
-DEFAULT_FOLDER_PREFIX = ''
-
-# Share names to mount
-SHARE_NAMES = [
-    'Folder1',
-    'Folder2'
-]
+DEFAULT_FOLDER_PREFIX = 'Share_'
 
 # Argument parser setup
 parser = argparse.ArgumentParser(description='Shared Folder Manager')
@@ -28,6 +30,7 @@ parser.add_argument('-u', '--username', type=str, required=True, help='Username 
 parser.add_argument('-p', '--password', type=str, required=True, help='Password for the share')
 parser.add_argument('-ip', '--ip_address', type=str, required=True, help='IP address of the share')
 parser.add_argument('-fp', '--folder_prefix', type=str, help='Folder prefix for mounts (optional)')
+parser.add_argument('-n', '--no-fstab', action='store_true', help='Do not modify /etc/fstab for persistent mounting')
 
 args = parser.parse_args()
 
@@ -36,6 +39,7 @@ IP_ADDRESS = args.ip_address if args.ip_address else DEFAULT_IP_ADDRESS
 USERNAME = args.username if args.username else DEFAULT_USERNAME
 PASSWORD = args.password if args.password else DEFAULT_PASSWORD
 FOLDER_PREFIX = args.folder_prefix if args.folder_prefix else DEFAULT_FOLDER_PREFIX
+NO_FSTAB = args.no_fstab
 
 # Check if required values are set
 missing_values = []
@@ -75,10 +79,10 @@ def mount_share(share_name):
         run_command(f"umount -f {shlex.quote(mount_point)}")
     
     command = (
-        f"mount -t cifs //{IP_ADDRESS}/{share_name} {mount_point} "
-        f"-o username={USERNAME},password={PASSWORD},"
-        f"uid=$(id -u {os.environ['SUDO_USER']}),"
-        f"gid=$(id -g {os.environ['SUDO_USER']}),"
+        f"mount -t cifs //{IP_ADDRESS}/{share_name} {shlex.quote(mount_point)} "
+        f"-o username={shlex.quote(USERNAME)},password={shlex.quote(PASSWORD)},"
+        f"uid=$(id -u {shlex.quote(os.environ['SUDO_USER'])}),"
+        f"gid=$(id -g {shlex.quote(os.environ['SUDO_USER'])}),"
         f"file_mode=0777,dir_mode=0777,noperm,rw,vers=3.0"
     )
     stdout, stderr, returncode = run_command(command)
@@ -88,17 +92,18 @@ def mount_share(share_name):
     if not os.path.exists(symlink_path):
         os.symlink(mount_point, symlink_path)
     
-    fstab_entry = (
-        f"//{IP_ADDRESS}/{share_name} {mount_point} cifs "
-        f"username={USERNAME},password={PASSWORD},"
-        f"uid=$(id -u {os.environ['SUDO_USER']}),"
-        f"gid=$(id -g {os.environ['SUDO_USER']}),"
-        f"file_mode=0777,dir_mode=0777,noperm,rw,vers=3.0,_netdev 0 0"
-    )
-    with open('/etc/fstab', 'r+') as f:
-        content = f.read()
-        if mount_point not in content:
-            f.write(f"\n{fstab_entry}")
+    if not NO_FSTAB:
+        fstab_entry = (
+            f"//{IP_ADDRESS}/{share_name} {mount_point} cifs "
+            f"username={USERNAME},password={PASSWORD},"
+            f"uid=$(id -u {os.environ['SUDO_USER']}),"
+            f"gid=$(id -g {os.environ['SUDO_USER']}),"
+            f"file_mode=0777,dir_mode=0777,noperm,rw,vers=3.0,_netdev 0 0"
+        )
+        with open('/etc/fstab', 'r+') as f:
+            content = f.read()
+            if mount_point not in content:
+                f.write(f"\n{fstab_entry}")
     
     return f"Successfully mounted {share_name}"
 
@@ -115,13 +120,14 @@ def remove_mount(share_name):
     if os.path.exists(mount_point):
         os.rmdir(mount_point)
     
-    # Remove from fstab
-    with open('/etc/fstab', 'r') as f:
-        lines = f.readlines()
-    with open('/etc/fstab', 'w') as f:
-        for line in lines:
-            if mount_point not in line:
-                f.write(line)
+    if not NO_FSTAB:
+        # Remove from fstab
+        with open('/etc/fstab', 'r') as f:
+            lines = f.readlines()
+        with open('/etc/fstab', 'w') as f:
+            for line in lines:
+                if mount_point not in line:
+                    f.write(line)
     
     return f"Removed mount for {share_name}"
 
@@ -206,7 +212,7 @@ def main(stdscr):
         
         stdscr.addstr(len(SHARE_NAMES) + 2, 0, "Operation completed. Exiting...")
         stdscr.refresh()
-        time.sleep(2)  # Give the user a moment to see the completion message
+        time.sleep(2)  # Give user a moment to see the completion message
 
 if __name__ == "__main__":
     if os.geteuid() != 0:
