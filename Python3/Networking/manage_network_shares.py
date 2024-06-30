@@ -1,23 +1,56 @@
 #!/usr/bin/env python3
 
+import argparse
 import curses
 import logging
 import os
+import shlex
 import subprocess
 import sys
-import time
 import threading
+import time
 
-IP_ADDRESS = ''
-USERNAME = ''
-PASSWORD = ''
+# Hardcoded default values
+DEFAULT_IP_ADDRESS = ''
+DEFAULT_USERNAME = ''
+DEFAULT_PASSWORD = ''
+DEFAULT_FOLDER_PREFIX = ''
 
+# Share names to mount
 SHARE_NAMES = [
-    "Folder1",
-    "Folder2"
+    'Folder1',
+    'Folder2'
 ]
 
-logging.basicConfig(filename='/tmp/windows_share_manager.log', level=logging.DEBUG)
+# Argument parser setup
+parser = argparse.ArgumentParser(description='Shared Folder Manager')
+parser.add_argument('-u', '--username', type=str, required=True, help='Username for the share')
+parser.add_argument('-p', '--password', type=str, required=True, help='Password for the share')
+parser.add_argument('-ip', '--ip_address', type=str, required=True, help='IP address of the share')
+parser.add_argument('-fp', '--folder_prefix', type=str, help='Folder prefix for mounts (optional)')
+
+args = parser.parse_args()
+
+# Use the parsed arguments or default values
+IP_ADDRESS = args.ip_address if args.ip_address else DEFAULT_IP_ADDRESS
+USERNAME = args.username if args.username else DEFAULT_USERNAME
+PASSWORD = args.password if args.password else DEFAULT_PASSWORD
+FOLDER_PREFIX = args.folder_prefix if args.folder_prefix else DEFAULT_FOLDER_PREFIX
+
+# Check if required values are set
+missing_values = []
+if not IP_ADDRESS:
+    missing_values.append("IP_ADDRESS")
+if not USERNAME:
+    missing_values.append("USERNAME")
+if not PASSWORD:
+    missing_values.append("PASSWORD")
+
+if missing_values:
+    print(f"Error: Missing required values: {', '.join(missing_values)}")
+    sys.exit(1)
+
+logging.basicConfig(filename='/tmp/shared_folder_manager.log', level=logging.DEBUG)
 
 def run_command(command, timeout=30):
     logging.debug(f"Running command: {command}")
@@ -30,18 +63,24 @@ def run_command(command, timeout=30):
         return "", "Command timed out", 1
     except subprocess.CalledProcessError as e:
         logging.error(f"Command failed: {e}")
-        return "", str(e), e.returncode
+        return "", e.stderr.decode(), e.returncode
 
 def mount_share(share_name):
-    mount_point = f"/media/{os.environ['SUDO_USER']}/Win_{share_name}"
-    symlink_path = f"/home/{os.environ['SUDO_USER']}/Win_{share_name}"
+    mount_point = f"/media/{os.environ['SUDO_USER']}/{FOLDER_PREFIX}{share_name}"
+    symlink_path = f"/home/{os.environ['SUDO_USER']}/{FOLDER_PREFIX}{share_name}"
     
     os.makedirs(mount_point, exist_ok=True)
     
     if os.path.ismount(mount_point):
-        run_command(f"umount -f {mount_point}")
+        run_command(f"umount -f {shlex.quote(mount_point)}")
     
-    command = f"mount -t cifs //{IP_ADDRESS}/{share_name} {mount_point} -o username='{USERNAME}',password='{PASSWORD}',uid=$(id -u {os.environ['SUDO_USER']}),gid=$(id -g {os.environ['SUDO_USER']}),file_mode=0777,dir_mode=0777,noperm,rw,vers=3.0"
+    command = (
+        f"mount -t cifs //{IP_ADDRESS}/{share_name} {mount_point} "
+        f"-o username={USERNAME},password={PASSWORD},"
+        f"uid=$(id -u {os.environ['SUDO_USER']}),"
+        f"gid=$(id -g {os.environ['SUDO_USER']}),"
+        f"file_mode=0777,dir_mode=0777,noperm,rw,vers=3.0"
+    )
     stdout, stderr, returncode = run_command(command)
     if returncode != 0:
         return f"Failed to mount {share_name}: {stderr}"
@@ -49,7 +88,13 @@ def mount_share(share_name):
     if not os.path.exists(symlink_path):
         os.symlink(mount_point, symlink_path)
     
-    fstab_entry = f"//{IP_ADDRESS}/{share_name} {mount_point} cifs username={USERNAME},password={PASSWORD},uid=$(id -u {os.environ['SUDO_USER']}),gid=$(id -g {os.environ['SUDO_USER']}),file_mode=0777,dir_mode=0777,noperm,rw,vers=3.0,_netdev 0 0"
+    fstab_entry = (
+        f"//{IP_ADDRESS}/{share_name} {mount_point} cifs "
+        f"username={USERNAME},password={PASSWORD},"
+        f"uid=$(id -u {os.environ['SUDO_USER']}),"
+        f"gid=$(id -g {os.environ['SUDO_USER']}),"
+        f"file_mode=0777,dir_mode=0777,noperm,rw,vers=3.0,_netdev 0 0"
+    )
     with open('/etc/fstab', 'r+') as f:
         content = f.read()
         if mount_point not in content:
@@ -58,11 +103,11 @@ def mount_share(share_name):
     return f"Successfully mounted {share_name}"
 
 def remove_mount(share_name):
-    mount_point = f"/media/{os.environ['SUDO_USER']}/Win_{share_name}"
-    symlink_path = f"/home/{os.environ['SUDO_USER']}/Win_{share_name}"
+    mount_point = f"/media/{os.environ['SUDO_USER']}/{FOLDER_PREFIX}{share_name}"
+    symlink_path = f"/home/{os.environ['SUDO_USER']}/{FOLDER_PREFIX}{share_name}"
     
     if os.path.ismount(mount_point):
-        run_command(f"umount -f {mount_point}")
+        run_command(f"umount -f {shlex.quote(mount_point)}")
     
     if os.path.exists(symlink_path):
         os.remove(symlink_path)
@@ -80,29 +125,33 @@ def remove_mount(share_name):
     
     return f"Removed mount for {share_name}"
 
-def refresh_nautilus_async():
-    user = os.environ['SUDO_USER']
-    home = f"/home/{user}"
-    
-    bookmarks_file = f"{home}/.config/gtk-3.0/bookmarks"
-    if os.path.exists(bookmarks_file):
-        with open(bookmarks_file, 'r') as f:
-            bookmarks = f.readlines()
-        with open(bookmarks_file, 'w') as f:
-            for bookmark in bookmarks:
-                if not any(f"Win_{share}" in bookmark for share in SHARE_NAMES):
-                    f.write(bookmark)
+def detect_file_manager():
+    file_managers = ["nautilus", "dolphin", "nemo", "thunar", "pcmanfm"]
+    for fm in file_managers:
+        try:
+            output = subprocess.check_output(["pgrep", "-l", fm])
+            if fm in output.decode():
+                return fm
+        except subprocess.CalledProcessError:
+            continue
+    return None
 
-    run_command(f"rm -rf {home}/.local/share/gvfs-metadata/*")
-    run_command("killall nautilus")
-    time.sleep(1)
-    run_command(f"su {user} -c 'DISPLAY=:0 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u {user})/bus nautilus --no-desktop'", timeout=5)
+def refresh_file_manager_async():
+    file_manager = detect_file_manager()
+    user = os.environ['SUDO_USER']
+    if file_manager:
+        run_command(f"pkill {shlex.quote(file_manager)}")
+        time.sleep(1)
+    if file_manager:
+        run_command(f"su {shlex.quote(user)} -c 'DISPLAY=:0 {shlex.quote(file_manager)} --no-desktop & disown'", timeout=5)
+    else:
+        print("No file manager detected.")
 
 def main(stdscr):
     curses.curs_set(0)
     stdscr.clear()
 
-    stdscr.addstr(0, 0, "Windows Share Manager")
+    stdscr.addstr(0, 0, "Shared Folder Manager")
     stdscr.addstr(2, 0, "1. Add Mounts")
     stdscr.addstr(3, 0, "2. Remove Mounts")
     stdscr.addstr(4, 0, "3. Exit")
@@ -149,15 +198,15 @@ def main(stdscr):
                     result = remove_mount(share)
                 stdscr.addstr(i, 0, result)
 
-        stdscr.addstr(len(SHARE_NAMES) + 1, 0, "Refreshing Nautilus...")
+        stdscr.addstr(len(SHARE_NAMES) + 1, 0, "Refreshing file manager...")
         stdscr.refresh()
         
-        # Start Nautilus refresh in a separate thread
-        threading.Thread(target=refresh_nautilus_async, daemon=True).start()
+        # Start file manager refresh in a separate thread
+        threading.Thread(target=refresh_file_manager_async, daemon=True).start()
         
         stdscr.addstr(len(SHARE_NAMES) + 2, 0, "Operation completed. Exiting...")
         stdscr.refresh()
-        time.sleep(2)  # Give user a moment to see the completion message
+        time.sleep(2)  # Give the user a moment to see the completion message
 
 if __name__ == "__main__":
     if os.geteuid() != 0:
@@ -168,4 +217,4 @@ if __name__ == "__main__":
         curses.wrapper(main)
     except Exception as e:
         logging.exception("An error occurred")
-        print(f"An error occurred. Please check the log file at /tmp/windows_share_manager.log")
+        print(f"An error occurred. Please check the log file at /tmp/shared_folder_manager.log")
