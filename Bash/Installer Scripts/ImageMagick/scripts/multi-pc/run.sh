@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
 # Check if at least one argument is provided
 if [[ "$#" -eq 0 ]]; then
@@ -41,14 +41,12 @@ REMOTE_IP="192.168.50.25"
 REMOTE_SSH="$REMOTE_USER@$REMOTE_IP"
 OPTIMIZE_SCRIPT="optimize-jpg.py"
 DISTRIBUTE_SCRIPT="distribute_files.py"
+PYTHON_ENV_LOCAL="$HOME/python-venv/myenv/bin/python"
+PYTHON_ENV_REMOTE="/home/jman/python-venv/myenv/bin/python"
 
 # Create random temporary directories
 LOCAL_TEMP_DIR=$(mktemp -d /tmp/imoww_local.XXXXXX)
 REMOTE_TEMP_DIR=$(ssh $REMOTE_SSH "mktemp -d /tmp/imoww_remote.XXXXXX")
-
-# Copy the scripts to the remote machine
-scp $OPTIMIZE_SCRIPT $REMOTE_SSH:$REMOTE_TEMP_DIR/
-scp $DISTRIBUTE_SCRIPT $REMOTE_SSH:$REMOTE_TEMP_DIR/
 
 # Function to check if a package is installed on a machine
 is_package_installed() {
@@ -61,9 +59,10 @@ is_remote_package_installed() {
 }
 
 # Check and install required packages locally
-packages=("libjpeg62-turbo" "libjpeg62-turbo-dev")
-for pkg in "${packages[@]}"; do
+local_packages=("libjpeg62-turbo" "libjpeg62-turbo-dev")
+for pkg in "${local_packages[@]}"; do
     if ! is_package_installed "$pkg"; then
+        echo "Installing $pkg locally..."
         sudo apt-get update && sudo apt-get install -y "$pkg"
     else
         echo "$pkg is already installed locally."
@@ -71,8 +70,10 @@ for pkg in "${packages[@]}"; do
 done
 
 # Check and install required packages on the remote machine
-for pkg in "${packages[@]}"; do
+remote_packages=("libjpeg62" "libjpeg62-dev")
+for pkg in "${remote_packages[@]}"; do
     if ! is_remote_package_installed "$pkg"; then
+        echo "Installing $pkg on the remote machine..."
         ssh $REMOTE_SSH "sudo apt-get update && sudo apt-get install -y $pkg"
     else
         echo "$pkg is already installed on the remote machine."
@@ -80,32 +81,36 @@ for pkg in "${packages[@]}"; do
 done
 
 # Check if the Python environment exists locally
-if [[ ! -f "$HOME/python-venv/myenv/bin/python" ]]; then
+if [[ ! -f "$PYTHON_ENV_LOCAL" ]]; then
     echo "Python environment not found locally. Creating virtual environment..."
     python3 -m venv ~/python-venv/myenv && source ~/python-venv/myenv/bin/activate && pip install -r requirements.txt || { echo "Error: Failed to create the virtual environment locally."; exit 1; }
 fi
 
 # Check if the Python environment exists on the remote machine
-if ! ssh $REMOTE_SSH "[ -f $HOME/python-venv/myenv/bin/python ]"; then
+if ! ssh $REMOTE_SSH "[ -f $PYTHON_ENV_REMOTE ]"; then
     echo "Python environment not found on the remote machine. Creating virtual environment..."
-    if ! ssh $REMOTE_SSH "python3 -m venv ~/python-venv/myenv && source ~/python-venv/myenv/bin/activate && pip install -r /path/to/requirements.txt"; then
-        echo "Error: Failed to create the virtual environment on the remote machine."
-        exit 1
-    fi
+    ssh $REMOTE_SSH "python3 -m venv ~/python-venv/myenv && source ~/python-venv/myenv/bin/activate && pip install -r /path/to/requirements.txt" || { echo "Error: Failed to create the virtual environment on the remote machine."; exit 1; }
 fi
 
+# Copy the scripts to the remote machine
+scp $LOCAL_TEMP_DIR/$OPTIMIZE_SCRIPT $REMOTE_SSH:$REMOTE_TEMP_DIR/
+scp $LOCAL_TEMP_DIR/$DISTRIBUTE_SCRIPT $REMOTE_SSH:$REMOTE_TEMP_DIR/
+
 # Run the distribute_files.py script to distribute the files
-$HOME/python-venv/myenv/bin/python $DISTRIBUTE_SCRIPT "$IMAGE_DIR" "$REMOTE_TEMP_DIR" "$REMOTE_USER" "$REMOTE_IP"
+$PYTHON_ENV_LOCAL $LOCAL_TEMP_DIR/$DISTRIBUTE_SCRIPT "$IMAGE_DIR" "$REMOTE_TEMP_DIR" "$REMOTE_USER" "$REMOTE_IP"
 
 # Define the commands to run in parallel
-local_cmd="$HOME/python-venv/myenv/bin/python $OPTIMIZE_SCRIPT $OVERWRITE -d \"$IMAGE_DIR\" -t \"\$(nproc --all)\""
-remote_cmd="ssh $REMOTE_SSH \"$HOME/python-venv/myenv/bin/python $REMOTE_TEMP_DIR/$OPTIMIZE_SCRIPT $OVERWRITE -d $REMOTE_TEMP_DIR -t \$(nproc)\""
+local_cmd="$PYTHON_ENV_LOCAL $LOCAL_TEMP_DIR/$OPTIMIZE_SCRIPT $OVERWRITE -d \"$IMAGE_DIR\" -t \"\$(nproc --all)\""
+remote_cmd="ssh $REMOTE_SSH \"$PYTHON_ENV_REMOTE $REMOTE_TEMP_DIR/$OPTIMIZE_SCRIPT $OVERWRITE -d $REMOTE_TEMP_DIR -t \$(nproc)\""
 
 # Run both commands in parallel
 parallel ::: "$local_cmd" "$remote_cmd"
 
 # Sync the processed files back from the remote machine to the local machine
-if rsync -avz --remove-source-files "$REMOTE_SSH:$REMOTE_TEMP_DIR/" "$IMAGE_DIR/"; then
+rsync -avz --remove-source-files "$REMOTE_SSH:$REMOTE_TEMP_DIR/" "$IMAGE_DIR/"
+
+# Check if the rsync was successful
+if [ $? -eq 0 ]; then
     echo "Files successfully transferred back to local machine."
     
     # Delete any remaining files in the remote directory
@@ -117,4 +122,4 @@ else
 fi
 
 # Clean up local temporary directory
-rm -fr "$LOCAL_TEMP_DIR"
+rm -rf "$LOCAL_TEMP_DIR"
