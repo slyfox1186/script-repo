@@ -58,26 +58,40 @@ is_remote_package_installed() {
     ssh $REMOTE_SSH "dpkg-query -W -f='\${Status}' $1 2>/dev/null | grep -q 'ok installed'"
 }
 
+# Function to safely update and install packages locally
+install_local_package() {
+    local package=$1
+    if ! is_package_installed "$package"; then
+        echo "Installing $package locally..."
+        sudo apt-get update -o Acquire::Retries=3 -o Acquire::http::Timeout="10" || { echo "Warning: Failed to update repositories."; }
+        sudo apt-get install -y "$package" || { echo "Error: Failed to install $package locally."; return 1; }
+    else
+        echo "$package is already installed locally."
+    fi
+}
+
+# Function to safely update and install packages on the remote machine
+install_remote_package() {
+    local package=$1
+    if ! is_remote_package_installed "$package"; then
+        echo "Installing $package on the remote machine..."
+        ssh $REMOTE_SSH "sudo apt-get update -o Acquire::Retries=3 -o Acquire::http::Timeout='10'" || { echo "Warning: Failed to update repositories on the remote machine."; }
+        ssh $REMOTE_SSH "sudo apt-get install -y $package" || { echo "Error: Failed to install $package on the remote machine."; return 1; }
+    else
+        echo "$package is already installed on the remote machine."
+    fi
+}
+
 # Check and install required packages locally
 local_packages=("libjpeg62-turbo" "libjpeg62-turbo-dev")
 for pkg in "${local_packages[@]}"; do
-    if ! is_package_installed "$pkg"; then
-        echo "Installing $pkg locally..."
-        sudo apt-get update && sudo apt-get install -y "$pkg"
-    else
-        echo "$pkg is already installed locally."
-    fi
+    install_local_package "$pkg" || exit 1
 done
 
 # Check and install required packages on the remote machine
 remote_packages=("libjpeg62" "libjpeg62-dev")
 for pkg in "${remote_packages[@]}"; do
-    if ! is_remote_package_installed "$pkg"; then
-        echo "Installing $pkg on the remote machine..."
-        ssh $REMOTE_SSH "sudo apt-get update && sudo apt-get install -y $pkg" || { echo "Error: Failed to install $pkg on the remote machine."; exit 1; }
-    else
-        echo "$pkg is already installed on the remote machine."
-    fi
+    install_remote_package "$pkg" || exit 1
 done
 
 # Check if the Python environment exists locally
