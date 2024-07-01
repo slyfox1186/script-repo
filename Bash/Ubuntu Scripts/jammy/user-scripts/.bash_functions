@@ -522,6 +522,7 @@ imow() {
         fi
     fi
     sudo chmod +x "optimize-jpg.py"
+    source "$HOME/python-venv/myenv/bin/activate"
     LD_PRELOAD="libtcmalloc.so"
     if ! python3 optimize-jpg.py -o; then
         printf "\n%s\n" "Failed to optimize images."
