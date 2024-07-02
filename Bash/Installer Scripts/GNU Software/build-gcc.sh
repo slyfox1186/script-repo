@@ -342,7 +342,7 @@ build_gcc() {
         "--enable-threads=posix"
         "--libdir=$install_dir/lib"
         "--libexecdir=$install_dir/libexec"
-        "--program-prefix=$pc_type"
+        "--program-prefix=$pc_type-"
         "--program-suffix=-$short_version"
         "--with-abi=m64"
         "--with-build-config=bootstrap-lto-lean"
