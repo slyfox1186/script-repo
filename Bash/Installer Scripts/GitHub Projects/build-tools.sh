@@ -378,7 +378,7 @@ if [[ "$current_go_version" != "$latest_go_version" ]]; then
         download "https://go.dev/dl/go$latest_go_version.linux-amd64.tar.gz" "golang-$latest_go_version.tar.gz"
         sudo rm -rf "/usr/local/programs/golang-$latest_go_version"
         sudo mkdir -p "/usr/local/programs/golang-$latest_go_version"
-        sudo tar -C "/usr/local/programs/golang-$latest_go_version" --strip-components=1 -xzf "$cwd/golang-$latest_go_version.tar.gz"
+        sudo tar -C "/usr/local/programs/golang-$latest_go_version" --strip-components=1 -zxf "$cwd/golang-$latest_go_version.tar.gz"
         build_done "golang" "$latest_go_version"
         add_go_path_to_bashrc "$latest_go_version"
         # Source .bashrc to apply changes immediately
