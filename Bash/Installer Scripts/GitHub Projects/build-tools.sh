@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2162,SC2317
+set -x
 
 ##  GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-tools.sh
 ##  Purpose: Install the latest versions of: CMake, Ninja, Meson, & Golang
-##  Updated: 07.02.24
-##  Script Version: 3.3
+##  Updated: 06.08.24
+##  Script Version: 3.2
 
 if [[ "$EUID" -eq 0 ]]; then
     echo "You must run this script without root or sudo."
@@ -34,7 +35,7 @@ fail() {
     exit 1
 }
 
-script_ver="3.3"
+script_ver=3.2
 cwd="$PWD/build-tools-script"
 latest=false
 debug=OFF
@@ -168,19 +169,7 @@ download() {
     target_file="$dl_path/$dl_file"
     target_dir="$dl_path/$output_dir"
     
-    # Check if the URL contains a release candidate
-    if echo "$dl_url" | grep -qiP 'rc\d*'; then
-        log "Release candidate detected. Searching for stable version..."
-        stable_version=$(echo "$dl_url" | grep -oP '\d+\.\d+\.\d+(?=rc)' | head -n1)
-        if [[ -n "$stable_version" ]]; then
-            dl_url=$(echo "$dl_url" | sed "s/\d\+\.\d\+\.\d\+rc\d*/$stable_version/")
-            dl_file=$(echo "$dl_file" | sed "s/\d\+\.\d\+\.\d\+rc\d*/$stable_version/")
-            log "Using stable version: $stable_version"
-        else
-            fail "Unable to find a stable version. Exiting."
-        fi
-    fi
-    
+    # Remove the RC detection part as it's causing false positives
     if [[ -f "$target_file" ]]; then
         warn "The file $dl_file is already downloaded."
     else
@@ -327,10 +316,10 @@ log "Meson: $current_meson_version"
 log "GoLang: $current_go_version"
 
 # Fetch latest versions dynamically
-latest_cmake_version=$(curl -fsS "https://github.com/Kitware/CMake/tags" | grep -oP '\/tag\/v\K\d+\.\d+\.\d+(?!-rc)' | sort -ruV | head -n1)
-latest_ninja_version=$(curl -fsS "https://github.com/ninja-build/ninja/tags" | grep -oP '\/tag\/v\K\d+\.\d+\.\d+(?!-rc)' | sort -ruV | head -n1)
-latest_meson_version=$(curl -fsS "https://github.com/mesonbuild/meson/tags" | grep -oP '\/tag\/\K\d+\.\d+\.\d+(?!rc)' | sort -ruV | head -n1)
-latest_go_version=$(curl -fsS https://go.dev/dl/ | grep -oP 'go\K\d+\.\d+\.\d+(?!rc)' | sort -ruV | head -n1)
+latest_cmake_version=$(curl -fsS "https://github.com/Kitware/CMake/tags" | grep -oP '\/tag\/v\K\d+\.\d+\.\d+(?!.*rc)' | sort -ruV | head -n1)
+latest_ninja_version=$(curl -fsS "https://github.com/ninja-build/ninja/tags" | grep -oP '\/tag\/v\K\d+\.\d+\.\d+(?!.*rc)' | sort -ruV | head -n1)
+latest_meson_version=$(curl -fsS "https://github.com/mesonbuild/meson/tags" | grep -oP '\/tag\/\K\d+\.\d+\.\d+(?!.*rc)' | sort -ruV | head -n1)
+latest_go_version=$(curl -fsS https://go.dev/dl/ | grep -oP 'go\K\d+\.\d+\.\d+(?!.*rc)' | sort -ruV | head -n1)
 
 echo
 log "Latest versions:"
