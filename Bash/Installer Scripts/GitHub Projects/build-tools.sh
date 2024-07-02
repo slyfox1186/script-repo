@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2162,SC2317
-set -x
 
 ##  GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-tools.sh
 ##  Purpose: Install the latest versions of: CMake, Ninja, Meson, & Golang
-##  Updated: 06.08.24
-##  Script Version: 3.2
+##  Updated: 07.02.24
+##  Script Version: 3.3
 
 if [[ "$EUID" -eq 0 ]]; then
     echo "You must run this script without root or sudo."
@@ -35,7 +34,7 @@ fail() {
     exit 1
 }
 
-script_ver=3.2
+script_ver=3.3
 cwd="$PWD/build-tools-script"
 latest=false
 debug=OFF
@@ -125,16 +124,16 @@ show_versions() {
     log "The updated versions are:"
     echo
     echo "CMake:  $(cmake --version | awk '{print $3}' | head -n1)"
-    echo "Ninja:  $(ninja --version)"  
+    echo "Ninja:  $(ninja --version)"
     echo "Meson:  $(meson --version)"
-    
+
     if [[ -n "$GOROOT" && -x "$GOROOT/bin/go" ]]; then
         echo "GoLang: $("$GOROOT/bin/go" version | awk '{print $3}' | sed 's/go//')"
     else
         echo "GoLang: Not found or GOROOT not set correctly"
         echo "GOROOT: $GOROOT"
         echo "PATH: $PATH"
-        
+
         # Check if go binary exists in the expected location
         if [[ -x "$GOROOT/bin/go" ]]; then
             echo "Go binary exists at $GOROOT/bin/go"
@@ -152,10 +151,10 @@ execute() {
             notify-send -t 5000 "Failed to execute: $*" 2>/dev/null
             fail "Failed to execute: $*"
         fi
-    else 
+    else
         if ! output="$("$@" 2>&1)"; then
             notify-send -t 5000 "Failed to execute: $*" 2>/dev/null
-            fail "Failed to execute: $*"  
+            fail "Failed to execute: $*"
         fi
     fi
 }
@@ -168,8 +167,7 @@ download() {
     output_dir="${3:-${output_dir%.*}}"
     target_file="$dl_path/$dl_file"
     target_dir="$dl_path/$output_dir"
-    
-    # Remove the RC detection part as it's causing false positives
+
     if [[ -f "$target_file" ]]; then
         warn "The file $dl_file is already downloaded."
     else
@@ -210,10 +208,10 @@ build() {
             return 0
         else
             echo "$1 is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove $cwd/$1.done lockfile."
-            return 1    
+            return 1
         fi
     fi
-    return 0 
+    return 0
 }
 
 build_done() {
@@ -262,10 +260,8 @@ apt_pkgs() {
 }
 
 search_for_golang_version() {
-    if [[ -x "$GOROOT/bin/go" ]]; then
-        "$GOROOT/bin/go" version | awk '{print $3}' | sed 's/go//'
-    elif command -v go >/dev/null 2>&1; then
-        go version | awk '{print $3}' | sed 's/go//'
+    if command -v go >/dev/null 2>&1; then
+        go version | grep -oP '[\d\.]+' | head -n1
     else
         echo "Not installed"
     fi
@@ -279,7 +275,7 @@ add_go_path_to_bashrc() {
     local version="$1"
     local bashrc="$HOME/.bashrc"
     local go_root="/usr/local/programs/golang-$version"
-    
+
     log "Updating GOROOT and PATH in .bashrc file..."
     sed -i '/^export GOROOT=.*$/d' "$bashrc"
     sed -i '/^export PATH=.*\$GOROOT\/bin.*$/d' "$bashrc"
@@ -295,7 +291,7 @@ add_go_path_to_bashrc() {
 
 if [[ -f /etc/os-release ]]; then
     source /etc/os-release
-    OS=$(get_first_word "$NAME")  
+    OS=$(get_first_word "$NAME")
 elif lsb_release -d &>/dev/null; then
     OS=$(lsb_release -d | awk '{print $2}')
 else
@@ -336,7 +332,8 @@ if [[ "$current_cmake_version" != "$latest_cmake_version" ]]; then
         execute ./bootstrap --prefix="/usr/local/programs/$prog_cmake-$latest_cmake_version" --enable-ccache --parallel="$cpu_threads" --qt-gui
         execute make "-j$cpu_threads"
         execute sudo make install
-        execute sudo ln -sf "/usr/local/programs/$prog_cmake-$latest_cmake_version/bin"/{cmake,cmake-gui} "/usr/local/bin/"
+        sudo ln -sf "/usr/local/programs/$prog_cmake-$latest_cmake_version/bin/cmake" "/usr/local/bin/cmake"
+        sudo ln -sf "/usr/local/programs/$prog_cmake-$latest_cmake_version/bin/cmake-gui" "/usr/local/bin/cmake-gui"
         ld_linker_path "$prog_cmake" "/usr/local/programs/$prog_cmake-$latest_cmake_version"
         build_done "cmake" "$latest_cmake_version"
     fi
@@ -354,7 +351,7 @@ if [[ "$current_ninja_version" != "$latest_ninja_version" ]]; then
                       -Wno-dev
         execute make "-j$cpu_threads" -C build
         execute sudo make -C build install
-        execute sudo ln -sf "/usr/local/programs/$prog_ninja-$latest_ninja_version/bin/$prog_ninja" "/usr/local/bin/"
+        sudo ln -sf "/usr/local/programs/$prog_ninja-$latest_ninja_version/bin/ninja" "/usr/local/bin/ninja"
         ld_linker_path "$prog_ninja" "/usr/local/programs/$prog_ninja-$latest_ninja_version"
         build_done "ninja" "$latest_ninja_version"
     fi
@@ -367,6 +364,7 @@ if [[ "$current_meson_version" != "$latest_meson_version" ]]; then
         download "https://github.com/mesonbuild/meson/archive/refs/tags/$latest_meson_version.tar.gz" "meson-$latest_meson_version.tar.gz"
         execute python3 setup.py build
         execute sudo python3 setup.py install --prefix=/usr/local
+        sudo ln -sf "/usr/local/lib/python3.10/site-packages/meson" "/usr/local/bin/meson"
         build_done "meson" "$latest_meson_version"
     fi
 else
@@ -378,7 +376,8 @@ if [[ "$current_go_version" != "$latest_go_version" ]]; then
         download "https://go.dev/dl/go$latest_go_version.linux-amd64.tar.gz" "golang-$latest_go_version.tar.gz"
         sudo rm -rf "/usr/local/programs/golang-$latest_go_version"
         sudo mkdir -p "/usr/local/programs/golang-$latest_go_version"
-        sudo tar -C "/usr/local/programs/golang-$latest_go_version" --strip-components=1 -zxf "$cwd/golang-$latest_go_version.tar.gz"
+        sudo tar -C "/usr/local/programs/golang-$latest_go_version" --strip-components=1 -xzf "$cwd/golang-$latest_go_version.tar.gz"
+        sudo ln -sf "/usr/local/programs/golang-$latest_go_version/bin/go" "/usr/local/bin/go"
         build_done "golang" "$latest_go_version"
         add_go_path_to_bashrc "$latest_go_version"
         # Source .bashrc to apply changes immediately
