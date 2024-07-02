@@ -3,8 +3,8 @@
 
 ##  GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-tools.sh
 ##  Purpose: Install the latest versions of: CMake, Ninja, Meson, & Golang
-##  Updated: 06.08.24
-##  Script Version: 3.2
+##  Updated: 07.02.24
+##  Script Version: 3.3
 
 if [[ "$EUID" -eq 0 ]]; then
     echo "You must run this script without root or sudo."
@@ -34,7 +34,7 @@ fail() {
     exit 1
 }
 
-script_ver=3.2
+script_ver="3.3"
 cwd="$PWD/build-tools-script"
 latest=false
 debug=OFF
@@ -51,7 +51,7 @@ set_compiler_flags() {
     CFLAGS="-O2 -pipe -march=native"
     CXXFLAGS="$CFLAGS"
     CPPFLAGS="-I/usr/local/include -I/usr/include"
-    LDFLAGS="-L/usr/local/lib -Wl,-rpath,/usr/local/lib"
+    LDFLAGS="-L/usr/local/lib -Wl,-rpath,/usr/local/programs/lib"
     export CC CXX CFLAGS CXXFLAGS CPPFLAGS LDFLAGS
 }
 set_compiler_flags
@@ -88,15 +88,60 @@ cleanup() {
     esac
 }
 
+verify_go_installation() {
+    local go_path="$GOROOT/bin/go"
+    if [[ -x "$go_path" ]]; then
+        log "Go binary found at $go_path"
+        log "Go version: $("$go_path" version)"
+    else
+        warn "Go binary not found at $go_path"
+        warn "Checking for Go in PATH..."
+        if command -v go >/dev/null 2>&1; then
+            log "Go found in PATH"
+            log "Go version: $(go version)"
+            log "Go path: $(which go)"
+        else
+            warn "Go not found in PATH"
+        fi
+    fi
+}
+
+ensure_goroot_set() {
+    if [[ -z "$GOROOT" ]]; then
+        local go_version=$(ls -d /usr/local/programs/golang-* 2>/dev/null | sort -V | tail -n1)
+        if [[ -n "$go_version" ]]; then
+            export GOROOT="$go_version"
+            export PATH="$PATH:$GOROOT/bin"
+            log "GOROOT set to $GOROOT"
+        else
+            warn "Unable to find Go installation directory"
+        fi
+    fi
+}
+
 show_versions() {
-    source "$HOME/.bashrc"
     echo
     log "The updated versions are:"
     echo
     echo "CMake:  $(cmake --version | awk '{print $3}' | head -n1)"
     echo "Ninja:  $(ninja --version)"  
     echo "Meson:  $(meson --version)"
-    echo "GoLang: $(go version | grep -oP '[0-9.]+ | xargs -n1')"
+    
+    if [[ -n "$GOROOT" && -x "$GOROOT/bin/go" ]]; then
+        echo "GoLang: $("$GOROOT/bin/go" version | awk '{print $3}' | sed 's/go//')"
+    else
+        echo "GoLang: Not found or GOROOT not set correctly"
+        echo "GOROOT: $GOROOT"
+        echo "PATH: $PATH"
+        
+        # Check if go binary exists in the expected location
+        if [[ -x "$GOROOT/bin/go" ]]; then
+            echo "Go binary exists at $GOROOT/bin/go"
+            echo "Go version: $("$GOROOT/bin/go" version)"
+        else
+            echo "Go binary not found at $GOROOT/bin/go"
+        fi
+    fi
 }
 
 execute() {
@@ -122,6 +167,19 @@ download() {
     output_dir="${3:-${output_dir%.*}}"
     target_file="$dl_path/$dl_file"
     target_dir="$dl_path/$output_dir"
+    
+    # Check if the URL contains a release candidate
+    if echo "$dl_url" | grep -qiP 'rc\d*'; then
+        log "Release candidate detected. Searching for stable version..."
+        stable_version=$(echo "$dl_url" | grep -oP '\d+\.\d+\.\d+(?=rc)' | head -n1)
+        if [[ -n "$stable_version" ]]; then
+            dl_url=$(echo "$dl_url" | sed "s/\d\+\.\d\+\.\d\+rc\d*/$stable_version/")
+            dl_file=$(echo "$dl_file" | sed "s/\d\+\.\d\+\.\d\+rc\d*/$stable_version/")
+            log "Using stable version: $stable_version"
+        else
+            fail "Unable to find a stable version. Exiting."
+        fi
+    fi
     
     if [[ -f "$target_file" ]]; then
         warn "The file $dl_file is already downloaded."
@@ -215,12 +273,13 @@ apt_pkgs() {
 }
 
 search_for_golang_version() {
-    current_go_version=$(
-                         curl -fsS "https://go.dev/dl/" | grep -oP 'go[0-9]+\.[0-9]+\.[0-9]+\.linux-amd64.tar.gz' |
-                         sort -rV | head -n1 | awk -F'.' '{print $1"."$2"."$3}' | sed 's/go//g' |
-                         sed 's/.linux-amd64.tar.gz//g'
-                    )
-    echo "$current_go_version"
+    if [[ -x "$GOROOT/bin/go" ]]; then
+        "$GOROOT/bin/go" version | awk '{print $3}' | sed 's/go//'
+    elif command -v go >/dev/null 2>&1; then
+        go version | awk '{print $3}' | sed 's/go//'
+    else
+        echo "Not installed"
+    fi
 }
 
 get_first_word() {
@@ -230,23 +289,19 @@ get_first_word() {
 add_go_path_to_bashrc() {
     local version="$1"
     local bashrc="$HOME/.bashrc"
+    local go_root="/usr/local/programs/golang-$version"
     
     log "Updating GOROOT and PATH in .bashrc file..."
-    sed -i '/^GOROOT=.*$/d' "$bashrc"
-    sed -i '/^export GOROOT$/d' "$bashrc"
-    sed -i '/^PATH=.*\$GOROOT\/bin.*$/d' "$bashrc"
-    sed -i '/^export PATH$/d' "$bashrc"
+    sed -i '/^export GOROOT=.*$/d' "$bashrc"
+    sed -i '/^export PATH=.*\$GOROOT\/bin.*$/d' "$bashrc"
     echo "" >> "$bashrc"
-    echo "GOROOT=\"/usr/local/golang-$version\"" >> "$bashrc"
-    echo "export GOROOT" >> "$bashrc"
-    echo "PATH=\"\$PATH:\$GOROOT/bin\"" >> "$bashrc"
-    echo "export PATH" >> "$bashrc"
+    echo "export GOROOT=\"$go_root\"" >> "$bashrc"
+    echo "export PATH=\"\$PATH:\$GOROOT/bin\"" >> "$bashrc"
     log "GOROOT and PATH updated in .bashrc successfully."
 
-    # To show the current go version while running this script we must export the GOROOT and PATH variables inside the script.
-    export GOROOT
-    PATH="$GOROOT:$PATH"
-    export PATH
+    # Set GOROOT and update PATH for the current session
+    export GOROOT="$go_root"
+    export PATH="$PATH:$GOROOT/bin"
 }
 
 if [[ -f /etc/os-release ]]; then
@@ -272,10 +327,10 @@ log "Meson: $current_meson_version"
 log "GoLang: $current_go_version"
 
 # Fetch latest versions dynamically
-latest_cmake_version=$(curl -fsS "https://github.com/Kitware/CMake/tags" | grep -oP '\/tag\/v\K\d\.\d+\.\d"' | sed 's/"//g' | sort -ruV | head -n1)
-latest_ninja_version=$(curl -fsS "https://github.com/ninja-build/ninja/tags" | grep -oP '\/tag\/v\K\d\.\d+\.\d' | sed 's/"//g' | sort -ruV | head -n1)
-latest_meson_version=$(curl -fsS "https://github.com/mesonbuild/meson/tags" | grep -oP '\/tag\/\K\d\.\d+\.\d' | sed 's/"//g' | sort -ruV | head -n1)
-latest_go_version=$(curl -fsS https://go.dev/dl/ | grep -oP 'go\K[0-9]+\.[0-9]+\.[0-9]+' | sort -rV | uniq | head -n1)
+latest_cmake_version=$(curl -fsS "https://github.com/Kitware/CMake/tags" | grep -oP '\/tag\/v\K\d+\.\d+\.\d+(?!-rc)' | sort -ruV | head -n1)
+latest_ninja_version=$(curl -fsS "https://github.com/ninja-build/ninja/tags" | grep -oP '\/tag\/v\K\d+\.\d+\.\d+(?!-rc)' | sort -ruV | head -n1)
+latest_meson_version=$(curl -fsS "https://github.com/mesonbuild/meson/tags" | grep -oP '\/tag\/\K\d+\.\d+\.\d+(?!rc)' | sort -ruV | head -n1)
+latest_go_version=$(curl -fsS https://go.dev/dl/ | grep -oP 'go\K\d+\.\d+\.\d+(?!rc)' | sort -ruV | head -n1)
 
 echo
 log "Latest versions:"
@@ -289,11 +344,11 @@ if [[ "$current_cmake_version" != "$latest_cmake_version" ]]; then
     if build "cmake" "$latest_cmake_version"; then
         prog_cmake="cmake"
         download "https://github.com/Kitware/CMake/archive/refs/tags/v$latest_cmake_version.tar.gz" "$prog_cmake-$latest_cmake_version.tar.gz"
-        execute ./bootstrap --prefix="/usr/local/$prog_cmake-$latest_cmake_version" --enable-ccache --parallel="$cpu_threads" --qt-gui
+        execute ./bootstrap --prefix="/usr/local/programs/$prog_cmake-$latest_cmake_version" --enable-ccache --parallel="$cpu_threads" --qt-gui
         execute make "-j$cpu_threads"
         execute sudo make install
-        execute sudo ln -sf "/usr/local/$prog_cmake-$latest_cmake_version/bin"/{cmake,cmake-gui} "/usr/local/bin/"
-        ld_linker_path "$prog_cmake" "/usr/local/$prog_cmake-$latest_cmake_version"
+        execute sudo ln -sf "/usr/local/programs/$prog_cmake-$latest_cmake_version/bin"/{cmake,cmake-gui} "/usr/local/bin/"
+        ld_linker_path "$prog_cmake" "/usr/local/programs/$prog_cmake-$latest_cmake_version"
         build_done "cmake" "$latest_cmake_version"
     fi
 else
@@ -305,13 +360,13 @@ if [[ "$current_ninja_version" != "$latest_ninja_version" ]]; then
         prog_ninja="ninja"
         download "https://github.com/ninja-build/ninja/archive/refs/tags/v$latest_ninja_version.tar.gz" "$prog_ninja-$latest_ninja_version.tar.gz"
         re2c_path="$(command -v re2c)"
-        execute cmake -B build -DCMAKE_INSTALL_PREFIX="/usr/local/$prog_ninja-$latest_ninja_version" \
+        execute cmake -B build -DCMAKE_INSTALL_PREFIX="/usr/local/programs/$prog_ninja-$latest_ninja_version" \
                       -DCMAKE_BUILD_TYPE=Release -DRE2C="$re2c_path" -DBUILD_TESTING=OFF \
                       -Wno-dev
         execute make "-j$cpu_threads" -C build
         execute sudo make -C build install
-        execute sudo ln -sf "/usr/local/$prog_ninja-$latest_ninja_version/bin/$prog_ninja" "/usr/local/bin/"
-        ld_linker_path "$prog_ninja" "/usr/local/$prog_ninja-$latest_ninja_version"
+        execute sudo ln -sf "/usr/local/programs/$prog_ninja-$latest_ninja_version/bin/$prog_ninja" "/usr/local/bin/"
+        ld_linker_path "$prog_ninja" "/usr/local/programs/$prog_ninja-$latest_ninja_version"
         build_done "ninja" "$latest_ninja_version"
     fi
 else
@@ -332,17 +387,25 @@ fi
 if [[ "$current_go_version" != "$latest_go_version" ]]; then
     if build "golang" "$latest_go_version"; then
         download "https://go.dev/dl/go$latest_go_version.linux-amd64.tar.gz" "golang-$latest_go_version.tar.gz"
-        execute sudo mkdir -p "/usr/local/golang-$latest_go_version/bin"
-        execute sudo cp -f "bin/go" "bin/gofmt" "/usr/local/golang-$latest_go_version/bin"
+        sudo rm -rf "/usr/local/programs/golang-$latest_go_version"
+        sudo mkdir -p "/usr/local/programs/golang-$latest_go_version"
+        sudo tar -C "/usr/local/programs/golang-$latest_go_version" --strip-components=1 -xzf "$cwd/golang-$latest_go_version.tar.gz"
         build_done "golang" "$latest_go_version"
-        GOROOT="/usr/local/golang-$latest_go_version"
         add_go_path_to_bashrc "$latest_go_version"
+        # Source .bashrc to apply changes immediately
+        source "$HOME/.bashrc"
+        verify_go_installation
     fi
 else
     log "GoLang version $latest_go_version is already installed and up-to-date. Skipping build."
+    # Ensure GOROOT is set even if Go is not newly installed
+    export GOROOT="/usr/local/programs/golang-$latest_go_version"
+    export PATH="$PATH:$GOROOT/bin"
+    verify_go_installation
 fi
 
 sudo ldconfig
+ensure_goroot_set
 show_versions
 cleanup
 exit_function
