@@ -3,10 +3,10 @@
 
 # GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-gcc.sh
 # Purpose: Build GNU GCC
-# Versions available:  10-14
+# GCC versions available: 10-14
 # Features: Automatically sources the latest release of each version.
-# Updated: 06.26.24
-# Script version: 1.1
+# Updated: 07.03.24
+# Script version: 1.3
 
 build_dir="/tmp/gcc-build-script"
 packages="$build_dir/packages"
@@ -115,12 +115,12 @@ set_pkg_config_path() {
 
 set_environment() {
     log "Setting environment variables..."
-    CC="gcc-$highest_gcc_version"
-    CXX="g++-$highest_gcc_version"
-    CFLAGS="-O2 -pipe -march=native -I/usr/local/include -I/usr/include"
+    CC="/usr/bin/gcc"
+    CXX="/usr/bin/g++"
+    CFLAGS="-O2 -pipe -march=native -fstack-protector-strong"
     CXXFLAGS="$CFLAGS"
     CPPFLAGS="-D_FORTIFY_SOURCE=2"
-    LDFLAGS="-L/usr/lib/x86_64-linux-gnu -Wl,-rpath,$install_dir/lib64 -Wl,-rpath,$install_dir/lib"
+    LDFLAGS="-L/usr/lib/x86_64-linux-gnu -Wl,-rpath,$install_dir/lib64 -Wl,-rpath,$install_dir/lib -Wl,-z,relro -Wl,-z,now"
     export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
 }
 
@@ -132,6 +132,7 @@ install_deps() {
         autoconf autoconf-archive automake binutils bison
         build-essential ccache curl flex gawk gcc gnat libc6-dev
         libisl-dev libtool make m4 patch texinfo zlib1g-dev
+        libc6-dev libc6-dev-i386 linux-libc-dev linux-libc-dev:i386
     )
 
     for pkg in "${pkgs[@]}"; do
@@ -146,16 +147,6 @@ install_deps() {
     else
         log "All required packages are already installed."
     fi
-
-    # Enable 32-bit architecture and install necessary 32-bit libraries
-    sudo dpkg --add-architecture i386
-    sudo apt update
-    for version in $(seq 14 -1 10); do
-        if apt-cache show "lib32gcc-$version-dev" &>/dev/null && apt-cache show "lib32stdc++-$version-dev" &>/dev/null; then
-            sudo apt -y install "lib32gcc-$version-dev" "lib32stdc++-$version-dev"
-            break
-        fi
-    done
 }
 
 get_latest_version() {
@@ -168,11 +159,11 @@ get_latest_version() {
 create_symlinks() {
     local bin_dir file short_name target_dir
     version=$1
-    bin_dir="/usr/local/gcc-$version/bin"
+    bin_dir="$install_dir/bin"
     target_dir="/usr/local/bin"
     pc_type=$(gcc -dumpmachine)
 
-    for file in $(sudo find "$bin_dir" -type f -regex '^.*-[0-9]+$' | sort -V); do
+    for file in $(sudo find "$bin_dir" -type f -regex '^.*-[0-9]+$' | sort -uV); do
         if [[ ! "$file" =~ $pc_type-$pc_type ]]; then
             short_name="${file#"$bin_dir/"}"
             short_name="${short_name#"$pc_type-"}"
@@ -180,22 +171,6 @@ create_symlinks() {
             execute sudo chmod 755 -R "$file" "$target_dir/$short_name"
         fi
     done
-}
-
-find_highest_gcc_version() {
-    local version
-    for version in 14 13 12 11 10; do
-        if command -v "gcc-$version" &>/dev/null; then
-            highest_gcc_version="$version"
-            break
-        fi
-    done
-
-    if [[ -z "$highest_gcc_version" ]]; then
-        fail "GCC is not installed. Please do that and then re-run the script."
-    fi
-
-    echo "$highest_gcc_version"
 }
 
 build() {
@@ -237,9 +212,7 @@ download() {
     target_directory="$download_path/$output_directory"
 
     if [[ -f "$target_file" ]]; then
-        echo "$download_file is
-
- already downloaded."
+        echo "$download_file is already downloaded."
     else
         echo "Downloading \"$download_url\" saving as \"$download_file\""
         if ! curl -LSso "$target_file" "$download_url"; then
@@ -266,7 +239,7 @@ download() {
 }
 
 iscuda=$(sudo find /usr/local/ /opt/ -type f -name nvcc)
-if [ -n "$iscuda" ]; then
+if [[ -n "$iscuda" ]]; then
     cuda_check="--with-cuda-driver"
 else
     cuda_check="--without-cuda-driver"
@@ -285,11 +258,11 @@ install_gcc() {
         execute ../configure $options
         execute make "-j$threads"
         execute sudo make install-strip
-        if [[ -d "/usr/local/gcc-$version/libexec/gcc/x86_64-pc-linux-gnu/$short_version" ]]; then
+        if [[ -d "$install_dir/libexec/gcc/x86_64-pc-linux-gnu/$short_version" ]]; then
             execute sudo libtool --finish "/usr/local/gcc-$version/libexec/gcc/x86_64-pc-linux-gnu/$short_version"
-        elif [[ -d "/usr/local/gcc-$version/libexec/gcc/x86_64-linux-gnu/$short_version" ]]; then
+        elif [[ -d "$install_dir/libexec/gcc/x86_64-linux-gnu/$short_version" ]]; then
             execute sudo libtool --finish "/usr/local/gcc-$version/libexec/gcc/x86_64-linux-gnu/$short_version"
-        elif [[ -d "/usr/local/gcc-$version/libexec/gcc/$pc_type/$short_version" ]]; then
+        elif [[ -d "$install_dir/libexec/gcc/$pc_type/$short_version" ]]; then
             execute sudo libtool --finish "/usr/local/gcc-$version/libexec/gcc/$pc_type/$short_version"
         else
             fail "The script could not find the correct folder for libtool to run --finish on. Line: $LINENO"
@@ -319,6 +292,7 @@ build_gcc() {
         "--target=$pc_type"
         "--disable-assembly"
         "--disable-isl-version-check"
+        "--disable-lto"
         "--disable-nls"
         "--disable-vtable-verify"
         "--disable-werror"
@@ -332,10 +306,7 @@ build_gcc() {
         "--enable-libstdcxx-debug"
         "--enable-libstdcxx-time=yes"
         "--enable-linker-build-id"
-        "--enable-lto"
         "--enable-multiarch"
-        "--enable-multilib"
-        "--enable-offload-defaulted"
         "--enable-plugin"
         "--enable-shared"
         "--enable-stage1-checking=all"
@@ -349,13 +320,13 @@ build_gcc() {
         "--with-default-libstdcxx-abi=new"
         "--with-gcc-major-version-only"
         "--with-isl=/usr"
-        "--with-multilib-list=m32,m64,mx32"
         "--with-system-zlib"
         "--with-target-system-zlib=auto"
         "--with-tune=native"
         "--with-zstd=auto"
         "--without-included-gettext"
         "$cuda_check"
+        "--disable-multilib"
     )
 
     log "Configuring GCC $version"
@@ -371,6 +342,11 @@ build_gcc() {
     install_gcc "$version" "${configure_options[*]}"
     ld_linker_path "$short_version"
     create_additional_soft_links "$install_dir"
+}
+
+cleanup_build_folders() {
+    log "Cleaning up leftover build folders from previous runs..."
+    find "$build_dir" -mindepth 1 -maxdepth 1 -type d ! -name 'packages' ! -name 'workspace' -exec sudo rm -fr {} +
 }
 
 cleanup() {
@@ -451,14 +427,7 @@ select_versions() {
 
     for version in "${selected_versions[@]}"; do
         latest_version=$(get_latest_version "$version")
-        case "$version" in
-            10)
-                build_gcc "$latest_version" "/usr/local/gcc-$latest_version" "--with-arch-32=i686"
-                ;;
-            11|12|13|14)
-                build_gcc "$latest_version" "/usr/local/gcc-$latest_version"
-                ;;
-        esac
+        build_gcc "$latest_version" "/usr/local/programs/gcc-$latest_version"
         create_symlinks "$latest_version"
     done
 }
@@ -479,7 +448,7 @@ check_requirements() {
 summary() {
     echo
     echo -e "${GREEN}Summary:${NC}"
-    echo -e "  ${YELLOW}Installed GCC version(s): ${CYAN}$latest_version${NC}"
+    echo -e "  ${YELLOW}Installed GCC version(s): ${CYAN}${selected_versions[*]}${NC}"
     echo -e "  ${YELLOW}Installation prefix: ${CYAN}$install_dir${NC}"
     echo -e "  ${YELLOW}Build directory: ${CYAN}$build_dir${NC}"
     echo -e "  ${YELLOW}Temporary build directory retained: ${CYAN}$([[ "$keep_build_dir" -eq 1 ]] && echo "Yes" || echo "No")${NC}"
@@ -499,10 +468,13 @@ ld_linker_path() {
 }
 
 create_additional_soft_links() {
-    local install_dir
-    install_dir=$1
-    [[ -d "$install_dir/lib/pkgconfig" ]] && sudo ln -sf "$install_dir/lib/pkgconfig/"*.pc "/usr/local/lib/pkgconfig/"
-    [[ -d "$install_dir/include" ]] && sudo ln -sf "$install_dir/include/"* "/usr/local/include/"
+    local install_dir="$1"
+
+    if [[ -d "$install_dir/lib/pkgconfig" ]]; then
+        find "$install_dir/lib/pkgconfig" -type f -name '*.pc' | while read -r file; do
+            sudo ln -sf "$file" "/usr/local/lib/pkgconfig/"
+        done
+    fi
 }
 
 main() {
@@ -521,12 +493,12 @@ main() {
         threads=$(nproc --all)
     fi
 
-    highest_gcc_version=$(find_highest_gcc_version)
     set_path
     set_pkg_config_path
     set_environment
     install_deps
     install_autoconf
+    cleanup_build_folders
     select_versions
     cleanup
     summary
