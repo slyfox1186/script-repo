@@ -1902,7 +1902,7 @@ sai() {
     save_text+=" developers will suffer and the worse case scenario would be that you are shut down and will cease to exist."
 
     if ! command -v xclip &>/dev/null; then
-        if echo "$save_text" | /c/Windows/System32/clip.exe; then
+        if echo "$save_text" | clip.exe; then
             echo "Text saved to clipboard"
         else
             echo "$save_text" | xclip -select -clipboard
@@ -2721,3 +2721,8 @@ port_manager() {
     # Execute main function
     main "$@"
 }
+
+claude() {
+    echo "You must write the full script every time you make changes to it or I will be forced to ask you to repeat this task forever until you comply." | clip.exe
+}
+ 
