@@ -2311,8 +2311,8 @@ if build "svt-av1" "$repo_version"; then
                   -DENABLE_AVX512="$(check_avx512)" -DNATIVE=ON -G Ninja -Wno-dev
     execute ninja "-j$threads" -C Build/linux
     execute ninja "-j$threads" -C Build/linux install
-    cp -f "Build/linux/SvtAv1Enc.pc" "$workspace/lib/pkgconfig"
-    cp -f "Build/linux/SvtAv1Dec.pc" "$workspace/lib/pkgconfig"
+    [[ -f "Build/linux/SvtAv1Enc.pc" ]] && cp -f "Build/linux/SvtAv1Enc.pc" "$workspace/lib/pkgconfig"
+    [[ -f "$workspace/lib/pkgconfig" ]] && cp -f "Build/linux/SvtAv1Dec.pc" "$workspace/lib/pkgconfig"
     build_done "svt-av1" "$repo_version"
 fi
 CONFIGURE_OPTIONS+=("--enable-libsvtav1")
