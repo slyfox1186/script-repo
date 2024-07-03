@@ -859,7 +859,7 @@ download_cuda() {
         "deb")
             wget --show-progress -cqO "$package_name" "$cuda_url/$installer_path"
             dpkg -i "$package_name"
-            cp -f "/var/cuda-repo-${distro}${version}-local/cuda-"*"-keyring.gpg" "/usr/share/keyrings/"
+            cp -f "/var/cuda-repo-${distro}-12-5-local/cuda-"*"-keyring.gpg" "/usr/share/keyrings/"
             [[ "$distro" == "debian"* ]] && add-apt-repository -y contrib
             ;;
         "pin")
@@ -875,7 +875,7 @@ download_cuda() {
     esac
 
     apt update
-    apt -y --allow-unauthenticated install cuda-toolkit-12-5
+    apt -y install cuda-toolkit-12-5
 }
 
 # Function to detect the environment and check for an NVIDIA GPU
