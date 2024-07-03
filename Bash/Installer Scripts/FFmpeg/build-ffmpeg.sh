@@ -34,7 +34,7 @@ workspace="$cwd/workspace"
 google_speech_flag=false
 # Set a regex string to match and then exclude any found release candidate versions of a program. Utilize stable releases only.
 git_regex='(Rc|rc|rC|RC|alpha|beta|early|init|next|pending|pre|tentative)+[0-9]*$'
-debug=OFF
+debug=ON
 
 # Pre-defined color variables
 GREEN='\033[0;32m'
@@ -66,7 +66,7 @@ mkdir -p "$packages" "$workspace"
 source_compiler_flags() {
     CFLAGS="-O3 -pipe -fPIC -march=native"
     CXXFLAGS="$CFLAGS"
-    CPPFLAGS="-I$workspace/include -I/usr/local/include -I/usr/include -D_FORTIFY_SOURCE=2"
+    CPPFLAGS="-I$workspace/include -D_FORTIFY_SOURCE=2"
     LDFLAGS="-L$workspace/lib64 -L$workspace/lib -Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now"
     EXTRALIBS="-ldl -lpthread -lm -lz"
     export CFLAGS CXXFLAGS CPPFLAGS LDFLAGS
@@ -1332,14 +1332,13 @@ if build "m4" "latest"; then
     build_done "m4" "latest"
 fi
 
-if build "autoconf" "2.71"; then
-    download "https://ftp.gnu.org/gnu/autoconf/autoconf-2.71.tar.xz"
-    execute autoupdate
+if build "autoconf" "2.72"; then
+    download "https://ftp.gnu.org/gnu/autoconf/autoconf-2.72.tar.xz"
     execute autoreconf -fi
     execute ./configure --prefix="$workspace" M4="$workspace/bin/m4"
     execute make "-j$threads"
     execute make install
-    build_done "autoconf" "2.71"
+    build_done "autoconf" "2.72"
 fi
 
 determine_libtool_version
