@@ -3,8 +3,8 @@
 
 # Github: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-nasm.sh
 # Purpose: Build NASM
-# Updated: 05.25.24
-# Script version: 1.2
+# Updated: 07.03.24
+# Script version: 1.3
 
 if [[ "$EUID" -eq 0 ]]; then
     echo "You must run this script without root or sudo."
@@ -12,8 +12,9 @@ if [[ "$EUID" -eq 0 ]]; then
 fi
 
 # Set global variables
-script_ver=1.2
+script_ver="1.3"
 cwd="$PWD/nasm-build-script"
+install_dir="/usr/local/programs/nasm"
 debug=OFF
 
 # Create output directories
@@ -195,7 +196,7 @@ find_latest_nasm_version
 if build "nasm" "$version"; then
     download "https://www.nasm.us/pub/nasm/stable/nasm-$version.tar.xz"
     execute ./autogen.sh
-    execute ./configure --prefix=/usr/local --enable-ccache
+    execute ./configure --prefix="$install_dir" --enable-ccache
     execute make "-j$cpu_threads"
     execute sudo make install
 fi

@@ -17,12 +17,12 @@ NC='\033[0m'
 # Set the variables
 script_ver=1.3
 prog_name="jq"
-version=$(curl -fsSL "https://gitver.optimizethis.net" | bash -s "https://github.com/jqlang/jq.git")
+version=$(curl -fsS "https://github.com/jqlang/jq/tags/" | grep -oP '/tag/jq-\K\d+\.\d+\.\d+' | sort -ruV | head -n1)
 dir_name="$prog_name-$version"
 archive_url="https://github.com/jqlang/jq/releases/download/$prog_name-$version/$prog_name-$version.tar.gz"
 archive_ext="${archive_url//*.}"
 tar_file="$dir_name.tar.$archive_ext"
-install_dir="/usr/local/$dir_name"
+install_dir="/usr/local/programs/$dir_name"
 cwd="$PWD/$dir_name-build-script"
 
 # Enhanced logging and error handling
@@ -54,11 +54,12 @@ cleanup() {
 }
 
 install_required_packages() {
-    local -a missing_pkgs pkgs
+    local -a missing_pkgs=() pkgs=()
     local pkg
-    pkgs=(autoconf autoconf-archive build-essential ccache curl git libtool m4 pkg-config)
+    pkgs=(
+        autoconf autoconf-archive build-essential ccache curl git libtool m4 pkg-config
+   )
 
-    missing_pkgs=()
     for pkg in "${pkgs[@]}"; do
         if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
             missing_pkgs+=("$pkg")

@@ -345,7 +345,7 @@ main() {
     temp_dir=$(mktemp -d)
     cwd="$temp_dir/openssl-build"
     enable_ipv6="false"
-    install_dir="/usr/local/ssl"
+    install_dir="/usr/local/programs/ssl"
     keep_build="false"
     make_install_command=("${make_install_command[@]:-install_sw}")
     tar_file="$cwd/openssl-$version.tar.gz"
@@ -360,7 +360,7 @@ main() {
         [[ -z "$version" ]] && fail "Failed to detect the latest OpenSSL 3.2.x version. Line: $LINENO"
     fi
 
-    install_dir="${install_dir:-/usr/local/ssl}"
+    install_dir="${install_dir:-/usr/local/programs/ssl}"
     src_dir="$cwd/$version"
 
     echo

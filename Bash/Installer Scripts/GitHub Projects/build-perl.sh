@@ -8,7 +8,7 @@
 base_url="https://github.com/Perl/perl5"
 tags_url="${base_url}/tags"
 tarball_url="${base_url}/archive/refs/tags"
-install_dir="/usr/local/perl"
+install_dir="/usr/local/programs/perl"
 build_dir="/tmp/perl_build"
 log_file="$build_dir/perl_install.log"
 bin_dir="/usr/local/bin"

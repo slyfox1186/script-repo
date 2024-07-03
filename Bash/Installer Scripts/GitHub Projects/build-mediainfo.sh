@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
 
+# Github: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-mediainfo.sh
+# Purpose: Build MediaInfo
+# Updated: 07.03.24
+# Script version: 1.1
+
+install_dir="/usr/local/programs/mediainfo"
+
 # Function to print help message
 print_help() {
     echo "Usage: $0 [OPTIONS]"
@@ -115,7 +122,7 @@ build_zenlib() {
     autoreconf -fi
 
     echo "Configuring the build of ZenLib..."
-    if ! ./configure CFLAGS="$CFLAGS" CXXFLAGS="$CXXFLAGS" LDFLAGS="$LDFLAGS" CPPFLAGS="$CPPFLAGS" PKG_CONFIG_PATH="$PKG_CONFIG_PATH" --prefix=/usr/local; then
+    if ! ./configure --prefix="$install_dir" CFLAGS="$CFLAGS" CXXFLAGS="$CXXFLAGS" LDFLAGS="$LDFLAGS" CPPFLAGS="$CPPFLAGS" PKG_CONFIG_PATH="$PKG_CONFIG_PATH"; then
         echo "Configuration of ZenLib failed."
         exit 1
     fi
