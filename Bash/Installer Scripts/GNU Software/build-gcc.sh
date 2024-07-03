@@ -14,7 +14,7 @@ workspace="$build_dir/workspace"
 keep_build_dir=0
 log_file=""
 selected_versions=()
-verbose=0
+verbose=1
 version=""
 versions=(10 11 12 13 14)
 
@@ -259,11 +259,11 @@ install_gcc() {
         execute make "-j$threads"
         execute sudo make install-strip
         if [[ -d "$install_dir/libexec/gcc/x86_64-pc-linux-gnu/$short_version" ]]; then
-            execute sudo libtool --finish "/usr/local/gcc-$version/libexec/gcc/x86_64-pc-linux-gnu/$short_version"
+            execute sudo libtool --finish "/usr/local/programs/gcc-$version/libexec/gcc/x86_64-pc-linux-gnu/$short_version"
         elif [[ -d "$install_dir/libexec/gcc/x86_64-linux-gnu/$short_version" ]]; then
-            execute sudo libtool --finish "/usr/local/gcc-$version/libexec/gcc/x86_64-linux-gnu/$short_version"
+            execute sudo libtool --finish "/usr/local/programs/gcc-$version/libexec/gcc/x86_64-linux-gnu/$short_version"
         elif [[ -d "$install_dir/libexec/gcc/$pc_type/$short_version" ]]; then
-            execute sudo libtool --finish "/usr/local/gcc-$version/libexec/gcc/$pc_type/$short_version"
+            execute sudo libtool --finish "/usr/local/programs/gcc-$version/libexec/gcc/$pc_type/$short_version"
         else
             fail "The script could not find the correct folder for libtool to run --finish on. Line: $LINENO"
         fi
