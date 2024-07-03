@@ -1942,16 +1942,11 @@ box_out_banner_audio "Installing Audio Tools"
 find_git_repo "chirlu/soxr" "1" "T"
 if build "libsoxr" "$repo_version"; then
     download "https://github.com/chirlu/soxr/archive/refs/tags/$repo_version.tar.gz" "libsoxr-$repo_version.tar.gz"
-    execute mkdir build
-    execute cd build || exit 1
-    echo "\$ cmake -S ../ -Wno-dev -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=\"$workspace\" -DBUILD_TESTS=ON"
-    cmake -S ../ -Wno-dev -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_TESTS=ON &>/dev/null
-    echo "\$ make"
-    make &>/dev/null
-    echo "\$ make test"
-    make test &>/dev/null
-    echo "\$ make install"
-    make install &>/dev/null
+    mkdir build; cd build || exit 1
+    execute cmake -S ../ -Wno-dev -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$workspace" -DBUILD_TESTS=ON
+    execute make "-j$threads"
+    execute make test
+    execute make install
     build_done "libsoxr" "$repo_version"
 fi
 CONFIGURE_OPTIONS+=("--enable-libsoxr")
