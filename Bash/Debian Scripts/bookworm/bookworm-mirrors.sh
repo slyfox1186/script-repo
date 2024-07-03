@@ -20,9 +20,9 @@ deb https://atl.mirrors.clouvider.net/debian/ bookworm-backports main contrib no
 deb https://security.debian.org/debian-security/ bookworm-security main contrib non-free non-free-firmware
 
 # Official Debian Mirrors
-# deb http://ftp.us.debian.org/debian/ bookworm main contrib non-free non-free-firmware
-# deb http://ftp.us.debian.org/debian/ bookworm-updates main contrib non-free non-free-firmware
-# deb http://ftp.us.debian.org/debian/ bookworm-backports main contrib non-free non-free-firmware
+deb http://ftp.us.debian.org/debian/ bookworm main contrib non-free non-free-firmware
+deb http://ftp.us.debian.org/debian/ bookworm-updates main contrib non-free non-free-firmware
+deb http://ftp.us.debian.org/debian/ bookworm-backports main contrib non-free non-free-firmware
 
 # osuosl.org
 # deb https://debian.osuosl.org/debian/ bookworm main contrib non-free non-free-firmware
