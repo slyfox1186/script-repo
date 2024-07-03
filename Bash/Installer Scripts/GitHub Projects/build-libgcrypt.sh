@@ -2,33 +2,33 @@
 # shellcheck disable=sc2016,sc2034,sc2046,sc2066,sc2068,sc2086,SC2162,SC2317
 
 ##  Install libgcrypt LTS + libgcrypt-error
-##  Updated: 10.14.23
-##  Script version: 1.0
+##  Updated: 07.03.23
+##  Script version: 1.1
 
-if [ "$EUID" -eq 0 ]; then
+if [[ "$EUID" -eq 0 ]]; then
     echo "You must run this script without root or sudo."
     exit 1
 fi
 
 # Set the variables
-script_ver=1.0
-install_prefix=/usr/local
-cwd="$PWD"/gcrypt-build-script
-packages="$cwd"/packages
-workspace="$cwd"/workspace
-pc_type=$(gcc -dumpmachine)
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
-web_repo=https://github.com/slyfox1186/script-repo
+script_ver="1.1"
+version1=$(curl -fsS "https://gnupg.org/ftp/gcrypt/libgcrypt/" | grep -oP 'libgcrypt-\K\d+\.\d+\.\d+' | sort -ruV | head -n1)
+version2=$(curl -fsS "https://gnupg.org/ftp/gcrypt/libgpg-error/" | grep -oP 'libgpg-error-\K\d+\.\d+' | sort -ruV | head -n1)
+prog_name1="libgcrypt"
+prog_name2="libgpg-error"
+archive_name1="$prog_name1-$version1"
+archive_name2="$prog_name2-$version2"
+cwd="$PWD/gcrypt-build-script"
+packages="$cwd/packages"
+workspace="$cwd/workspace"
 debug=OFF
 
-# Create output directories
-
+# Create the output directories
 mkdir -p "$packages" "$workspace"
 
 # Get cpu core count for parallel processing
-
-if [ -f /proc/cpuinfo ]; then
-    cpu_threads="$(grep --count ^processor /proc/cpuinfo)"
+if [[ -f /proc/cpuinfo ]]; then
+    cpu_threads="$(grep -c ^processor /proc/cpuinfo)"
 else
     cpu_threads="$(nproc --all)"
 fi
@@ -45,101 +45,62 @@ PKG_CONFIG_PATH+=":/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/i386-linux-gnu/p
 export CC CXX CFLAGS CXXFLAGS PATH PKG_CONFIG_PATH
 
 # Print banner
-printf "%s\n%s\n%s\n" \
-    "libgcrypt build script - v${script_ver}" \
-    '=========================================' \
-    "This script will utilize (${cpu_threads}) CPU threads for parallel processing to accelerate the build process."
-
+    echo "libgcrypt build script - v$script_ver"
+    echo "========================================="
+    echo "This script will utilize ($cpu_threads) CPU threads for parallel processing to accelerate the build process."
+    echo
 
 # Define functions
-
 fail_fn() {
-    printf "\n%s\n%s\n%s\n\n" \
-        "$1" \
-        'You can enable the script'\''s debugging feature by changing the variable "debug" to "ON"' \
-        "To report a bug visit: $web_repo/issues"
+    echo
+    echo "$1"
+    echo "You can enable the script's debugging feature by changing the variable 'debug' to 'ON'"
+    echo "To report a bug visit: https://github.com/slyfox1186/script-repo/issues"
     exit 1
 }
 
 exit_function() {
-    printf "\n%s\n\n%s\n\n" \
-        'Make sure to star this repository to show your support!' \
-        "$web_repo"
+    echo
+    echo "Make sure to star this repository to show your support!"
+    echo "https://github.com/slyfox1186/script-repo"
+    echo
     exit 0
 }
 
 cleanup_fn() {
     local choice
- 
-    printf "\n%s\n\n%s\n%s\n\n" \
-        'Do you want to cleanup the build files?' \
-        '[1] Yes' \
-        '[2] No'
-    read -p 'Your choices are (1 or 2): ' choice
+
+    echo
+    echo "Do you want to cleanup the build files?"
+    echo "[1] Yes"
+    echo "[2] No"
+    echo
+    read -p "Your choices are (1 or 2): " choice
     clear
 
-    case "${choice}" in
-        1)      sudo rm -fr "$cwd";;
-        2)      clear;;
+    case "$choice" in
+        1) sudo rm -fr "$cwd" ;;
+        2) ;;
         *)
-                unset choice
-                cleanup_fn
-                ;;
+           unset choice
+           echo
+           cleanup_fn
+           ;;
     esac
 }
 
-# Scrape github website for the latest repo version
-
-git_1_fn() {
-    local curl_cmd github_repo github_url
-
-    github_repo="$1"
-    github_url="$2"
-
-    if curl_cmd="$(curl -A "$user_agent" -m 10 -sSL "https://api.github.com/repos/${github_repo}/${github_url}")"; then
-        g_ver="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
-        g_url="$(echo "$curl_cmd" | jq -r '.[0].tarball_url' 2>/dev/null)"
-        g_ver="${g_ver#Cares-}"
-        g_ver="${g_ver#Aria2 }"
-        g_ver="${g_ver#Nghttp2 v}"
-        g_ver="${g_ver#Nghttp3 v}"
-        g_ver="${g_ver#OpenSSL }"
-        g_ver="${g_ver#Release-}"
-        g_ver="${g_ver#V}"
-    fi
-
-}
-
-git_ver_fn() {
-    local v_flag v_url v_tag url_tag t_url
-
-    v_url="$1"
-    v_tag="$2"
-
-    if [ -n "$3" ]; then
-        v_flag="$3"
-        case "${v_flag}" in
-            T)      t_url=tags;;
-            R)      t_url=releases;;
-            *)      fail_fn 'Failed to pass "tags" and "releases" to the command: curl_cmd.';;
-        esac
-    fi
-
-    git_1_fn "${v_url}" "${t_url}" 2>/dev/null
-}
-
 execute() {
-    echo "$ ${*}"
+    echo "$ $*"
 
-    if [ "${debug}" = 'ON' ]; then
+    if [[ "${debug}" = "ON" ]]; then
         if ! output=$("$@"); then
-            notify-send -t 5000 "Failed to execute: ${*}" 2>/dev/null
-            fail_fn "Failed to execute: ${*}"
+            notify-send -t 5000 "Failed to execute: $*" 2>/dev/null
+            fail_fn "Failed to execute: $*"
         fi
     else
         if ! output=$("$@" 2>&1); then
-            notify-send -t 5000 "Failed to execute: ${*}" 2>/dev/null
-            fail_fn "Failed to execute: ${*}"
+            notify-send -t 5000 "Failed to execute: $*" 2>/dev/null
+            fail_fn "Failed to execute: $*"
         fi
     fi
 }
@@ -159,33 +120,33 @@ download() {
     target_file="$dl_path/$dl_file"
     target_dir="$dl_path/$output_dir"
 
-    if [ -f "${target_file}" ]; then
+    if [[ -f "$target_file" ]]; then
         echo "The file \"$dl_file\" is already downloaded."
     else
-        echo "Downloading \"${dl_url}\" saving as \"$dl_file\""
-        if ! wget -U "$user_agent" -cqO "${target_file}" "${dl_url}"; then
+        echo "Downloading \"$dl_url\" saving as \"$dl_file\""
+        if ! wget -cqO "$target_file" "$dl_url"; then
             printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 10 seconds..."
             sleep 10
-            if ! wget -U "$user_agent" -cqO "${target_file}" "${dl_url}"; then
+            if ! wget -cqO "$target_file" "$dl_url"; then
                 fail_fn "The script failed to download \"$dl_file\" twice and will now exit. Line: ${LINENO}"
             fi
         fi
-        echo 'Download Completed'
+        echo "Download Completed"
     fi
 
-    if [ -d "$target_dir" ]; then
+    if [[ -d "$target_dir" ]]; then
         sudo rm -fr "$target_dir"
     fi
     mkdir -p "$target_dir"
 
-    if [ -n "$3" ]; then
-        if ! tar -xf "${target_file}" -C "$target_dir" 2>/dev/null >/dev/null; then
-            sudo rm "${target_file}"
+    if [[ -n "$3" ]]; then
+        if ! tar -xf "$target_file" -C "$target_dir" 2>/dev/null >/dev/null; then
+            sudo rm "$target_file"
             fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script. Line: ${LINENO}"
         fi
     else
-        if ! tar -xf "${target_file}" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
-            sudo rm "${target_file}"
+        if ! tar -xf "$target_file" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
+            sudo rm "$target_file"
             fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script. Line: ${LINENO}"
         fi
     fi
@@ -196,11 +157,11 @@ download() {
 }
 
 build() {
-    printf "\n%s\n%s\n" \
-        "building $1 - version $2" \
-        '===================================='
+    echo
+    echo "building $1 - version $2"
+    echo "===================================="
 
-    if [ -f "$packages/$1.done" ]; then
+    if [[ -f "$packages/$1.done" ]]; then
         if grep -Fx "$2" "$packages/$1.done" > /dev/null; then
             echo "$1 version $2 already built. Remove $packages/$1.done lockfile to rebuild it."
             return 1
@@ -222,9 +183,10 @@ installed() {
 }
 
 # Install required apt packages
-
 pkgs=(autoconf autoconf-archive autogen automake autotools-dev
-      build-essential ccache curl libtool libtool-bin m4 pkg-config)
+      build-essential ccache curl gettext libtool libtool-bin
+      m4 pkg-config
+)
 
 for pkg in ${pkgs[@]}
 do
@@ -233,52 +195,51 @@ do
     fi
 done
 
-printf "\n%s\n%s\n" \
-    'Installing required apt packages' \
-    '================================================'
+echo "Installing required apt packages"
+echo "================================================"
 
-if [ -n "$missing_pkgs" ]; then
+if [[ -n "$missing_pkgs" ]]; then
     sudo apt install $missing_pkgs
-    sudo apt -y autoremove
-    printf "%s\n" 'The required APT packages were installed.'
+    echo "The required APT packages were installed."
 else
-    printf "%s\n" 'The required APT packages are already installed.'
+    echo "The required APT packages are already installed."
 fi
 
 # Build libraries from source
-
-if build 'libgpg-error' '1.47'; then
-    download 'https://gnupg.org/ftp/gcrypt/libgpg-error/libgpg-error-1.47.tar.bz2' 'libgpg-error-1.47.tar.bz2'
+if build "libgpg-error" "$version2"; then
+    download "https://gnupg.org/ftp/gcrypt/libgpg-error/libgpg-error-$version2.tar.bz2" "libgpg-error-$version2.tar.bz2"
     execute ./autogen.sh
-    execute ./configure --prefix="$install_prefix" \
-                        --{build,host}="${pc_type}"  \
-                        --disable-doc                \
-                        --disable-nls                \
-                        --disable-tests              \
-                        --disable-werror             \
-                        --enable-maintainer-mode     \
-                        --enable-static              \
-                        --enable-threads=posix       \
-                        --with-libiconv-prefix=/usr  \
-                        --with-libintl-prefix=/usr   \
-                        --with-pic
-    execute make "-j${cpu_threads}"
+    mkdir build; cd build || exit 1
+    execute ../configure --prefix="/usr/local/programs/$archive_name2" \
+                         --disable-doc \
+                         --disable-nls \
+                         --disable-tests \
+                         --disable-werror \
+                         --enable-maintainer-mode \
+                         --enable-static \
+                         --enable-threads=posix \
+                         --with-libiconv-prefix=/usr \
+                         --with-libintl-prefix=/usr \
+                         --with-pic
+    execute make "-j$cpu_threads"
     execute sudo make install
-    execute sudo cp -f 'src/gpg-error-config' "$install_prefix"/bin
-    build_done 'libgpg-error' '1.47'
+    execute sudo cp -f "src/gpg-error-config" "$install_dir/bin"
+    execute ln -sf "/usr/local/programs/$archive_name2/lib/pkgconfig/"*.pc "/usr/local/lib/pkgconfig/"
+    build_done "libgpg-error" "$version2"
 fi
 
-if build 'libgcrypt' '1.8.10-LTS'; then
-    download 'https://gnupg.org/ftp/gcrypt/libgcrypt/libgcrypt-1.8.10.tar.bz2' 'libgcrypt-1.8.10-LTS.tar.bz2'
+if build "libgcrypt" "$version1"; then
+    download "https://gnupg.org/ftp/gcrypt/libgcrypt/libgcrypt-$version1.tar.bz2" "libgcrypt-$version1.tar.bz2"
     execute ./autogen.sh
-    ./configure --prefix="$install_prefix"                   \
-                --{build,host}="${pc_type}"                    \
-                --enable-static                                \
-                --with-libgpg-error-prefix="$install_prefix" \
-                --with-pic
-    execute make "-j${cpu_threads}"
+    mkdir build; cd build || exit 1
+    ../configure --prefix="/usr/local/programs/libgcrypt-1.11.0" \
+                 --enable-static \
+                 --with-libgpg-error-prefix="/usr/local/programs/$archive_name2" \
+                 --with-pic \
+                 CFLAGS="-I/usr/local/programs/$archive_name2/include" \
+                 LDFLAGS="-L/usr/local/programs/$archive_name2/lib -lgpg-error"
+    execute make "-j$cpu_threads"
     execute sudo make install
-    build_done 'libgcrypt' '1.8.10-LTS'
 fi
 
 # Ldconfig must be run next in order to update file changes or the version commands might not work

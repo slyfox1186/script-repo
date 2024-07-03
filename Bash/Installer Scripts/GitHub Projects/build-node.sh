@@ -87,7 +87,7 @@ cd "node-v$version" || error "Failed to change directory to node-v$version"
 
 # Configure and build Node.js
 print_color cyan "Configuring Node.js..."
-options=("--ninja" "--prefix=/usr/local" "--openssl-use-def-ca-store" "--openssl-system-ca-path=/etc/ssl/certs/cacert.pem")
+options=("--ninja" "--prefix=/usr/local/programs/nodejs" "--openssl-use-def-ca-store" "--openssl-system-ca-path=/etc/ssl/certs/cacert.pem")
 ./configure "${options[@]}" || error "Failed to configure Node.js"
 
 print_color green "Node.js configuration completed successfully"

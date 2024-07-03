@@ -1,349 +1,238 @@
 #!/usr/bin/env bash
-# shellcheck source=/dev/null disable=sc2016,sc2034,sc2046,sc2066,sc2068,sc2086,SC2162,SC2317
 
-##  Install libhwy
-##  Supported OS: Debian, Ubuntu
-##  Updated: 04.30.24
-##  Script version: 1.1
+##  Github: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-libhwy.sh
+##  Purpose: build libhwy
+##  Updated: 07.03.24
+##  Script version: 1.3
 
 if [[ "$EUID" -eq 0 ]]; then
     echo "You must run this script without root or sudo."
     exit 1
 fi
 
-# Set the variables
-script_ver="1.1"
-install_prefix="/usr/local"
-cwd="$PWD/libhwy-build-script"
-packages="$cwd/packages"
-workspace="$cwd/workspace"
-debug=OFF
+CYAN='\033[0;36m'
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[0;33m'
+NC='\033[0m'
 
-# Create output directories
-mkdir -p "$packages" "$workspace"
+# Enhanced logging and error handling
+log() {
+    echo -e "${GREEN}[INFO]${NC} $1"
+}
 
-# Get cpu core count for parallel processing
-if [[ -f "/proc/cpuinfo" ]]; then
-    cpu_threads="$(grep -c ^processor /proc/cpuinfo)"
-else
-    cpu_threads="$(nproc --all)"
-fi
+warn() {
+    echo -e "\\n${YELLOW}[WARNING]${NC} $1"
+}
 
-# Set the compilers
-CC="gcc"
-CXX="g++"
-CFLAGS="-O2 -pipe -march=native"
-CXXFLAGS="$CFLAGS"
-PATH="/usr/lib/ccache:$PATH"
-PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/lib64/pkgconfig:/usr/local/share/pkgconfig:/usr/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/share/pkgconfig"
-PKG_CONFIG_PATH+=":/usr/local/cuda/lib64/pkgconfig:/usr/local/cuda/lib/pkgconfig:/opt/cuda/lib64/pkgconfig:/opt/cuda/lib/pkgconfig"
-PKG_CONFIG_PATH+=":/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/i386-linux-gnu/pkgconfig:/usr/lib/arm-linux-gnueabihf/pkgconfig:/usr/lib/aarch64-linux-gnu/pkgconfig"
-MAKEFLAGS="-j$(nproc --all)"
-export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS MAKEFLAGS PKG_CONFIG_PATH PATH
-
-echo
-echo "libhwy build script - v$script_ver"
-echo "========================================="
-echo "This script will utilize ($cpu_threads) CPU threads for parallel processing to accelerate the build process."
-echo
-
-PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/lib64/pkgconfig:/usr/local/share/pkgconfig:/usr/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/share/pkgconfig"
-PKG_CONFIG_PATH+=":/usr/local/cuda/lib64/pkgconfig:/usr/local/cuda/lib/pkgconfig:/opt/cuda/lib64/pkgconfig:/opt/cuda/lib/pkgconfig"
-PKG_CONFIG_PATH+=":/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/i386-linux-gnu/pkgconfig:/usr/lib/arm-linux-gnueabihf/pkgconfig:/usr/lib/aarch64-linux-gnu/pkgconfig"
-export PATH PKG_CONFIG_PATH
-
-# Define functions
-fail_fn() {
-    echo
-    echo "$1"
-    echo "You can enable the script's debugging feature by changing the variable \"debug\" to \"ON\""
-    echo "To report a bug visit: https://github.com/slyfox1186/script-repo/issues"
+fail() {
+    echo -e "${RED}[ERROR]${NC} $1"
+    echo -e "To report a bug, create an issue at: https://github.com/slyfox1186/script-repo/issues"
     exit 1
 }
 
+echo "$prog_name build script - version $script_ver"
+echo "================================================="
+echo
+
+# Create functions
 exit_function() {
     echo
-    echo "Make sure to star this repository to show your support!"
-    echo "https://github.com/slyfox1186/script-repo"
+    log "The script has completed"
+    log "${GREEN}Make sure to ${YELLOW}star ${GREEN}this repository to show your support!${NC}"
+    log "${CYAN}https://github.com/slyfox1186/script-repo${NC}"
     exit 0
 }
 
 cleanup() {
-    local choice
- 
-    echo
-    echo "Do you want to cleanup the build files?"
-    echo "[1] Yes"
-    echo "[2] No"
-    echo
-    read -p 'Your choices are (1 or 2): ' choice
-    clear
-
-    case "$choice" in
-        1) sudo rm -fr "$cwd" ;;
-        2) ;;
-        *) unset choice
-           cleanup
-           ;;
-    esac
+    sudo rm -fr "$cwd"
 }
 
-# Scrape github website for the latest repo version
+required_packages() {
+    local -a missing_pkgs pkgs
+    local pkg
+    log "Installing dependencies..."
+    pkgs=(
+         autoconf autoconf-archive autogen automake autotools-dev
+         build-essential ccache cmake curl libgtest-dev libtool
+         libtool-bin m4 ninja-build pkg-config
+    )
 
-git_1_fn() {
-    local curl_cmd github_repo github_url
-
-    github_repo="$1"
-    github_url="$2"
-
-    if curl_cmd="$(curl -fsSL "https://api.github.com/repos/$github_repo/$github_url")"; then
-        g_ver="$(echo "$curl_cmd" | jq -r '.[0].name' 2>/dev/null)"
-    fi
-
-}
-
-git_ver_fn() {
-    git_1_fn "$1" "releases" 2>/dev/null
-}
-
-execute() {
-    echo "$ $*"
-
-    if [[ "$debug" = "ON" ]]; then
-        if ! output=$("$@"); then
-            notify-send -t 5000 "Failed to execute: $*" 2>/dev/null
-            fail_fn "Failed to execute: $*"
-        fi
-    else
-        if ! output=$("$@" 2>&1); then
-            notify-send -t 5000 "Failed to execute: $*" 2>/dev/null
-            fail_fn "Failed to execute: $*"
-        fi
-    fi
-}
-
-download() {
-    dl_path="$packages"
-    dl_url="$1"
-    dl_file="${2:-"${1##*/}"}"
-
-    if [[ "$dl_file" =~ tar. ]]; then
-        output_dir="${dl_file%.*}"
-        output_dir="${3:-"${output_dir%.*}"}"
-    else
-        output_dir="${3:-"${dl_file%.*}"}"
-    fi
-
-    target_file="$dl_path/$dl_file"
-    target_dir="$dl_path/$output_dir"
-
-    if [[ -f "$target_file" ]]; then
-        echo "The file \"$dl_file\" is already downloaded."
-    else
-        echo "Downloading \"$dl_url\" saving as \"$dl_file\""
-        if ! wget -cqO "$target_file" "$dl_url"; then
-            printf "\n%s\n\n" "The script failed to download \"$dl_file\" and will try again in 10 seconds..."
-            sleep 10
-            if ! wget -cqO "$target_file" "$dl_url"; then
-                fail_fn "The script failed to download \"$dl_file\" twice and will now exit. Line: $LINENO"
-            fi
-        fi
-        echo "Download Completed"
-    fi
-
-    if [[ -d "$target_dir" ]]; then
-        sudo rm -fr "$target_dir"
-    fi
-    mkdir -p "$target_dir"
-
-    if [[ -n "$3" ]]; then
-        if ! tar -zxf "$target_file" -C "$target_dir" 2>/dev/null >/dev/null; then
-            sudo rm "$target_file"
-            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script. Line: $LINENO"
-        fi
-    else
-        if ! tar -zxf "$target_file" -C "$target_dir" --strip-components 1 2>/dev/null >/dev/null; then
-            sudo rm "$target_file"
-            fail_fn "The script failed to extract \"$dl_file\" so it was deleted. Please re-run the script. Line: $LINENO"
-        fi
-    fi
-
-    echo "File extracted: $dl_file"
-    echo
-
-    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir. Line: $LINENO"
-}
-
-download_git() {
-    local dl_path dl_url dl_file target_dir
-
-    dl_path="$packages"
-    dl_url="$1"
-    dl_file="${2:-"${1##*/}"}"
-    dl_file="${dl_file//\./-}"
-    target_dir="$dl_path/$dl_file"
-
-    if [[ -n "$3" ]]; then
-        output_dir="$dl_path/$3"
-        target_dir="$output_dir"
-    fi
-
-    [[ -d "$target_dir" ]] && sudo rm -fr "$target_dir"
-
-    echo "Downloading $dl_url as $dl_file"
-
-    if ! git clone -q "$dl_url" "$target_dir"; then
-        printf "\n%s\n\n" "The script failed to clone the directory \"$target_dir\" and will try again in 10 seconds..."
-        sleep 10
-        if ! git clone -q "$dl_url" "$target_dir"; then
-            fail_fn "The script failed to clone the directory \"$target_dir\" twice and will now exit the buildLine: $LINENO"
-        fi
-    else
-        printf "%s\n\n" "Successfully cloned: $target_dir"
-    fi
-
-    cd "$target_dir" || fail_fn "Unable to change the working directory to: $target_dir. Line: $LINENO"
-}
-
-build() {
-    echo
-    echo "building $1 - version $2"
-    echo "===================================="
-    echo
-
-    if [[ -f "$packages/$1.done" ]]; then
-        if grep -Fx "$2" "$packages/$1.done" >/dev/null; then
-            echo "$1 version $2 already built. Remove $packages/$1.done lockfile to rebuild it."
-            return 1
-        else
-            echo "$1 is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove $packages/$1.done lockfile."
-            return 1
-        fi
-    fi
-
-    return 0
-}
-
-build_done() {
-    echo "$2" > "$packages/$1.done"
-}
-
-installed() {
-    return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}')
-}
-
-find_lsb_release="$(sudo find /usr -type f -name 'lsb_release')"
-
-if [[ -f /etc/os-release ]]; then
-    . /etc/os-release
-    OS_TMP="$NAME"
-    VER_TMP="$VERSION_ID"
-    CODENAME="$VERSION_CODENAME"
-    OS="$(echo "$OS_TMP" | awk '{print $1}')"
-    VER="$(echo "$VER_TMP" | awk '{print $1}')"
-elif [[ -n "$find_lsb_release" ]]; then
-    OS="$(lsb_release -d | awk '{print $2}')"
-    VER="$(lsb_release -r | awk '{print $2}')"
-else
-    fail_fn "Failed to define the \$OS and/or \$VER variables. Line: $LINENO"
-fi
-
-# Install required apt/pacman packages
-
-pkgs_arch_fn() {
-    pkgs=(autoconf autoconf-archive autogen automake xorg-util-macros autogen
-          base-devel ccache cmake curl git gtest jq libtool m4 ninja openssl
-          pkg-config python python-pip python-setuptools qt6-base)
-
-    if [[ -f /var/lib/pacman/db.lck ]]; then
-        sudo rm /var/lib/pacman/db.lck
-    fi
-
-    for pkg in ${pkgs[@]}; do
-        missing_pkg="$(sudo pacman -Qi | grep -o "$pkg")"
-
-        if [[ -z "$missing_pkg" ]]; then
-            missing_pkgs+="$pkg "
+    missing_pkgs=()
+    for pkg in "${pkgs[@]}"; do
+        if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
+            missing_pkgs+=("$pkg")
         fi
     done
 
-    if [[ -n "$missing_pkgs" ]]; then
-         sudo pacman -S --noconfirm $missing_pkgs
-    fi
-
-    rm_pip_lock="$(sudo find /usr/lib/python3* -type f -name "EXTERNALLY-MANAGED")"
-    if [[ -n "$rm_pip_lock" ]]; then
-        sudo rm "$rm_pip_lock"
-    fi
-
-# Install python pip packages
-    pip uninstall -q -y setuptools 2>/dev/null
-    sudo pip install -q --no-input setuptools 2>/dev/null
-}
-
-pkgs_fn() {
-    pkgs=(autoconf autoconf-archive autogen automake autotools-dev
-          build-essential ccache cmake curl libgtest-dev libtool
-          libtool-bin m4 ninja-build pkg-config)
-
-    for pkg in ${pkgs[@]}
-    do
-        if ! installed "$pkg"; then
-            missing_pkgs+="$pkg "
-        fi
-    done
-
-    if [[ -n "$missing_pkgs" ]]; then
+    if [[ "${#missing_pkgs[@]}" -gt 0 ]]; then
         sudo apt update
-        sudo apt install $missing_pkgs
+        sudo apt install "${missing_pkgs[@]}"
         sudo apt -y autoremove
-        clear
     fi
 }
 
-case "$OS" in
-    Arch)   pkgs_arch_fn;;
-    *)      pkgs_fn;;
-esac
+set_compiler_flags() {
+    CC="gcc"
+    CXX="g++"
+    CFLAGS="-O2 -pipe -march=native"
+    CXXFLAGS="$CFLAGS"
+    CPPFLAGS="-D_FORTIFY_SOURCE=2"
+    LDFLAGS="-Wl,-rpath=$install_dir/lib64:$install_dir/lib"
+    PKG_CONFIG="$(command -v pkg-config)"
+    PATH="/usr/lib/ccache:$PATH"
+    PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/lib64/pkgconfig:/usr/local/share/pkgconfig:/usr/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/share/pkgconfig"
+    PKG_CONFIG_PATH+=":/usr/local/cuda/lib64/pkgconfig:/usr/local/cuda/lib/pkgconfig:/opt/cuda/lib64/pkgconfig:/opt/cuda/lib/pkgconfig"
+    PKG_CONFIG_PATH+=":/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/i386-linux-gnu/pkgconfig:/usr/lib/arm-linux-gnueabihf/pkgconfig:/usr/lib/aarch64-linux-gnu/pkgconfig"
+    export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS PATH PKG_CONFIG PKG_CONFIG_PATH
+}
 
-echo
-echo "Installing required apt packages"
-echo "================================================"
-echo
+download_archive() {
+    wget --show-progress -cqO "$cwd/$tar_file" "$archive_url" || fail "Failed to download archive with WGET. Line: $LINENO"
+}
 
-if [[ -n "$missing_pkgs" ]]; then
-    sudo apt update
-    sudo apt install $missing_pkgs
-    sudo apt -y autoremove
-    echo "The required APT packages were installed."
-else
-    echo "The required APT packages are already installed."
-fi
+extract_archive() {
+    tar -xf "$cwd/$tar_file" -C "$cwd/$archive_name" --strip-components 1 || fail "Failed to extract: $cwd/$tar_file"
+}
 
-# Build libraries from source
-git_ver_fn "google/highway" "R"
-if build "libhwy" "$g_ver"; then
-    download "https://github.com/google/highway/archive/refs/tags/$g_ver.tar.gz" "libhwy-$g_ver.tar.gz"
+configure_build() {
+    cd "$cwd/$archive_name" || fail "Failed to cd into $cwd/$archive_name. Line: $LINENO"
     CFLAGS+=" -DHWY_COMPILE_ALL_ATTAINABLE"
     CXXFLAGS+="$CFLAGS"
-    execute cmake -S . \
-                  -DCMAKE_INSTALL_PREFIX="$install_prefix" \
-                  -DCMAKE_BUILD_TYPE=Release \
-                  -DHWY_ENABLE_TESTS=OFF \
-                  -DHWY_SYSTEM_GTEST=OFF \
-                  -DBUILD_TESTING=OFF \
-                  -DHWY_ENABLE_EXAMPLES=OFF \
-                  -DHWY_FORCE_STATIC_LIBS=ON \
-                  -G Ninja -Wno-dev
-    execute ninja "-j$cpu_threads"
-    execute sudo ninja install
-    build_done "libhwy" "$g_ver"
-fi
+    cmake -S . -B build \
+          -DCMAKE_INSTALL_PREFIX="$install_dir" \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DHWY_ENABLE_TESTS=OFF \
+          -DBUILD_TESTING=OFF \
+          -DHWY_ENABLE_EXAMPLES=OFF \
+          -DHWY_FORCE_STATIC_LIBS=ON \
+          -G Ninja -Wno-dev || fail "Failed to execute: cmake configure. Line: $LINENO"
+}
 
-sudo ldconfig
+compile_build() {
+    cmake --build build -j "$(nproc --all)" || fail "Failed to execute: cmake build. Line: $LINENO"
+}
 
-# Cleanup leftover files
-cleanup
+install_build() {
+    sudo cmake --install build || fail "Failed execute: cmake install. Line: $LINENO"
+}
 
-# Display exit message
-exit_function
+ld_linker_path() {
+    echo -e "$install_dir/lib64\\n$install_dir/lib" | sudo tee "/etc/ld.so.conf.d/custom_$prog_name.conf" >/dev/null
+    sudo ldconfig
+}
+
+create_soft_links() {
+    # Create bin links
+    if [[ -d "$install_dir/bin" ]]; then
+        for file in "$install_dir/bin"/*; do
+            if [[ -f "$file" && -x "$file" ]]; then
+                sudo ln -sf "$file" "/usr/local/bin/${file##*/}"
+                log "Created link for binary: ${file##*/}"
+            fi
+        done
+    else
+        warn "No bin directory found in $install_dir"
+    fi
+
+    # Create pkgconfig links
+    if [[ ! -d "/usr/local/lib/pkgconfig" ]]; then
+        sudo mkdir -p "/usr/local/lib/pkgconfig"
+        log "Created /usr/local/lib/pkgconfig directory"
+    fi
+    if [[ -d "$install_dir/lib/pkgconfig" ]]; then
+        pc_files=("$install_dir/lib/pkgconfig"/*.pc)
+        if [[ ${#pc_files[@]} -eq 0 ]]; then
+            warn "No .pc files found in $install_dir/lib/pkgconfig"
+        else
+            for file in "${pc_files[@]}"; do
+                if [[ -f "$file" ]]; then
+                    sudo ln -sf "$file" "/usr/local/lib/pkgconfig/${file##*/}"
+                    log "Created link for pkg-config file: ${file##*/}"
+                fi
+            done
+        fi
+    else
+        warn "No pkgconfig directory found in $install_dir/lib"
+    fi
+
+    # Create include links
+    if [[ -d "$install_dir/include" ]]; then
+        for file in "$install_dir/include"/*; do
+            if [[ -f "$file" ]]; then
+                sudo ln -sf "$file" "/usr/local/include/${file##*/}"
+                log "Created link for header: ${file##*/}"
+            fi
+        done
+    else
+        warn "No include directory found in $install_dir"
+    fi
+
+    log "Soft link creation process completed"
+}
+
+show_usage() {
+    echo "Usage: ${0##*/} [OPTIONS]"
+    echo "Build libhwy from source."
+    echo
+    echo "Options:"
+    echo "  -h, --help       Show this help message and exit"
+    echo "  -v, --version    Specify the version of libhwy to build (default: latest)"
+    echo
+    echo "Example:"
+    echo "  $0 -v 1.0.3"
+}
+
+# Parse command-line options
+while [[ "$#" -gt 0 ]]; do
+    case "$1" in
+        -h|--help)
+            show_usage
+            exit 0
+            ;;
+        -v|--version)
+            shift
+            libhwy_version="$1"
+            ;;
+        *)
+            log "Unknown option: $1"
+            show_usage
+            exit 1
+            ;;
+    esac
+    shift
+done
+
+main_menu() {
+    script_ver=1.3
+    prog_name="libhwy"
+    version=$(curl -fsS "https://github.com/google/highway/tags" | grep -oP '/tag/\K\d+\.\d+\.\d+' | sort -ruV | head -n1)
+    archive_name="$prog_name-$version"
+    install_dir="/usr/local/programs/$archive_name"
+    cwd="$PWD/$archive_name-build-script"
+
+    # Create output directory
+    [[ -d "$cwd/$archive_name" ]] && sudo rm -fr "$cwd/$archive_name"
+    mkdir -p "$cwd/$archive_name"
+
+    if [[ -n "$libhwy_version" ]]; then
+        archive_url="https://github.com/google/highway/archive/refs/tags/$libhwy_version.tar.gz"
+    else
+        archive_url="https://github.com/google/highway/archive/refs/tags/$version.tar.gz"
+    fi
+    tar_file="$archive_name.tar.gz"
+
+    required_packages
+    set_compiler_flags
+    download_archive
+    extract_archive
+    configure_build
+    compile_build
+    install_build
+    ld_linker_path
+    create_soft_links
+    cleanup
+    exit_function
+}
+
+main_menu "$@"

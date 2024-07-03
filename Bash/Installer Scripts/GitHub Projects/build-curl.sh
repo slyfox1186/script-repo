@@ -2,7 +2,8 @@
 
 # GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-curl.sh
 # Purpose: Build the latest release version of cURL from source code including nghttp3 support
-# Updated: 05.12.24
+# Updated: 07.03.24
+# Version: 1.1
 
 # Define color variables
 RED='\033[0;31m'
@@ -33,9 +34,10 @@ nghttp3_version=$(curl -fsS "https://github.com/ngtcp2/nghttp3/tags/" | grep -oP
 formatted_version=$(echo "$version" | sed "s/_/\./g")
 tar_file="$cwd/$program-$formatted_version.tar.gz"
 extract_dir="$cwd/$program-$formatted_version"
-install_dir="/usr/local/$program-$formatted_version"
+install_dir="/usr/local/programs/$program-$formatted_version"
 libssh2_install_dir="$cwd/libssh2-$ssh2_version"
 nghttp3_install_dir="$cwd/nghttp3-$nghttp3_version"
+install_mode="install"
 
 # Define OpenSSL installation check
 openssl_prefix=$(if [[ -d "/usr/local/ssl" ]]; then echo "/usr/local/ssl"; else echo "/usr"; fi)
@@ -141,11 +143,20 @@ build_and_install_curl() {
     eopts+=('--enable-'{mime,mqtt,netrc,ntlm,ntlm-wb='/usr/bin/ntlm_auth',openssl-auto-load-config})
     eopts+=('--enable-'{optimize,pop3,progress-meter,proxy,pthreads,rtsp,smb,smtp,socketpair,sspi,static})
     eopts+=('--enable-'{telnet,tftp,threaded-resolver,tls-srp,unix-sockets,websockets})
-    local wopts=('--with-'{libssh2="$libssh2_install_dir",ngtcp2=/usr,nghttp2=/usr,nghttp3="$nghttp3_install_dir",openssl="$openssl_prefix",ssl,zlib})
+    local wopts=('--with-'{libssh2="$libssh2_install_dir",nghttp2=/usr,nghttp3="$nghttp3_install_dir",openssl="$openssl_prefix",ssl,zlib})
     wopts+=('--with-'{ca-bundle="/etc/ssl/certs/cacert.pem",ca-fallback,ca-path="/etc/ssl/certs",secure-transport})
     ./configure --prefix="$install_dir" "${dopts[@]}" "${eopts[@]}" "${wopts[@]}" CPPFLAGS="-I$nghttp3_install_dir/include $CPPFLAGS" \
     LDFLAGS="-L$nghttp3_install_dir/lib $LDFLAGS"
     make "-j$(nproc --all)" && sudo make install
+}
+
+create_softlinks() {
+    sudo find "$install_dir/lib/pkgconfig/" -type f -name "libcurl.pc" -exec sudo ln -sf {} "/usr/local/lib/pkgconfig/" \;
+    if [[ "$?" -eq 0 ]]; then
+        printf "\n%s\n\n" "Successful create the softlink for the file 'libcurl.pc'."
+    else
+        printf "\n%s\n\n" "Failed to create the softlink for the file 'libcurl.pc'. Line: $LINENO"
+    fi
 }
 
 # Parse command line arguments
@@ -224,6 +235,7 @@ main() {
     get_libssh2_source
     get_nghttp3_source
     build_and_install_curl
+    create_softlinks
     if [[ "$install_mode" == "install" ]]; then
         log "$program installation completed successfully at $install_dir"
     else

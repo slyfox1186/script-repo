@@ -39,7 +39,22 @@ while getopts ":hv:p:" opt; do
 done
 
 # Install requried apt pacakges if not already
-sudo apt -y install autoconf autoconf-archive build-essential ccache curl libtool m4
+pkgs=(autoconf autoconf-archive build-essential ccache curl libtool m4)
+missing_packages=()
+for pkg in "${pkgs[@]}"; do
+    if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
+        missing_packages+=("$pkg")
+    fi
+done
+
+if [ ${#missing_packages[@]} -eq 0 ]; then
+    printf "\n%s\n" "All required packages are already installed."
+else
+    printf "\n%s\n" "Installing missing packages: ${missing_packages[*]}"
+    sudo apt update
+    sudo apt -y install "${missing_packages[@]}"
+    echo "Installation complete."
+fi
 
 # Find the latest version number if not manually specified
 if [ -z "$version" ]; then
@@ -48,7 +63,7 @@ fi
 
 # Set default prefix if not provided
 if [ -z "$prefix" ]; then
-    prefix="/usr/local/gperftools-$version"
+    prefix="/usr/local/programs/gperftools-$version"
 fi
 
 # Set the working directory

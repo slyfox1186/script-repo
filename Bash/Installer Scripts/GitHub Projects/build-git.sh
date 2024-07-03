@@ -2,8 +2,8 @@
 
 # Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-git.sh
 # Purpose: Build Git
-# Updated: 05.06.24
-# Script version: 1.5
+# Updated: 07.03.24
+# Script version: 1.6
 
 if [[ "$EUID" -eq 0 ]]; then
     echo "You must run this script without root or sudo."
@@ -17,14 +17,14 @@ YELLOW='\033[0;33m'
 NC='\033[0m' # No Color
 
 # Set the variables
-script_ver=1.5
+script_ver="1.6"
 prog_name="git"
 version=$(curl -fsS "https://github.com/git/git/tags/" | grep -oP 'href="[^"]*/tag/v?\K([0-9.])+' | sort -ruV | head -n1)
 dir_name="$prog_name-$version"
 archive_url="https://github.com/git/git/archive/refs/tags/v$version.tar.gz"
 archive_ext="${archive_url//*.}"
 tar_file="$dir_name.tar.$archive_ext"
-install_dir="/usr/local/$dir_name"
+install_dir="/usr/local/programs/$dir_name"
 cwd="$PWD/$dir_name-build-script"
 keep_build="false"
 compiler="gcc"
@@ -34,13 +34,13 @@ verbose="true"
 display_help() {
     echo "Usage: $0 [options]"
     echo "Options:"
-    echo "  -v, --version      Set the Git version number for installation"
-    echo "  -k, --keep         Keep build files post-execution (default: remove)"
-    echo "  -c, --compiler     Set the compiler (default: gcc, alternative: clang)"
-    echo "  -p, --prefix       Set the prefix used by configure (default: /usr/local/git-VERSION)"
-    echo "  -n, --no-verbose   Suppress logging"
-    echo "  -l, --list         List all available Git versions"
     echo "  -h, --help         Display this help menu"
+    echo "  -c, --compiler     Set the compiler (default: gcc, alternative: clang)"
+    echo "  -k, --keep         Keep build files post-execution (default: remove)"
+    echo "  -l, --list         List all available Git versions"
+    echo "  -n, --no-verbose   Suppress logging"
+    echo "  -p, --prefix       Set the prefix used by configure (default: /usr/local/git-VERSION)"
+    echo "  -v, --version      Set the Git version number for installation"
 }
 
 # Function to parse command-line arguments
@@ -187,7 +187,6 @@ install_build() {
 
 create_soft_links() {
     sudo ln -sf "$install_dir/bin/"* "/usr/local/bin/"
-    sudo ln -sf "$install_dir/lib/pkgconfig/"*.pc "/usr/local/lib/pkgconfig/"
     sudo ln -sf "$install_dir/include/"* "/usr/local/include/"
 }
 

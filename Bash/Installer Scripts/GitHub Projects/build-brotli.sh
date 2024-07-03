@@ -48,7 +48,7 @@ set_flags() {
     CFLAGS="-O2 -pipe -march=native"
     CXXFLAGS="$CFLAGS"
     CPPFLAGS="-D_FORTIFY_SOURCE=2"
-    LDFLAGS="-Wl,-rpath,/usr/local/brotli-${version}/lib"
+    LDFLAGS="-Wl,-rpath,/usr/local/programs/brotli-${version}/lib"
     export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
 }
 
@@ -284,7 +284,7 @@ get_latest_release
 if build "brotli" "$version"; then
     download "https://github.com/google/brotli/archive/refs/tags/v$version.tar.gz" "brotli-$version.tar.gz"
     execute cmake -B build \
-                  -DCMAKE_INSTALL_PREFIX="/usr/local/brotli-$version" \
+                  -DCMAKE_INSTALL_PREFIX="/usr/local/programs/brotli-$version" \
                   -DCMAKE_BUILD_TYPE=Release \
                   -DBUILD_SHARED_LIBS=ON \
                   -DBUILD_TESTING=OFF \

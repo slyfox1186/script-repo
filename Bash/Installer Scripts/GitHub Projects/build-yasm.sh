@@ -14,10 +14,12 @@ fi
 # Set variables
 
 script_ver=1.1
-install_dir="/usr/local"
+prog_name="yasm"
 cwd="$PWD/yasm-build-script"
 packages="$cwd/packages"
 version=$(curl -fsS "https://yasm.tortall.net/releases/Release1.3.0.html" | grep -oP 'yasm-\K\d+\.\d+\.\d+' | sort -ruV | head -n1)
+archive_name="$prog_name-$version"
+install_dir="/usr/local/programs/$archive_name"
 debug=OFF # Change THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
 
 echo

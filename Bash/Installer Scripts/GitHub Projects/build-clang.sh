@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 # Script to build LLVM Clang
-# Updated: 05.05.24
-# Script version: 2.2
+# Updated: 07.03.24
+# Script version: 2.3
 # Added multiple script arguments including the ability to set the version of Clang to install.
 
 # ANSI color codes
@@ -83,15 +83,14 @@ get_llvm_release_version() {
     if [[ -n "$custom_version" ]]; then
         llvm_version="$custom_version"
     else
-        llvm_version=$(curl -fsS https://github.com/llvm/llvm-project/tags/ | grep -oP 'llvmorg-[0-9]+\.[0-9]+\.[0-9]+' | head -n1)
-        llvm_version="${llvm_version#llvmorg-}"
+        llvm_version=$(curl -fsS "https://github.com/llvm/llvm-project/tags/" | grep -oP 'llvmorg-\K\d+\.\d+\.\d+' | sort -ruV | head -n1)
     fi
 }
 
 set_compiler_flags() {
     CFLAGS="-O2 -fPIE -mtune=native -DNDEBUG -fstack-protector-strong -D_FORTIFY_SOURCE=2 -Wno-unused-parameter"
     CXXFLAGS="$CFLAGS"
-    LDFLAGS="-Wl,-rpath,$install_prefix/lib -Wl,--as-needed"
+    LDFLAGS="-Wl,-rpath,$install_dir/lib -Wl,--as-needed"
     export CC CXX CFLAGS CXXFLAGS LDFLAGS
 }
 
@@ -128,7 +127,8 @@ build_llvm_clang() {
           -DCMAKE_CXX_FLAGS="$CXXFLAGS" \
           -DCMAKE_C_COMPILER="$CC" \
           -DCMAKE_C_FLAGS="$CFLAGS" \
-          -DCMAKE_INSTALL_PREFIX="$install_prefix" \
+          -DCMAKE_INSTALL_PREFIX="$install_dir" \
+          -DLLVM_TARGETS_TO_BUILD="X86" \
           -DCUDA_TOOLKIT_ROOT_DIR="/usr/local/cuda" \
           -DLLVM_BUILD_DOCS=OFF \
           -DLLVM_BUILD_EXAMPLES=OFF \
@@ -172,12 +172,12 @@ create_symlinks() {
 
     for tool in ${tools[@]}; do
         if [[ "$tool" == "clang++-$llvm_version_trim" ]]; then
-            ln -sf "$install_prefix/bin/clang++" "/usr/local/bin/$tool"
+            ln -sf "$install_dir/bin/clang++" "/usr/local/bin/$tool"
         else
-            ln -sf "$install_prefix/bin/$tool" "/usr/local/bin/$tool"
+            ln -sf "$install_dir/bin/$tool" "/usr/local/bin/$tool"
             non_versioned_tool="${tool%-*}"
             if [[ ! "$tool" == "$non_versioned_tool" ]]; then
-                ln -sf "$install_prefix/bin/$tool" "/usr/local/bin/$non_versioned_tool"
+                ln -sf "$install_dir/bin/$tool" "/usr/local/bin/$non_versioned_tool"
             fi
         fi
     done
@@ -195,9 +195,7 @@ cleanup_build() {
 list_llvm_versions() {
     echo "Fetching the list of available LLVM versions..."
     echo
-    curl -fsS "https://api.github.com/repos/llvm/llvm-project/tags" |
-        jq -r '.[].name' | grep -Eo 'llvmorg-[0-9]+\.[0-9]+\.[0-9]+' |
-        sed 's/llvmorg-//' | sort -ruV
+    curl -fsS "https://github.com/llvm/llvm-project/tags/" | grep -oP 'llvmorg-\K\d+\.\d+\.\d+' | sort -ruV
     exit 0
 }
 
@@ -277,7 +275,7 @@ main() {
     set_highest_clang_version
     get_llvm_release_version
 
-    install_prefix="/usr/local/llvm-$llvm_version"
+    install_dir="/usr/local/programs/llvm-$llvm_version"
 
     set_compiler_flags
     build_llvm_clang

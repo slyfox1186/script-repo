@@ -16,7 +16,7 @@ fail() {
 [[ -d "$RUST_SRC_DIR" ]] && rm -fr "$RUST_SRC_DIR"
 
 install_rustc_fn() {
-    get_rustc_ver=$(rustc --version | grep -Eo '[0-9 \.]+' | head -n1)
+    get_rustc_ver=$(rustc --version | grep -Eo '[0-9\.]+' | head -n1)
     if [ "$get_rustc_ver" != "1.75.0" ]; then
         echo "Installing RustUp"
         curl -sS --proto "=https" --tlsv1.2 "https://sh.rustup.rs" | sh -s -- -y &>/dev/null
