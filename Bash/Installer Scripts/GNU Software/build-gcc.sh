@@ -1,3 +1,4 @@
+
 #!/usr/bin/env bash
 # shellcheck disable=SC2162 source=/dev/null
 
@@ -211,13 +212,17 @@ create_symlinks() {
 install_deps() {
     local -a missing_pkgs=() pkgs=()
     local pkg
+    
     log "Installing dependencies..."
+
     pkgs=(
         autoconf autoconf-archive automake binutils bison
         build-essential ccache curl flex gawk gcc gnat libc6-dev
         libisl-dev libtool make m4 patch texinfo zlib1g-dev libzstd-dev
         libc6-dev libc6-dev-i386 linux-libc-dev linux-libc-dev:i386
     )
+
+    sudo dpkg --add-architecture i386
 
     for pkg in "${pkgs[@]}"; do
         if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
