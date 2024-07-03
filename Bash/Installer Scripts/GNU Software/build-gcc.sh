@@ -215,7 +215,7 @@ install_deps() {
     pkgs=(
         autoconf autoconf-archive automake binutils bison
         build-essential ccache curl flex gawk gcc gnat libc6-dev
-        libisl-dev libtool make m4 patch texinfo zlib1g-dev
+        libisl-dev libtool make m4 patch texinfo zlib1g-dev libzstd-dev
         libc6-dev libc6-dev-i386 linux-libc-dev linux-libc-dev:i386
     )
 
