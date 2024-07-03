@@ -1,11 +1,10 @@
-
 #!/usr/bin/env bash
 # shellcheck disable=SC2068,SC2162,SC2317 source=/dev/null
 
 # GitHub: https://github.com/slyfox1186/ffmpeg-build-script
 #
-# Script version: 3.9.2
-# Updated: 06.27.24
+# Script version: 3.9.3
+# Updated: 07.03.24
 #
 # Purpose: build ffmpeg from source code with addon development libraries
 #          also compiled from source to help ensure the latest functionality
@@ -22,9 +21,9 @@ fi
 
 # Define global variables
 script_name="${0##*/}"
-script_version="3.9.2"
+script_version="3.9.3"
 cwd="$PWD/ffmpeg-build-script"
-mkdir -p "$cwd" && cd "$cwd" || exit 1
+mkdir -p "$cwd"; cd "$cwd" || exit 1
 if [[ "$PWD" =~ ffmpeg-build-script\/ffmpeg-build-script ]]; then
     cd ../
     rm -fr ffmpeg-build-script
@@ -830,60 +829,16 @@ download_cuda() {
         "Skip"
     )
 
-    version_serial="12.5.0-555.42.02-1"
+    version_serial="12.5.1-555.42.06-1"
     select choice in "${options[@]}"; do
         case "$choice" in
             "Debian 10") distro="debian10"; version="10-12-5"; pkg_ext="deb"; installer_path="local_installers/cuda-repo-debian${version}-local_${version_serial}_amd64.deb" ;;
             "Debian 11") distro="debian11"; version="11-12-5"; pkg_ext="deb"; installer_path="local_installers/cuda-repo-debian${version}-local_${version_serial}_amd64.deb" ;;
             "Debian 12") distro="debian12"; version="12-12-5"; pkg_ext="deb"; installer_path="local_installers/cuda-repo-debian${version}-local_${version_serial}_amd64.deb" ;;
-            "Ubuntu 20.04") distro="ubuntu2004"; version="12-5"; pkg_ext="pin"; pin_file="$distro/x86_64/cuda-ubuntu2004.pin"; installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_serial}_amd64.deb" ;;
-            "Ubuntu 22.04") distro="ubuntu2204"; version="12-5"; pkg_ext="pin"; pin_file="$distro/x86_64/cuda-ubuntu2204.pin"; installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_serial}_amd64.deb" ;;
-            "Ubuntu 24.04")
-                # Prompt user about the workaround
-                echo
-                echo "Until Ubuntu 24.04 has an officially released Debian file from Nvidia, we must use a workaround that"
-                echo "involves adding an \"unverified\" GPG key or CUDA will be uninstallable using this script."
-                echo
-                echo "The workaround involves using Ubuntu 22.04's Debian file instead as a crutch to overcome the disparity."
-                echo
-                # Prompt to continue or exit
-                read -p "Do you want to continue with this method? (yes/skip/exit): " user_choice
-                case "$user_choice" in
-                    yes)
-                        # Set PATH before proceeding with the keyring code
-                        echo "deb http://security.ubuntu.com/ubuntu jammy-security main universe" | tee "/etc/apt/sources.list.d/install-cuda-on-noble.list" >/dev/null
-                        apt update
-                        apt -y upgrade
-                        echo "export PATH=/usr/local/cuda/bin\${PATH:+:\${PATH}}" | tee -a "$HOME/.bashrc" >/dev/null
-                        # Add GPG key for Ubuntu 24.04 without user prompt
-                        key_url="https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/3bf863cc.pub"
-                        keyring_file="/usr/share/keyrings/cuda-archive-keyring.gpg"
-                        if wget -qO- "$key_url" | gpg --dearmor -o "$keyring_file"; then
-                            echo "GPG key successfully added."
-                        else
-                            fail "Failed to add the CUDA GPG key. Line: $LINENO"
-                        fi
-                        # Modify the content of the GPG key file using sed to add 'trusted=yes'. This is to avoid verbose errors when running APT.
-                        modified_text=$(echo "/etc/apt/sources.list.d/cuda-ubuntu2204.list" | sed 's/\[/[trusted=yes /')
-                        # Save the modified content back to the file
-                        echo "$modified_text" > "$file_path"
-                        distro="ubuntu2204"; version="12-5"; pkg_ext="pin"; pin_file="$distro/x86_64/cuda-ubuntu2204.pin"; installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_serial}_amd64.deb"
-                        ;;
-                    skip)
-                        echo "Skipping CUDA installation for Ubuntu 24.04."
-                        return
-                        ;;
-                    exit)
-                        echo "Exiting script."
-                        exit 0
-                        ;;
-                    *)
-                        echo "Invalid choice. Exiting script."
-                        exit 1
-                        ;;
-                esac
-                ;;
-            "Ubuntu WSL") distro="wsl-ubuntu"; version="12-5"; version_ext="12.5.0-1"; pkg_ext="pin"; pin_file="$distro/x86_64/cuda-wsl-ubuntu.pin"; installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_ext}_amd64.deb" ;;
+            "Ubuntu 20.04") distro="ubuntu2004"; version="12-5"; pkg_ext="pin"; pin_file="${distro}/x86_64/cuda-${distro}.pin"; installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_serial}_amd64.deb" ;;
+            "Ubuntu 22.04") distro="ubuntu2204"; version="12-5"; pkg_ext="pin"; pin_file="${distro}/x86_64/cuda-${distro}.pin"; installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_serial}_amd64.deb" ;;
+            "Ubuntu 24.04") distro="ubuntu2404"; version="12-5"; pkg_ext="pin"; pin_file="${distro}/x86_64/cuda-${distro}.pin"; installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_serial}_amd64.deb" ;;
+            "Ubuntu WSL") distro="wsl-ubuntu"; version="12-5"; version_ext="12.5.1-1"; pkg_ext="pin"; pin_file="${distro}/x86_64/cuda-${distro}.pin"; installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_ext}_amd64.deb" ;;
             Skip) return ;;
             *) echo "Invalid choice. Please try again."; continue ;;
         esac
