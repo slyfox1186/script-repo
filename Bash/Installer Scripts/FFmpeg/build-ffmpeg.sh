@@ -2152,6 +2152,8 @@ if [[ "$STATIC_VER" != "11" ]]; then
     find_git_repo "xiph/rav1e" "1" "T" "enabled"
     if build "rav1e" "$repo_version"; then
         install_rustc
+        source "$HOME/.cargo/bin"
+        [[ -f /usr/bin/rustc ]] && rm -f /usr/bin/rustc
         check_and_install_cargo_c
         download "https://github.com/xiph/rav1e/archive/refs/tags/$repo_version.tar.gz" "rav1e-$repo_version.tar.gz"
         rm -fr "$HOME/.cargo/registry/index/"* "$HOME/.cargo/.package-cache"
