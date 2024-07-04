@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -x
 
 if [[ "$EUID" -ne 0 ]]; then
     echo "You must run this script as root or with sudo."
@@ -19,8 +20,9 @@ log() {
 update() {
     echo -e "${CYAN}[INFO]${NC} $1"
 }
+
 error() {
-    echo -e "${RED}[ERROR]${NC} $1"
+    echo -e "${RED}[ERROR]${NC} $1" >&2
 }
 
 # Function to print the help menu
@@ -40,6 +42,26 @@ print_help() {
     echo "  $0 -gv 11                    Install (if necessary) and set GCC 11 as the default version."
     echo "  $0 -cv 10                    Install (if necessary) and set Clang 10 as the default version."
     echo "  $0 -gv 14 -e                 Install and set GCC 14 as the default version (requires -e option)."
+}
+
+# Ensure required packages are installed
+ensure_packages() {
+    log "Updating package lists..."
+    if ! apt-get update; then
+        error "Failed to update package lists. Please check your internet connection and try again."
+        exit 1
+    fi
+
+    local packages=("software-properties-common" "wget" "gnupg")
+    for package in "${packages[@]}"; do
+        if ! dpkg -s "$package" >/dev/null 2>&1; then
+            log "Installing required package: $package"
+            if ! apt-get install -y "$package"; then
+                error "Failed to install $package. Please check your internet connection and try again."
+                exit 1
+            fi
+        fi
+    done
 }
 
 # Default settings
@@ -115,27 +137,16 @@ find_highest_version() {
     echo "$highest_version"
 }
 
-# Detect package manager
-detect_package_manager() {
-    if command -v apt-get >/dev/null; then
-        echo "apt"
-    else
-        echo "Unsupported package manager"
-        exit 1
-    fi
-}
-
 # Function to install and configure GCC or Clang
 install_and_set_compiler() {
-    local binary_base_path compiler pkg_manager version
+    local binary_base_path compiler version
     compiler="$1"
     version="$2"
-    pkg_manager="$3"
     binary_base_path="/usr/bin/$compiler"
 
     [[ -z "$version" ]] && version=$(find_highest_version "$compiler")
 
-    echo
+    log "Setting up $compiler version $version"
 
     # Check for manually installed version first
     local manual_install_path=$(find /usr/local /usr/local/bin -name "${compiler}-${version}*" \( -type f -executable -o -type l \) | head -n1)
@@ -146,77 +157,63 @@ install_and_set_compiler() {
         log "Found APT installed $compiler-$version in /usr/bin"
         binary_base_path="/usr/bin/$compiler-$version"
     else
-        if run_command "apt install -y $compiler-$version"; then
-            if [[ "$compiler" == "gcc" ]]; then
-                echo
-                run_command "apt install -y g++-$version"
-            fi
-            binary_base_path="/usr/bin/$compiler-$version"
+        log "Installing $compiler-$version"
+        if ! apt-get install -y "$compiler-$version"; then
+            error "Failed to install $compiler-$version. This version may not be available in the current repositories."
+            return 1
         fi
+        binary_base_path="/usr/bin/$compiler-$version"
+    fi
+
+    # Verify that the binary exists
+    if [[ ! -x "$binary_base_path" ]]; then
+        error "The $compiler binary $binary_base_path does not exist or is not executable."
+        return 1
     fi
 
     # Set alternatives
-    echo
-    run_command "update-alternatives --install /usr/bin/$compiler $compiler $binary_base_path 50"
-    run_command "update-alternatives --set $compiler $binary_base_path"
-    echo
+    update-alternatives --remove-all "$compiler" 2>/dev/null || true
+    update-alternatives --install "/usr/bin/$compiler" "$compiler" "$binary_base_path" 50
+    update-alternatives --set "$compiler" "$binary_base_path"
 
     # Set alternatives for the compiler++
     if [[ "$compiler" == "gcc" ]]; then
-        local gpp_path="${binary_base_path/gcc/g++}"
-        if [[ ! -x "$gpp_path" ]]; then
-            gpp_path="$(dirname "$binary_base_path")/g++-$version"
-        fi
-        if [[ ! -x "$gpp_path" ]]; then
-            gpp_path=$(find /usr/local /usr/local/bin /usr/bin -name "g++-${version}*" \( -type f -executable -o -type l \) | head -n1)
-        fi
+        local gpp_path="$(dirname "$binary_base_path")/g++-$version"
         if [[ -x "$gpp_path" ]]; then
-            run_command "update-alternatives --install /usr/bin/g++ g++ $gpp_path 50"
-            run_command "update-alternatives --set g++ $gpp_path"
+            update-alternatives --remove-all g++ 2>/dev/null || true
+            update-alternatives --install /usr/bin/g++ g++ "$gpp_path" 50
+            update-alternatives --set g++ "$gpp_path"
         else
             error "g++ not found. Please ensure g++-$version is installed."
+            return 1
         fi
     elif [[ "$compiler" == "clang" ]]; then
-        local clangpp_path="${binary_base_path%%-*}++-${binary_base_path##*-}"
+        local clangpp_path="$(dirname "$binary_base_path")/clang++-$version"
         if [[ -x "$clangpp_path" ]]; then
-            run_command "update-alternatives --install /usr/bin/clang++ clang++ $clangpp_path 50"
-            run_command "update-alternatives --set clang++ $clangpp_path"
+            update-alternatives --remove-all clang++ 2>/dev/null || true
+            update-alternatives --install /usr/bin/clang++ clang++ "$clangpp_path" 50
+            update-alternatives --set clang++ "$clangpp_path"
         else
-            error "clang++ not found at $clangpp_path"
+            error "clang++ not found. This version of clang may not include clang++."
+            return 1
         fi
     fi
-}
 
-# Function to run commands and echo them
-run_command() {
-    local cmd
-    cmd="$1"
-    update "Running: $cmd"
-    if ! eval "$cmd"; then
-        error "Command failed: $cmd"
-        exit 1
-    fi
+    log "Successfully set $compiler-$version as default"
 }
 
 # Main execution
 main() {
-    local pkg_manager
-    pkg_manager=$(detect_package_manager)
+    ensure_packages
 
-    if [[ "$pkg_manager" == "Unsupported package manager" ]]; then
-        error "The script does not support your package manager."
-        exit 1
+    if [[ "$install_gcc" == true ]]; then
+        install_and_set_compiler "gcc" "$version_gcc" || exit 1
+    fi
+    if [[ "$install_clang" == true ]]; then
+        install_and_set_compiler "clang" "$version_clang" || exit 1
     fi
 
-    [[ "$install_gcc" == true ]] && install_and_set_compiler "gcc" "$version_gcc" "$pkg_manager"
-    [[ "$install_clang" == true ]] && install_and_set_compiler "clang" "$version_clang" "$pkg_manager"
-
-    echo
-    if [[ "$?" -eq 0 ]]; then
-        log "The script completed successfully."
-    else
-        error "The script failed!"
-    fi
+    log "The script completed successfully."
 }
 
 main "$@"
