@@ -1,5 +1,5 @@
-
 #!/usr/bin/env bash
+
 # shellcheck disable=SC2162 source=/dev/null
 
 # GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-gcc.sh
@@ -7,17 +7,24 @@
 # GCC versions available: 10-14
 # Features: Automatically sources the latest release of each version.
 # Updated: 07.03.24
-# Script version: 1.3
+# Script version: 1.4
 
 build_dir="/tmp/gcc-build-script"
 packages="$build_dir/packages"
 workspace="$build_dir/workspace"
+target_arch="x86_64-linux-gnu"
 keep_build_dir=0
 log_file=""
+save_binaries=0
 selected_versions=()
-verbose=1
+enable_multilib=0
+verbose=0
 version=""
 versions=(10 11 12 13 14)
+static_build=0
+optimization_level="-O2"
+debug_mode=0
+dry_run=0
 
 # ANSI color codes
 CYAN='\033[0;36m'
@@ -34,13 +41,22 @@ usage() {
     echo "  -k, --keep-build-dir       Keep the temporary build directory after completion"
     echo "  -l, --log-file FILE        Specify a log file for output"
     echo "  -p, --prefix DIR           Set the installation prefix (default: /usr/local/programs/gcc-<version>)"
+    echo "  -s, --save                 Save static binaries (only works with --static)"
     echo "  -v, --verbose              Enable verbose logging"
+    echo "  --static                   Build static GCC executables"
+    echo "  -O LEVEL                   Set optimization level (0, 1, 2, 3, fast, g, s)"
+    echo "  --debug                    Enable debug mode"
+    echo "  --dry-run                  Perform a dry run without making any changes"
+    echo "  --enable-multilib          Enable multilib support (disabled by default)"
+    echo "  -g, --generic              Use generic tuning instead of native"
     echo
     exit 0
 }
 
 log() {
-    [[ "$verbose" -eq 1 ]] && echo -e "\\n${GREEN}[INFO $(date +"%I:%M:%S %p")]${NC} $1\\n"
+    if [[ "$verbose" -eq 1 ]]; then
+        echo -e "${GREEN}[INFO $(date +"%I:%M:%S %p")]${NC} $1"
+    fi
     [[ -n "$log_file" ]] && echo "[INFO $(date +"%I:%M:%S %p")] $1" >> "$log_file"
 }
 
@@ -56,9 +72,15 @@ fail() {
     exit 1
 }
 
+# Error Handling and Logging
 parse_args() {
+    local generic_build=0
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
+            -s|--save)
+                save_binaries=1
+                shift
+                ;;
             -p|--prefix)
                 install_dir="$2"
                 shift 2
@@ -75,16 +97,49 @@ parse_args() {
                 keep_build_dir=1
                 shift
                 ;;
+            --static)
+                static_build=1
+                shift
+                ;;
+            -O)
+                optimization_level="-O$2"
+                shift 2
+                ;;
+            --debug)
+                debug_mode=1
+                shift
+                ;;
+            --dry-run)
+                dry_run=1
+                shift
+                ;;
+            --enable-multilib)
+                enable_multilib=1
+                shift
+                ;;
+            -g|--generic)
+                generic_build=1
+                shift
+                ;;
             -h|--help)
                 usage
                 ;;
             *)  fail "Unknown option: $1. Use -h or --help for usage information." ;;
         esac
     done
+
+    if [[ "$save_binaries" -eq 1 && "$static_build" -eq 0 ]]; then
+        fail "The --save option can only be used with --static."
+    fi
 }
 
 execute() {
     echo "$ $*"
+
+    if [[ "$dry_run" -eq 1 ]]; then
+        log "Dry run: would execute $*"
+        return 0
+    fi
 
     if [[ "$verbose" -eq 1 ]]; then
         if ! output=$("$@"); then
@@ -116,19 +171,37 @@ set_pkg_config_path() {
 
 set_environment() {
     log "Setting environment variables..."
-    CC="/usr/bin/gcc"
-    CXX="/usr/bin/g++"
-    CFLAGS="-O2 -pipe -march=native -fstack-protector-strong"
+    CC="gcc"
+    CXX="g++"
+    if [[ "$generic_build" -eq 1 ]]; then
+        CFLAGS="$optimization_level -pipe -march=generic -mtune=generic -fstack-protector-strong"
+    else
+        CFLAGS="$optimization_level -pipe -march=native -mtune=native -fstack-protector-strong"
+    fi
     CXXFLAGS="$CFLAGS"
     CPPFLAGS="-D_FORTIFY_SOURCE=2"
-    LDFLAGS="-L/usr/lib/x86_64-linux-gnu -Wl,-rpath,$install_dir/lib64 -Wl,-rpath,$install_dir/lib -Wl,-z,relro -Wl,-z,now"
+    if [[ "$static_build" -eq 1 ]]; then
+        LDFLAGS="-static -L/usr/lib/x86_64-linux-gnu -Wl,-z,relro -Wl,-z,now"
+    else
+        LDFLAGS="-L/usr/lib/x86_64-linux-gnu -Wl,-rpath,$install_dir/lib64 -Wl,-rpath,$install_dir/lib -Wl,-z,relro -Wl,-z,now"
+    fi
     export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS
+
+    # Find nvcc and set CUDA check flag
+    if find /usr/local/ /opt/ -type f -name nvcc 2>/dev/null | grep -q 'nvcc'; then
+        cuda_check="--enable-offload-targets=nvptx-none"
+        log "CUDA support enabled"
+    else
+        cuda_check=""
+        log "CUDA support not found"
+    fi
 }
 
 build() {
-    local package version
+    local package version options
     package=$1
     version=$2
+    options=$3
     log "Building $package $version..."
 
     # Change to the build directory
@@ -136,14 +209,15 @@ build() {
 
     case "$package" in
         gcc)
-            download "https://ftp.gnu.org/gnu/gcc/gcc-$version/gcc-$version.tar.xz"
-            tar -xf "gcc-$version.tar.xz"
+            check_disk_space 5000
+            download "https://ftp.gnu.org/gnu/gcc/gcc-$version/gcc-$version.tar.xz" || fail "Failed to download gcc-$version.tar.xz"
+            tar -Jxf "gcc-$version.tar.xz" || fail "Failed to extract the source code files to the directory gcc-$version"
             cd "gcc-$version" || fail "Failed to change directory to gcc-$version"
             execute ./contrib/download_prerequisites
-            mkdir build; cd build || fail "Failed to create build directory"
-            execute ../configure $configure_options
+            mkdir -p build && cd build || fail "Failed to create and enter build directory"
+            execute ../configure $options
             execute make "-j$threads"
-            execute sudo make install-strip
+            execute sudo make install-strip || fail "Failed to execute 'sudo make install-strip'"
             ;;
         autoconf)
             download "https://ftp.gnu.org/gnu/autoconf/autoconf-$version.tar.xz"
@@ -151,61 +225,149 @@ build() {
             cd "autoconf-$version" || fail "Failed to change directory to autoconf-$version"
             execute ./configure --prefix="$workspace"
             execute make "-j$threads"
-            execute sudo make install
+            execute sudo make install || fail "Failed to execute 'sudo make install'"
             ;;
         *)
             fail "Unsupported package: $package"
             ;;
     esac
 
-    return 0  # Return success
+    return 0
+}
+
+verify_checksum() {
+    local file=$1
+    local version=$2
+    local sig_url="https://ftp.gnu.org/gnu/gcc/gcc-${version}/gcc-${version}.tar.xz.sig"
+    local expected_checksum
+
+    if ! expected_checksum=$(curl -fsSL "$sig_url" | grep -oP '(?<=SHA512 CHECKSUM: )[a-f0-9]+'); then
+        log "Failed to retrieve checksum from $sig_url"
+        return 1
+    fi
+
+    if [[ -z "$expected_checksum" ]]; then
+        log "No checksum found in the signature file"
+        return 1
+    fi
+
+    local actual_checksum
+    actual_checksum=$(sha512sum "$file" | awk '{print $1}')
+
+    if [[ "$expected_checksum" != "$actual_checksum" ]]; then
+        log "Checksum mismatch:"
+        log "Expected: $expected_checksum"
+        log "Actual:   $actual_checksum"
+        return 1
+    fi
+
+    return 0
+}
+
+check_disk_space() {
+    local required_space=$1  # in MB
+    local available_space
+
+    available_space=$(df -m "$build_dir" | awk 'NR==2 {print $4}')
+    if [[ $available_space -lt $required_space ]]; then
+        fail "Insufficient disk space. Required: ${required_space}MB, Available: ${available_space}MB"
+    fi
+}
+
+trim_binaries() {
+    local version=$1
+    local install_dir="/usr/local/programs/gcc-$version"
+    local bin_dir="$install_dir/bin"
+    
+    log "Trimming binary filenames in $bin_dir"
+    
+    for file in "$bin_dir"/x86_64-linux-gnu-*; do
+        if [[ -f "$file" ]]; then
+            local new_name="${file##*/}"
+            new_name="${new_name#x86_64-linux-gnu-}"
+            sudo mv "$file" "$bin_dir/$new_name"
+            log "Renamed $file to $new_name"
+        fi
+    done
+}
+
+save_static_binaries() {
+    local version=$1
+    local install_dir="/usr/local/programs/gcc-$version"
+    local save_dir="./gcc-${version}-saved-binaries"
+    
+    if [[ "$static_build" -eq 1 && "$save_binaries" -eq 1 ]]; then
+        log "Saving static binaries to $save_dir"
+        mkdir -p "$save_dir"
+        
+        local programs=(
+            "cpp-$version" "c++-$version" "gccgo-$version" "gcc-$version"
+            "gcc-ar-$version" "gcc-nm-$version" "gcc-ranlib-$version" "gcov-$version"
+            "gcov-dump-$version" "gcov-tool-$version" "gfortran-$version" "gnatbind-$version"
+            "gnatchop-$version" "gnatclean-$version" "gnatkr-$version" "gnatlink-$version"
+            "gnatls-$version" "gnatmake-$version" "gnatname-$version" "gnatprep-$version"
+            "gnat-$version" "gofmt-$version" "go-$version" "g++-$version"
+        )
+
+        for program in "${programs[@]}"; do
+            local source_file="$install_dir/bin/$program"
+            if [[ -f "$source_file" ]]; then
+                cp "$source_file" "$save_dir/$program"
+            else
+                warn "Binary not found: $source_file"
+            fi
+        done
+        
+        log "Static binaries saved to $save_dir"
+    fi
 }
 
 download() {
-    local url file
+    local url file version
     url=$1
     file=${url##*/}
-    log "Downloading $file from $url..."
-    curl -fsSLO "$url"
+    version=$(echo "$file" | grep -oP 'gcc-\K[0-9.]+(?=\.tar\.xz)')
+    local max_attempts=3
+    local attempt=1
+
+    while [[ $attempt -le $max_attempts ]]; do
+        if [[ -f "$build_dir/$file" ]]; then
+            log "File $file already exists, but will be verified during extraction."
+            return 0
+        fi
+
+        log "Downloading $file from $url..."
+        if [[ "$dry_run" -eq 0 ]]; then
+            if curl -fsSL "$url" -o "$build_dir/$file"; then
+                log "Successfully downloaded $file"
+                return 0
+            else
+                log "Failed to download $file"
+            fi
+        else
+            log "Dry run: would download $file from $url"
+            return 0
+        fi
+
+        ((attempt++))
+    done
+
+    fail "Failed to download $file after $max_attempts attempts"
 }
 
 create_symlinks() {
-    local version
-    version=$1
+    local version=$1
+    local install_dir="/usr/local/programs/gcc-$version"
+    local bin_dir="$install_dir/bin"
+    
     log "Creating symlinks for GCC $version..."
-
-    local programs=(
-        "cpp-$version"
-        "c++-$version"
-        "gccgo-$version"
-        "gcc-$version"
-        "gcc-ar-$version"
-        "gcc-nm-$version"
-        "gcc-ranlib-$version"
-        "gcov-$version"
-        "gcov-dump-$version"
-        "gcov-tool-$version"
-        "gfortran-$version"
-        "gnatbind-$version"
-        "gnatchop-$version"
-        "gnatclean-$version"
-        "gnatkr-$version"
-        "gnatlink-$version"
-        "gnatls-$version"
-        "gnatmake-$version"
-        "gnatname-$version"
-        "gnatprep-$version"
-        "gnat-$version"
-        "gofmt-$version"
-        "go-$version"
-        "g++-$version"
-        "lto-dump-$version"
-    )
-
-    for program in "${programs[@]}"; do
-        local trimmed_program="${program#*-}"  # Trim leading text up to and including the first hyphen
-        local full_path="/usr/local/programs/gcc-$version/bin/x86_64-linux-gnu-$program"
-        sudo ln -sf "$full_path" "/usr/local/bin/$trimmed_program"
+    
+    for file in "$bin_dir"/*; do
+        if [[ -f "$file" && ! -L "$file" ]]; then
+            local base_name="${file##*/}"
+            sudo ln -sf "$file" "/usr/local/bin/$base_name"
+            log "Created symlink for $base_name"
+        fi
     done
 }
 
@@ -222,7 +384,11 @@ install_deps() {
         libc6-dev libc6-dev-i386 linux-libc-dev linux-libc-dev:i386
     )
 
-    sudo dpkg --add-architecture i386
+    if [[ "$dry_run" -eq 0 ]]; then
+        sudo dpkg --add-architecture i386
+    else
+        log "Dry run: would add i386 architecture"
+    fi
 
     for pkg in "${pkgs[@]}"; do
         if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
@@ -231,8 +397,12 @@ install_deps() {
     done
 
     if [[ -n "${missing_pkgs[*]}" ]]; then
-        sudo apt update
-        sudo apt install "${missing_pkgs[@]}"
+        if [[ "$dry_run" -eq 0 ]]; then
+            sudo apt update
+            sudo apt install "${missing_pkgs[@]}"
+        else
+            log "Dry run: would install ${missing_pkgs[*]}"
+        fi
     else
         log "All required packages are already installed."
     fi
@@ -245,31 +415,20 @@ get_latest_version() {
     echo "$store_version"
 }
 
-install_gcc() {
-    local options short_version version
+post_build_tasks() {
+    local short_version version
     version=$1
-    options=$2
+    short_version="${version%%.*}"
     install_dir="/usr/local/programs/gcc-$version"
 
-    if build gcc "$version"; then
-        download "https://ftp.gnu.org/gnu/gcc/gcc-$version/gcc-$version.tar.xz"
-        tar -xf "gcc-$version.tar.xz"
-        cd "gcc-$version" || fail "Failed to change directory to gcc-$version"
-        execute ./contrib/download_prerequisites
-        mkdir build; cd build || fail "Failed to create build directory"
-        execute ../configure $options
-        execute make "-j$threads"
-        execute sudo make install-strip
-        if [[ -d "$install_dir/libexec/gcc/x86_64-pc-linux-gnu/$short_version" ]]; then
-            execute sudo libtool --finish "$install_dir/libexec/gcc/x86_64-pc-linux-gnu/$short_version"
-        elif [[ -d "$install_dir/libexec/gcc/x86_64-linux-gnu/$short_version" ]]; then
-            execute sudo libtool --finish "$install_dir/libexec/gcc/x86_64-linux-gnu/$short_version"
-        elif [[ -d "$install_dir/libexec/gcc/$pc_type/$short_version" ]]; then
-            execute sudo libtool --finish "$install_dir/libexec/gcc/$pc_type/$short_version"
-        else
-            fail "The script could not find the correct folder for libtool to run --finish on. Line: $LINENO"
-        fi
-        build_done "gcc" "$version"
+    if [[ -d "$install_dir/libexec/gcc/x86_64-pc-linux-gnu/$short_version" ]]; then
+        execute sudo libtool --finish "$install_dir/libexec/gcc/x86_64-pc-linux-gnu/$short_version"
+    elif [[ -d "$install_dir/libexec/gcc/x86_64-linux-gnu/$short_version" ]]; then
+        execute sudo libtool --finish "$install_dir/libexec/gcc/x86_64-linux-gnu/$short_version"
+    elif [[ -d "$install_dir/libexec/gcc/$pc_type/$short_version" ]]; then
+        execute sudo libtool --finish "$install_dir/libexec/gcc/$pc_type/$short_version"
+    else
+        fail "The script could not find the correct folder for libtool to run --finish on. Line: $LINENO"
     fi
 
     create_symlinks "$version"
@@ -277,11 +436,11 @@ install_gcc() {
 
 build_gcc() {
     local -a common_options=() configure_options=()
-    local cuda_check version
+    local version install_dir
     version=$1
     install_dir="/usr/local/programs/gcc-$version"
 
-    pc_type=$(gcc -dumpmachine)
+    pc_type=$(gcc -dumpmachine) || fail "Failed to determine machine type."
 
     log "Begin building GCC $version"
 
@@ -298,7 +457,6 @@ build_gcc() {
         "--disable-nls"
         "--disable-vtable-verify"
         "--disable-werror"
-        "--enable-bootstrap"
         "--enable-checking=release"
         "--enable-clocale=gnu"
         "--enable-default-pie"
@@ -309,53 +467,72 @@ build_gcc() {
         "--enable-libstdcxx-time=yes"
         "--enable-linker-build-id"
         "--enable-multiarch"
-        "--enable-multilib"
-        "--enable-plugin"
-        "--enable-shared"
-        "--enable-stage1-checking=all"
         "--enable-threads=posix"
         "--libdir=$install_dir/lib"
         "--libexecdir=$install_dir/libexec"
         "--program-prefix=$pc_type-"
         "--program-suffix=-$short_version"
         "--with-abi=m64"
-        "--with-build-config=bootstrap-lto-lean"
         "--with-default-libstdcxx-abi=new"
         "--with-gcc-major-version-only"
         "--with-isl=/usr"
         "--with-system-zlib"
         "--with-target-system-zlib=auto"
-        "--with-tune=native"
-        "--with-zstd=auto"
-        "--without-included-gettext"
         "$cuda_check"
     )
+
+    if [[ "$generic_build" -eq 1 ]]; then
+        common_options+=("--with-tune=generic")
+    else
+        common_options+=("--with-tune=native")
+    fi
+
+    if [[ "$enable_multilib" -eq 1 ]]; then
+        common_options+=("--enable-multilib" "--with-arch-32=i686")
+    else
+        common_options+=("--disable-multilib")
+    fi
+
+    if [[ "$static_build" -eq 1 ]]; then
+        common_options+=(
+            "--disable-shared"
+            "--enable-static"
+            "--disable-plugin"
+        )
+    else
+        common_options+=(
+            "--enable-shared"
+            "--enable-plugin"
+            "--enable-bootstrap"
+        )
+    fi
 
     log "Configuring GCC $version"
 
     case "$short_version" in
         9|10|11) configure_options=("${common_options[*]}") ;;
         12) configure_options=("${common_options[*]}" --with-link-serialization=2) ;;
-        13) configure_options=("${common_options[*]}" --disable-vtable-verify --enable-cet --enable-link-serialization=2 --enable-host-pie --with-arch-32=i686) ;;
-        14) configure_options=("${common_options[*]}" --enable-year2038 --disable-vtable-verify --enable-cet --enable-link-serialization=2 --enable-host-pie --with-arch-32=i686) ;;
+        13|14) configure_options=("${common_options[*]}" --disable-vtable-verify --enable-cet --enable-link-serialization=2 --enable-host-pie) ;;
         *)  fail "GCC version not found. Line: $LINENO" ;;
     esac
 
-    install_gcc "$version" "${configure_options[*]}"
+    build gcc "$version" "${configure_options[*]}"
+    post_build_tasks "$version"
     ld_linker_path "$short_version"
-    create_additional_soft_links "$install_dir"
-}
-
-cleanup_build_folders() {
-    log "Cleaning up leftover build folders from previous runs..."
-    find "$build_dir" -mindepth 1 -maxdepth 1 -type d ! -name 'packages' ! -name 'workspace' -exec sudo rm -fr {} +
+    trim_binaries "$version"
+    save_static_binaries "$version"
+    create_symlinks "$version"
 }
 
 cleanup() {
     if [[ "$keep_build_dir" -ne 1 ]]; then
         log "Cleaning up..."
-        sudo rm -fr "$build_dir"
-        log "Removed temporary build directory: $build_dir"
+        if [[ "$dry_run" -eq 0 ]]; then
+            sudo rm -fr "$build_dir"
+            log "Removed temporary build directory: $build_dir"
+        else
+            log "Dry run: would remove temporary build directory: $build_dir"
+        fi
     else
         log "Temporary build directory retained: $build_dir"
     fi
@@ -449,7 +626,13 @@ summary() {
     echo -e "  ${YELLOW}Installed GCC version(s): ${CYAN}${selected_versions[*]}${NC}"
     echo -e "  ${YELLOW}Installation prefix: ${CYAN}/usr/local/programs/gcc-${selected_versions[*]}${NC}"
     echo -e "  ${YELLOW}Build directory: ${CYAN}$build_dir${NC}"
+    echo -e "  ${YELLOW}Save static binaries: ${CYAN}$([[ "$save_binaries" -eq 1 && "$static_build" -eq 1 ]] && echo "Yes" || echo "No")${NC}"
     echo -e "  ${YELLOW}Temporary build directory retained: ${CYAN}$([[ "$keep_build_dir" -eq 1 ]] && echo "Yes" || echo "No")${NC}"
+    echo -e "  ${YELLOW}Static build: ${CYAN}$([[ "$static_build" -eq 1 ]] && echo "Yes" || echo "No")${NC}"
+    echo -e "  ${YELLOW}Optimization level: ${CYAN}$optimization_level${NC}"
+    echo -e "  ${YELLOW}Debug mode: ${CYAN}$([[ "$debug_mode" -eq 1 ]] && echo "Enabled" || echo "Disabled")${NC}"
+    echo -e "  ${YELLOW}Dry run: ${CYAN}$([[ "$dry_run" -eq 1 ]] && echo "Yes" || echo "No")${NC}"
+    echo -e "  ${YELLOW}Multilib support: ${CYAN}$([[ "$enable_multilib" -eq 1 ]] && echo "Enabled" || echo "Disabled")${NC}"
     if [[ -z "$log_file" ]]; then
         echo -e "  ${YELLOW}Log file: ${CYAN}Not Enabled${NC}"
     else
@@ -460,18 +643,26 @@ summary() {
 ld_linker_path() {
     local version
     version=$1
-    [[ -d "$install_dir/lib64" ]] && echo "$install_dir/lib64" | sudo tee "/etc/ld.so.conf.d/custom_gcc-$version.conf" >/dev/null
-    [[ -d "$install_dir/lib" ]] && echo "$install_dir/lib" | sudo tee -a "/etc/ld.so.conf.d/custom_gcc-$version.conf" >/dev/null
-    sudo ldconfig
+    if [[ "$dry_run" -eq 0 ]]; then
+        [[ -d "$install_dir/lib64" ]] && echo "$install_dir/lib64" | sudo tee "/etc/ld.so.conf.d/custom_gcc-$version.conf" >/dev/null
+        [[ -d "$install_dir/lib" ]] && echo "$install_dir/lib" | sudo tee -a "/etc/ld.so.conf.d/custom_gcc-$version.conf" >/dev/null
+        sudo ldconfig
+    else
+        log "Dry run: would update ld.so.conf and run ldconfig"
+    fi
 }
 
 create_additional_soft_links() {
     local install_dir="$1"
 
     if [[ -d "$install_dir/lib/pkgconfig" ]]; then
-        find "$install_dir/lib/pkgconfig" -type f -name '*.pc' | while read -r file; do
-            sudo ln -sf "$file" "/usr/local/lib/pkgconfig/"
-        done
+        if [[ "$dry_run" -eq 0 ]]; then
+            find "$install_dir/lib/pkgconfig" -type f -name '*.pc' | while read -r file; do
+                sudo ln -sf "$file" "/usr/local/lib/pkgconfig/"
+            done
+        else
+            log "Dry run: would create additional soft links in /usr/local/lib/pkgconfig/"
+        fi
     fi
 }
 
@@ -492,6 +683,8 @@ main() {
 
     mkdir -p "$packages" "$workspace"
 
+    cleanup_build_folders
+
     if [[ -f /proc/cpuinfo ]]; then
         threads=$(grep -c ^processor /proc/cpuinfo)
     else
@@ -506,7 +699,6 @@ main() {
     # Only install autoconf if necessary
     install_autoconf
 
-    cleanup_build_folders
     select_versions
     cleanup
     summary
