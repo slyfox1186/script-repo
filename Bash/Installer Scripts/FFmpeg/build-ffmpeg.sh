@@ -860,14 +860,24 @@ download_cuda() {
         "deb")
             wget --show-progress -cqO "$package_name" "$cuda_url/$installer_path"
             dpkg -i "$package_name"
-            cp -f "/var/cuda-repo-${distro}-12-5-local/cuda-"*"-keyring.gpg" "/usr/share/keyrings/"
+            # Explicitly copy the specific keyring file mentioned in the error message
+            if [ -f "/var/cuda-repo-debian12-12-5-local/cuda-838FCB25-keyring.gpg" ]; then
+                execute cp -f /var/cuda-repo-debian12-12-5-local/cuda-838FCB25-keyring.gpg /usr/share/keyrings/
+            else
+                warn "CUDA keyring file not found. Manual intervention may be required."
+            fi
             [[ "$distro" == "debian"* ]] && add-apt-repository -y contrib
             ;;
         "pin")
             wget --show-progress -cqO "/etc/apt/preferences.d/cuda-repository-pin-600" "$cuda_pin_url/$pin_file"
             wget --show-progress -cqO "$package_name" "$cuda_url/$installer_path"
             dpkg -i "$package_name"
-            cp -f "/var/cuda-repo-${distro}-12-5-local/cuda-"*"-keyring.gpg" "/usr/share/keyrings/"
+            # Explicitly copy the specific keyring file mentioned in the error message
+            if [ -f "/var/cuda-repo-debian12-12-5-local/cuda-838FCB25-keyring.gpg" ]; then
+                execute cp -f /var/cuda-repo-debian12-12-5-local/cuda-838FCB25-keyring.gpg /usr/share/keyrings/
+            else
+                warn "CUDA keyring file not found. Manual intervention may be required."
+            fi
             ;;
         *)
             echo "Unsupported package extension: $pkg_ext"
@@ -929,6 +939,9 @@ install_cuda() {
     check_nvidia_gpu
 
     if [[ -n "$amd_gpu_test" ]] && [[ "$is_nvidia_gpu_present" == "NVIDIA GPU not detected" ]]; then
+        log "Detected an AMD GPU."
+        log "Nvidia GPU not detected."
+        warn "CUDA Hardware Acceleration will not be enabled."
         return 0
     elif [[ "$is_nvidia_gpu_present" == "NVIDIA GPU detected" ]]; then
         log "Nvidia GPU detected"
@@ -1259,7 +1272,7 @@ nvidia_encode_utils_version() {
 
     nvidia_encode_version=$(
                             apt-cache search '^libnvidia-encode.*' 2>&1 |
-                            grep -oP '^libnvidia-encode-[0-9-]+' |
+                            grep -oP '^libnvidia-encode-[0-9]+' |
                             sort -ruV | head -n1
                        )
 }
