@@ -3,8 +3,8 @@
 
 ##  GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-tools.sh
 ##  Purpose: Install the latest versions of: CMake, Ninja, Meson, & Golang
-##  Updated: 07.02.24
-##  Script Version: 3.3
+##  Updated: 07.04.24
+##  Script Version: 3.4
 
 if [[ "$EUID" -eq 0 ]]; then
     echo "You must run this script without root or sudo."
@@ -34,7 +34,7 @@ fail() {
     exit 1
 }
 
-script_ver=3.3
+script_ver="3.4"
 cwd="$PWD/build-tools-script"
 latest=false
 debug=OFF
@@ -231,7 +231,7 @@ apt_pkgs() {
     pkgs=(
         autoconf autoconf-archive automake autogen build-essential
         ccache cmake curl git libssl-dev libtool m4 python3 python3-pip
-        qtbase5-dev
+        qtbase5-dev qt5-qmake qttools5-dev-tools
     )
 
     missing_packages=()
@@ -297,6 +297,9 @@ elif lsb_release -d &>/dev/null; then
 else
     fail "Failed to define the \$OS and/or \$VER variables. Line: $LINENO"
 fi
+
+# Call apt_pkgs function to ensure all required packages are installed
+apt_pkgs
 
 # Retrieve and store current versions of packages
 current_cmake_version=$(cmake --version 2>/dev/null | awk '{print $3}' | head -n1)
