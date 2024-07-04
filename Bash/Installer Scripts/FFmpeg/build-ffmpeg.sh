@@ -3,8 +3,8 @@
 
 # GitHub: https://github.com/slyfox1186/ffmpeg-build-script
 #
-# Script version: 3.9.3
-# Updated: 07.03.24
+# Script version: 3.9.4
+# Updated: 07.04.24
 #
 # Purpose: build ffmpeg from source code with addon development libraries
 #          also compiled from source to help ensure the latest functionality
@@ -12,7 +12,7 @@
 #                    Ubuntu (20|22|24).04
 #                    Arch Linux (No longer supported due to the low need.)
 # Supported architecture: x86_64
-# CUDA SDK Toolkit: Updated to version 12.5.0
+# CUDA SDK Toolkit: Updated to version 12.5.1
 
 if [[ "$EUID" -ne 0 ]]; then
     echo "You must run this script as root or with sudo."
@@ -21,7 +21,7 @@ fi
 
 # Define global variables
 script_name="${0##*/}"
-script_version="3.9.3"
+script_version="3.9.4"
 cwd="$PWD/ffmpeg-build-script"
 mkdir -p "$cwd"; cd "$cwd" || exit 1
 if [[ "$PWD" =~ ffmpeg-build-script\/ffmpeg-build-script ]]; then
@@ -375,7 +375,7 @@ github_repo() {
             fi
         else
             if [[ "$repo" == "FFmpeg/FFmpeg" ]]; then
-                curl_cmd=$(curl -fsSL "https://github.com/FFmpeg/FFmpeg/tags" | grep -oP 'href="[^"]*[0-9]\..*\.tar\.gz"' | grep -v '\-dev' | sort -ruV)
+                curl_cmd=$(curl -fsSL "https://github.com/FFmpeg/FFmpeg/tags/" | grep -oP 'href="[^"]*[6-9]\..*\.tar\.gz"' | grep -v '\-dev' | sort -un)
             else
                 curl_cmd=$(curl -fsSL "https://github.com/$repo/$url" | grep -oP 'href="[^"]*\.tar\.gz"')
             fi
@@ -948,9 +948,9 @@ install_cuda() {
     check_nvidia_gpu
 
     if [[ -n "$amd_gpu_test" ]] && [[ "$is_nvidia_gpu_present" == "NVIDIA GPU not detected" ]]; then
-        log "Detected an AMD GPU."
-        log "Nvidia GPU not detected."
-        warn "CUDA Hardware Acceleration will not be enabled."
+        log "AMD GPU detected."
+        log "Nvidia GPU not detected"
+        warn "CUDA Hardware Acceleration will not be enabled"
         return 0
     elif [[ "$is_nvidia_gpu_present" == "NVIDIA GPU detected" ]]; then
         log "Nvidia GPU detected"
@@ -1438,9 +1438,13 @@ CONFIGURE_OPTIONS+=("--enable-librist")
 find_git_repo "madler/zlib" "1" "T"
 if build "zlib" "$repo_version"; then
     download "https://github.com/madler/zlib/releases/download/v$repo_version/zlib-$repo_version.tar.gz"
-    execute ./configure --prefix="$workspace"
-    execute make "-j$threads"
-    execute make install
+    execute cmake -B build -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_BUILD_TYPE="Release" \
+                  -DINSTALL_BIN_DIR="$workspace/bin" -DINSTALL_INC_DIR="$workspace/include" \
+                  -DINSTALL_LIB_DIR="$workspace/lib" -DINSTALL_MAN_DIR="$workspace/share/man" \
+                  -DINSTALL_PKGCONFIG_DIR="$workspace/share/pkgconfig" -DZLIB_BUILD_EXAMPLES=OFF \
+                  -G Ninja -Wno-dev
+    execute ninja "-j$threads" -C build
+    execute ninja -C build install
     build_done "zlib" "$repo_version"
 fi
 
@@ -2062,8 +2066,9 @@ if build "libvpx" "$repo_version"; then
     download "https://github.com/webmproject/libvpx/archive/refs/tags/v$repo_version.tar.gz" "libvpx-$repo_version.tar.gz"
     execute sed -i 's/#include "\.\/vpx_tpl\.h"/#include ".\/vpx\/vpx_tpl.h"/' "vpx/vpx_ext_ratectrl.h"
     execute ./configure --prefix="$workspace" --as=yasm --disable-{examples,shared,unit-tests} \
-                        --enable-{better-hw-compatibility,libyuv,multi-res-encoding} \
-                        --enable-{postproc,small,vp8,vp9,vp9-highbitdepth,vp9-postproc,webm-io}
+                    --enable-{better-hw-compatibility,libyuv,multi-res-encoding} \
+                    --enable-{postproc,small,vp8,vp9,vp9-highbitdepth,vp9-postproc,webm-io} \
+                    --enable-{avx512,avx2,sse4_1}
     execute make "-j$threads"
     execute make install
     build_done "libvpx" "$repo_version"
@@ -2152,6 +2157,8 @@ if [[ "$STATIC_VER" != "11" ]]; then
     find_git_repo "xiph/rav1e" "1" "T" "enabled"
     if build "rav1e" "$repo_version"; then
         install_rustc
+        source "$HOME/.cargo/env"
+        [[ -f /usr/bin/rustc ]] && rm -f /usr/bin/rustc
         check_and_install_cargo_c
         download "https://github.com/xiph/rav1e/archive/refs/tags/$repo_version.tar.gz" "rav1e-$repo_version.tar.gz"
         rm -fr "$HOME/.cargo/registry/index/"* "$HOME/.cargo/.package-cache"
@@ -2356,13 +2363,15 @@ if "$NONFREE_AND_GPL"; then
         mkdir -p {8,10,12}bit
         cd 12bit || exit 1
         echo "$ making 12bit binaries"
-        execute cmake ../../../source -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_BUILD_TYPE=Release -DENABLE_{CLI,LIBVMAF,SHARED}=OFF \
-                      -DEXPORT_C_API=OFF -DHIGH_BIT_DEPTH=ON -DMAIN12=ON -DNATIVE_BUILD=ON -G Ninja -Wno-dev
+        execute cmake ../../../source -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_BUILD_TYPE=Release \
+                      -DENABLE_{CLI,LIBVMAF,SHARED}=OFF -DEXPORT_C_API=OFF -DHIGH_BIT_DEPTH=ON -DMAIN12=ON \
+                      -DNATIVE_BUILD=ON -G Ninja -Wno-dev
         execute ninja "-j$threads"
         echo "$ making 10bit binaries"
         cd ../10bit || exit 1
-        execute cmake ../../../source -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_BUILD_TYPE=Release -DENABLE_{CLI,LIBVMAF,SHARED}=OFF \
-                      -DENABLE_HDR10_PLUS=ON -DEXPORT_C_API=OFF -DHIGH_BIT_DEPTH=ON -DNATIVE_BUILD=ON -DNUMA_ROOT_DIR=/usr -G Ninja -Wno-dev
+        execute cmake ../../../source -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_BUILD_TYPE=Release \
+                      -DENABLE_{CLI,LIBVMAF,SHARED}=OFF -DENABLE_HDR10_PLUS=ON -DEXPORT_C_API=OFF \
+                      -DHIGH_BIT_DEPTH=ON -DNATIVE_BUILD=ON -DNUMA_ROOT_DIR=/usr -G Ninja -Wno-dev
         execute ninja "-j$threads"
         echo "$ making 8bit binaries"
         cd ../8bit || exit 1
@@ -2451,7 +2460,9 @@ if "$NONFREE_AND_GPL"; then
         export OPENSSL_INCLUDE_DIR="$workspace/include"
         execute cmake -B build -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_BUILD_TYPE=Release \
                       -DBUILD_SHARED_LIBS=OFF -DENABLE_{APPS,SHARED}=OFF -DENABLE_STATIC=ON \
-                      -DUSE_STATIC_LIBSTDCXX=ON -G Ninja -Wno-dev
+                      -DUSE_STATIC_LIBSTDCXX=ON -DENABLE_ENCRYPTION=ON -DENABLE_CXX11=ON \
+                      -DUSE_OPENSSL_PC=ON -DENABLE_UNITTESTS=OFF -DENABLE_LOGGING=ON \
+                      -DENABLE_HEAVY_LOGGING=OFF -G Ninja -Wno-dev
         execute ninja -C build "-j$threads"
         execute ninja -C build "-j$threads" install
         if [[ -n "$LDEXEFLAGS" ]]; then
@@ -2577,12 +2588,10 @@ if build "libheif" "$repo_version"; then
     esac
 
     execute cmake -B build -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_BUILD_TYPE=Release \
-                  -DAOM_INCLUDE_DIR="$workspace/include" -DAOM_LIBRARY="$workspace/lib/libaom.a" \
-                  -DBUILD_SHARED_LIBS=OFF -DLIBDE265_INCLUDE_DIR="$workspace/include" \
-                  -DLIBDE265_LIBRARY="/usr/lib/x86_64-linux-gnu/libde265.so" \
-                  -DLIBSHARPYUV_INCLUDE_DIR="$workspace/include/webp" -DLIBSHARPYUV_LIBRARY="$workspace/lib/libsharpyuv.so" \
-                  -DWITH_AOM_{DECODER,ENCODER}=ON -DWITH_{DAV1D,EXAMPLES,REDUCED_VISIBILITY,SvtEnc,SvtEnc_PLUGIN,X265}=OFF \
-                  -DWITH_GDK_PIXBUF="$pixbuf_switch" -DWITH_{LIBDE265,LIBSHARPYUV}=ON -G Ninja -Wno-dev
+                  -DBUILD_SHARED_LIBS=OFF -DWITH_AOM=ON -DWITH_AOM_{DECODER,ENCODER}=ON \
+                  -DWITH_DAV1D=ON -DWITH_LIBDE265=ON -DWITH_RAV1E=ON -DWITH_SVT_AV1=ON \
+                  -DWITH_X265=ON -DWITH_LIBVMAF=OFF -DENABLE_PLUGIN_LOADING=OFF \
+                  -G Ninja -Wno-dev
     execute ninja "-j$threads" -C build
     execute ninja -C build install
     source_compiler_flags
@@ -2593,7 +2602,9 @@ find_git_repo "uclouvain/openjpeg" "1" "T"
 if build "openjpeg" "$repo_version"; then
     download "https://codeload.github.com/uclouvain/openjpeg/tar.gz/refs/tags/v$repo_version" "openjpeg-$repo_version.tar.gz"
     execute cmake -B build -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_BUILD_TYPE=Release \
-                  -DBUILD_{SHARED_LIBS,TESTING}=OFF -DBUILD_THIRDPARTY=ON -G Ninja -Wno-dev
+                  -DBUILD_{SHARED_LIBS,TESTING}=OFF -DBUILD_THIRDPARTY=ON -DBUILD_JPIP=ON \
+                  -DBUILD_JPWL=ON -DBUILD_MJ2=ON -DOPENJPEG_ENABLE_PNG=ON -DOPENJPEG_ENABLE_TIFF=ON \
+                  -G Ninja -Wno-dev
     execute ninja "-j$threads" -C build
     execute ninja -C build install
     build_done "openjpeg" "$repo_version"
@@ -2626,15 +2637,15 @@ if [[ "$STATIC_OS" == "WSL2" ]]; then
 fi
 
 # Run the 'ffmpeg -version' command and capture its output
-if ffmpeg_version_output=$(ffmpeg -version 2>/dev/null); then
-    # Extract the version number using grep and awk
-    ffmpeg_version=$(echo "$ffmpeg_version_output" | grep -oP 'ffmpeg version \K\d+\.\d+')
+if ffmpeg_version=$(curl -fsS "https://github.com/FFmpeg/FFmpeg/tags/" | grep -Ev '\-dev' | grep -oP '/tag/n\K\d+\.\d+[\d\.]*' | sort -ruV | head -n1); then
 
+    # Get the installed version
+    ffmpeg_installed_version=$(ffmpeg -version 2>/dev/null | grep -oP '\d+\.\d+[\d\.]*' | head -n1)
     # Format the version number with the desired prefix
     ffmpeg_version_formatted="n$ffmpeg_version"
 
     echo
-    log_update "The installed FFmpeg version is: $ffmpeg_version_formatted"
+    log_update "The installed FFmpeg version is: n$ffmpeg_installed_version"
     log_update "The latest FFmpeg release version available: $ffmpeg_version_formatted"
 else
     echo
@@ -2663,7 +2674,7 @@ if build "ffmpeg" "n${repo_version}"; then
                  --enable-{libmodplug,libshine,libsnappy,libspeex,libssh} \
                  --enable-{libtesseract,libtwolame,libv4l2,libvo-amrwbenc} \
                  --enable-{libzimg,libzvbi,lto,opengl,pic,pthreads,rpath} \
-                 --enable-{small,static,version3,libgsm,libjack,libvpl} \
+                 --enable-{small,static,version3,libgsm,libjack,libvpl,libdav1d} \
                  --extra-{cflags,cxxflags}="$CFLAGS" --extra-libs="$EXTRALIBS" \
                  --extra-ldflags="$LDFLAGS" --pkg-config-flags="--static" \
                  --extra-ldexeflags="$LDEXEFLAGS" --pkg-config="$workspace/bin/pkg-config" \
