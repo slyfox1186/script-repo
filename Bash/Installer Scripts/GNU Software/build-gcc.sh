@@ -16,7 +16,7 @@ target_arch="x86_64-linux-gnu"
 keep_build_dir=0
 log_file=""
 save_binaries=0
-selected_versions=()
+declare -a selected_versions=()
 enable_multilib=0
 verbose=0
 version=""
@@ -72,7 +72,6 @@ fail() {
     exit 1
 }
 
-# Error Handling and Logging
 parse_args() {
     local generic_build=0
     while [[ "$#" -gt 0 ]]; do
@@ -278,9 +277,9 @@ trim_binaries() {
     local version=$1
     local install_dir="/usr/local/programs/gcc-$version"
     local bin_dir="$install_dir/bin"
-    
+
     log "Trimming binary filenames in $bin_dir"
-    
+
     for file in "$bin_dir"/x86_64-linux-gnu-*; do
         if [[ -f "$file" ]]; then
             local new_name="${file##*/}"
@@ -295,18 +294,18 @@ save_static_binaries() {
     local version=$1
     local install_dir="/usr/local/programs/gcc-$version"
     local save_dir="./gcc-${version}-saved-binaries"
-    
+
     if [[ "$static_build" -eq 1 && "$save_binaries" -eq 1 ]]; then
         log "Saving static binaries to $save_dir"
         mkdir -p "$save_dir"
-        
+
         local programs=(
             "cpp-$version" "c++-$version" "gccgo-$version" "gcc-$version"
             "gcc-ar-$version" "gcc-nm-$version" "gcc-ranlib-$version" "gcov-$version"
             "gcov-dump-$version" "gcov-tool-$version" "gfortran-$version" "gnatbind-$version"
             "gnatchop-$version" "gnatclean-$version" "gnatkr-$version" "gnatlink-$version"
             "gnatls-$version" "gnatmake-$version" "gnatname-$version" "gnatprep-$version"
-            "gnat-$version" "gofmt-$version" "go-$version" "g++-$version"
+            "gnat-$version" "gofmt-$version" "go-$version" "g++-$version" "lto-dump-$version"
         )
 
         for program in "${programs[@]}"; do
@@ -317,7 +316,7 @@ save_static_binaries() {
                 warn "Binary not found: $source_file"
             fi
         done
-        
+
         log "Static binaries saved to $save_dir"
     fi
 }
@@ -359,14 +358,24 @@ create_symlinks() {
     local version=$1
     local install_dir="/usr/local/programs/gcc-$version"
     local bin_dir="$install_dir/bin"
-    
+
     log "Creating symlinks for GCC $version..."
-    
-    for file in "$bin_dir"/*; do
-        if [[ -f "$file" && ! -L "$file" ]]; then
-            local base_name="${file##*/}"
-            sudo ln -sf "$file" "/usr/local/bin/$base_name"
-            log "Created symlink for $base_name"
+
+    local allowed_files=(
+        "cpp-$version" "c++-$version" "gccgo-$version" "gcc-$version"
+        "gcc-ar-$version" "gcc-nm-$version" "gcc-ranlib-$version" "gcov-$version"
+        "gcov-dump-$version" "gcov-tool-$version" "gfortran-$version" "gnatbind-$version"
+        "gnatchop-$version" "gnatclean-$version" "gnatkr-$version" "gnatlink-$version"
+        "gnatls-$version" "gnatmake-$version" "gnatname-$version" "gnatprep-$version"
+        "gnat-$version" "gofmt-$version" "go-$version" "g++-$version" "lto-dump-$version"
+    )
+
+    for file in "${allowed_files[@]}"; do
+        if [[ -f "$bin_dir/$file" ]]; then
+            sudo ln -sf "$bin_dir/$file" "/usr/local/bin/$file"
+            log "Created symlink for $file"
+        else
+            warn "File not found: $bin_dir/$file"
         fi
     done
 }
@@ -374,7 +383,7 @@ create_symlinks() {
 install_deps() {
     local -a missing_pkgs=() pkgs=()
     local pkg
-    
+
     log "Installing dependencies..."
 
     pkgs=(
@@ -522,6 +531,10 @@ build_gcc() {
     trim_binaries "$version"
     save_static_binaries "$version"
     create_symlinks "$version"
+}
+
+cleanup_build_folders() {
+    find "$build_dir" -mindepth 1 -delete
 }
 
 cleanup() {
@@ -695,7 +708,7 @@ main() {
     set_pkg_config_path
     set_environment
     install_deps
-    
+
     # Only install autoconf if necessary
     install_autoconf
 
