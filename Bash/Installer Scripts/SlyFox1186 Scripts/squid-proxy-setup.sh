@@ -67,7 +67,7 @@ interactive_config() {
     read -p "Enter DNS nameservers (default: 1.1.1.1 1.0.0.1): " dns_servers
     dns_servers="${dns_servers:-"1.1.1.1 1.0.0.1"}"
 
-    read -p "Enter SSH port (default: 22): " ssh_port_input
+    read -p "Enter SSH port (default: 31500): " ssh_port_input
     ssh_port="${ssh_port_input:-22}"
 }
 
@@ -149,30 +149,17 @@ log_setup() {
     echo "$(date) - Squid setup initiated." >> "$log_file"
 }
 
-email_notification() {
-    mail_recipient="user@example.com"
-    mail_subject="Squid Service Notification"
-    mail_body="The Squid service has been ${1}."
-    echo "$mail_body" | mail -s "$mail_subject" "$mail_recipient"
-}
-
 monitor_squid() {
     while true; do
         if ! systemctl is-active --quiet squid; then
-            email_notification "stopped"
+            echo "Squid service is stopped!" | tee -a "$log_file"
         fi
         sleep $health_check_interval
     done &
 }
 
 install_dependencies() {
-    if ! type -P htpasswd; then
-        apt -y install apache2-utils
-        clear
-    fi
-    if ! command -v squidclient &>/dev/null; then
-        apt -y install squidclient
-    fi
+    apt -y install squid squid-common squid-langpack squid-cgi apache2-utils squidclient
 }
 
 setup_whitelist_blacklist() {
@@ -370,7 +357,6 @@ case "$1" in
         ;;
     --maintenance)
         systemctl stop squid
-        email_notification "entered maintenance mode"
         ;;
     *)
         main "$@"
