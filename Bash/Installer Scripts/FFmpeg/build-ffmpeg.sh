@@ -1438,9 +1438,13 @@ CONFIGURE_OPTIONS+=("--enable-librist")
 find_git_repo "madler/zlib" "1" "T"
 if build "zlib" "$repo_version"; then
     download "https://github.com/madler/zlib/releases/download/v$repo_version/zlib-$repo_version.tar.gz"
-    execute ./configure --prefix="$workspace"
-    execute make "-j$threads"
-    execute make install
+    execute cmake -B build -DCMAKE_INSTALL_PREFIX="$workspace" -DCMAKE_BUILD_TYPE="Release" \
+                  -DINSTALL_BIN_DIR="$workspace/bin" -DINSTALL_INC_DIR="$workspace/include" \
+                  -DINSTALL_LIB_DIR="$workspace/lib" -DINSTALL_MAN_DIR="$workspace/share/man" \
+                  -DINSTALL_PKGCONFIG_DIR="$workspace/share/pkgconfig" -DZLIB_BUILD_EXAMPLES=OFF \
+                  -G Ninja -Wno-dev
+    execute ninja "-j$threads" -C build
+    execute ninja -C build install
     build_done "zlib" "$repo_version"
 fi
 
