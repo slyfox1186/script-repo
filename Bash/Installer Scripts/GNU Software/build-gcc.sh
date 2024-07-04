@@ -13,18 +13,18 @@ build_dir="/tmp/gcc-build-script"
 packages="$build_dir/packages"
 workspace="$build_dir/workspace"
 target_arch="x86_64-linux-gnu"
+debug_mode=0
+declare -a selected_versions=()
+dry_run=0
+enable_multilib=0
 keep_build_dir=0
 log_file=""
+optimization_level="-O2"
 save_binaries=0
-declare -a selected_versions=()
-enable_multilib=0
+static_build=0
 verbose=0
 version=""
 versions=(10 11 12 13 14)
-static_build=0
-optimization_level="-O2"
-debug_mode=0
-dry_run=0
 
 # ANSI color codes
 CYAN='\033[0;36m'
@@ -38,17 +38,17 @@ usage() {
     echo
     echo "Options:"
     echo "  -h, --help                 Show this help message"
-    echo "  -k, --keep-build-dir       Keep the temporary build directory after completion"
-    echo "  -l, --log-file FILE        Specify a log file for output"
-    echo "  -p, --prefix DIR           Set the installation prefix (default: /usr/local/programs/gcc-<version>)"
-    echo "  -s, --save                 Save static binaries (only works with --static)"
-    echo "  -v, --verbose              Enable verbose logging"
-    echo "  --static                   Build static GCC executables"
-    echo "  -O LEVEL                   Set optimization level (0, 1, 2, 3, fast, g, s)"
     echo "  --debug                    Enable debug mode"
     echo "  --dry-run                  Perform a dry run without making any changes"
     echo "  --enable-multilib          Enable multilib support (disabled by default)"
+    echo "  --static                   Build static GCC executables"
     echo "  -g, --generic              Use generic tuning instead of native"
+    echo "  -k, --keep-build-dir       Keep the temporary build directory after completion"
+    echo "  -l, --log-file FILE        Specify a log file for output"
+    echo "  -O LEVEL                   Set optimization level (0, 1, 2, 3, fast, g, s)"
+    echo "  -p, --prefix DIR           Set the installation prefix (default: /usr/local/programs/gcc-<version>)"
+    echo "  -s, --save                 Save static binaries (only works with --static)"
+    echo "  -v, --verbose              Enable verbose logging"
     echo
     exit 0
 }
@@ -76,34 +76,6 @@ parse_args() {
     local generic_build=0
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
-            -s|--save)
-                save_binaries=1
-                shift
-                ;;
-            -p|--prefix)
-                install_dir="$2"
-                shift 2
-                ;;
-            -v|--verbose)
-                verbose=1
-                shift
-                ;;
-            -l|--log-file)
-                log_file="$2"
-                shift 2
-                ;;
-            -k|--keep-build-dir)
-                keep_build_dir=1
-                shift
-                ;;
-            --static)
-                static_build=1
-                shift
-                ;;
-            -O)
-                optimization_level="-O$2"
-                shift 2
-                ;;
             --debug)
                 debug_mode=1
                 shift
@@ -123,10 +95,37 @@ parse_args() {
             -h|--help)
                 usage
                 ;;
+            -k|--keep-build-dir)
+                keep_build_dir=1
+                shift
+                ;;
+            -l|--log-file)
+                log_file="$2"
+                shift 2
+                ;;
+            -O)
+                optimization_level="-O$2"
+                shift 2
+                ;;
+            -p|--prefix)
+                install_dir="$2"
+                shift 2
+                ;;
+            -s|--save)
+                save_binaries=1
+                shift
+                ;;
+            --static)
+                static_build=1
+                shift
+                ;;
+            -v|--verbose)
+                verbose=1
+                shift
+                ;;
             *)  fail "Unknown option: $1. Use -h or --help for usage information." ;;
         esac
     done
-
     if [[ "$save_binaries" -eq 1 && "$static_build" -eq 0 ]]; then
         fail "The --save option can only be used with --static."
     fi
@@ -197,7 +196,7 @@ set_environment() {
 }
 
 build() {
-    local package version options
+    local options package version
     package=$1
     version=$2
     options=$3
@@ -235,10 +234,11 @@ build() {
 }
 
 verify_checksum() {
-    local file=$1
-    local version=$2
-    local sig_url="https://ftp.gnu.org/gnu/gcc/gcc-${version}/gcc-${version}.tar.xz.sig"
-    local expected_checksum
+    local -a actual_checksum=() expected_checksum=()
+    local file sig_url version
+    file=$1
+    version=$2
+    sig_url="https://ftp.gnu.org/gnu/gcc/gcc-${version}/gcc-${version}.tar.xz.sig"
 
     if ! expected_checksum=$(curl -fsSL "$sig_url" | grep -oP '(?<=SHA512 CHECKSUM: )[a-f0-9]+'); then
         log "Failed to retrieve checksum from $sig_url"
@@ -250,7 +250,6 @@ verify_checksum() {
         return 1
     fi
 
-    local actual_checksum
     actual_checksum=$(sha512sum "$file" | awk '{print $1}')
 
     if [[ "$expected_checksum" != "$actual_checksum" ]]; then
@@ -264,8 +263,8 @@ verify_checksum() {
 }
 
 check_disk_space() {
-    local required_space=$1  # in MB
-    local available_space
+    local available_space required_space
+    required_space=$1  # in MB
 
     available_space=$(df -m "$build_dir" | awk 'NR==2 {print $4}')
     if [[ $available_space -lt $required_space ]]; then
@@ -274,9 +273,10 @@ check_disk_space() {
 }
 
 trim_binaries() {
-    local version=$1
-    local install_dir="/usr/local/programs/gcc-$version"
-    local bin_dir="$install_dir/bin"
+    local bin_dir install_dir version
+    version=$1
+    install_dir="/usr/local/programs/gcc-$version"
+    bin_dir="$install_dir/bin"
 
     log "Trimming binary filenames in $bin_dir"
 
@@ -291,9 +291,10 @@ trim_binaries() {
 }
 
 save_static_binaries() {
-    local version=$1
-    local install_dir="/usr/local/programs/gcc-$version"
-    local save_dir="./gcc-${version}-saved-binaries"
+    local install_dir save_dir version
+    version=$1
+    install_dir="/usr/local/programs/gcc-$version"
+    save_dir="$PWD/gcc-${version}-saved-binaries"
 
     if [[ "$static_build" -eq 1 && "$save_binaries" -eq 1 ]]; then
         log "Saving static binaries to $save_dir"
@@ -311,7 +312,8 @@ save_static_binaries() {
         for program in "${programs[@]}"; do
             local source_file="$install_dir/bin/$program"
             if [[ -f "$source_file" ]]; then
-                cp "$source_file" "$save_dir/$program"
+                sudo cp -f "$source_file" "$save_dir/$program"
+                log "Copied $program to $save_dir"
             else
                 warn "Binary not found: $source_file"
             fi
