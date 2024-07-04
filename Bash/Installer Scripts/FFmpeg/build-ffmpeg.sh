@@ -857,26 +857,34 @@ download_cuda() {
 
     package_name="$packages/nvidia-cuda/cuda-$distro-$cuda_version_number.$pkg_ext"
     case "$pkg_ext" in
-        "deb")
+        "deb"|"pin")
             wget --show-progress -cqO "$package_name" "$cuda_url/$installer_path"
             dpkg -i "$package_name"
-            # Explicitly copy the specific keyring file mentioned in the error message
-            if [ -f "/var/cuda-repo-debian12-12-5-local/cuda-838FCB25-keyring.gpg" ]; then
-                execute cp -f /var/cuda-repo-debian12-12-5-local/cuda-838FCB25-keyring.gpg /usr/share/keyrings/
+            
+            # Dynamically find and copy the CUDA keyring file
+            cuda_repo_dir="/var/cuda-repo-${distro}${version//./-}-local"
+            cuda_keyring_file=$(find "$cuda_repo_dir" -name "cuda-*-keyring.gpg" 2>/dev/null | head -n 1)
+            
+            if [ -n "$cuda_keyring_file" ]; then
+                execute cp -f "$cuda_keyring_file" /usr/share/keyrings/
+                log "Copied CUDA keyring file: $cuda_keyring_file"
+                
+                # Add the CUDA repository to sources.list
+                echo "deb [signed-by=/usr/share/keyrings/$(basename "$cuda_keyring_file")] file://$cuda_repo_dir /" | sudo tee /etc/apt/sources.list.d/cuda-repository.list
+                
+                # Update package lists
+                apt update
+
+                # Install cuda-keyring package
+                apt install -y cuda-keyring
             else
-                warn "CUDA keyring file not found. Manual intervention may be required."
+                warn "CUDA keyring file not found in $cuda_repo_dir. Manual intervention may be required."
             fi
-            [[ "$distro" == "debian"* ]] && add-apt-repository -y contrib
-            ;;
-        "pin")
-            wget --show-progress -cqO "/etc/apt/preferences.d/cuda-repository-pin-600" "$cuda_pin_url/$pin_file"
-            wget --show-progress -cqO "$package_name" "$cuda_url/$installer_path"
-            dpkg -i "$package_name"
-            # Explicitly copy the specific keyring file mentioned in the error message
-            if [ -f "/var/cuda-repo-debian12-12-5-local/cuda-838FCB25-keyring.gpg" ]; then
-                execute cp -f /var/cuda-repo-debian12-12-5-local/cuda-838FCB25-keyring.gpg /usr/share/keyrings/
-            else
-                warn "CUDA keyring file not found. Manual intervention may be required."
+
+            if [[ "$pkg_ext" == "pin" ]]; then
+                wget --show-progress -cqO "/etc/apt/preferences.d/cuda-repository-pin-600" "$cuda_pin_url/$pin_file"
+            elif [[ "$distro" == "debian"* ]]; then
+                add-apt-repository -y contrib
             fi
             ;;
         *)
@@ -885,8 +893,9 @@ download_cuda() {
             ;;
     esac
 
+    # Update package lists again and install CUDA toolkit
     apt update
-    apt -y install cuda-toolkit-12-5
+    apt install -y cuda-toolkit-12-5
 }
 
 # Function to detect the environment and check for an NVIDIA GPU
