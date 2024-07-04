@@ -948,9 +948,9 @@ install_cuda() {
     check_nvidia_gpu
 
     if [[ -n "$amd_gpu_test" ]] && [[ "$is_nvidia_gpu_present" == "NVIDIA GPU not detected" ]]; then
-        log "Detected an AMD GPU."
-        log "Nvidia GPU not detected."
-        warn "CUDA Hardware Acceleration will not be enabled."
+        log "AMD GPU detected."
+        log "Nvidia GPU not detected"
+        warn "CUDA Hardware Acceleration will not be enabled"
         return 0
     elif [[ "$is_nvidia_gpu_present" == "NVIDIA GPU detected" ]]; then
         log "Nvidia GPU detected"
