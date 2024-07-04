@@ -564,11 +564,10 @@ install_autoconf() {
 }
 
 select_versions() {
-    local -a selected_versions=() versions=()
-    versions=(10 11 12 13 14)
+    local -a versions=(10 11 12 13 14)
     selected_versions=()
 
-    echo -e "\\n${GREEN}Select the GCC version(s) to install:${NC}\n"
+    echo -e "\n${GREEN}Select the GCC version(s) to install:${NC}\n"
     echo -e "${CYAN}1. Single version${NC}"
     echo -e "${CYAN}2. All versions${NC}"
     echo -e "${CYAN}3. Custom versions${NC}"
@@ -578,7 +577,7 @@ select_versions() {
 
     case "$choice" in
         1)
-            echo -e "\\n${GREEN}Select a single GCC version to install:${NC}\n"
+            echo -e "\n${GREEN}Select a single GCC version to install:${NC}\n"
             for ((i=0; i<${#versions[@]}; i++)); do
                 echo -e "${CYAN}$((i+1)). GCC ${versions[i]}${NC}"
             done
@@ -615,11 +614,18 @@ select_versions() {
         fail "No GCC versions selected."
     fi
 
+    # Array to store the actual installed versions
+    installed_versions=()
+
     for version in "${selected_versions[@]}"; do
         latest_version=$(get_latest_version "$version")
         build_gcc "$latest_version" "/usr/local/programs/gcc-$latest_version"
         create_symlinks "$latest_version"
+        installed_versions+=("$latest_version")
     done
+
+    # Update selected_versions with the actual installed versions
+    selected_versions=("${installed_versions[@]}")
 }
 
 check_requirements() {
@@ -638,8 +644,12 @@ check_requirements() {
 summary() {
     echo
     echo -e "${GREEN}Summary:${NC}"
-    echo -e "  ${YELLOW}Installed GCC version(s): ${CYAN}${selected_versions[*]}${NC}"
-    echo -e "  ${YELLOW}Installation prefix: ${CYAN}/usr/local/programs/gcc-${selected_versions[*]}${NC}"
+    echo -e "  ${YELLOW}Installed GCC version(s):${NC}"
+    for version in "${selected_versions[@]}"; do
+        latest_version=$(get_latest_version "$version")
+        echo -e "    ${CYAN}GCC $latest_version${NC}"
+        echo -e "    ${YELLOW}Installation prefix: ${CYAN}/usr/local/programs/gcc-$latest_version${NC}"
+    done
     echo -e "  ${YELLOW}Build directory: ${CYAN}$build_dir${NC}"
     echo -e "  ${YELLOW}Save static binaries: ${CYAN}$([[ "$save_binaries" -eq 1 && "$static_build" -eq 1 ]] && echo "Yes" || echo "No")${NC}"
     echo -e "  ${YELLOW}Temporary build directory retained: ${CYAN}$([[ "$keep_build_dir" -eq 1 ]] && echo "Yes" || echo "No")${NC}"
