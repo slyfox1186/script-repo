@@ -356,30 +356,49 @@ download() {
     fail "Failed to download $file after $max_attempts attempts"
 }
 
+find_gcc_dir() {
+    local version=$1
+    local gcc_dir=$(find /usr/local/programs -maxdepth 1 -type d -name "gcc-${version}*" | sort -V | tail -n1)
+    echo "$gcc_dir"
+}
+
 create_symlinks() {
     local version=$1
-    local install_dir="/usr/local/programs/gcc-$version"
+    local install_dir=$(find_gcc_dir "$version")
+    
+    if [[ -z "$install_dir" ]]; then
+        warn "No installation directory found for GCC $version"
+        log "Listing contents of /usr/local/programs:"
+        ls -l /usr/local/programs
+        return
+    fi
+
     local bin_dir="$install_dir/bin"
 
-    log "Creating symlinks for GCC $version..."
+    log "Creating symlinks for GCC $version (${install_dir##*/})..."
 
-    local allowed_files=(
-        "cpp-$version" "c++-$version" "gccgo-$version" "gcc-$version"
-        "gcc-ar-$version" "gcc-nm-$version" "gcc-ranlib-$version" "gcov-$version"
-        "gcov-dump-$version" "gcov-tool-$version" "gfortran-$version" "gnatbind-$version"
-        "gnatchop-$version" "gnatclean-$version" "gnatkr-$version" "gnatlink-$version"
-        "gnatls-$version" "gnatmake-$version" "gnatname-$version" "gnatprep-$version"
-        "gnat-$version" "gofmt-$version" "go-$version" "g++-$version" "lto-dump-$version"
-    )
+    if [[ ! -d "$bin_dir" ]]; then
+        warn "Binary directory not found: $bin_dir"
+        log "Listing contents of $install_dir:"
+        ls -l "$install_dir"
+        return
+    fi
 
-    for file in "${allowed_files[@]}"; do
-        if [[ -f "$bin_dir/$file" ]]; then
-            sudo ln -sf "$bin_dir/$file" "/usr/local/bin/$file"
-            log "Created symlink for $file"
-        else
-            warn "File not found: $bin_dir/$file"
+    log "Contents of $bin_dir:"
+    ls -l "$bin_dir"
+
+    local symlink_count=0
+    for file in "$bin_dir"/*; do
+        if [[ -f "$file" && -x "$file" && ! "$file" =~ x86_64-linux-gnu ]]; then
+            local base_name=$(basename "$file")
+            echo "Would create symlink: ln -sf $file /usr/local/bin/$base_name"
+            sudo ln -sf "$file" "/usr/local/bin/$base_name"
+            log "Created symlink for $base_name"
+            ((symlink_count++))
         fi
     done
+
+    log "Created $symlink_count symlinks for GCC $version"
 }
 
 install_deps() {
