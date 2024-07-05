@@ -1,6 +1,6 @@
 # Guide to Setting Up a NAS Storage System on a Linux Ubuntu Jammy Server PC
 
-This comprehensive guide will walk you through setting up a NAS (Network Attached Storage) on a Linux Ubuntu Jammy Jellyfish (22.04) server. By the end of this guide, you'll have a fully functional NAS using Samba for file sharing across your network.
+This guide will provide you with all the information you need to set up a NAS (Network Attached Storage) on a Linux Ubuntu Jammy Jellyfish (22.04) server. We'll cover the necessary hardware, software, and step-by-step instructions to get your NAS up and running.
 
 ## Table of Contents
 
@@ -20,173 +20,246 @@ A Network Attached Storage (NAS) allows you to store and share files across your
 
 ## Requirements
 
-- A PC running Ubuntu 22.04 (Jammy Jellyfish)
-- External USB hard drive(s) or SSD(s)
-- Ethernet cable or reliable Wi-Fi connection
-- Another computer for remote configuration (optional)
+### Hardware
+
+- **PC running Ubuntu 22.04 (Jammy Jellyfish)**: This will be your NAS server.
+- **Internal or External Storage Drives**:
+  - Internal HDD/SSD: These can be mounted inside your PC case and connected via SATA.
+  - External USB HDD/SSD: These connect via USB and offer flexibility in adding or removing storage.
+
+### Why Choose Internal or External Drives?
+
+- **Internal Drives**:
+  - Pros: Usually faster data transfer rates, more secure since they are inside the case, and no additional power supply required.
+  - Cons: Less flexible for expansion, more challenging to add/remove drives.
+
+- **External Drives**:
+  - Pros: Easy to add or remove, portable, can be used with other devices, and do not require opening the PC case.
+  - Cons: Slightly slower transfer rates compared to internal drives, may require an additional power source.
+
+### Other Necessary Hardware
+
+- **Power supply for the PC**
+- **Ethernet cable or reliable Wi-Fi connection**
+- **Keyboard, mouse, and monitor for initial setup (optional, can use SSH later)**
+
+### Software
+
+- **Ubuntu 22.04 (Jammy Jellyfish)**: The operating system for your NAS.
+- **Samba**: Software that provides SMB/CIFS protocol to share files over a network.
+- **rsync**: A utility for efficiently transferring and synchronizing files.
 
 ## Initial Server Setup
 
-1. **Update and Upgrade the System**:
+### Step 1: Install Ubuntu 22.04
+
+1. **Download Ubuntu 22.04 ISO**:
+   - Download from the [official Ubuntu website](https://ubuntu.com/download/desktop).
+
+2. **Create a Bootable USB Drive**:
+   - Use software like [Rufus](https://rufus.ie/) for Windows or [Etcher](https://www.balena.io/etcher/) for macOS/Linux to create a bootable USB drive.
+
+3. **Install Ubuntu**:
+   - Insert the bootable USB drive into your PC and boot from it.
+   - Follow the on-screen instructions to install Ubuntu 22.04.
+
+### Step 2: Update and Upgrade the System
+
+1. **Open Terminal**:
+   - You can do this by pressing `Ctrl+Alt+T`.
+
+2. **Run the Following Commands**:
    ```bash
    sudo apt update && sudo apt upgrade -y
    ```
 
-2. **Set a Static IP Address**:
-   - Edit the Netplan configuration file:
-     ```bash
-     sudo nano /etc/netplan/01-netcfg.yaml
-     ```
-   - Add the following lines, replacing with your network details:
-     ```yaml
-     network:
-       version: 2
-       ethernets:
-         eth0:
-           dhcp4: no
-           addresses: [192.168.1.100/24]
-           gateway4: 192.168.1.1
-           nameservers:
-             addresses: [192.168.1.1, 8.8.8.8]
-     ```
-   - Apply the Netplan configuration:
-     ```bash
-     sudo netplan apply
-     ```
+### Step 3: Set a Static IP Address
 
-3. **Install Necessary Packages**:
+1. **Edit the Netplan Configuration File**:
    ```bash
-   sudo apt install samba samba-common-bin -y
+   sudo nano /etc/netplan/01-netcfg.yaml
+   ```
+
+2. **Add the Following Configuration**:
+   ```yaml
+   network:
+     version: 2
+     ethernets:
+       eth0:
+         dhcp4: no
+         addresses: [192.168.1.100/24]
+         gateway4: 192.168.1.1
+         nameservers:
+           addresses: [192.168.1.1, 8.8.8.8]
+   ```
+
+3. **Apply the Configuration**:
+   ```bash
+   sudo netplan apply
    ```
 
 ## Installing and Configuring Samba
 
-1. **Install Samba**:
+### Step 1: Install Samba
+
+1. **Run the Following Command**:
    ```bash
    sudo apt install samba samba-common-bin -y
    ```
 
-2. **Backup the Original Configuration File**:
+### Step 2: Backup the Original Configuration File
+
+1. **Run the Following Command**:
    ```bash
    sudo cp /etc/samba/smb.conf /etc/samba/smb.conf.bak
    ```
 
-3. **Edit the Samba Configuration File**:
+### Step 3: Edit the Samba Configuration File
+
+1. **Open the Configuration File**:
    ```bash
    sudo nano /etc/samba/smb.conf
    ```
-   - Add the following to the end of the file:
-     ```conf
-     [NAS]
-     comment = Ubuntu NAS
-     path = /srv/nas
-     browseable = yes
-     writeable = yes
-     only guest = no
-     create mask = 0777
-     directory mask = 0777
-     public = no
-     ```
 
-4. **Create a Directory for Your NAS**:
+2. **Add the Following to the End of the File**:
+   ```conf
+   [NAS]
+   comment = Ubuntu NAS
+   path = /srv/nas
+   browseable = yes
+   writeable = yes
+   only guest = no
+   create mask = 0777
+   directory mask = 0777
+   public = no
+   ```
+
+### Step 4: Create a Directory for Your NAS
+
+1. **Run the Following Command**:
    ```bash
    sudo mkdir -p /srv/nas
    ```
 
-5. **Set Permissions**:
+### Step 5: Set Permissions
+
+1. **Run the Following Commands**:
    ```bash
    sudo chown -R nobody:nogroup /srv/nas
    sudo chmod -R 0777 /srv/nas
    ```
 
-6. **Create a Samba User**:
+### Step 6: Create a Samba User
+
+1. **Run the Following Command**:
    ```bash
    sudo smbpasswd -a <username>
    ```
 
-7. **Restart Samba**:
+### Step 7: Restart Samba
+
+1. **Run the Following Command**:
    ```bash
    sudo systemctl restart smbd
    ```
 
 ## Creating and Sharing Folders
 
-1. **Create Additional Shared Folders**:
+### Step 1: Create Additional Shared Folders
+
+1. **Run the Following Command**:
    ```bash
    sudo mkdir -p /srv/nas/shared_folder
    ```
 
-2. **Add Folder to Samba Configuration**:
-   - Edit `smb.conf` again:
-     ```bash
-     sudo nano /etc/samba/smb.conf
-     ```
-   - Add:
-     ```conf
-     [SharedFolder]
-     comment = Shared Folder
-     path = /srv/nas/shared_folder
-     browseable = yes
-     writeable = yes
-     only guest = no
-     create mask = 0777
-     directory mask = 0777
-     public = no
-     ```
+### Step 2: Add Folder to Samba Configuration
 
-3. **Restart Samba**:
+1. **Edit the Samba Configuration File**:
+   ```bash
+   sudo nano /etc/samba/smb.conf
+   ```
+
+2. **Add the Following Configuration**:
+   ```conf
+   [SharedFolder]
+   comment = Shared Folder
+   path = /srv/nas/shared_folder
+   browseable = yes
+   writeable = yes
+   only guest = no
+   create mask = 0777
+   directory mask = 0777
+   public = no
+   ```
+
+### Step 3: Restart Samba
+
+1. **Run the Following Command**:
    ```bash
    sudo systemctl restart smbd
    ```
 
 ## Accessing Your NAS
 
-1. **Windows**:
-   - Open File Explorer.
-   - Type `\\192.168.1.100\NAS` in the address bar and press Enter.
-   - Enter your Samba username and password.
+### From Windows
 
-2. **macOS**:
-   - Open Finder.
-   - Press `Cmd + K`.
-   - Type `smb://192.168.1.100/NAS` and press Enter.
-   - Enter your Samba username and password.
+1. **Open File Explorer**.
+2. **Type `\\192.168.1.100\NAS` in the Address Bar and Press Enter**.
+3. **Enter Your Samba Username and Password**.
 
-3. **Linux**:
-   - Open your file manager.
-   - Type `smb://192.168.1.100/NAS` in the address bar and press Enter.
-   - Enter your Samba username and password.
+### From macOS
+
+1. **Open Finder**.
+2. **Press `Cmd + K`**.
+3. **Type `smb://192.168.1.100/NAS` and Press Enter**.
+4. **Enter Your Samba Username and Password**.
+
+### From Linux
+
+1. **Open Your File Manager**.
+2. **Type `smb://192.168.1.100/NAS` in the Address Bar and Press Enter**.
+3. **Enter Your Samba Username and Password**.
 
 ## Setting Up Automatic Backups
 
-1. **Install rsync**:
+### Step 1: Install rsync
+
+1. **Run the Following Command**:
    ```bash
    sudo apt install rsync -y
    ```
 
-2. **Create a Backup Script**:
+### Step 2: Create a Backup Script
+
+1. **Open a New Script File**:
    ```bash
    sudo nano /usr/local/bin/backup.sh
    ```
-   - Add the following:
-     ```bash
-     #!/bin/bash
-     rsync -av --delete /srv/nas /path/to/backup/location
-     ```
 
-3. **Make the Script Executable**:
+2. **Add the Following Script**:
+   ```bash
+   #!/bin/bash
+   rsync -av --delete /srv/nas /path/to/backup/location
+   ```
+
+### Step 3: Make the Script Executable
+
+1. **Run the Following Command**:
    ```bash
    sudo chmod +x /usr/local/bin/backup.sh
    ```
 
-4. **Schedule the Backup with Cron**:
+### Step 4: Schedule the Backup with Cron
+
+1. **Open the Crontab Editor**:
    ```bash
    sudo crontab -e
    ```
-   - Add the following line to run the backup script every day at 2 AM:
-     ```cron
-     0 2 * * * /usr/local/bin/backup.sh
-     ```
+
+2. **Add the Following Line to Run the Backup Script Every Day at 2 AM**:
+   ```cron
+   0 2 * * * /usr/local/bin/backup.sh
+   ```
 
 ## Troubleshooting
 
