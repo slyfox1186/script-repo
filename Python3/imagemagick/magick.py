@@ -110,7 +110,7 @@ def analyze_image(input_file, output_file):
                     box = (j, i, min(j+chunk_size, original_image.width), min(i+chunk_size, original_image.height))
                     original_chunk = np.array(original_image.crop(box))
                     compressed_chunk = np.array(compressed_image.crop(box))
-                    
+
                     total_psnr += psnr(original_chunk, compressed_chunk)
                     total_ssim += ssim(original_chunk, compressed_chunk, channel_axis=-1)
                     num_chunks += 1
@@ -197,24 +197,15 @@ def generate_imagemagick_commands(input_file, output_directory, initial_populati
         fitness_scores = []
         for i, individual in enumerate(population):
             selected_options = random.sample(base_options, k=random.randint(MIN_OPTIONS_PER_COMMAND, len(base_options)))
-            base_command = " ".join([f"{option[0]} {random.choice(option[1])}" for option in selected_options])
+            base_command = " ".join([f"{option[0]} {random.choice(option[1])}" for option in selected_options if option[1]])
 
-            # Remove duplicates and ensure all options have their arguments
-            command_parts = base_command.split()
-            command_dict = {}
-            for j in range(0, len(command_parts), 2):
-                if j + 1 < len(command_parts) and not command_parts[j].startswith('-quality'):
-                    command_dict[command_parts[j]] = command_parts[j + 1]
-            base_command = " ".join([f"{k} {v}" for k, v in command_dict.items()])
+            # Validate the command before execution
+            if not validate_command(base_command):
+                logging.error(f"Generated invalid command: {base_command}")
+                continue
 
             # Add individual-specific options
             command = f"{base_command} -quality {individual['quality']} -unsharp {individual['unsharp']} -adaptive-sharpen {individual['adaptive-sharpen']}"
-
-            # Validate the command before execution
-            valid_command = validate_command(command)
-            if not valid_command:
-                logging.error(f"Generated invalid command: {command}")
-                continue
 
             output_file = f"temp_output_{generation:02d}_{i:02d}.jpg"
             fitness_score, file_size = fitness(command, input_file, output_file, output_directory)
@@ -232,26 +223,29 @@ def generate_imagemagick_commands(input_file, output_directory, initial_populati
 
     best_individual = max(population, key=lambda x: fitness(
         " ".join([f"{option[0]} {random.choice(option[1])}" for option in random.sample(base_options, random.randint(MIN_OPTIONS_PER_COMMAND, len(base_options)))]) +
-        f" -quality {x['quality']} -unsharp {x['unsharp']} -adaptive-sharpen {x['adaptive-sharpen']}",
+        f" -quality {x['quality']} -unsharp {x['unsharp']} -adaptive-sharpen {x['adaptive_sharpen']}",
         input_file, "temp_best.jpg", output_directory
     )[0])
 
     best_command = " ".join([f"{option[0]} {random.choice(option[1])}" for option in random.sample(base_options, random.randint(MIN_OPTIONS_PER_COMMAND, len(base_options)))]) + \
-        f" -quality {best_individual['quality']} -unsharp {best_individual['unsharp']} -adaptive-sharpen {best_individual['adaptive-sharpen']}"
+        f" -quality {best_individual['quality']} -unsharp {best_individual['unsharp']} -adaptive-sharpen {best_individual['adaptive_sharpen']}"
 
     return [best_command]
 
 def validate_command(command):
     command_parts = command.split()
-    for i in range(0, len(command_parts) - 1, 2):
-        if command_parts[i] in ["-filter", "-define", "-dither", "-posterize", "-interlace", "-colorspace", "-sampling-factor"] and not command_parts[i + 1].startswith('-'):
+    i = 0
+    while i < len(command_parts):
+        if command_parts[i] in ["-strip"]:
+            i += 1
             continue
-        elif command_parts[i] in ["-unsharp", "-adaptive-sharpen", "-quality"] and not command_parts[i + 1].startswith('-'):
-            continue
-        elif command_parts[i] == "-strip" and command_parts[i + 1] == "":
-            continue
+        elif command_parts[i] in ["-filter", "-define", "-dither", "-posterize", "-interlace", "-colorspace", "-sampling-factor", "-quality", "-unsharp", "-adaptive-sharpen"]:
+            if i + 1 >= len(command_parts) or command_parts[i + 1].startswith('-'):
+                logging.error(f"Missing argument for {command_parts[i]}")
+                return False
+            i += 2
         else:
-            logging.error(f"Invalid command part: {command_parts[i]} {command_parts[i + 1]}")
+            logging.error(f"Invalid command part: {command_parts[i]}")
             return False
     return True
 
@@ -338,7 +332,7 @@ def select_best_commands(log_file, num_commands):
     with open(log_file, "r") as file:
         reader = csv.DictReader(file)
         rows = list(reader)
-    
+
     if not rows:
         logging.error("No valid data in the log file. Cannot select best commands.")
         return []
@@ -347,7 +341,7 @@ def select_best_commands(log_file, num_commands):
         row['file_size'] = int(row['file_size'])
         row['psnr'] = float(row['psnr'])
         row['ssim'] = float(row['ssim'])
-    
+
     rows.sort(key=lambda r: (r['psnr'], r['ssim'], -r['file_size']), reverse=True)
     best_commands = rows[:num_commands]
     return [cmd['command'] for cmd in best_commands]
@@ -366,7 +360,7 @@ def optimize_stored_commands(input_file, output_directory, stored_commands):
                 individual["adaptive-sharpen"] = options[i+1]
         if len(individual) == 3:
             initial_population.append(individual)
-    
+
     while len(initial_population) < POPULATION_SIZE:
         initial_population.append(create_individual())
 
