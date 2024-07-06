@@ -60,6 +60,6 @@ I would greatly appreciate any help from the community to improve this script fu
 - Enhancing the user interface and making the script more user-friendly
 - Optimizing the script's performance and resource utilization
 
-If you have any ideas, suggestions, or would like to contribute to the development of this script, please leave a comment below or feel free to submit a pull request on the GitHub repository [link to your repository].
+If you have any ideas, suggestions, or would like to contribute to the development of this script, please leave a comment below or feel free to submit a pull request on the GitHub repository [GitHub Script](https://github.com/slyfox1186/script-repo/blob/main/Python3/imagemagick/magick.py).
 
 Thank you in advance for your help and support!
