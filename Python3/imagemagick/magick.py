@@ -19,7 +19,7 @@ from skimage.metrics import peak_signal_noise_ratio as psnr
 from skimage.metrics import structural_similarity as ssim
 
 # User-configurable variables
-INITIAL_COMMAND_COUNT = 4
+INITIAL_COMMAND_COUNT = 20
 MAX_WORKERS = min(2, multiprocessing.cpu_count())
 QUALITY_RANGE = (82, 91)
 MIN_OPTIONS_PER_COMMAND = 3
@@ -28,8 +28,8 @@ OUTPUT_FORMAT = "jpg"
 BEST_COMMANDS_FILE = "best_commands.csv"
 
 # Genetic Algorithm parameters
-POPULATION_SIZE = 4
-GENERATIONS = 2
+POPULATION_SIZE = 20
+GENERATIONS = 4
 MUTATION_RATE = 0.2
 
 # Configure logging
@@ -198,7 +198,7 @@ def generate_imagemagick_commands(input_file, output_directory, initial_populati
         for i, individual in enumerate(population):
             selected_options = random.sample(base_options, k=random.randint(MIN_OPTIONS_PER_COMMAND, len(base_options)))
             base_command = " ".join([f"{option[0]} {random.choice(option[1])}" for option in selected_options])
-            
+
             # Remove duplicates and ensure all options have their arguments
             command_parts = base_command.split()
             command_dict = {}
@@ -232,12 +232,12 @@ def generate_imagemagick_commands(input_file, output_directory, initial_populati
 
     best_individual = max(population, key=lambda x: fitness(
         " ".join([f"{option[0]} {random.choice(option[1])}" for option in random.sample(base_options, random.randint(MIN_OPTIONS_PER_COMMAND, len(base_options)))]) +
-        f" -quality {x['quality']} -unsharp {x['unsharp']} -adaptive-sharpen {x['adaptive_sharpen']}",
+        f" -quality {x['quality']} -unsharp {x['unsharp']} -adaptive-sharpen {x['adaptive-sharpen']}",
         input_file, "temp_best.jpg", output_directory
-    ))
+    )[0])
 
     best_command = " ".join([f"{option[0]} {random.choice(option[1])}" for option in random.sample(base_options, random.randint(MIN_OPTIONS_PER_COMMAND, len(base_options)))]) + \
-        f" -quality {best_individual['quality']} -unsharp {best_individual['unsharp']} -adaptive-sharpen {best_individual['adaptive_sharpen']}"
+        f" -quality {best_individual['quality']} -unsharp {best_individual['unsharp']} -adaptive-sharpen {best_individual['adaptive-sharpen']}"
 
     return [best_command]
 
@@ -247,6 +247,8 @@ def validate_command(command):
         if command_parts[i] in ["-filter", "-define", "-dither", "-posterize", "-interlace", "-colorspace", "-sampling-factor"] and not command_parts[i + 1].startswith('-'):
             continue
         elif command_parts[i] in ["-unsharp", "-adaptive-sharpen", "-quality"] and not command_parts[i + 1].startswith('-'):
+            continue
+        elif command_parts[i] == "-strip" and command_parts[i + 1] == "":
             continue
         else:
             logging.error(f"Invalid command part: {command_parts[i]} {command_parts[i + 1]}")
