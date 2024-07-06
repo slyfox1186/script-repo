@@ -9,6 +9,8 @@ import multiprocessing
 import numpy as np
 import os
 import random
+import psutil
+import signal
 import subprocess
 import sys
 from datetime import datetime
@@ -17,7 +19,7 @@ from skimage.metrics import peak_signal_noise_ratio as psnr
 from skimage.metrics import structural_similarity as ssim
 
 # User-configurable variables
-INITIAL_COMMAND_COUNT = 10
+INITIAL_COMMAND_COUNT = 4
 MAX_WORKERS = min(2, multiprocessing.cpu_count())
 QUALITY_RANGE = (82, 91)
 MIN_OPTIONS_PER_COMMAND = 3
@@ -26,9 +28,9 @@ OUTPUT_FORMAT = "jpg"
 BEST_COMMANDS_FILE = "best_commands.csv"
 
 # Genetic Algorithm parameters
-POPULATION_SIZE = 10
-GENERATIONS = 3
-MUTATION_RATE = 0.1
+POPULATION_SIZE = 4
+GENERATIONS = 2
+MUTATION_RATE = 0.2
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s', datefmt='this %m-%d-%Y %I-%M-%S %p')
@@ -39,12 +41,12 @@ def set_magick_limits(input_file):
             width, height = img.size
         max_dimension = max(width, height)
         area = width * height
-        
+
         memory_limit = max(1024, min(area // 1000000 * 256, 8192))  # MB
         disk_limit = memory_limit * 4  # MB
         area_limit = area * 4  # pixels
         width_height_limit = max_dimension * 2  # pixels
-        
+
         magick_limits = {
             'MAGICK_AREA_LIMIT': f'{area_limit}',
             'MAGICK_DISK_LIMIT': f'{disk_limit}MB',
@@ -53,7 +55,7 @@ def set_magick_limits(input_file):
             'MAGICK_HEIGHT_LIMIT': f'{width_height_limit}',
             'MAGICK_THREAD_LIMIT': str(MAX_WORKERS),
         }
-        
+
         os.environ.update(magick_limits)
         logging.info(f"Set ImageMagick limits: {magick_limits}")
     except Exception as e:
@@ -83,24 +85,40 @@ def run_imagemagick_command(input_file, output_file, command):
     except subprocess.TimeoutExpired:
         logging.error(f"Timeout executing: {os.path.basename(output_file)}")
         return False
+    except Exception as e:
+        logging.error(f"Unexpected error executing command: {str(e)}")
+        return False
 
 def analyze_image(input_file, output_file):
     try:
-        original_image = Image.open(input_file).convert('RGB')
-        compressed_image = Image.open(output_file).convert('RGB')
-        original_size = os.path.getsize(input_file)
-        compressed_size = os.path.getsize(output_file)
-        
-        original_array = np.array(original_image)
-        compressed_array = np.array(compressed_image)
-        
-        psnr_value = psnr(original_array, compressed_array)
-        
-        min_dimension = min(original_image.size)
-        win_size = max(min(min_dimension, 7), 3)  # Ensure win_size is between 3 and 7
-        
-        ssim_value = ssim(original_array, compressed_array, win_size=win_size, channel_axis=-1)
-        return compressed_size, original_image.size, psnr_value, ssim_value
+        with Image.open(input_file) as original_image, Image.open(output_file) as compressed_image:
+            original_size = os.path.getsize(input_file)
+            compressed_size = os.path.getsize(output_file)
+
+            # Resize the original image to match the compressed image dimensions
+            if original_image.size != compressed_image.size:
+                original_image = original_image.resize(compressed_image.size, Image.LANCZOS)
+
+            # Calculate PSNR and SSIM in smaller chunks
+            chunk_size = 1024
+            total_psnr = 0
+            total_ssim = 0
+            num_chunks = 0
+
+            for i in range(0, original_image.height, chunk_size):
+                for j in range(0, original_image.width, chunk_size):
+                    box = (j, i, min(j+chunk_size, original_image.width), min(i+chunk_size, original_image.height))
+                    original_chunk = np.array(original_image.crop(box))
+                    compressed_chunk = np.array(compressed_image.crop(box))
+                    
+                    total_psnr += psnr(original_chunk, compressed_chunk)
+                    total_ssim += ssim(original_chunk, compressed_chunk, channel_axis=-1)
+                    num_chunks += 1
+
+        psnr_value = total_psnr / num_chunks
+        ssim_value = total_ssim / num_chunks
+
+        return compressed_size, compressed_image.size, psnr_value, ssim_value
     except Exception as e:
         logging.error(f"Error analyzing image: {output_file}")
         logging.error(f"Error message: {str(e)}")
@@ -108,8 +126,8 @@ def analyze_image(input_file, output_file):
 
 def create_individual():
     return {
-        "unsharp": "0.25x0.08+8.3+0.045",
-        "adaptive_sharpen": f"0x{np.random.uniform(0.5, 3.0):.1f}",
+        "unsharp": f"{np.random.uniform(0, 1):.2f}x{np.random.uniform(0, 1):.2f}+{np.random.uniform(0, 5):.1f}+{np.random.uniform(0, 0.05):.3f}",
+        "adaptive-sharpen": f"{np.random.uniform(0, 2):.1f}x{np.random.uniform(0, 0.5):.1f}",
         "quality": np.random.randint(82, 91),
     }
 
@@ -120,7 +138,7 @@ def mutate(individual):
             individual[key] = np.random.randint(82, 91)
         else:
             values = [float(x) for x in individual[key].split('x')[1].split('+')]
-            mutated_values = [max(0, min(v + np.random.normal(0, 0.1), 10)) for v in values]  # Clamp values to avoid excessive noise
+            mutated_values = [max(0, min(v + np.random.normal(0, 0.1), 10)) for v in values]
             individual[key] = f"0x{'+'.join([f'{v:.2f}' for v in mutated_values])}"
     return individual
 
@@ -139,88 +157,78 @@ def fitness(command, input_file, output_file, output_directory):
         result = analyze_image(input_file, os.path.join(output_directory, output_file))
         if result is not None:
             file_size, _, psnr_value, ssim_value = result
-            if file_size >= os.path.getsize(input_file):  # Penalize if the output size is not smaller
-                file_size = float('inf')
-            return psnr_value, ssim_value, -file_size
+            original_size = os.path.getsize(input_file)
+            size_reduction = (original_size - file_size) / original_size
+
+            if psnr_value < 35 or ssim_value < 0.90:  # Increase threshold for noise penalty
+                return -float('inf'), file_size
+
+            # Balanced fitness score with more emphasis on SSIM
+            fitness_score = (0.3 * psnr_value) + (0.5 * ssim_value) + (0.2 * size_reduction)
+            return fitness_score, file_size
+        else:
+            return -float('inf'), float('inf')
     except Exception as e:
         logging.error(f"Error in fitness evaluation: {str(e)}")
-    return -float('inf'), -float('inf'), float('inf')
+        return -float('inf'), float('inf')
 
-# In the mutate function, ensure unsharp and adaptive_sharpen do not add noise
-def mutate(individual):
-    if np.random.random() < MUTATION_RATE:
-        key = random.choice(list(individual.keys()))
-        if key == "quality":
-            individual[key] = np.random.randint(82, 91)
-        else:
-            values = [float(x) for x in individual[key].split('x')[1].split('+')]
-            mutated_values = [max(0, min(v + np.random.normal(0, 0.1), 10)) for v in values]  # Clamp values to avoid excessive noise
-            individual[key] = f"0x{'+'.join([f'{v:.2f}' for v in mutated_values])}"
-    return individual
-
-def generate_imagemagick_commands(input_file, output_directory):
+def generate_imagemagick_commands(input_file, output_directory, initial_population=None):
     sampling_factor = get_sampling_factor(input_file)
-    
+
     base_options = [
-        ("-filter", ["Triangle"]),
+        ("-filter", ["Triangle", "Lanczos", "Mitchell", "Gaussian"]),
         ("-define", ["filter:support=2"]),
         ("-strip", [""]),
-        ("-unsharp", ["0.25x0.08+8.3+0.045"]),
-        ("-dither", ["None", "Riemersma"]),
+        ("-dither", ["None"]),
         ("-posterize", ["136"]),
-        ("-quality", [str(i) for i in range(82, 91)]),
         ("-define", ["jpeg:fancy-upsampling=off", "jpeg:dct-method=float", "jpeg:dct-method=fast"]),
-        ("-auto-level", [""]),
-        ("-enhance", [""]),
-        ("-interlace", ["none", "JPEG", "Plane"]),
-        ("-colorspace", ["sRGB", "RGB"]),
+        ("-interlace", ["none", "Plane"]),
+        ("-colorspace", ["sRGB"]),
         ("-sampling-factor", [sampling_factor]),
-        ("-adaptive-sharpen", [f"0x{np.random.uniform(0.5, 3.0):.1f}"]),
-        ("-brightness-contrast", ["0x0", "10x10", "-10x-10"]),
-        ("-modulate", ["100,100,100", "110,100,100", "90,100,100"]),
-        ("-level", ["0%,100%,1.0", "10%,90%,0.8", "5%,95%,1.2"]),
     ]
 
-    population = [create_individual() for _ in range(POPULATION_SIZE)]
+    if initial_population:
+        population = initial_population
+    else:
+        population = [create_individual() for _ in range(POPULATION_SIZE)]
 
     for generation in range(GENERATIONS):
-        print(f"Generation: {generation + 1}/{GENERATIONS}")
+        logging.info(f"Generation: {generation + 1}/{GENERATIONS}")
         fitness_scores = []
         for i, individual in enumerate(population):
-            used_options = set()
-            selected_options = []
-            while len(selected_options) < random.randint(MIN_OPTIONS_PER_COMMAND, len(base_options)):
-                option = random.choice(base_options)
-                if option[0] not in used_options:
-                    used_options.add(option[0])
-                    selected_options.append(option)
+            selected_options = random.sample(base_options, k=random.randint(MIN_OPTIONS_PER_COMMAND, len(base_options)))
             base_command = " ".join([f"{option[0]} {random.choice(option[1])}" for option in selected_options])
-            command = f"{base_command} -quality {individual['quality']} -unsharp {individual['unsharp']} -adaptive-sharpen {individual['adaptive_sharpen']}"
+            
+            # Remove duplicates and ensure all options have their arguments
+            command_parts = base_command.split()
+            command_dict = {}
+            for j in range(0, len(command_parts), 2):
+                if j + 1 < len(command_parts) and not command_parts[j].startswith('-quality'):
+                    command_dict[command_parts[j]] = command_parts[j + 1]
+            base_command = " ".join([f"{k} {v}" for k, v in command_dict.items()])
+
+            # Add individual-specific options
+            command = f"{base_command} -quality {individual['quality']} -unsharp {individual['unsharp']} -adaptive-sharpen {individual['adaptive-sharpen']}"
+
+            # Validate the command before execution
+            valid_command = validate_command(command)
+            if not valid_command:
+                logging.error(f"Generated invalid command: {command}")
+                continue
+
             output_file = f"temp_output_{generation:02d}_{i:02d}.jpg"
-            fitness_score = fitness(command, input_file, output_file, output_directory)
+            fitness_score, file_size = fitness(command, input_file, output_file, output_directory)
             logging.info(f"Generated command: {command}")
-            fitness_scores.append((individual, fitness_score))
+            fitness_scores.append((individual, fitness_score, file_size))
 
         fitness_scores.sort(key=lambda x: x[1], reverse=True)
-        population = [individual for individual, _ in fitness_scores[:POPULATION_SIZE//2]]
+        population = [individual for individual, _, _ in fitness_scores[:POPULATION_SIZE // 2]]
 
-        while len(population) < 2:
-            try:
-                population.append(create_individual())
-            except Exception as e:
-                logging.error(f"Failed to create a new individual: {str(e)}. Ensure that the create_individual function is correctly implemented.")
-                sys.exit(1)
-
-        # Adjust the mutation rate and options based on fitness scores
-        best_score = fitness_scores[0][1]
-        for individual, score in fitness_scores:
-            if score[0] < best_score[0] or score[1] < best_score[1]:  # PSNR or SSIM is worse
-                # Mutate more aggressively if the result is suboptimal
-                MUTATION_RATE = 0.2
-            else:
-                # Less mutation if the result is close to optimal
-                MUTATION_RATE = 0.05
-            mutate(individual)
+        while len(population) < POPULATION_SIZE:
+            parent1, parent2 = random.sample(population, 2)
+            child = crossover(parent1, parent2)
+            child = mutate(child)
+            population.append(child)
 
     best_individual = max(population, key=lambda x: fitness(
         " ".join([f"{option[0]} {random.choice(option[1])}" for option in random.sample(base_options, random.randint(MIN_OPTIONS_PER_COMMAND, len(base_options)))]) +
@@ -228,20 +236,30 @@ def generate_imagemagick_commands(input_file, output_directory):
         input_file, "temp_best.jpg", output_directory
     ))
 
-    used_options = set()
-    selected_options = []
-    while len(selected_options) < random.randint(MIN_OPTIONS_PER_COMMAND, len(base_options)):
-        option = random.choice(base_options)
-        if option[0] not in used_options:
-            used_options.add(option[0])
-            selected_options.append(option)
-    best_command = " ".join([f"{option[0]} {random.choice(option[1])}" for option in selected_options]) + \
+    best_command = " ".join([f"{option[0]} {random.choice(option[1])}" for option in random.sample(base_options, random.randint(MIN_OPTIONS_PER_COMMAND, len(base_options)))]) + \
         f" -quality {best_individual['quality']} -unsharp {best_individual['unsharp']} -adaptive-sharpen {best_individual['adaptive_sharpen']}"
 
     return [best_command]
 
-# Ensure we log the generated command for each temporary image
-def process_command(command, input_file, output_file, log_file, output_directory):
+def validate_command(command):
+    command_parts = command.split()
+    for i in range(0, len(command_parts) - 1, 2):
+        if command_parts[i] in ["-filter", "-define", "-dither", "-posterize", "-interlace", "-colorspace", "-sampling-factor"] and not command_parts[i + 1].startswith('-'):
+            continue
+        elif command_parts[i] in ["-unsharp", "-adaptive-sharpen", "-quality"] and not command_parts[i + 1].startswith('-'):
+            continue
+        else:
+            logging.error(f"Invalid command part: {command_parts[i]} {command_parts[i + 1]}")
+            return False
+    return True
+
+class TimeoutException(Exception):
+    pass
+
+def timeout_handler(signum, frame):
+    raise TimeoutException("Function call timed out")
+
+def process_command(command, input_file, output_file, output_directory):
     try:
         success = run_imagemagick_command(input_file, os.path.join(output_directory, output_file), command)
         if not success:
@@ -250,80 +268,7 @@ def process_command(command, input_file, output_file, log_file, output_directory
         result = analyze_image(input_file, os.path.join(output_directory, output_file))
         if result is not None:
             file_size, dimensions, psnr_value, ssim_value = result
-            with open(log_file, "a", newline="") as file:
-                writer = csv.writer(file)
-                writer.writerow([command, file_size, dimensions[0], dimensions[1], psnr_value, ssim_value])
-            logging.info(f"Processed: {os.path.basename(output_file)} (Size: {file_size/1024:.1f}KB, PSNR: {psnr_value:.2f}, SSIM: {ssim_value:.4f})")
-    except Exception as e:
-        logging.error(f"Error processing {os.path.basename(output_file)}: {str(e)}")
-
-# Ensure the script never sets the optimal command line to any command line that causes the output image to have a lot of noise in it.
-def fitness(command, input_file, output_file, output_directory):
-    try:
-        run_imagemagick_command(input_file, os.path.join(output_directory, output_file), command)
-        result = analyze_image(input_file, os.path.join(output_directory, output_file))
-        if result is not None:
-            file_size, _, psnr_value, ssim_value = result
-            if file_size >= os.path.getsize(input_file):  # Penalize if the output size is not smaller
-                file_size = float('inf')
-            if psnr_value < 30 or ssim_value < 0.85:  # Penalize if the image is noisy
-                return -float('inf'), -float('inf'), float('inf')
-            return psnr_value, ssim_value, -file_size
-    except Exception as e:
-        logging.error(f"Error in fitness evaluation: {str(e)}")
-    return -float('inf'), -float('inf'), float('inf')
-
-def select_best_commands(log_file, num_commands):
-    with open(log_file, "r") as file:
-        reader = csv.DictReader(file)
-        rows = list(reader)
-    
-    if not rows:
-        logging.error("No valid data in the log file. Cannot select best commands.")
-        return []
-
-    for row in rows:
-        row['file_size'] = int(row['file_size'])
-        row['psnr'] = float(row['psnr'])
-        row['ssim'] = float(row['ssim'])
-    
-    best_commands = sorted(rows, key=lambda r: (r['psnr'], r['ssim'], -r['file_size']), reverse=True)[:num_commands]
-    return [cmd['command'] for cmd in best_commands]
-
-def get_image_file():
-    script_directory = os.path.dirname(os.path.abspath(__file__))
-    image_files = [file for file in os.listdir(script_directory) if file.lower().endswith((".jpg", ".jpeg", ".png"))]
-    
-    if len(image_files) == 1:
-        return os.path.join(script_directory, image_files[0])
-    elif len(image_files) > 1:
-        print("Multiple image files found in the script's directory:")
-        for i, file in enumerate(image_files, start=1):
-            print(f"{i}. {file}")
-        while True:
-            try:
-                choice = int(input("Please enter the number of the image file to use: "))
-                if 1 <= choice <= len(image_files):
-                    return os.path.join(script_directory, image_files[choice - 1])
-                else:
-                    print("Invalid choice. Please try again.")
-            except ValueError:
-                print("Invalid input. Please enter a valid number.")
-    else:
-        print("No image files found in the script's directory.")
-        print("Please make sure there is at least one image file (JPG, JPEG, or PNG) in the same directory as the script.")
-        sys.exit(1)
-
-def process_command(command, input_file, output_file, log_file, output_directory):
-    try:
-        success = run_imagemagick_command(input_file, os.path.join(output_directory, output_file), command)
-        if not success:
-            return
-
-        result = analyze_image(input_file, os.path.join(output_directory, output_file))
-        if result is not None:
-            file_size, dimensions, psnr_value, ssim_value = result
-            with open(log_file, "a", newline="") as file:
+            with open("optimization_log.csv", "a", newline="") as file:
                 writer = csv.writer(file)
                 writer.writerow([command, file_size, dimensions[0], dimensions[1], psnr_value, ssim_value])
             logging.info(f"Processed: {os.path.basename(output_file)} (Size: {file_size/1024:.1f}KB, PSNR: {psnr_value:.2f}, SSIM: {ssim_value:.4f})")
@@ -336,7 +281,6 @@ def cleanup_temp_files(output_directory):
             file_path = os.path.join(output_directory, file)
             if os.path.isfile(file_path):
                 os.unlink(file_path)
-        os.rmdir(output_directory)
         logging.info(f"Cleaned up temporary files in {output_directory}")
     except Exception as e:
         logging.error(f"Error cleaning up temporary files: {str(e)}")
@@ -364,7 +308,100 @@ def get_sampling_factor(input_file):
         logging.error(f"Error getting sampling factor: {e.stderr}")
         return "4:2:0"  # Default to 4:2:0 in case of error
 
+def get_image_file():
+    script_directory = os.path.dirname(os.path.abspath(__file__))
+    image_files = [file for file in os.listdir(script_directory) if file.lower().endswith((".jpg", ".jpeg", ".png"))]
+
+    if len(image_files) == 1:
+        return os.path.join(script_directory, image_files[0])
+    elif len(image_files) > 1:
+        print("Multiple image files found in the script's directory:")
+        for i, file in enumerate(image_files, start=1):
+            print(f"{i}. {file}")
+        while True:
+            try:
+                choice = int(input("Please enter the number of the image file to use: "))
+                if 1 <= choice <= len(image_files):
+                    return os.path.join(script_directory, image_files[choice - 1])
+                else:
+                    print("Invalid choice. Please try again.")
+            except ValueError:
+                print("Invalid input. Please enter a valid number.")
+    else:
+        print("No image files found in the script's directory.")
+        print("Please make sure there is at least one image file (JPG, JPEG, or PNG) in the same directory as the script.")
+        sys.exit(1)
+
+def select_best_commands(log_file, num_commands):
+    with open(log_file, "r") as file:
+        reader = csv.DictReader(file)
+        rows = list(reader)
+    
+    if not rows:
+        logging.error("No valid data in the log file. Cannot select best commands.")
+        return []
+
+    for row in rows:
+        row['file_size'] = int(row['file_size'])
+        row['psnr'] = float(row['psnr'])
+        row['ssim'] = float(row['ssim'])
+    
+    rows.sort(key=lambda r: (r['psnr'], r['ssim'], -r['file_size']), reverse=True)
+    best_commands = rows[:num_commands]
+    return [cmd['command'] for cmd in best_commands]
+
+def optimize_stored_commands(input_file, output_directory, stored_commands):
+    initial_population = []
+    for command in stored_commands:
+        individual = {}
+        options = command.split()
+        for i, option in enumerate(options):
+            if option == "-quality":
+                individual["quality"] = int(options[i+1])
+            elif option == "-unsharp":
+                individual["unsharp"] = options[i+1]
+            elif option == "-adaptive-sharpen":
+                individual["adaptive-sharpen"] = options[i+1]
+        if len(individual) == 3:
+            initial_population.append(individual)
+    
+    while len(initial_population) < POPULATION_SIZE:
+        initial_population.append(create_individual())
+
+    return generate_imagemagick_commands(input_file, output_directory, initial_population)
+
+def create_full_commands_script(best_commands, input_file):
+    script_content = "#!/bin/bash\n\n"
+    script_content += "# This script contains the optimal ImageMagick commands\n\n"
+
+    for i, command in enumerate(best_commands, 1):
+        output_file = f"optimized_output_{i}.jpg"
+        full_command = f"magick \"{input_file}\" {command} \"{output_file}\"\n"
+        script_content += f"echo \"Executing optimal command {i}...\"\n"
+        script_content += full_command
+        script_content += f"echo \"Saved result as {output_file}\"\n\n"
+
+    script_content += "echo \"All optimal commands have been executed.\"\n"
+
+    with open("full-commands.sh", "w") as file:
+        file.write(script_content)
+
+    os.chmod("full-commands.sh", 0o755)  # Make the script executable
+
+def check_and_kill_existing_processes(script_name):
+    current_pid = os.getpid()
+    for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+        try:
+            if proc.info['pid'] != current_pid and proc.info['cmdline'] and script_name in proc.info['cmdline']:
+                logging.info(f"Terminated existing process: {proc.info['pid']} {proc.info['name']}")
+                proc.terminate()
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            pass
+    # Clear the screen
+    os.system('clear' if os.name == 'posix' else 'cls')
+
 def main():
+    check_and_kill_existing_processes('magick.py')
     input_file = get_image_file()
     set_magick_limits(input_file)
     output_directory = "output"
@@ -397,7 +434,7 @@ def main():
 
     print(f"Processing {len(commands)} commands:")
     with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-        futures = [executor.submit(process_command, command, input_file, f"output_{i:02}.{OUTPUT_FORMAT}", log_file, output_directory) 
+        futures = [executor.submit(process_command, command, input_file, f"output_{i:02}.{OUTPUT_FORMAT}", output_directory)
                    for i, command in enumerate(commands)]
         for future in concurrent.futures.as_completed(futures):
             try:
