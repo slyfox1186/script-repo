@@ -39,7 +39,7 @@ To use this script, follow these steps:
 4. Run the script using the following command:
 
    ```
-   python magick.py
+   python3 magick.py
    ```
 
 5. If there are multiple image files in the directory, the script will prompt you to select the desired image file.
