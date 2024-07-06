@@ -26,7 +26,7 @@ OUTPUT_FORMAT = "jpg"
 BEST_COMMANDS_FILE = "best_commands.csv"
 
 # Genetic Algorithm parameters
-POPULATION_SIZE = 10
+POPULATION_SIZE = 4
 GENERATIONS = 3
 MUTATION_RATE = 0.1
 
@@ -120,7 +120,7 @@ def mutate(individual):
             individual[key] = np.random.randint(82, 91)
         else:
             values = [float(x) for x in individual[key].split('x')[1].split('+')]
-            mutated_values = [max(0, v + np.random.normal(0, 0.1)) for v in values]
+            mutated_values = [max(0, min(v + np.random.normal(0, 0.1), 10)) for v in values]  # Clamp values to avoid excessive noise
             individual[key] = f"0x{'+'.join([f'{v:.2f}' for v in mutated_values])}"
     return individual
 
@@ -146,6 +146,18 @@ def fitness(command, input_file, output_file, output_directory):
         logging.error(f"Error in fitness evaluation: {str(e)}")
     return -float('inf'), -float('inf'), float('inf')
 
+# In the mutate function, ensure unsharp and adaptive_sharpen do not add noise
+def mutate(individual):
+    if np.random.random() < MUTATION_RATE:
+        key = random.choice(list(individual.keys()))
+        if key == "quality":
+            individual[key] = np.random.randint(82, 91)
+        else:
+            values = [float(x) for x in individual[key].split('x')[1].split('+')]
+            mutated_values = [max(0, min(v + np.random.normal(0, 0.1), 10)) for v in values]  # Clamp values to avoid excessive noise
+            individual[key] = f"0x{'+'.join([f'{v:.2f}' for v in mutated_values])}"
+    return individual
+
 def generate_imagemagick_commands(input_file, output_directory):
     sampling_factor = get_sampling_factor(input_file)
     
@@ -164,6 +176,9 @@ def generate_imagemagick_commands(input_file, output_directory):
         ("-colorspace", ["sRGB", "RGB"]),
         ("-sampling-factor", [sampling_factor]),
         ("-adaptive-sharpen", [f"0x{np.random.uniform(0.5, 3.0):.1f}"]),
+        ("-brightness-contrast", ["0x0", "10x10", "-10x-10"]),
+        ("-modulate", ["100,100,100", "110,100,100", "90,100,100"]),
+        ("-level", ["0%,100%,1.0", "10%,90%,0.8", "5%,95%,1.2"]),
     ]
 
     population = [create_individual() for _ in range(POPULATION_SIZE)]
@@ -224,6 +239,39 @@ def generate_imagemagick_commands(input_file, output_directory):
         f" -quality {best_individual['quality']} -unsharp {best_individual['unsharp']} -adaptive-sharpen {best_individual['adaptive_sharpen']}"
 
     return [best_command]
+
+# Ensure we log the generated command for each temporary image
+def process_command(command, input_file, output_file, log_file, output_directory):
+    try:
+        success = run_imagemagick_command(input_file, os.path.join(output_directory, output_file), command)
+        if not success:
+            return
+
+        result = analyze_image(input_file, os.path.join(output_directory, output_file))
+        if result is not None:
+            file_size, dimensions, psnr_value, ssim_value = result
+            with open(log_file, "a", newline="") as file:
+                writer = csv.writer(file)
+                writer.writerow([command, file_size, dimensions[0], dimensions[1], psnr_value, ssim_value])
+            logging.info(f"Processed: {os.path.basename(output_file)} (Size: {file_size/1024:.1f}KB, PSNR: {psnr_value:.2f}, SSIM: {ssim_value:.4f})")
+    except Exception as e:
+        logging.error(f"Error processing {os.path.basename(output_file)}: {str(e)}")
+
+# Ensure the script never sets the optimal command line to any command line that causes the output image to have a lot of noise in it.
+def fitness(command, input_file, output_file, output_directory):
+    try:
+        run_imagemagick_command(input_file, os.path.join(output_directory, output_file), command)
+        result = analyze_image(input_file, os.path.join(output_directory, output_file))
+        if result is not None:
+            file_size, _, psnr_value, ssim_value = result
+            if file_size >= os.path.getsize(input_file):  # Penalize if the output size is not smaller
+                file_size = float('inf')
+            if psnr_value < 30 or ssim_value < 0.85:  # Penalize if the image is noisy
+                return -float('inf'), -float('inf'), float('inf')
+            return psnr_value, ssim_value, -file_size
+    except Exception as e:
+        logging.error(f"Error in fitness evaluation: {str(e)}")
+    return -float('inf'), -float('inf'), float('inf')
 
 def select_best_commands(log_file, num_commands):
     with open(log_file, "r") as file:
