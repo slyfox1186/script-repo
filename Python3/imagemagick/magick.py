@@ -26,7 +26,7 @@ OUTPUT_FORMAT = "jpg"
 BEST_COMMANDS_FILE = "best_commands.csv"
 
 # Genetic Algorithm parameters
-POPULATION_SIZE = 4
+POPULATION_SIZE = 10
 GENERATIONS = 3
 MUTATION_RATE = 0.1
 
