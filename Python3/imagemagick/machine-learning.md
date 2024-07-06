@@ -1,5 +1,3 @@
-I apologize for the oversight. Let me update the markdown post to include information about the CSV file and its purpose.
-
 # Image Optimization Script using ImageMagick and Machine Learning
 
 Hi, everyone! I've been working on a Python script that aims to find the most optimal ImageMagick command for compressing images while maintaining the highest possible quality. I would love to get your feedback, suggestions, and help in improving this script to make it even better.
@@ -65,7 +63,3 @@ I would greatly appreciate any help from the community to improve this script fu
 If you have any ideas, suggestions, or would like to contribute to the development of this script, please leave a comment below or feel free to submit a pull request on the GitHub repository [link to your repository].
 
 Thank you in advance for your help and support!
-
----
-
-I hope this updated post provides a clearer explanation of the CSV file and its role in the script. Let me know if you have any further questions or suggestions!
