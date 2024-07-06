@@ -15,7 +15,6 @@ from datetime import datetime
 from PIL import Image
 from skimage.metrics import peak_signal_noise_ratio as psnr
 from skimage.metrics import structural_similarity as ssim
-import psutil
 
 # User-configurable variables
 INITIAL_COMMAND_COUNT = 20
@@ -27,28 +26,12 @@ OUTPUT_FORMAT = "jpg"
 BEST_COMMANDS_FILE = "best_commands.csv"
 
 # Genetic Algorithm parameters
-POPULATION_SIZE = 10
+POPULATION_SIZE = 4
 GENERATIONS = 3
 MUTATION_RATE = 0.1
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s', datefmt='this %m-%d-%Y %I-%M-%S %p')
-
-def kill_lingering_processes(process_name):
-    killed_processes = []
-    for proc in psutil.process_iter(attrs=['pid', 'name']):
-        if process_name in proc.info['name']:
-            try:
-                proc.kill()
-                killed_processes.append(proc.info['pid'])
-                logging.info(f"Killed lingering process: {proc.info['name']} (PID: {proc.info['pid']})")
-            except psutil.NoSuchProcess:
-                logging.warning(f"Process {proc.info['name']} (PID: {proc.info['pid']}) no longer exists")
-            except Exception as e:
-                logging.error(f"Error killing process {proc.info['name']} (PID: {proc.info['pid']}): {str(e)}")
-    
-    if killed_processes:
-        os.system('clear' if os.name == 'posix' else 'cls')
 
 def set_magick_limits(input_file):
     try:
@@ -90,7 +73,8 @@ def run_imagemagick_command(input_file, output_file, command):
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
     full_command = f"magick {input_file} {command} {output_file}"
     try:
-        subprocess.run(full_command, shell=True, check=True, stderr=subprocess.PIPE, text=True, timeout=300)
+        result = subprocess.run(full_command, shell=True, check=True, stderr=subprocess.PIPE, text=True, timeout=300)
+        logging.info(f"Executed: {os.path.basename(output_file)}")
         return True
     except subprocess.CalledProcessError as e:
         logging.error(f"Error executing: {os.path.basename(output_file)}")
@@ -106,7 +90,7 @@ def analyze_image(input_file, output_file):
         compressed_image = Image.open(output_file).convert('RGB')
         original_size = os.path.getsize(input_file)
         compressed_size = os.path.getsize(output_file)
-
+        
         original_array = np.array(original_image)
         compressed_array = np.array(compressed_image)
         
@@ -124,19 +108,19 @@ def analyze_image(input_file, output_file):
 
 def create_individual():
     return {
-        "unsharp": f"0x{np.random.uniform(0.5, 1.5):.1f}+{np.random.uniform(0.5, 1.0):.1f}+{np.random.uniform(0.01, 0.05):.2f}",
-        "adaptive_sharpen": f"0x{np.random.uniform(0.5, 1.5):.1f}",
-        "quality": np.random.randint(82, 91),  # Set quality between 82 and 90
+        "unsharp": "0.25x0.08+8.3+0.045",
+        "adaptive_sharpen": f"0x{np.random.uniform(0.5, 3.0):.1f}",
+        "quality": np.random.randint(82, 91),
     }
 
 def mutate(individual):
     if np.random.random() < MUTATION_RATE:
         key = random.choice(list(individual.keys()))
         if key == "quality":
-            individual[key] = np.random.randint(82, 91)  # Set quality between 82 and 90
+            individual[key] = np.random.randint(82, 91)
         else:
             values = [float(x) for x in individual[key].split('x')[1].split('+')]
-            mutated_values = [max(0, v + np.random.normal(0, 0.05)) for v in values]  # Make mutations less aggressive
+            mutated_values = [max(0, v + np.random.normal(0, 0.1)) for v in values]
             individual[key] = f"0x{'+'.join([f'{v:.2f}' for v in mutated_values])}"
     return individual
 
@@ -155,9 +139,8 @@ def fitness(command, input_file, output_file, output_directory):
         result = analyze_image(input_file, os.path.join(output_directory, output_file))
         if result is not None:
             file_size, _, psnr_value, ssim_value = result
-            if file_size >= os.path.getsize(input_file):
-                # Heavily penalize commands that result in larger file sizes
-                return psnr_value - 20, ssim_value - 20, float('inf')
+            if file_size >= os.path.getsize(input_file):  # Penalize if the output size is not smaller
+                file_size = float('inf')
             return psnr_value, ssim_value, -file_size
     except Exception as e:
         logging.error(f"Error in fitness evaluation: {str(e)}")
@@ -166,65 +149,42 @@ def fitness(command, input_file, output_file, output_directory):
 def generate_imagemagick_commands(input_file, output_directory):
     sampling_factor = get_sampling_factor(input_file)
     
-    base_options = {
-        "-filter": ["Triangle"],
-        "-define": ["filter:support=2"],
-        "-strip": [""],
-        "-unsharp": ["0.25x0.08+8.3+0.045"],  # Initial unsharp value for the first image
-        "-dither": ["None", "Riemersma"],
-        "-posterize": ["136"],  # Remove lower values to avoid excessive posterization
-        "-define": ["jpeg:fancy-upsampling=off", "jpeg:dct-method=float", "jpeg:dct-method=fast"],
-        "-auto-level": [""],
-        "-enhance": [""],
-        "-interlace": ["none", "JPEG", "Plane"],
-        "-colorspace": ["sRGB", "RGB"],
-        "-sampling-factor": [sampling_factor],
-        "-adaptive-sharpen": [f"0x{np.random.uniform(0.5, 1.5):.1f}"],
-    }
+    base_options = [
+        ("-filter", ["Triangle"]),
+        ("-define", ["filter:support=2"]),
+        ("-strip", [""]),
+        ("-unsharp", ["0.25x0.08+8.3+0.045"]),
+        ("-dither", ["None", "Riemersma"]),
+        ("-posterize", ["136"]),
+        ("-quality", [str(i) for i in range(82, 91)]),
+        ("-define", ["jpeg:fancy-upsampling=off", "jpeg:dct-method=float", "jpeg:dct-method=fast"]),
+        ("-auto-level", [""]),
+        ("-enhance", [""]),
+        ("-interlace", ["none", "JPEG", "Plane"]),
+        ("-colorspace", ["sRGB", "RGB"]),
+        ("-sampling-factor", [sampling_factor]),
+        ("-adaptive-sharpen", [f"0x{np.random.uniform(0.5, 3.0):.1f}"]),
+    ]
 
     population = [create_individual() for _ in range(POPULATION_SIZE)]
-    # Ensure the first individual has the specified -unsharp value
-    population[0]['unsharp'] = "0.25x0.08+8.3+0.045"
 
     for generation in range(GENERATIONS):
         print(f"Generation: {generation + 1}/{GENERATIONS}")
         fitness_scores = []
         for i, individual in enumerate(population):
-            if generation == 0 and i == 0:
-                # Use the initial unsharp value for the first individual in the first generation
-                command_options = {
-                    "-filter": "Triangle",
-                    "-define": "filter:support=2",
-                    "-strip": "",
-                    "-unsharp": individual['unsharp'],
-                    "-dither": "None",
-                    "-posterize": "136",
-                    "-quality": str(individual['quality']),
-                    "-define": "jpeg:fancy-upsampling=off",
-                    "-define": "jpeg:dct-method=float",
-                    "-auto-level": "",
-                    "-enhance": "",
-                    "-interlace": "none",
-                    "-colorspace": "sRGB",
-                    "-sampling-factor": sampling_factor,
-                    "-adaptive-sharpen": individual['adaptive_sharpen'],
-                }
-            else:
-                command_options = {}
-                base_options_list = list(base_options.items())
-                selected_options = random.sample(base_options_list, random.randint(MIN_OPTIONS_PER_COMMAND, len(base_options_list)))
-                for option, values in selected_options:
-                    command_options[option] = random.choice(values)
-                command_options["-quality"] = str(individual['quality'])
-                command_options["-unsharp"] = individual['unsharp']
-                command_options["-adaptive-sharpen"] = individual['adaptive_sharpen']
-            
-            # Build command string from command_options
-            command = " ".join([f"{k} {v}" for k, v in command_options.items()])
-            output_file = f"temp_output_{generation:02}_{i:02}.jpg"
+            used_options = set()
+            selected_options = []
+            while len(selected_options) < random.randint(MIN_OPTIONS_PER_COMMAND, len(base_options)):
+                option = random.choice(base_options)
+                if option[0] not in used_options:
+                    used_options.add(option[0])
+                    selected_options.append(option)
+            base_command = " ".join([f"{option[0]} {random.choice(option[1])}" for option in selected_options])
+            command = f"{base_command} -quality {individual['quality']} -unsharp {individual['unsharp']} -adaptive-sharpen {individual['adaptive_sharpen']}"
+            output_file = f"temp_output_{generation:02d}_{i:02d}.jpg"
             fitness_score = fitness(command, input_file, output_file, output_directory)
-            fitness_scores.append((individual, fitness_score))
             logging.info(f"Generated command: {command}")
+            fitness_scores.append((individual, fitness_score))
 
         fitness_scores.sort(key=lambda x: x[1], reverse=True)
         population = [individual for individual, _ in fitness_scores[:POPULATION_SIZE//2]]
@@ -248,16 +208,39 @@ def generate_imagemagick_commands(input_file, output_directory):
             mutate(individual)
 
     best_individual = max(population, key=lambda x: fitness(
-        " ".join([f"{k} {random.choice(v)}" for k, v in base_options.items() if k not in ["-quality", "-unsharp", "-adaptive-sharpen"]]) +
+        " ".join([f"{option[0]} {random.choice(option[1])}" for option in random.sample(base_options, random.randint(MIN_OPTIONS_PER_COMMAND, len(base_options)))]) +
         f" -quality {x['quality']} -unsharp {x['unsharp']} -adaptive-sharpen {x['adaptive_sharpen']}",
         input_file, "temp_best.jpg", output_directory
     ))
 
-    best_command = " ".join([f"{k} {random.choice(v)}" for k, v in base_options.items() if k not in ["-quality", "-unsharp", "-adaptive-sharpen"]]) + \
+    used_options = set()
+    selected_options = []
+    while len(selected_options) < random.randint(MIN_OPTIONS_PER_COMMAND, len(base_options)):
+        option = random.choice(base_options)
+        if option[0] not in used_options:
+            used_options.add(option[0])
+            selected_options.append(option)
+    best_command = " ".join([f"{option[0]} {random.choice(option[1])}" for option in selected_options]) + \
         f" -quality {best_individual['quality']} -unsharp {best_individual['unsharp']} -adaptive-sharpen {best_individual['adaptive_sharpen']}"
 
-    logging.info(f"Best command: {best_command}")
     return [best_command]
+
+def select_best_commands(log_file, num_commands):
+    with open(log_file, "r") as file:
+        reader = csv.DictReader(file)
+        rows = list(reader)
+    
+    if not rows:
+        logging.error("No valid data in the log file. Cannot select best commands.")
+        return []
+
+    for row in rows:
+        row['file_size'] = int(row['file_size'])
+        row['psnr'] = float(row['psnr'])
+        row['ssim'] = float(row['ssim'])
+    
+    best_commands = sorted(rows, key=lambda r: (r['psnr'], r['ssim'], -r['file_size']), reverse=True)[:num_commands]
+    return [cmd['command'] for cmd in best_commands]
 
 def get_image_file():
     script_directory = os.path.dirname(os.path.abspath(__file__))
@@ -286,8 +269,8 @@ def get_image_file():
 def process_command(command, input_file, output_file, log_file, output_directory):
     try:
         success = run_imagemagick_command(input_file, os.path.join(output_directory, output_file), command)
-        if success:
-            logging.info(f"Executed: {os.path.basename(output_file)}")
+        if not success:
+            return
 
         result = analyze_image(input_file, os.path.join(output_directory, output_file))
         if result is not None:
@@ -334,8 +317,6 @@ def get_sampling_factor(input_file):
         return "4:2:0"  # Default to 4:2:0 in case of error
 
 def main():
-    kill_lingering_processes("magick")
-
     input_file = get_image_file()
     set_magick_limits(input_file)
     output_directory = "output"
@@ -368,7 +349,7 @@ def main():
 
     print(f"Processing {len(commands)} commands:")
     with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-        futures = [executor.submit(process_command, command, input_file, f"output_{i}.{OUTPUT_FORMAT}", log_file, output_directory) 
+        futures = [executor.submit(process_command, command, input_file, f"output_{i:02}.{OUTPUT_FORMAT}", log_file, output_directory) 
                    for i, command in enumerate(commands)]
         for future in concurrent.futures.as_completed(futures):
             try:
