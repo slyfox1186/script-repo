@@ -1,6 +1,13 @@
 # Image Optimization Script using ImageMagick and Machine Learning
 
+## What My Project Does:
 Hi, everyone! I've been working on a Python script that aims to find the most optimal ImageMagick command for compressing images while maintaining the highest possible quality. I would love to get your feedback, suggestions, and help in improving this script to make it even better.
+
+## Target Audience:
+This project is designed for developers, photographers, and anyone interested in optimizing images for web use or storage without compromising quality. It's especially useful for those who regularly work with large image files and need efficient ways to reduce file size while preserving image integrity.
+
+## Comparison:
+This script uses a unique combination of machine learning techniques and ImageMagick parameters to achieve optimal results. Unlike manual optimization, which can be time-consuming and less effective, this script automates the process and iteratively improves the output quality and compression ratio.
 
 ## Goal
 
@@ -10,7 +17,7 @@ The primary goal of this script is to automatically find the best ImageMagick co
 
 Here's a detailed explanation of how the script works:
 
-1. The script starts by setting up some user-configurable variables, such as the initial command count, maximum number of workers, quality range, resize options, and genetic algorithm parameters.
+1. The script starts by setting up some user-configurable variables, such as the initial command count, maximum number of workers, quality range, and genetic algorithm parameters.
 
 2. It defines several functions for setting ImageMagick limits, running ImageMagick commands, analyzing images, creating and mutating individuals for the genetic algorithm, and evaluating the fitness of each command.
 
@@ -50,16 +57,8 @@ To use this script, follow these steps:
 
 8. Once the optimization is complete, you will find the optimized image file ("optimal_TIMESTAMP.jpg"), the optimization report ("optimization_report.txt"), and the updated "best_commands.csv" file in the same directory.
 
-## Call for Help
+# Source the script on GitHub
 
-I would greatly appreciate any help from the community to improve this script further. Here are a few areas where I think the script could be enhanced:
+You can source the script on GitHub [here](https://github.com/slyfox1186/script-repo/blob/main/Python3/imagemagick/magick.py)
 
-- Optimizing the genetic algorithm parameters for better and faster convergence
-- Exploring additional ImageMagick parameters and options for even better compression and quality
-- Improving the fitness evaluation function to consider more factors or use different metrics
-- Enhancing the user interface and making the script more user-friendly
-- Optimizing the script's performance and resource utilization
-
-If you have any ideas, suggestions, or would like to contribute to the development of this script, please leave a comment below or feel free to submit a pull request on the GitHub repository [GitHub Script](https://github.com/slyfox1186/script-repo/blob/main/Python3/imagemagick/magick.py).
-
-Thank you in advance for your help and support!
+Let me know what you guys think. Especially if you ran the script yourself and got good results!
