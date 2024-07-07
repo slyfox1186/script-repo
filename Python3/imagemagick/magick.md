@@ -1,5 +1,7 @@
 # Image Optimization Script using ImageMagick and Machine Learning
 
+You can source the script on GitHub [here](https://github.com/slyfox1186/script-repo/blob/main/Python3/imagemagick/magick.py)
+
 ## What My Project Does:
 Hi, everyone! I've been working on a Python script that aims to find the most optimal ImageMagick command for compressing images while maintaining the highest possible quality. I would love to get your feedback, suggestions, and help in improving this script to make it even better.
 
@@ -57,8 +59,116 @@ To use this script, follow these steps:
 
 8. Once the optimization is complete, you will find the optimized image file ("optimal_TIMESTAMP.jpg"), the optimization report ("optimization_report.txt"), and the updated "best_commands.csv" file in the same directory.
 
-# Source the script on GitHub
+## Example Commands
 
-You can source the script on GitHub [here](https://github.com/slyfox1186/script-repo/blob/main/Python3/imagemagick/magick.py)
+```bash
+python3 magick.py -i input.jpg -o output_directory
+```
 
-Let me know what you guys think. Especially if you ran the script yourself and got good results!
+### Using a specific config file
+
+```bash
+python3 magick.py -i input.jpg -o output_directory -c custom_config.ini
+```
+
+### Enabling verbose output
+
+```bash
+python3 magick.py -i input.jpg -o output_directory -v
+```
+
+### Launch GUI mode
+
+```bash
+python3 magick.py --gui
+```
+
+### Process a directory of images
+
+```bash
+python3 magick.py -i input_directory -o output_directory
+```
+
+### Combine options
+
+```bash
+python3 magick.py -i input_directory -o output_directory -c custom_config.ini -v
+```
+
+### Use default output directory
+
+```bash
+python3 magick.py -i input.jpg
+```
+
+### Process a single image with verbose output and GUI
+
+```bash
+python3 magick.py -i input.jpg -v --gui
+```
+
+### Process images with a custom config and verbose output
+
+```bash
+python3 magick.py -i input_directory -o output_directory -c production_config.ini -v
+```
+
+### Use the script in a shell pipeline
+
+```bash
+find . -name "*.jpg" | xargs -I {} python3 magick.py -i {} -o optimized_images
+```
+
+### Run with increased logging level (if supported by your logging configuration)
+
+```bash
+PYTHONVERBOSE=2 python3 magick.py -i input.jpg -o output_directory
+```
+
+### Run with a specific Python interpreter
+
+```bash
+/usr/local/bin/python3.9 magick.py -i input.jpg -o output_directory
+```
+
+### Run with environment variables
+
+```bash
+MAX_WORKERS=16 python3 magick.py -i input_directory -o output_directory
+```
+
+### Run with debugging enabled (if you've implemented debug mode)
+
+```bash
+python3 -m pdb magick.py -i input.jpg -o output_directory
+```
+
+### Run with profiling
+
+```bash
+python3 -m cProfile -o profile_output.pstats magick.py -i input_directory -o output_directory
+```
+
+### Run with memory profiling (requires memory_profiler package)
+
+```bash
+python3 -m memory_profiler magick.py -i input.jpg -o output_directory
+```
+
+### Run with a specific optimization profile (if implemented)
+
+```bash
+python3 magick.py -i input.jpg -o output_directory --profile web_optimization
+```
+
+### Run in batch mode with a list of files
+
+```bash
+python3 magick.py -i file_list.txt -o output_directory --batch
+```
+
+### Run with nice command for lower priority
+
+```bash
+nice -n 19 python3 magick.py -i input_directory -o output_directory
+```
