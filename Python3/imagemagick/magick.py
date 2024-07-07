@@ -20,7 +20,7 @@ from skimage.metrics import structural_similarity as ssim
 
 # User-configurable variables
 INITIAL_COMMAND_COUNT = 20
-MAX_WORKERS = min(2, multiprocessing.cpu_count())
+MAX_WORKERS = min(32, multiprocessing.cpu_count())
 QUALITY_RANGE = (82, 91)
 MIN_OPTIONS_PER_COMMAND = 3
 REFINEMENT_FACTOR = 2
@@ -80,17 +80,16 @@ def run_imagemagick_command(input_file, output_file, command):
     full_command = f"magick {input_file} {command} {output_file}"
     try:
         result = subprocess.run(full_command, shell=True, check=True, stderr=subprocess.PIPE, text=True, timeout=300)
-        logging.info(f"Executed: {os.path.basename(output_file)}")
         return True
     except subprocess.CalledProcessError as e:
-        logging.error(f"Error executing: {os.path.basename(output_file)}")
-        logging.error(f"Error message: {e.stderr}")
+        print(f"Error executing: {os.path.basename(output_file)}")
+        print(f"Error message: {e.stderr}")
         return False
     except subprocess.TimeoutExpired:
-        logging.error(f"Timeout executing: {os.path.basename(output_file)}")
+        print(f"Timeout executing: {os.path.basename(output_file)}")
         return False
     except Exception as e:
-        logging.error(f"Unexpected error executing command: {str(e)}")
+        print(f"Unexpected error executing command: {str(e)}")
         return False
 
 def analyze_image(input_file, output_file):
@@ -224,7 +223,7 @@ def generate_imagemagick_commands(input_file, output_directory, initial_populati
     max_acceptable_size = last_file_size  # Initialize with the original file size
 
     for generation in range(GENERATIONS):
-        logging.info(f"Generation: {generation + 1}/{GENERATIONS}")
+        print(f"\nGeneration Round: {generation + 1}/{GENERATIONS}")
         fitness_scores = []
         for i, individual in enumerate(population):
             selected_options = random.sample(base_options, k=random.randint(MIN_OPTIONS_PER_COMMAND, len(base_options)))
@@ -254,7 +253,6 @@ def generate_imagemagick_commands(input_file, output_directory, initial_populati
             output_file = f"temp_output_{generation:02d}_{i:02d}.jpg"
             success, file_size, quality_acceptable = process_command(command, input_file, output_file, output_directory, log_file)
             if success:
-                logging.info(f"Generated command: {command}")
                 fitness_score, file_size, quality_acceptable = fitness(input_file, output_file, output_directory)
                 fitness_scores.append((individual, fitness_score, quality_acceptable))
 
@@ -342,8 +340,19 @@ def adjust_quality(individual, increase_size):
 
 def process_command(command, input_file, output_file, output_directory, log_file):
     try:
+        print(f"\n{'='*50}")
+        print(f"Processing: {os.path.basename(output_file)}")
+        print(f"{'='*50}")
+
+        current_time = datetime.now().strftime("%m-%d-%Y %I-%M-%S %p")
+        print()
+        print(f"Date: {current_time}")
+        print(f"Input: {os.path.basename(output_file)}")
+        print()
+
         success = run_imagemagick_command(input_file, os.path.join(output_directory, output_file), command)
         if not success:
+            print("Failed to execute command.")
             return False, None, False
 
         result = analyze_image(input_file, os.path.join(output_directory, output_file))
@@ -352,20 +361,30 @@ def process_command(command, input_file, output_file, output_directory, log_file
             with open(log_file, "a", newline="") as file:
                 writer = csv.writer(file)
                 writer.writerow([command, file_size, dimensions[0], dimensions[1], psnr_value, ssim_value])
-            logging.info(f"Processed: {os.path.basename(output_file)} (Size: {file_size/1024:.1f}KB, PSNR: {psnr_value:.2f}, SSIM: {ssim_value:.4f})")
 
-            if psnr_value >= PSNR_THRESHOLD and ssim_value >= SSIM_THRESHOLD:
-                print(f"Quality is acceptable. Next image size will be decreased.")
-                logging.info(f"Quality is acceptable. Next image size will be decreased.")
-                return True, file_size, True
-            else:
-                print(f"Quality is not acceptable. Next image size will be increased.")
-                logging.info(f"Quality is not acceptable. Next image size will be increased.")
-                return True, file_size, False
+            print(f"Command: {command}")
+            print()
+            print(f"File Size: {file_size/1024:.1f}KB")
+            print(f"Dimensions: {dimensions[0]}x{dimensions[1]}")
+            print()
+
+            quality_acceptable = psnr_value >= PSNR_THRESHOLD and ssim_value >= SSIM_THRESHOLD
+            print(f"Quality: {'Acceptable' if quality_acceptable else 'Not Acceptable'}")
+            print()
+            print("Metrics:")
+            print(f" - Size: {file_size/1024:.1f}KB")
+            print(f" - PSNR: {psnr_value:.2f}")
+            print(f" - SSIM: {ssim_value:.4f}")
+            print()
+            action = "Decreasing" if quality_acceptable else "Increasing"
+            print(f"Action: Next image size will be {'decreased' if quality_acceptable else 'increased'}.")
+
+            return True, file_size, quality_acceptable
         else:
+            print("Failed to analyze image.")
             return False, None, False
     except Exception as e:
-        logging.error(f"Error processing {os.path.basename(output_file)}: {str(e)}")
+        print(f"Error: {str(e)}")
         return False, None, False
 
 def cleanup_temp_files(output_directory):
