@@ -20,7 +20,7 @@ from skimage.metrics import structural_similarity as ssim
 
 # User-configurable variables
 INITIAL_COMMAND_COUNT = 20
-MAX_WORKERS = min(32, multiprocessing.cpu_count())
+MAX_WORKERS = min(2, multiprocessing.cpu_count())
 QUALITY_RANGE = (82, 91)
 MIN_OPTIONS_PER_COMMAND = 3
 REFINEMENT_FACTOR = 2
