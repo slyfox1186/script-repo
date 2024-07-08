@@ -394,7 +394,7 @@ def get_image_file():
         logging.error("Please make sure there is at least one image file (JPG, JPEG, or PNG) in the same directory as the script.")
         sys.exit(1)
 
-def generate_imagemagick_commands(input_file, output_directory, optimal_directory):
+def generate_imagemagick_commands(input_file, output_directory, optimal_directory, target_size):
     commands = []
     sampling_factor = get_sampling_factor(input_file)
 
@@ -404,7 +404,10 @@ def generate_imagemagick_commands(input_file, output_directory, optimal_director
         sharpening = random.choice(["", f"-unsharp {individual['unsharp']}", f"-adaptive-sharpen {individual['adaptive-sharpen']}"])
         posterize = random.choice(["", f"-posterize {individual['posterize']}"])
         
-        command = f"-strip -define jpeg:dct-method=float -interlace Plane -colorspace sRGB -filter Lanczos -define filter:blur=0.9891028367558475 -define filter:window=Jinc -define filter:lobes=3 -sampling-factor {sampling_factor} -quality {quality} {sharpening} {posterize}"
+        # Add the maximum file size constraint
+        max_size_constraint = f"-define jpeg:extent={int(target_size)}KB"
+        
+        command = f"-strip -define jpeg:dct-method=float -interlace Plane -colorspace sRGB -filter Lanczos -define filter:blur=0.9891028367558475 -define filter:window=Jinc -define filter:lobes=3 -sampling-factor {sampling_factor} -quality {quality} {sharpening} {posterize} {max_size_constraint}"
         command = command.strip()
         
         if not command_exists(command):
@@ -602,11 +605,11 @@ def main():
             commands = adapt_stored_commands(stored_commands, target_size)
             logging.info("Using adapted stored commands for optimization.")
         else:
-            commands = generate_imagemagick_commands(input_file, output_directory, optimal_directory)
+            commands = generate_imagemagick_commands(input_file, output_directory, optimal_directory, target_size)
             logging.info("Generating new commands for optimization.")
     else:
         logging.info(f"No stored commands found in {BEST_COMMANDS_FILE}. Generating new commands.")
-        commands = generate_imagemagick_commands(input_file, output_directory, optimal_directory)
+        commands = generate_imagemagick_commands(input_file, output_directory, optimal_directory, target_size)
 
     os.makedirs(output_directory, exist_ok=True)
     os.makedirs(optimal_directory, exist_ok=True)
