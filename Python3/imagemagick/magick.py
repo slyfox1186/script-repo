@@ -20,7 +20,7 @@ from skimage.metrics import peak_signal_noise_ratio as psnr
 from skimage.metrics import structural_similarity as ssim
 
 # User-configurable variables
-INITIAL_COMMAND_COUNT = 20
+INITIAL_COMMAND_COUNT = 10
 MAX_WORKERS = multiprocessing.cpu_count()
 QUALITY_RANGE = (82, 91)
 MIN_OPTIONS_PER_COMMAND = 3
@@ -29,7 +29,7 @@ OUTPUT_FORMAT = "jpg"
 BEST_COMMANDS_FILE = "best_commands.csv"
 
 # Genetic Algorithm parameters
-POPULATION_SIZE = 20
+POPULATION_SIZE = 10
 GENERATIONS = 1
 MUTATION_RATE = 0.2
 
