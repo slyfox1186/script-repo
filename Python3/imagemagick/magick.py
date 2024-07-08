@@ -8,8 +8,8 @@ import logging
 import multiprocessing
 import numpy as np
 import os
-import random
 import psutil
+import random
 import signal
 import subprocess
 import sys
@@ -438,6 +438,29 @@ def get_stored_commands():
             return [row[1] for row in reader if len(row) > 1]  # Ensure all rows with more than 1 element are read
     return []
 
+def get_target_size(input_file, optimal_directory):
+    smallest_size = get_smallest_image_size(optimal_directory)
+    input_size = os.path.getsize(input_file)
+    if smallest_size is not None:
+        target_size = min(max(smallest_size, input_size * 0.5), input_size * 0.9)
+    else:
+        target_size = input_size * 0.9
+    return int(target_size * 0.95)
+
+def adapt_stored_commands(commands, target_size):
+    adapted_commands = []
+    for cmd in commands:
+        parts = cmd.split()
+        for i, part in enumerate(parts):
+            if part == "-quality":
+                current_quality = int(parts[i+1])
+                new_quality = max(current_quality - 10, 40)  # Reduce quality, but not below 40
+                parts[i+1] = str(new_quality)
+            elif part == "-define" and parts[i+1].startswith("jpeg:extent="):
+                parts[i+1] = f"jpeg:extent={target_size}b"
+        adapted_commands.append(" ".join(parts))
+    return adapted_commands
+
 def print_configuration():
     print()
     logging.info("User-configurable variables:")
@@ -466,16 +489,7 @@ def main():
     log_file = "optimization_log.csv"
     optimal_directory = "optimal-images"
 
-    smallest_size = get_smallest_image_size(optimal_directory)
-    if smallest_size is not None:
-        target_size = min(smallest_size, os.path.getsize(input_file))
-        logging.info(f"Setting target size to {target_size / 1024:.2f} KB based on smallest image in optimal directory and input file.")
-    else:
-        target_size = os.path.getsize(input_file)
-        logging.info(f"No smaller images found. Setting target size to input file size: {target_size / 1024:.2f} KB")
-
-    # Add a safety margin to ensure we don't exceed the target
-    target_size = int(target_size * 0.95)  # 95% of the calculated target size
+    target_size = get_target_size(input_file, optimal_directory)
     logging.info(f"Adjusted target size with safety margin: {target_size / 1024:.2f} KB")
 
     # Logging the user-configurable variables
@@ -484,16 +498,17 @@ def main():
     stored_commands = get_stored_commands()
     use_stored = False
     if stored_commands:
-        print()
         logging.info(f"Found {len(stored_commands)} stored commands in {BEST_COMMANDS_FILE}.")
         print()
         use_stored = input("Do you want to use these commands? (y/n): ").lower() == 'y'
+        print()
         if use_stored:
-            commands = stored_commands
-            logging.info("Using stored commands for optimization.")
+            commands = adapt_stored_commands(stored_commands, target_size)
+            logging.info("Using adapted stored commands for optimization.")
         else:
             commands = generate_imagemagick_commands(input_file, output_directory, optimal_directory)
             logging.info("Generating new commands for optimization.")
+            print()
     else:
         logging.info(f"No stored commands found in {BEST_COMMANDS_FILE}. Generating new commands.")
         commands = generate_imagemagick_commands(input_file, output_directory, optimal_directory)
@@ -523,7 +538,7 @@ def main():
                     future.result()
                 except Exception as e:
                     logging.error(f"Error in future: {str(e)}")
-
+            
             time.sleep(1)  # Ensure all logging is flushed
 
         successful_commands = sum(1 for future in futures if future.result()[0])
@@ -551,9 +566,8 @@ def main():
         logging.info(f"\nOptimization complete. Total time: {datetime.now() - start_time}\n")
         logging.info(f"Best command: {best_command}\n")
 
-        if not use_stored:
-            save_best_command(best_command)
-            logging.info(f"Best command added to {BEST_COMMANDS_FILE}")
+        # Always save the best command
+        save_best_command(best_command)
 
         optimal_output = os.path.join(optimal_directory, f"optimal_{datetime.now().strftime('%Y%m%d_%H%M%S')}.{OUTPUT_FORMAT}")
         try:
