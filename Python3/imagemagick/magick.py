@@ -13,8 +13,8 @@ import os
 import psutil
 import random
 import signal
-import subprocess
 import sqlite3
+import subprocess
 import sys
 import time
 from datetime import datetime
@@ -172,6 +172,8 @@ def set_magick_limits(input_file):
         logging.info("Set ImageMagick limits:")
         for key, value in magick_limits.items():
             logging.info(f"{key}: {value}")
+
+        print()
 
         os.environ.update(magick_limits)
     except Exception as e:
