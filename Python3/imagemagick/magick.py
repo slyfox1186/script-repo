@@ -48,7 +48,9 @@ SSIM_THRESHOLD = 0.94
 logging.basicConfig(level=logging.INFO, format='%(message)s')
 
 def initialize_database():
-    conn = sqlite3.connect('commands.db')
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    db_path = os.path.join(script_dir, 'commands.db')
+    conn = sqlite3.connect(db_path)
     c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS commands
                  (command TEXT PRIMARY KEY, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)''')
@@ -56,7 +58,9 @@ def initialize_database():
     conn.close()
 
 def command_exists(command):
-    conn = sqlite3.connect('commands.db')
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    db_path = os.path.join(script_dir, 'commands.db')
+    conn = sqlite3.connect(db_path)
     c = conn.cursor()
     c.execute("SELECT 1 FROM commands WHERE command = ?", (command,))
     exists = c.fetchone() is not None
@@ -64,16 +68,40 @@ def command_exists(command):
     return exists
 
 def add_command(command):
-    conn = sqlite3.connect('commands.db')
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    db_path = os.path.join(script_dir, 'commands.db')
+    conn = sqlite3.connect(db_path)
     c = conn.cursor()
     try:
         c.execute("INSERT INTO commands (command) VALUES (?)", (command,))
         conn.commit()
+        logging.info(f"Command added to the commands.db file: {command}")
+        print(f"Command added to the commands.db file: {command}")  # Added logging to terminal
     except sqlite3.IntegrityError:
-        # Command already exists, do nothing
-        pass
+        logging.info(f"Command already exists in the commands.db file: {command}")
+        print(f"Command already exists in the commands.db file: {command}")  # Added logging to terminal
+    except Exception as e:
+        logging.error(f"Error adding command to the commands.db file: {str(e)}")
+        print(f"Error adding command to the commands.db file: {str(e)}")  # Added logging to terminal
     finally:
         conn.close()
+
+def check_database_usage():
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    db_path = os.path.join(script_dir, 'commands.db')
+    if os.path.exists(db_path):
+        conn = sqlite3.connect(db_path)
+        c = conn.cursor()
+        c.execute("SELECT COUNT(*) FROM commands")
+        count = c.fetchone()[0]
+        conn.close()
+        if count > 0:
+            logging.info("The commands.db file is being used.")
+        else:
+            logging.info("The commands.db file is not being used.")
+    else:
+        logging.info("The commands.db file does not exist.")
+        print("The commands.db file does not exist.")  # Added logging to terminal
 
 def measure_noise(image_path):
     # Load the image
@@ -185,7 +213,7 @@ def analyze_image(input_file, output_file):
 
             psnr_value = psnr(original_array, compressed_array)
             ssim_value = ssim(original_array, compressed_array, channel_axis=-1 if original_array.ndim > 2 else None)
-            
+
             # Calculate noise level
             noise_level = detect_noise(output_file)
 
@@ -318,55 +346,52 @@ def cleanup_temp_files(output_directory):
 def process_command(command, input_file, output_file, output_directory, log_file, target_size):
     try:
         logging.info(f"Processing: {os.path.basename(output_file)}")
-
         success = run_imagemagick_command(input_file, os.path.join(output_directory, output_file), command)
         if not success:
             logging.error(f"Failed to execute command for {os.path.basename(output_file)}")
             return False, None, False
-
+        
         # Strict check for file size
         actual_size = os.path.getsize(os.path.join(output_directory, output_file))
         if actual_size > target_size * 1024:
             logging.error(f"File size ({actual_size / 1024:.2f} KB) exceeds target size ({target_size:.2f} KB)")
             return False, None, False
-
+        
         result = analyze_image(input_file, os.path.join(output_directory, output_file))
         if result is not None:
-            file_size, dimensions, psnr_value, ssim_value = result
-
-            try:
-                noise_level = measure_noise(os.path.join(output_directory, output_file))
-            except Exception as e:
-                logging.error(f"Error measuring noise for {os.path.basename(output_file)}: {str(e)}")
-                noise_level = 1.0
-
+            file_size, dimensions, psnr_value, ssim_value, noise_level = result
+            
             logging.info(f"Image: {os.path.basename(output_file)}")
             logging.info(f"Size: {file_size / 1024:.1f} KB")
             logging.info(f"PSNR: {psnr_value:.2f}, SSIM: {ssim_value:.4f}")
             logging.info(f"Noise: {noise_level:.4f}")
-
-            quality_acceptable = (psnr_value >= PSNR_THRESHOLD and 
-                                  ssim_value >= SSIM_THRESHOLD and 
-                                  noise_level <= MAX_NOISE_LEVEL)
+            
+            quality_acceptable = (
+                psnr_value >= PSNR_THRESHOLD
+                and ssim_value >= SSIM_THRESHOLD
+                and noise_level <= MAX_NOISE_LEVEL
+            )
             size_acceptable = file_size <= target_size * 1024
-
+            
             if size_acceptable and quality_acceptable:
                 quality_status = 'Acceptable'
             elif not size_acceptable:
                 quality_status = 'Rejected (Exceeds target size)'
             else:
                 quality_status = 'Not Acceptable'
-
+            
             logging.info(f"Quality: {quality_status}")
             print()
-
+            
             with open(log_file, "a", newline="") as file:
                 writer = csv.writer(file)
                 writer.writerow([command, file_size, dimensions[0], dimensions[1], psnr_value, ssim_value, noise_level])
-
-            add_command(command)
-
-            return size_acceptable and quality_acceptable, file_size, quality_acceptable
+            
+            if size_acceptable and quality_acceptable:
+                add_command(command)  # Add the command to the commands.db file
+                return size_acceptable and quality_acceptable, file_size, quality_acceptable
+            else:
+                return size_acceptable and quality_acceptable, file_size, quality_acceptable
         else:
             logging.error(f"Failed to analyze image: {os.path.basename(output_file)}")
             return False, None, False
@@ -423,28 +448,38 @@ def detect_noise(image_path):
     image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
     if image is None:
         return 0  # Return 0 if the image couldn't be read
-    
+
     # Compute the Laplacian of the image
     laplacian = cv2.Laplacian(image, cv2.CV_64F)
-    
+
     # Compute the variance of the Laplacian
     noise_level = laplacian.var()
-    
+
     # Normalize the noise level to a 0-1 range
     # You may need to adjust this normalization based on your specific use case
     normalized_noise = min(noise_level / 500, 1.0)
-    
+
     return normalized_noise
 
 def generate_imagemagick_commands(input_file, count, target_size):
     commands = []
     sampling_factor = get_sampling_factor(input_file)
-    for _ in range(count):
+    while len(commands) < count:
         quality = random.randint(QUALITY_RANGE[0], QUALITY_RANGE[1])
         unsharp = f"{np.random.uniform(0, 1):.2f}x{np.random.uniform(0, 1):.2f}+{np.random.uniform(0, 5):.1f}+{np.random.uniform(0, 0.05):.3f}"
         adaptive_sharpen = f"{np.random.uniform(0, 2):.1f}x{np.random.uniform(0, 0.5):.1f}"
         posterize = np.random.randint(64, 256)
         command = f"-strip -define jpeg:dct-method=float -interlace Plane -colorspace sRGB -filter Lanczos -define filter:blur=0.9891028367558475 -define filter:window=Jinc -define filter:lobes=3 -sampling-factor {sampling_factor} -quality {quality} -unsharp {unsharp} -adaptive-sharpen {adaptive_sharpen} -posterize {posterize} -define jpeg:extent={target_size}b"
+
+        # Check if the command already exists in the database
+        while command_exists(command):
+            # Generate a new command if a match is found
+            quality = random.randint(QUALITY_RANGE[0], QUALITY_RANGE[1])
+            unsharp = f"{np.random.uniform(0, 1):.2f}x{np.random.uniform(0, 1):.2f}+{np.random.uniform(0, 5):.1f}+{np.random.uniform(0, 0.05):.3f}"
+            adaptive_sharpen = f"{np.random.uniform(0, 2):.1f}x{np.random.uniform(0, 0.5):.1f}"
+            posterize = np.random.randint(64, 256)
+            command = f"-strip -define jpeg:dct-method=float -interlace Plane -colorspace sRGB -filter Lanczos -define filter:blur=0.9891028367558475 -define filter:window=Jinc -define filter:lobes=3 -sampling-factor {sampling_factor} -quality {quality} -unsharp {unsharp} -adaptive-sharpen {adaptive_sharpen} -posterize {posterize} -define jpeg:extent={target_size}b"
+
         commands.append(command)
     return commands
 
@@ -523,7 +558,7 @@ def check_and_kill_existing_processes(script_name):
                 cmdline = proc.cmdline()
                 if len(cmdline) > 1 and os.path.basename(cmdline[1]) == script_name:
                     logging.info(f"Found existing process: PID {proc.info['pid']}, Status: {proc.info['status']}")
-                    
+
                     # Try to terminate the process and all its children
                     parent = psutil.Process(proc.info['pid'])
                     for child in parent.children(recursive=True):
@@ -533,7 +568,7 @@ def check_and_kill_existing_processes(script_name):
                     gone, still_alive = psutil.wait_procs([parent], timeout=3)
                     for p in still_alive:
                         p.kill()
-                    
+
                     killed_processes.append(proc.info['pid'])
 
         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
@@ -644,14 +679,14 @@ def process_commands(input_file, commands, output_directory, log_file, target_si
             result = future.result()
             if result is not None:
                 command, i, (file_size, dimensions, psnr_value, ssim_value, noise_level) = result
-                
+
                 with open(log_file, "a", newline="") as file:
                     writer = csv.writer(file)
                     writer.writerow([command, file_size, dimensions[0], dimensions[1], psnr_value, ssim_value, noise_level])
-                
+
                 if file_size <= target_size and psnr_value >= PSNR_THRESHOLD and ssim_value >= SSIM_THRESHOLD and noise_level <= MAX_NOISE_LEVEL:
                     successful_commands.append((command, psnr_value, ssim_value, file_size, noise_level))
-                
+
                 logging.info(f"Image: output_{i:02d}.{OUTPUT_FORMAT}")
                 logging.info(f"Size: {file_size / 1024:.1f} KB")
                 logging.info(f"PSNR: {psnr_value:.2f}, SSIM: {ssim_value:.4f}")
@@ -665,6 +700,7 @@ def main():
     try:
         check_and_kill_existing_processes('magick.py')
         initialize_database()
+        check_database_usage()
         input_file = get_image_file()
         set_magick_limits(input_file)
         output_directory = "temp-files"
@@ -768,6 +804,8 @@ def main():
         gone, still_alive = psutil.wait_procs(children, timeout=3)
         for p in still_alive:
             p.kill()
+
+    check_database_usage()
 
 if __name__ == "__main__":
     main()
