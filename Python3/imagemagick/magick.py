@@ -192,12 +192,12 @@ def adjust_command(individual, increase_size, last_file_size, max_acceptable_siz
         individual['quality'] = min(individual['quality'] + 2, QUALITY_RANGE[1])
         individual['unsharp'] = f"{min(float(individual['unsharp'].split('x')[0]) + 0.1, 10):.2f}x{individual['unsharp'].split('x')[1]}"
         individual['adaptive-sharpen'] = f"{min(float(individual['adaptive-sharpen'].split('x')[0]) + 0.1, 10):.1f}x{individual['adaptive-sharpen'].split('x')[1]}"
-        max_size = max(last_file_size * 1.1, max_acceptable_size)  # Ensure it does not exceed the max acceptable size
+        max_size = min(last_file_size * 1.1, max_acceptable_size)  # Ensure it does not exceed the max acceptable size
     else:
         individual['quality'] = max(individual['quality'] - 2, QUALITY_RANGE[0])
         individual['unsharp'] = f"{max(float(individual['unsharp'].split('x')[0]) - 0.1, 0):.2f}x{individual['unsharp'].split('x')[1]}"
         individual['adaptive-sharpen'] = f"{max(float(individual['adaptive-sharpen'].split('x')[0]) - 0.1, 0):.1f}x{individual['adaptive-sharpen'].split('x')[1]}"
-        max_size = min(last_file_size * 0.9, max_acceptable_size)  # Ensure it does not go below the max acceptable size
+        max_size = max(last_file_size * 0.9, 1)  # Ensure it does not go below 1 byte
     return max_size
 
 # Variables to control the quality adjustment
@@ -235,7 +235,6 @@ def generate_imagemagick_commands(input_file, output_directory, optimal_director
 
     # Get the smallest image size in the optimal directory
     max_acceptable_size = get_smallest_image_size(optimal_directory) or last_file_size
-    print()
     logging.info(f"Max file size based on the smallest image in the optimal folder: {max_acceptable_size / 1024:.2f}KB")
 
     for generation in range(GENERATIONS):
@@ -284,7 +283,7 @@ def generate_imagemagick_commands(input_file, output_directory, optimal_director
                             logging.info("\nQuality is acceptable again. Starting to reduce image size for following outputs.\n")
                         last_quality_acceptable = True
                         increase_size = False
-                        max_acceptable_size = min(max_acceptable_size, file_size)  # Update max acceptable size
+                        max_acceptable_size = max(max_acceptable_size, file_size)  # Update max acceptable size
                     else:
                         if last_quality_acceptable:
                             logging.info("\nQuality is not acceptable. Increasing image size for following outputs.\n")
