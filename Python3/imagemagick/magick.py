@@ -12,15 +12,15 @@ import numpy as np
 import os
 import psutil
 import random
-import subprocess
 import sqlite3
+import subprocess
 import sys
 import time
 from datetime import datetime
+from functools import lru_cache
 from PIL import Image
 from skimage.metrics import peak_signal_noise_ratio as psnr
 from skimage.metrics import structural_similarity as ssim
-from functools import lru_cache
 
 # User-configurable variables
 BEST_COMMANDS_FILE = "best_commands.csv"
@@ -130,7 +130,7 @@ def analyze_image(args):
         logging.error(f"Error analyzing image: {output_file}. Error message: {str(e)}")
         return None
 
-def mutate_command(command, noise_level):
+def mutate_command(command, noise_level, target_size):
     parts = command.split()
     for i, part in enumerate(parts):
         if part == "-quality":
@@ -173,9 +173,12 @@ def mutate_command(command, noise_level):
                         else:
                             new_values.append(str(max(0, min(10, float(v) + random.uniform(-0.01, 0.01)))))
                 parts[i + 1] = ('+' if part == "-unsharp" else 'x').join(new_values)
+        elif part == "-define":
+            if parts[i + 1].startswith("jpeg:extent="):
+                parts[i + 1] = f"jpeg:extent={target_size}b"
     return ' '.join(parts)
 
-def generate_imagemagick_commands(input_file, count):
+def generate_imagemagick_commands(input_file, count, target_size):
     commands = []
     sampling_factor = get_sampling_factor(input_file)
     for _ in range(count):
@@ -183,7 +186,7 @@ def generate_imagemagick_commands(input_file, count):
         unsharp = f"{np.random.uniform(0, 1):.2f}x{np.random.uniform(0, 1):.2f}+{np.random.uniform(0, 5):.1f}+{np.random.uniform(0, 0.05):.3f}"
         adaptive_sharpen = f"{np.random.uniform(0, 2):.1f}x{np.random.uniform(0, 0.5):.1f}"
         posterize = np.random.randint(64, 256)
-        command = f"-strip -define jpeg:dct-method=float -interlace Plane -colorspace sRGB -filter Lanczos -define filter:blur=0.9891028367558475 -define filter:window=Jinc -define filter:lobes=3 -sampling-factor {sampling_factor} -quality {quality} -unsharp {unsharp} -adaptive-sharpen {adaptive_sharpen} -posterize {posterize}"
+        command = f"-strip -define jpeg:dct-method=float -interlace Plane -colorspace sRGB -filter Lanczos -define filter:blur=0.9891028367558475 -define filter:window=Jinc -define filter:lobes=3 -sampling-factor {sampling_factor} -quality {quality} -unsharp {unsharp} -adaptive-sharpen {adaptive_sharpen} -posterize {posterize} -define jpeg:extent={target_size}b"
         commands.append(command)
     return commands
 
@@ -365,13 +368,13 @@ def main():
             new_commands = [cmd for cmd in commands if cmd not in existing_commands and validate_command(cmd)]
         else:
             logging.warning(f"No best command lines found in {BEST_COMMANDS_FILE}. Generating new commands.")
-            commands = generate_imagemagick_commands(input_file, INITIAL_COMMAND_COUNT)
+            commands = generate_imagemagick_commands(input_file, INITIAL_COMMAND_COUNT, target_size)
             existing_commands = check_commands_in_db(cursor, commands)
             new_commands = [cmd for cmd in commands if cmd not in existing_commands and validate_command(cmd)]
     else:
         # Generate new commands
         logging.info("Generating new commands.")
-        commands = generate_imagemagick_commands(input_file, INITIAL_COMMAND_COUNT)
+        commands = generate_imagemagick_commands(input_file, INITIAL_COMMAND_COUNT, target_size)
         existing_commands = check_commands_in_db(cursor, commands)
         new_commands = [cmd for cmd in commands if cmd not in existing_commands and validate_command(cmd)]
 
@@ -390,7 +393,7 @@ def main():
             else:
                 logging.info("No successful commands found. Generating new commands.")
                 noise_level = detect_noise(input_file)
-                new_commands = [mutate_command(cmd, noise_level) for cmd in new_commands]
+                new_commands = [mutate_command(cmd, noise_level, target_size) for cmd in new_commands]
 
         if best_command is not None:
             break
