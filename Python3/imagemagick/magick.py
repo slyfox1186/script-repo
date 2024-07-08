@@ -4,6 +4,7 @@
 
 import concurrent.futures
 import csv
+import cv2
 import logging
 import multiprocessing
 import numpy as np
@@ -23,7 +24,8 @@ from skimage.metrics import peak_signal_noise_ratio as psnr
 from skimage.metrics import structural_similarity as ssim
 
 # User-configurable variables
-MAX_WORKERS = multiprocessing.cpu_count()
+NUM_CPUS = multiprocessing.cpu_count()
+MAX_WORKERS = NUM_CPUS if NUM_CPUS is not None else 1
 OUTPUT_FORMAT = "jpg"
 BEST_COMMANDS_FILE = "best_commands.csv"
 
@@ -91,6 +93,24 @@ def measure_noise(image_path):
 
     return min(normalized_noise, 1.0)  # Ensure the result is in [0, 1]
 
+def create_optimization_report(best_command, log_file, target_size):
+    with open("optimization_report.txt", "w") as file:
+        file.write(f"Optimal ImageMagick command: {best_command}\n\n")
+        file.write("This command was selected as the best based on the following criteria:\n")
+        file.write("1. Highest PSNR value, indicating minimal loss of image quality.\n")
+        file.write("2. Highest SSIM value, indicating preservation of structural similarity.\n")
+        file.write("3. Smallest file size, achieving the best compression.\n")
+        file.write(f"The optimization process prioritized image quality (PSNR and SSIM) while minimizing file size below {target_size/1024:.2f} KB.\n\n")
+        file.write("Runner-up commands:\n")
+        with open(log_file, "r") as log:
+            reader = csv.reader(log)
+            next(reader)  # Skip header
+            for row in reader:
+                if row[0] != best_command:
+                    file.write(f"- {row[0]}\n")
+        file.write("\nThese commands also performed well but were slightly inferior in terms of PSNR, SSIM, or file size compared to the optimal command.")
+    logging.info("Optimization report created: optimization_report.txt")
+
 def set_magick_limits(input_file):
     try:
         with Image.open(input_file) as img:
@@ -136,8 +156,10 @@ def run_imagemagick_command(input_file, output_file, command):
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
     full_command = f"magick {input_file} {command} {output_file}"
     try:
-        result = subprocess.run(full_command, shell=True, check=True, stderr=subprocess.PIPE, text=True, timeout=300)
+        result = subprocess.run(full_command, shell=True, check=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE, text=True, timeout=300)
         logging.debug(f"Command executed successfully: {os.path.basename(output_file)}")
+        logging.debug(f"Command output: {result.stdout}")
+        logging.debug(f"Command stderr: {result.stderr}")
         return True
     except subprocess.CalledProcessError as e:
         logging.error(f"Error executing: {os.path.basename(output_file)}. Error message: {e.stderr}")
@@ -152,33 +174,20 @@ def run_imagemagick_command(input_file, output_file, command):
 def analyze_image(input_file, output_file):
     try:
         with Image.open(input_file) as original_image, Image.open(output_file) as compressed_image:
-            original_size = os.path.getsize(input_file)
             compressed_size = os.path.getsize(output_file)
-
-            # Resize the original image to match the compressed image dimensions
             if original_image.size != compressed_image.size:
                 original_image = original_image.resize(compressed_image.size, Image.LANCZOS)
 
-            # Calculate PSNR and SSIM in smaller chunks
-            chunk_size = 1024
-            total_psnr = 0
-            total_ssim = 0
-            num_chunks = 0
+            original_array = np.array(original_image)
+            compressed_array = np.array(compressed_image)
 
-            for i in range(0, original_image.height, chunk_size):
-                for j in range(0, original_image.width, chunk_size):
-                    box = (j, i, min(j+chunk_size, original_image.width), min(i+chunk_size, original_image.height))
-                    original_chunk = np.array(original_image.crop(box))
-                    compressed_chunk = np.array(compressed_image.crop(box))
+            psnr_value = psnr(original_array, compressed_array)
+            ssim_value = ssim(original_array, compressed_array, channel_axis=-1 if original_array.ndim > 2 else None)
+            
+            # Calculate noise level
+            noise_level = detect_noise(output_file)
 
-                    total_psnr += psnr(original_chunk, compressed_chunk)
-                    total_ssim += ssim(original_chunk, compressed_chunk, channel_axis=-1)
-                    num_chunks += 1
-
-        psnr_value = total_psnr / num_chunks
-        ssim_value = total_ssim / num_chunks
-
-        return compressed_size, compressed_image.size, psnr_value, ssim_value
+            return compressed_size, compressed_image.size, psnr_value, ssim_value, noise_level
     except Exception as e:
         logging.error(f"Error analyzing image: {output_file}. Error message: {str(e)}")
         return None
@@ -302,27 +311,31 @@ def process_command(command, input_file, output_file, output_directory, log_file
             logging.error(f"Failed to execute command for {os.path.basename(output_file)}")
             return False, None, False
 
+        # Strict check for file size
+        actual_size = os.path.getsize(os.path.join(output_directory, output_file))
+        if actual_size > target_size * 1024:
+            logging.error(f"File size ({actual_size / 1024:.2f} KB) exceeds target size ({target_size:.2f} KB)")
+            return False, None, False
+
         result = analyze_image(input_file, os.path.join(output_directory, output_file))
         if result is not None:
             file_size, dimensions, psnr_value, ssim_value = result
 
             try:
-                # Calculate noise level
                 noise_level = measure_noise(os.path.join(output_directory, output_file))
             except Exception as e:
                 logging.error(f"Error measuring noise for {os.path.basename(output_file)}: {str(e)}")
-                noise_level = 1.0  # Assume worst-case noise if measurement fails
+                noise_level = 1.0
 
             logging.info(f"Image: {os.path.basename(output_file)}")
             logging.info(f"Size: {file_size / 1024:.1f} KB")
             logging.info(f"PSNR: {psnr_value:.2f}, SSIM: {ssim_value:.4f}")
             logging.info(f"Noise: {noise_level:.4f}")
 
-            # Correct quality assessment
             quality_acceptable = (psnr_value >= PSNR_THRESHOLD and 
                                   ssim_value >= SSIM_THRESHOLD and 
                                   noise_level <= MAX_NOISE_LEVEL)
-            size_acceptable = file_size <= target_size
+            size_acceptable = file_size <= target_size * 1024
 
             if size_acceptable and quality_acceptable:
                 quality_status = 'Acceptable'
@@ -338,7 +351,6 @@ def process_command(command, input_file, output_file, output_directory, log_file
                 writer = csv.writer(file)
                 writer.writerow([command, file_size, dimensions[0], dimensions[1], psnr_value, ssim_value, noise_level])
 
-            # Add the command to the database after processing
             add_command(command)
 
             return size_acceptable and quality_acceptable, file_size, quality_acceptable
@@ -394,26 +406,33 @@ def get_image_file():
         logging.error("Please make sure there is at least one image file (JPG, JPEG, or PNG) in the same directory as the script.")
         sys.exit(1)
 
-def generate_imagemagick_commands(input_file, output_directory, optimal_directory, target_size):
+def detect_noise(image_path):
+    image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+    if image is None:
+        return 0  # Return 0 if the image couldn't be read
+    
+    # Compute the Laplacian of the image
+    laplacian = cv2.Laplacian(image, cv2.CV_64F)
+    
+    # Compute the variance of the Laplacian
+    noise_level = laplacian.var()
+    
+    # Normalize the noise level to a 0-1 range
+    # You may need to adjust this normalization based on your specific use case
+    normalized_noise = min(noise_level / 500, 1.0)
+    
+    return normalized_noise
+
+def generate_imagemagick_commands(input_file, count, target_size):
     commands = []
     sampling_factor = get_sampling_factor(input_file)
-
-    while len(commands) < INITIAL_COMMAND_COUNT:
-        individual = create_individual()
+    for _ in range(count):
         quality = random.randint(QUALITY_RANGE[0], QUALITY_RANGE[1])
-        sharpening = random.choice(["", f"-unsharp {individual['unsharp']}", f"-adaptive-sharpen {individual['adaptive-sharpen']}"])
-        posterize = random.choice(["", f"-posterize {individual['posterize']}"])
-        
-        # Add the maximum file size constraint
-        max_size_constraint = f"-define jpeg:extent={int(target_size)}KB"
-        
-        command = f"-strip -define jpeg:dct-method=float -interlace Plane -colorspace sRGB -filter Lanczos -define filter:blur=0.9891028367558475 -define filter:window=Jinc -define filter:lobes=3 -sampling-factor {sampling_factor} -quality {quality} {sharpening} {posterize} {max_size_constraint}"
-        command = command.strip()
-        
-        if not command_exists(command):
-            commands.append(command)
-            add_command(command)
-
+        unsharp = f"{np.random.uniform(0, 1):.2f}x{np.random.uniform(0, 1):.2f}+{np.random.uniform(0, 5):.1f}+{np.random.uniform(0, 0.05):.3f}"
+        adaptive_sharpen = f"{np.random.uniform(0, 2):.1f}x{np.random.uniform(0, 0.5):.1f}"
+        posterize = np.random.randint(64, 256)
+        command = f"-strip -define jpeg:dct-method=float -interlace Plane -colorspace sRGB -filter Lanczos -define filter:blur=0.9891028367558475 -define filter:window=Jinc -define filter:lobes=3 -sampling-factor {sampling_factor} -quality {quality} -unsharp {unsharp} -adaptive-sharpen {adaptive_sharpen} -posterize {posterize} -define jpeg:extent={target_size}b"
+        commands.append(command)
     return commands
 
 def select_best_commands(log_file, num_commands, target_size):
@@ -482,24 +501,32 @@ def create_full_commands_script(best_commands, input_file):
 
 def check_and_kill_existing_processes(script_name):
     current_pid = os.getpid()
+    current_script = os.path.abspath(script_name)
     killed_processes = []
-    for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+
+    for proc in psutil.process_iter(['pid', 'name', 'cmdline', 'status']):
         try:
-            # Check if the process is python and running our script
-            if proc.info['pid'] != current_pid and proc.info['name'] == 'python' and \
-               any(script_name in cmd for cmd in proc.info['cmdline']):
-                proc.terminate()
-                proc.wait(timeout=10)  # Wait for the process to terminate
-                if proc.is_running():
-                    proc.kill()
-                killed_processes.append(proc.info['pid'])
+            if proc.info['pid'] != current_pid and proc.info['name'] in ['python', 'python3']:
+                cmdline = proc.cmdline()
+                if len(cmdline) > 1 and os.path.basename(cmdline[1]) == script_name:
+                    logging.info(f"Found existing process: PID {proc.info['pid']}, Status: {proc.info['status']}")
+                    
+                    # Try to terminate the process and all its children
+                    parent = psutil.Process(proc.info['pid'])
+                    for child in parent.children(recursive=True):
+                        child.terminate()
+                    parent.terminate()
+
+                    gone, still_alive = psutil.wait_procs([parent], timeout=3)
+                    for p in still_alive:
+                        p.kill()
+                    
+                    killed_processes.append(proc.info['pid'])
+
         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
             pass
         except Exception as e:
             logging.error(f"Error handling process: {str(e)}")
-
-    # Clear the screen
-    os.system('clear' if os.name == 'posix' else 'cls')
 
     if killed_processes:
         logging.info(f"Cleaned up {len(killed_processes)} existing processes: {', '.join(map(str, killed_processes))}")
@@ -507,6 +534,7 @@ def check_and_kill_existing_processes(script_name):
         logging.info("No existing processes found to clean up.")
 
     print()
+    time.sleep(2)  # Wait to ensure all processes are terminated
 
 def validate_command(command):
     command_parts = command.split()
@@ -550,13 +578,17 @@ def adapt_stored_commands(commands, target_size):
     adapted_commands = []
     for cmd in commands:
         parts = cmd.split()
+        size_constraint_added = False
         for i, part in enumerate(parts):
             if part == "-quality":
                 current_quality = int(parts[i+1])
                 new_quality = max(current_quality - 10, 40)  # Reduce quality, but not below 40
                 parts[i+1] = str(new_quality)
             elif part == "-define" and parts[i+1].startswith("jpeg:extent="):
-                parts[i+1] = f"jpeg:extent={target_size}b"
+                parts[i+1] = f"jpeg:extent={int(target_size)}kb"
+                size_constraint_added = True
+        if not size_constraint_added:
+            parts.append(f"-define jpeg:extent={int(target_size)}kb")
         adapted_commands.append(" ".join(parts))
     return adapted_commands
 
@@ -581,98 +613,124 @@ def print_configuration():
     logging.info(f"PSNR_THRESHOLD: {PSNR_THRESHOLD}")
     logging.info(f"SSIM_THRESHOLD: {SSIM_THRESHOLD}\n")
 
+def process_commands(input_file, commands, output_directory, log_file, target_size):
+    successful_commands = []
+
+    def process_single_command(command, i):
+        output_file = f"{output_directory}/output_{i:02d}.{OUTPUT_FORMAT}"
+        success = run_imagemagick_command(input_file, output_file, command)
+        if success:
+            result = analyze_image(input_file, output_file)
+            if result is not None:
+                return (command, i, result)
+        return None
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        future_to_command = {executor.submit(process_single_command, command, i): (command, i) for i, command in enumerate(commands)}
+        for future in concurrent.futures.as_completed(future_to_command):
+            result = future.result()
+            if result is not None:
+                command, i, (file_size, dimensions, psnr_value, ssim_value, noise_level) = result
+                
+                with open(log_file, "a", newline="") as file:
+                    writer = csv.writer(file)
+                    writer.writerow([command, file_size, dimensions[0], dimensions[1], psnr_value, ssim_value, noise_level])
+                
+                if file_size <= target_size and psnr_value >= PSNR_THRESHOLD and ssim_value >= SSIM_THRESHOLD and noise_level <= MAX_NOISE_LEVEL:
+                    successful_commands.append((command, psnr_value, ssim_value, file_size, noise_level))
+                
+                logging.info(f"Image: output_{i:02d}.{OUTPUT_FORMAT}")
+                logging.info(f"Size: {file_size / 1024:.1f} KB")
+                logging.info(f"PSNR: {psnr_value:.2f}, SSIM: {ssim_value:.4f}")
+                logging.info(f"Noise: {noise_level:.4f}")
+                logging.info(f"Quality: {'Acceptable' if file_size <= target_size and psnr_value >= PSNR_THRESHOLD and ssim_value >= SSIM_THRESHOLD and noise_level <= MAX_NOISE_LEVEL else 'Not Acceptable'}")
+                print()
+
+    return successful_commands
+
 def main():
-    check_and_kill_existing_processes('magick.py')
-    initialize_database()
-    input_file = get_image_file()
-    set_magick_limits(input_file)
-    output_directory = "temp-files"
-    log_file = "optimization_log.csv"
-    optimal_directory = "optimal-images"
+    try:
+        check_and_kill_existing_processes('magick.py')
+        initialize_database()
+        input_file = get_image_file()
+        set_magick_limits(input_file)
+        output_directory = "temp-files"
+        log_file = "optimization_log.csv"
+        optimal_directory = "optimal-images"
 
-    target_size = get_target_size(input_file, optimal_directory)
-    logging.info(f"Adjusted target size with safety margin: {target_size / 1024:.2f} KB")
+        target_size = get_target_size(input_file, optimal_directory)
+        logging.info(f"Adjusted target size with safety margin: {target_size / 1024:.2f} KB")
 
-    print_configuration()
+        logging.info(f"Number of CPUs detected: {NUM_CPUS}")
+        logging.info(f"Using {MAX_WORKERS} worker threads for parallel processing.")
 
-    stored_commands = get_stored_commands()
-    use_stored = False
-    if stored_commands:
-        logging.info(f"Found {len(stored_commands)} stored commands in {BEST_COMMANDS_FILE}.")
-        print()
-        use_stored = input("Do you want to use these commands? (y/n): ").lower() == 'y'
-        if use_stored:
-            commands = adapt_stored_commands(stored_commands, target_size)
-            logging.info("Using adapted stored commands for optimization.")
+        print_configuration()
+
+        stored_commands = get_stored_commands()
+        use_stored = False
+        if stored_commands:
+            logging.info(f"Found {len(stored_commands)} stored commands in {BEST_COMMANDS_FILE}.")
+            print()
+            use_stored = input("Do you want to use these commands? (y/n): ").lower() == 'y'
+            if use_stored:
+                commands = adapt_stored_commands(stored_commands, target_size)
+                logging.info("Using adapted stored commands for optimization.")
+            else:
+                commands = generate_imagemagick_commands(input_file, INITIAL_COMMAND_COUNT, target_size)
+                logging.info("Generating new commands for optimization.")
         else:
-            commands = generate_imagemagick_commands(input_file, output_directory, optimal_directory, target_size)
-            logging.info("Generating new commands for optimization.")
-    else:
-        logging.info(f"No stored commands found in {BEST_COMMANDS_FILE}. Generating new commands.")
-        commands = generate_imagemagick_commands(input_file, output_directory, optimal_directory, target_size)
+            logging.info(f"No stored commands found in {BEST_COMMANDS_FILE}. Generating new commands.")
+            commands = generate_imagemagick_commands(input_file, INITIAL_COMMAND_COUNT, target_size)
 
-    os.makedirs(output_directory, exist_ok=True)
-    os.makedirs(optimal_directory, exist_ok=True)
+        os.makedirs(output_directory, exist_ok=True)
+        os.makedirs(optimal_directory, exist_ok=True)
 
-    start_time = datetime.now()
+        start_time = datetime.now()
 
-    with open(log_file, "w", newline="") as file:
-        writer = csv.writer(file)
-        writer.writerow(["command", "file_size", "width", "height", "psnr", "ssim", "noise"])
+        with open(log_file, "w", newline="") as file:
+            writer = csv.writer(file)
+            writer.writerow(["command", "file_size", "width", "height", "psnr", "ssim", "noise"])
 
-    max_attempts = MAX_ATTEMPTS
-    attempt = 0
-    successful_commands = 0
+        max_attempts = MAX_ATTEMPTS
+        attempt = 0
+        successful_commands = []
 
-    while attempt < max_attempts and successful_commands == 0:
-        logging.info(f"\nAttempt {attempt + 1} of {max_attempts}")
+        while attempt < max_attempts and not successful_commands:
+            logging.info(f"\nAttempt {attempt + 1} of {max_attempts}")
 
-        # Clean up temporary files from previous attempts
-        cleanup_temp_files(output_directory)
+            # Clean up temporary files from previous attempts
+            cleanup_temp_files(output_directory)
 
-        logging.info(f"Processing {len(commands)} commands:")
-        print()
-        with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-            futures = [executor.submit(process_command, command, input_file, f"output_{i:02}.{OUTPUT_FORMAT}", output_directory, log_file, target_size)
-                       for i, command in enumerate(commands)]
-            for future in concurrent.futures.as_completed(futures):
-                try:
-                    result = future.result()
-                    if result[0]:
-                        successful_commands += 1
-                except Exception as e:
-                    logging.error(f"Error in future: {str(e)}")
+            logging.info(f"Processing {len(commands)} commands:")
+            print()
+            successful_commands = process_commands(input_file, commands, output_directory, log_file, target_size)
 
-            time.sleep(1)  # Ensure all logging is flushed
+            if not successful_commands:
+                logging.info("No successful commands. Generating new commands with current parameters.")
+                commands = generate_imagemagick_commands(input_file, INITIAL_COMMAND_COUNT, target_size)
 
-        successful_commands = sum(1 for future in futures if future.result()[0])
-        logging.info(f"\nProcessing complete. {successful_commands} out of {len(commands)} commands were successful.")
+            attempt += 1
 
-        if successful_commands == 0:
-            logging.info("No successful commands. Generating new commands with current parameters.")
-            commands = generate_imagemagick_commands(input_file, output_directory, optimal_directory)
+        if not successful_commands:
+            logging.error("Failed to find any successful commands after multiple attempts.")
+            cleanup_temp_files(output_directory)
+            return
 
-        attempt += 1
+        logging.info("\nCommand processing complete.\n")
 
-    if successful_commands == 0:
-        logging.error("Failed to find any successful commands after multiple attempts.")
-        cleanup_temp_files(output_directory)
-        return
-
-    logging.info("\nCommand processing complete.\n")
-
-    best_commands = select_best_commands(log_file, 1, target_size)
-    if best_commands:
-        best_command = best_commands[0]
+        best_command = max(successful_commands, key=lambda x: (x[1], x[2], -x[3]))
         logging.info(f"\nOptimization complete. Total time: {datetime.now() - start_time}\n")
-        logging.info(f"Best command: {best_command}\n")
+        logging.info(f"Best command: {best_command[0]}")
+        logging.info(f"PSNR: {best_command[1]:.2f}")
+        logging.info(f"SSIM: {best_command[2]:.4f}")
+        logging.info(f"File size: {best_command[3] / 1024:.2f} KB\n")
 
-        save_best_command(best_command)
+        save_best_command(best_command[0])
         logging.info(f"Best command added to {BEST_COMMANDS_FILE}")
 
         optimal_output = os.path.join(optimal_directory, f"optimal_{datetime.now().strftime('%Y%m%d_%H%M%S')}.{OUTPUT_FORMAT}")
         try:
-            success = run_imagemagick_command(input_file, optimal_output, best_command)
+            success = run_imagemagick_command(input_file, optimal_output, best_command[0])
             if success:
                 logging.info(f"Optimal command executed. Result saved as {optimal_output}")
             else:
@@ -680,22 +738,23 @@ def main():
         except Exception as e:
             logging.error(f"Error executing optimal command: {str(e)}")
 
-        with open("optimization_report.txt", "w") as file:
-            file.write(f"Optimal ImageMagick command: {best_command}\n\n")
-            file.write("This command was selected as the best based on the following criteria:\n")
-            file.write("1. Highest PSNR value, indicating minimal loss of image quality.\n")
-            file.write("2. Highest SSIM value, indicating preservation of structural similarity.\n")
-            file.write("3. Smallest file size, achieving the best compression.\n")
-            file.write("The optimization process prioritized image quality (PSNR and SSIM) while minimizing file size.\n\n")
-            file.write("Runner-up commands:\n")
-            runner_up_commands = select_best_commands(log_file, 5, target_size)[1:]
-            for command in runner_up_commands:
-                file.write(f"- {command}\n")
-            file.write("\nThese commands also performed well but were slightly inferior in terms of PSNR, SSIM, or file size compared to the optimal command.")
-    else:
-        logging.error("No valid commands found. Unable to determine the best command.")
+        create_optimization_report(best_command[0], log_file, target_size)
 
-    cleanup_temp_files(output_directory)
+    except Exception as e:
+        logging.error(f"An unexpected error occurred: {str(e)}")
+    finally:
+        cleanup_temp_files(output_directory)
+        # Ensure all child processes are terminated
+        current_process = psutil.Process()
+        children = current_process.children(recursive=True)
+        for child in children:
+            try:
+                child.terminate()
+            except psutil.NoSuchProcess:
+                pass
+        gone, still_alive = psutil.wait_procs(children, timeout=3)
+        for p in still_alive:
+            p.kill()
 
 if __name__ == "__main__":
     main()
