@@ -274,7 +274,7 @@ def process_command(command, input_file, output_file, output_directory, log_file
             logging.info(f"PSNR: {psnr_value:.2f}, SSIM: {ssim_value:.4f}")
 
             # Be more lenient with quality thresholds if we're meeting size targets
-            quality_acceptable = psnr_value >= (PSNR_THRESHOLD * 0.9) and ssim_value >= (SSIM_THRESHOLD * 0.95)
+            quality_acceptable = psnr_value >= PSNR_THRESHOLD and ssim_value >= SSIM_THRESHOLD
             logging.info(f"Quality: {'Acceptable' if quality_acceptable else 'Not Acceptable'}")
 
             return True, file_size, quality_acceptable
