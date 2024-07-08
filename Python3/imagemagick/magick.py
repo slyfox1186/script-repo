@@ -35,7 +35,7 @@ MIN_OPTIONS_PER_COMMAND = 3
 REFINEMENT_FACTOR = 2
 INITIAL_COMMAND_COUNT = 8
 POPULATION_SIZE = INITIAL_COMMAND_COUNT
-GENERATIONS = 1
+GENERATIONS = 10
 MUTATION_RATE = 0.2
 MAX_ATTEMPTS = 10
 
@@ -136,6 +136,8 @@ def set_magick_limits(input_file):
         for key, value in magick_limits.items():
             logging.info(f"{key}: {value}")
 
+        print()
+
         os.environ.update(magick_limits)
     except Exception as e:
         logging.error(f"Error setting ImageMagick limits: {str(e)}")
@@ -200,27 +202,38 @@ def create_individual():
         "posterize": np.random.randint(64, 256)
     }
 
-def mutate(individual):
-    if np.random.random() < MUTATION_RATE:
-        key = random.choice(list(individual.keys()))
-        if key == "quality":
-            individual[key] = np.random.randint(QUALITY_RANGE[0], QUALITY_RANGE[1] + 1)
-        elif key == "posterize":
-            individual[key] = np.random.randint(64, 256)
-        else:
-            values = [float(x) for x in individual[key].split('x')[1].split('+')]
-            mutated_values = [max(0, min(v + np.random.normal(0, 0.1), 10)) for v in values]
-            individual[key] = f"0x{'+'.join([f'{v:.2f}' for v in mutated_values])}"
-    return individual
+def generate_new_generation(successful_commands, population_size, target_size):
+    new_generation = []
+    while len(new_generation) < population_size:
+        parent1, parent2 = random.sample(successful_commands, 2)
+        child = crossover(parent1[0], parent2[0])
+        child = mutate(child, target_size)
+        new_generation.append(child)
+    return new_generation
 
-def crossover(parent1, parent2):
-    child = {}
-    for key in parent1.keys():
-        if np.random.random() < 0.5:
-            child[key] = parent1[key]
+def crossover(command1, command2):
+    parts1 = command1.split()
+    parts2 = command2.split()
+    child_parts = []
+    for p1, p2 in zip(parts1, parts2):
+        if random.random() < 0.5:
+            child_parts.append(p1)
         else:
-            child[key] = parent2[key]
-    return child
+            child_parts.append(p2)
+    return ' '.join(child_parts)
+
+def mutate(command, target_size):
+    parts = command.split()
+    for i, part in enumerate(parts):
+        if random.random() < MUTATION_RATE:
+            if part.startswith('-quality'):
+                parts[i+1] = str(random.randint(QUALITY_RANGE[0], QUALITY_RANGE[1]))
+            elif part.startswith('-unsharp') or part.startswith('-adaptive-sharpen'):
+                values = [float(x) for x in parts[i+1].split('x')]
+                mutated_values = [max(0, min(v + random.gauss(0, 0.1), 2)) for v in values]
+                parts[i+1] = f"{mutated_values[0]:.2f}x{mutated_values[1]:.2f}"
+    parts.append(f"-define jpeg:extent={target_size}b")
+    return ' '.join(parts)
 
 def fitness(input_file, output_file, output_directory, max_acceptable_size):
     try:
@@ -677,6 +690,7 @@ def main():
                 logging.info("Using adapted stored commands for optimization.")
             else:
                 commands = generate_imagemagick_commands(input_file, INITIAL_COMMAND_COUNT, target_size)
+                print()
                 logging.info("Generating new commands for optimization.")
         else:
             logging.info(f"No stored commands found in {BEST_COMMANDS_FILE}. Generating new commands.")
@@ -691,34 +705,34 @@ def main():
             writer = csv.writer(file)
             writer.writerow(["command", "file_size", "width", "height", "psnr", "ssim", "noise"])
 
-        max_attempts = MAX_ATTEMPTS
-        attempt = 0
-        successful_commands = []
+        all_successful_commands = []
 
-        while attempt < max_attempts and not successful_commands:
-            logging.info(f"\nAttempt {attempt + 1} of {max_attempts}")
+        for generation in range(GENERATIONS):
+            logging.info(f"\nGeneration {generation + 1} of {GENERATIONS}")
 
-            # Clean up temporary files from previous attempts
+            # Clean up temporary files from previous generation
             cleanup_temp_files(output_directory)
 
             logging.info(f"Processing {len(commands)} commands:")
             print()
             successful_commands = process_commands(input_file, commands, output_directory, log_file, target_size)
 
-            if not successful_commands:
-                logging.info("No successful commands. Generating new commands with current parameters.")
+            if successful_commands:
+                all_successful_commands.extend(successful_commands)
+                # Generate new commands based on the successful ones
+                commands = generate_new_generation(successful_commands, INITIAL_COMMAND_COUNT, target_size)
+            else:
+                logging.info("No successful commands in this generation. Generating new commands.")
                 commands = generate_imagemagick_commands(input_file, INITIAL_COMMAND_COUNT, target_size)
 
-            attempt += 1
-
-        if not successful_commands:
-            logging.error("Failed to find any successful commands after multiple attempts.")
+        if not all_successful_commands:
+            logging.error("Failed to find any successful commands after all generations.")
             cleanup_temp_files(output_directory)
             return
 
-        logging.info("\nCommand processing complete.\n")
+        logging.info("\nAll generations complete.\n")
 
-        best_command = max(successful_commands, key=lambda x: (x[1], x[2], -x[3]))
+        best_command = max(all_successful_commands, key=lambda x: (x[1], x[2], -x[3]))
         logging.info(f"\nOptimization complete. Total time: {datetime.now() - start_time}\n")
         logging.info(f"Best command: {best_command[0]}")
         logging.info(f"PSNR: {best_command[1]:.2f}")
@@ -726,7 +740,6 @@ def main():
         logging.info(f"File size: {best_command[3] / 1024:.2f} KB\n")
 
         save_best_command(best_command[0])
-        logging.info(f"Best command added to {BEST_COMMANDS_FILE}")
 
         optimal_output = os.path.join(optimal_directory, f"optimal_{datetime.now().strftime('%Y%m%d_%H%M%S')}.{OUTPUT_FORMAT}")
         try:
