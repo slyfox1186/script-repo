@@ -2,6 +2,7 @@
 
 # Purpose: Uses Machine Learning to generate an optimal command line whose focus is to produce the highest quality image and the smallest file size
 
+import argparse
 import concurrent.futures
 import csv
 import logging
@@ -80,6 +81,25 @@ def set_magick_limits(input_file):
         logging.info("Set default ImageMagick limits:")
         for key, value in default_limits.items():
             logging.info(f"{key}: {value}")
+
+# Add this function to handle the help menu and argument parsing
+def parse_arguments():
+    parser = argparse.ArgumentParser(description="Optimize ImageMagick commands to achieve the best balance between image quality and file size.")
+    parser.add_argument('-i', '--input', required=True, help='Input image file')
+    parser.add_argument('-o', '--output', default="output", help='Output directory')
+    parser.add_argument('-l', '--log', default="optimization_log.csv", help='Log file name')
+    parser.add_argument('-b', '--best', default=BEST_COMMANDS_FILE, help='File to store best commands')
+    parser.add_argument('-f', '--format', default=OUTPUT_FORMAT, help='Output image format')
+    parser.add_argument('-c', '--commands', type=int, default=INITIAL_COMMAND_COUNT, help='Number of initial commands to generate')
+    parser.add_argument('-w', '--workers', type=int, default=MAX_WORKERS, help='Maximum number of workers for concurrent processing')
+    return parser.parse_args()
+
+# Update global variables with parsed arguments
+args = parse_arguments()
+INITIAL_COMMAND_COUNT = args.commands
+MAX_WORKERS = args.workers
+OUTPUT_FORMAT = args.format
+BEST_COMMANDS_FILE = args.best
 
 def run_imagemagick_command(input_file, output_file, command):
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
@@ -503,10 +523,10 @@ def print_configuration():
 
 def main():
     check_and_kill_existing_processes('magick.py')
-    input_file = get_image_file()
+    input_file = args.input
     set_magick_limits(input_file)
-    output_directory = "output"
-    log_file = "optimization_log.csv"
+    output_directory = args.output
+    log_file = args.log
     optimal_directory = "optimal-images"
 
     target_size = get_target_size(input_file, optimal_directory)
