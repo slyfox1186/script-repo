@@ -25,7 +25,8 @@ from skimage.metrics import structural_similarity as ssim
 # User-configurable variables
 BEST_COMMANDS_FILE = "best_commands.csv"
 COMMAND_DB_FILE = "commands.db"
-MAX_WORKERS = multiprocessing.cpu_count()
+USE_ALL_CPU_CORES = multiprocessing.cpu_count()
+MAX_WORKERS = USE_ALL_CPU_CORES
 OUTPUT_FORMAT = "jpg"
 TOGGLE_RUN_BEST = "OFF"
 
@@ -44,6 +45,14 @@ PSNR_THRESHOLD = 40
 SSIM_THRESHOLD = 0.96
 
 logging.basicConfig(level=logging.INFO, format='%(message)s')
+
+def parse_arguments():
+    parser = argparse.ArgumentParser(description="Optimize ImageMagick commands for image compression.")
+    parser.add_argument('-i', '--input', required=True, help='Input image file')
+    parser.add_argument('-o', '--output', default="temp-files", help='Output directory')
+    parser.add_argument('-l', '--log', default="optimization_log.csv", help='Log file name')
+    parser.add_argument('-t', '--toggle', default="OFF", choices=["ON", "OFF"], help='Toggle using best commands (ON/OFF)')
+    return parser.parse_args()
 
 def print_configuration():
     print()
@@ -328,12 +337,12 @@ def clean_temp_files(directory):
             os.remove(file_path)
             logging.info(f"Deleted temporary file: {file_path}")
 
+#!/usr/bin/env python3
+
+# ... (imports and other code remain the same)
+
 def main():
-    parser = argparse.ArgumentParser(description="Optimize ImageMagick commands for image compression.")
-    parser.add_argument('-i', '--input', required=True, help='Input image file')
-    parser.add_argument('-o', '--output', default="temp-files", help='Output directory')
-    parser.add_argument('-l', '--log', default="optimization_log.csv", help='Log file name')
-    args = parser.parse_args()
+    args = parse_arguments()
 
     check_and_kill_existing_processes()
 
@@ -341,6 +350,7 @@ def main():
     output_directory = args.output
     log_file = args.log
     optimal_directory = "optimal-images"
+    toggle_run_best = args.toggle
 
     os.makedirs(output_directory, exist_ok=True)
     clean_temp_files(output_directory)
@@ -353,7 +363,7 @@ def main():
 
     start_time = datetime.now()
 
-    if TOGGLE_RUN_BEST == "ON":
+    if toggle_run_best == "ON":
         # Use the best command lines from the CSV file
         best_commands = []
         if os.path.exists(BEST_COMMANDS_FILE):
@@ -366,6 +376,19 @@ def main():
             commands = best_commands
             existing_commands = check_commands_in_db(cursor, commands)
             new_commands = [cmd for cmd in commands if cmd not in existing_commands and validate_command(cmd)]
+
+            # Update variables based on the number of best commands
+            global GENERATIONS, MAX_ATTEMPTS, INITIAL_COMMAND_COUNT
+            GENERATIONS = len(best_commands)
+            MAX_ATTEMPTS = len(best_commands)
+            INITIAL_COMMAND_COUNT = len(best_commands)
+            POPULATION_SIZE = len(best_commands)
+
+            logging.info(f"Updated variables based on the number of best commands:")
+            logging.info(f"GENERATIONS: {GENERATIONS}")
+            logging.info(f"MAX_ATTEMPTS: {MAX_ATTEMPTS}")
+            logging.info(f"INITIAL_COMMAND_COUNT: {INITIAL_COMMAND_COUNT}")
+            logging.info(f"POPULATION_SIZE: {POPULATION_SIZE}\n")
         else:
             logging.warning(f"No best command lines found in {BEST_COMMANDS_FILE}. Generating new commands.")
             commands = generate_imagemagick_commands(input_file, INITIAL_COMMAND_COUNT, target_size)
