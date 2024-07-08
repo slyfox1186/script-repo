@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+# Purpose: Uses Machine Learning to generate an optimal command line whose focus is to produce the highest quality image and the smallest file size
+
 import argparse
 import concurrent.futures
 import csv
