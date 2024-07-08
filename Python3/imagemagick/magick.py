@@ -20,7 +20,7 @@ from skimage.metrics import peak_signal_noise_ratio as psnr
 from skimage.metrics import structural_similarity as ssim
 
 # User-configurable variables
-INITIAL_COMMAND_COUNT = 20
+INITIAL_COMMAND_COUNT = 10
 MAX_WORKERS = multiprocessing.cpu_count()
 QUALITY_RANGE = (82, 91)
 MIN_OPTIONS_PER_COMMAND = 3
@@ -29,7 +29,7 @@ OUTPUT_FORMAT = "jpg"
 BEST_COMMANDS_FILE = "best_commands.csv"
 
 # Genetic Algorithm parameters
-POPULATION_SIZE = 20
+POPULATION_SIZE = 10
 GENERATIONS = 1
 MUTATION_RATE = 0.2
 
@@ -234,7 +234,9 @@ def cleanup_temp_files(output_directory):
             file_path = os.path.join(output_directory, file)
             if os.path.isfile(file_path):
                 os.unlink(file_path)
+        print()
         logging.info(f"Cleaned up temporary files in {output_directory}")
+        print()
     except Exception as e:
         logging.error(f"Error cleaning up temporary files: {str(e)}")
 
@@ -275,6 +277,7 @@ def process_command(command, input_file, output_file, output_directory, log_file
             logging.error(f"Failed to analyze image: {os.path.basename(output_file)}")
             return False, None, False
     except Exception as e:
+        print()
         logging.error(f"Error processing {os.path.basename(output_file)}: {str(e)}")
         return False, None, False
 
@@ -547,6 +550,7 @@ def main():
         cleanup_temp_files(output_directory)
 
         logging.info(f"Processing {len(commands)} commands:")
+        print()
         with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
             futures = [executor.submit(process_command, command, input_file, f"output_{i:02}.{OUTPUT_FORMAT}", output_directory, log_file, target_size)
                        for i, command in enumerate(commands)]
