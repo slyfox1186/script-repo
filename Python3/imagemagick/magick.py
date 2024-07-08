@@ -32,7 +32,7 @@ TOGGLE_RUN_BEST = "OFF"
 
 # Genetic Algorithm parameters
 GENERATIONS = 10
-MAX_ATTEMPTS = 10
+MAX_ATTEMPTS = 1
 INITIAL_COMMAND_COUNT = 8
 MIN_OPTIONS_PER_COMMAND = 3
 MUTATION_RATE = 0.2
@@ -380,7 +380,6 @@ def main():
             # Update variables based on the number of best commands
             global GENERATIONS, MAX_ATTEMPTS, INITIAL_COMMAND_COUNT
             GENERATIONS = len(best_commands)
-            MAX_ATTEMPTS = len(best_commands)
             INITIAL_COMMAND_COUNT = len(best_commands)
             POPULATION_SIZE = len(best_commands)
 
