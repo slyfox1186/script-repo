@@ -117,28 +117,60 @@ def analyze_image(args):
             ssim_value = ssim(original_array, compressed_array, channel_axis=-1 if original_array.ndim > 2 else None)
             noise_level = detect_noise(output_file)
 
+            print()
+            logging.info(f"Image: {os.path.basename(output_file)}")
+            logging.info(f"Size: {compressed_size / 1024:.1f} KB")
+            logging.info(f"PSNR: {psnr_value:.2f}, SSIM: {ssim_value:.4f}, Noise: {noise_level:.2f}")
+            logging.info(f"Quality: {'Acceptable' if psnr_value >= PSNR_THRESHOLD and ssim_value >= SSIM_THRESHOLD and noise_level <= 100 else 'Not Acceptable'}")
+
             return compressed_size, compressed_image.size, psnr_value, ssim_value, noise_level
     except Exception as e:
         logging.error(f"Error analyzing image: {output_file}. Error message: {str(e)}")
         return None
 
-def mutate_command(command):
+def mutate_command(command, noise_level):
     parts = command.split()
     for i, part in enumerate(parts):
         if part == "-quality":
             quality = int(parts[i + 1])
-            parts[i + 1] = str(max(1, min(100, quality + random.choice([-1, 1]))))
-        elif part in ["-unsharp", "-adaptive-sharpen"]:
-            values = parts[i + 1].split('+' if part == "-unsharp" else 'x')
-            new_values = []
-            for v in values:
-                if 'x' in v:
-                    subvalues = v.split('x')
-                    new_subvalues = [str(max(0, min(10, float(sv) + random.uniform(-0.01, 0.01)))) for sv in subvalues]
-                    new_values.append('x'.join(new_subvalues))
+            if noise_level > 50:
+                # If noise level is medium or higher, reduce the quality to combat noise
+                if noise_level > 100:
+                    # If noise level is high, reduce quality more aggressively
+                    new_quality = max(QUALITY_RANGE[0], min(QUALITY_RANGE[1], quality - 10))
                 else:
-                    new_values.append(str(max(0, min(10, float(v) + random.uniform(-0.01, 0.01)))))
-            parts[i + 1] = ('+' if part == "-unsharp" else 'x').join(new_values)
+                    new_quality = max(QUALITY_RANGE[0], min(QUALITY_RANGE[1], quality - 5))
+            else:
+                new_quality = max(QUALITY_RANGE[0], min(QUALITY_RANGE[1], quality + random.choice([-1, 1])))
+            parts[i + 1] = str(new_quality)
+        elif part in ["-unsharp", "-adaptive-sharpen"]:
+            if random.random() < MUTATION_RATE:
+                values = parts[i + 1].split('+' if part == "-unsharp" else 'x')
+                new_values = []
+                for v in values:
+                    if 'x' in v:
+                        subvalues = v.split('x')
+                        if noise_level > 50:
+                            # If noise level is medium or higher, reduce the unsharp/adaptive-sharpen values to combat noise
+                            if noise_level > 100:
+                                # If noise level is high, reduce unsharp/adaptive-sharpen more aggressively
+                                new_subvalues = [str(max(0, min(10, float(sv) - 0.1))) for sv in subvalues]
+                            else:
+                                new_subvalues = [str(max(0, min(10, float(sv) - 0.05))) for sv in subvalues]
+                        else:
+                            new_subvalues = [str(max(0, min(10, float(sv) + random.uniform(-0.01, 0.01)))) for sv in subvalues]
+                        new_values.append('x'.join(new_subvalues))
+                    else:
+                        if noise_level > 50:
+                            # If noise level is medium or higher, reduce the unsharp/adaptive-sharpen values to combat noise
+                            if noise_level > 100:
+                                # If noise level is high, reduce unsharp/adaptive-sharpen more aggressively
+                                new_values.append(str(max(0, min(10, float(v) - 0.1))))
+                            else:
+                                new_values.append(str(max(0, min(10, float(v) - 0.05))))
+                        else:
+                            new_values.append(str(max(0, min(10, float(v) + random.uniform(-0.01, 0.01)))))
+                parts[i + 1] = ('+' if part == "-unsharp" else 'x').join(new_values)
     return ' '.join(parts)
 
 def generate_imagemagick_commands(input_file, count):
@@ -174,9 +206,29 @@ def process_commands(input_file, commands, output_directory, log_file, target_si
 
     return successful_commands
 
-def get_target_size(input_file):
+def get_smallest_image_size(directory):
+    if not os.path.exists(directory):
+        return None
+
+    min_size = float('inf')
+    for file in os.listdir(directory):
+        file_path = os.path.join(directory, file)
+        if os.path.isfile(file_path) and file.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp')):
+            file_size = os.path.getsize(file_path)
+            if file_size < min_size:
+                min_size = file_size
+    return min_size if min_size != float('inf') else None
+
+def get_target_size(input_file, optimal_directory):
+    smallest_size = get_smallest_image_size(optimal_directory)
     input_size = os.path.getsize(input_file)
-    return int(input_size * 0.9 * 0.95)
+
+    if smallest_size is not None:
+        target_size = min(smallest_size, input_size * 0.9)
+    else:
+        target_size = input_size * 0.9
+
+    return int(target_size * 0.95)
 
 def check_and_kill_existing_processes():
     current_pid = os.getpid()
@@ -204,8 +256,10 @@ def check_and_kill_existing_processes():
 
     if killed_processes:
         logging.info(f"Cleaned up {len(killed_processes)} existing processes: {', '.join(map(str, killed_processes))}")
+        print()
     else:
         logging.info("No existing processes found to clean up.")
+        print()
 
 def validate_command(command):
     command_parts = command.split()
@@ -281,12 +335,12 @@ def main():
     input_file = args.input
     output_directory = args.output
     log_file = args.log
+    optimal_directory = "optimal-images"
 
     os.makedirs(output_directory, exist_ok=True)
     clean_temp_files(output_directory)
 
-    target_size = get_target_size(input_file)
-    print()
+    target_size = get_target_size(input_file, optimal_directory)
     logging.info(f"Adjusted target size with safety margin: {target_size / 1024:.2f} KB")
     print_configuration()
 
@@ -294,21 +348,30 @@ def main():
 
     start_time = datetime.now()
 
-    stored_commands = []
-    if os.path.exists(BEST_COMMANDS_FILE):
-        with open(BEST_COMMANDS_FILE, "r") as file:
-            reader = csv.reader(file)
-            stored_commands = [row[1] for row in reader if len(row) > 1]
+    if TOGGLE_RUN_BEST == "ON":
+        # Use the best command lines from the CSV file
+        best_commands = []
+        if os.path.exists(BEST_COMMANDS_FILE):
+            with open(BEST_COMMANDS_FILE, "r") as file:
+                reader = csv.reader(file)
+                best_commands = [row[1] for row in reader if len(row) > 1]
 
-    if TOGGLE_RUN_BEST == "ON" and stored_commands:
-        logging.info(f"Using {len(stored_commands)} stored commands from {BEST_COMMANDS_FILE}.")
-        commands = optimize_stored_commands(input_file, output_directory, stored_commands)
+        if best_commands:
+            logging.info(f"Using {len(best_commands)} best command lines from {BEST_COMMANDS_FILE}.")
+            commands = best_commands
+            existing_commands = check_commands_in_db(cursor, commands)
+            new_commands = [cmd for cmd in commands if cmd not in existing_commands and validate_command(cmd)]
+        else:
+            logging.warning(f"No best command lines found in {BEST_COMMANDS_FILE}. Generating new commands.")
+            commands = generate_imagemagick_commands(input_file, INITIAL_COMMAND_COUNT)
+            existing_commands = check_commands_in_db(cursor, commands)
+            new_commands = [cmd for cmd in commands if cmd not in existing_commands and validate_command(cmd)]
     else:
+        # Generate new commands
         logging.info("Generating new commands.")
         commands = generate_imagemagick_commands(input_file, INITIAL_COMMAND_COUNT)
-
-    existing_commands = check_commands_in_db(cursor, commands)
-    new_commands = [cmd for cmd in commands if cmd not in existing_commands and validate_command(cmd)]
+        existing_commands = check_commands_in_db(cursor, commands)
+        new_commands = [cmd for cmd in commands if cmd not in existing_commands and validate_command(cmd)]
 
     best_command = None
     for attempt in range(MAX_ATTEMPTS):
@@ -324,7 +387,8 @@ def main():
                 break
             else:
                 logging.info("No successful commands found. Generating new commands.")
-                new_commands = [mutate_command(cmd) for cmd in new_commands]
+                noise_level = detect_noise(input_file)
+                new_commands = [mutate_command(cmd, noise_level) for cmd in new_commands]
 
         if best_command is not None:
             break
