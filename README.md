@@ -92,7 +92,7 @@ Supports building different OpenSSL versions with various configuration options.
 curl -LSso build-openssl.sh https://ossl.optimizethis.net
 bash build-openssl.sh
 or to set the version
-bash build-openssl.sh -v 17.0.6
+bash build-openssl.sh -v 18.0.6
 ```
 
 ### Install [Rust](https://github.com/rust-lang/rust) Programming Language
