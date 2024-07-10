@@ -5,147 +5,240 @@ if [[ "$EUID" -ne 0 ]]; then
     exit 1
 fi
 
-# Function to print the help menu
-print_help() {
-    echo "Usage: $0 [OPTIONS]"
-    echo "This script identifies, installs, and sets the highest or a specific version of Clang as the default."
-    echo ""
-    echo "Options:"
-    echo "  -v, --version VERSION  Set a specific version of Clang as the default."
-    echo "  -h, --help             Display this help and exit."
-    echo ""
-    echo "Example:"
-    echo "  $0 --version 11        Install (if necessary) and set Clang 11 as the default version."
+# ANSI color codes
+CYAN='\033[0;36m'
+GREEN='\033[32m'
+RED='\033[31m'
+YELLOW='\033[0;33m'
+NC='\033[0m' # No color
+
+# Logging functions
+log() {
+    echo -e "${GREEN}[INFO]${NC} $1"
 }
 
-# Function to determine the package manager
-detect_package_manager() {
-    if command -v apt-get >/dev/null; then
-        echo "apt"
-    elif command -v yum >/dev/null; then
-        echo "yum"
-    elif command -v pacman >/dev/null; then
-        echo "pacman"
-    fi
+update() {
+    echo -e "${CYAN}[UPDATE]${NC} $1"
 }
 
-# Function to find the appropriate clang and clang++ binaries, excluding any paths that contain 'ccache'
-find_clang_binaries() {
-    local version=$1
-    local search_paths=("/usr/bin" "/usr/local/bin" "/opt/bin")
-    local clang_path=""
-    local clangpp_path=""
-    
-    for path in "${search_paths[@]}"; do
-        if [[ -f "$path/clang-$version" ]]; then
-            clang_path="$path/clang-$version"
-        fi
-        if [[ -f "$path/clang++-$version" ]]; then
-            clangpp_path="$path/clang++-$version"
+warn() {
+    echo -e "${YELLOW}[WARN]${NC} $1"
+}
+
+error() {
+    echo -e "${RED}[ERROR]${NC} $1" >&2
+}
+
+# Function to find the highest version of a compiler
+find_highest_version() {
+    local compiler="$1"
+    local highest_version=""
+    local -a versions=()
+
+    # Check APT versions
+    versions+=($(apt-cache search "^${compiler}-[0-9]+$" | grep -oP "${compiler}-\K\d+" | sort -Vr))
+
+    # Check manually installed versions in various locations
+    local dirs=("/usr/local" "/usr/local/bin")
+    for dir in "${dirs[@]}"; do
+        if [[ -d "$dir" ]]; then
+            local manual_versions=($(find "$dir" -name "${compiler}-[0-9]*" \( -type f -executable -o -type l \) | grep -oP "${compiler}-\K[0-9]+(\.[0-9]+)*" | sort -Vr))
+            versions+=("${manual_versions[@]}")
         fi
     done
-    
-    if [[ -n "$clang_path" && -n "$clangpp_path" ]]; then
-        echo "$clang_path $clangpp_path"
-    else
-        echo ""
-    fi
+
+    # Get the highest version
+    highest_version=$(printf '%s\n' "${versions[@]}" | sort -Vr | head -n1)
+
+    echo "$highest_version"
 }
 
-# Function to install and configure clang version if not already set
-install_and_configure_clang() {
-    local version=$1
-    local pkg_manager=$(detect_package_manager)
-    case "$pkg_manager" in
-        apt)
-            apt install -y "clang-$version"
-            if apt-cache search "clang-$version-tools" | grep -q "clang-$version-tools"; then
-                apt install -y "clang-$version-tools"
-            elif apt-cache search "clang-tools-$version" | grep -q "clang-tools-$version"; then
-                apt install -y "clang-tools-$version"
-            fi
-            ;;
-        yum)
-            yum install -y "clang-$version"
-            if yum search "clang-tools-extra" | grep -q "clang-tools-extra"; then
-                yum install -y "clang-tools-extra"
-            fi
-            ;;
-        pacman)
-            pacman -Sy --noconfirm "clang=$version"
-            if pacman -Ss "clang-tools-extra" | grep -q "clang-tools-extra"; then
-                pacman -Sy "clang-tools-extra"
-            fi
-            ;;
-    esac
-    local paths=$(find_clang_binaries $version)
-    if [[ -n "$paths" ]]; then
-        configure_alternatives "$paths"
-    else
-        echo "No valid Clang or Clang++ binaries found for version $version."
-    fi
-    # Update ccache symlinks right after installation and configuration of Clang/Clang++
-    if type -P ccache &>/dev/null; then
-        /usr/sbin/update-ccache-symlinks
-    fi
-}
+install_and_set_compiler() {
+    local compiler="$1"
+    local version="$2"
+    local binary_base_path=""
+    local cpp_binary_path=""
+    local major_version="${version%%.*}"  # Extract major version number
 
-# Function to configure alternatives for clang
-configure_alternatives() {
-    local clang_path clangpp_path
-    read -r clang_path clangpp_path <<< "$1"
-    if [[ -n $clang_path && -n $clangpp_path ]]; then
-        update-alternatives --install /usr/bin/clang clang $clang_path 50
-        update-alternatives --install /usr/bin/clang++ clang++ $clangpp_path 50
-        update-alternatives --set clang $clang_path
-        update-alternatives --set clang++ $clangpp_path
-    else
-        if [[ -z $clang_path ]]; then
-            echo "Error: Missing path for Clang binary."
+    [[ -z "$version" ]] && version=$(find_highest_version "$compiler")
+    major_version="${version%%.*}"
+
+    log "Setting up $compiler version $version"
+
+    if [[ "$compiler" == "gcc" ]]; then
+        log "Searching for gcc-$major_version and g++-$major_version"
+        
+        # Prioritize /usr/bin directly
+        if [[ -x "/usr/bin/gcc-$major_version" ]]; then
+            binary_base_path="/usr/bin/gcc-$major_version"
+        else
+            # Exclude ccache directories
+            binary_base_path=$(find /usr -type f -executable -name "gcc-$major_version" ! -path "*/ccache/*" -print -quit 2>/dev/null)
         fi
-        if [[ -z $clangpp_path ]]; then
-            echo "Error: Missing path for Clang++ binary."
+        
+        if [[ -x "/usr/bin/g++-$major_version" ]]; then
+            cpp_binary_path="/usr/bin/g++-$major_version"
+        else
+            cpp_binary_path=$(find /usr -type f -executable -name "g++-$major_version" ! -path "*/ccache/*" -print -quit 2>/dev/null)
+        fi
+
+        if [[ -z "$binary_base_path" ]]; then
+            log "gcc-$major_version not found, searching for gcc"
+            binary_base_path=$(find /usr -type f -executable -name "gcc" ! -path "*/ccache/*" -print -quit 2>/dev/null)
+            cpp_binary_path=$(find /usr -type f -executable -name "g++" ! -path "*/ccache/*" -print -quit 2>/dev/null)
+        fi
+    else
+        log "Searching for clang-$major_version and clang++-$major_version"
+        
+        # Use readlink to determine the correct paths and exclude ccache
+        binary_base_path=$(readlink -f "$(which clang-$major_version 2>/dev/null)" | grep -v "ccache")
+        cpp_binary_path=$(readlink -f "$(which clang++-$major_version 2>/dev/null)" | grep -v "ccache")
+
+        if [[ -z "$binary_base_path" ]]; then
+            log "clang-$major_version not found, searching for clang"
+            binary_base_path=$(readlink -f "$(which clang 2>/dev/null)" | grep -v "ccache")
+            cpp_binary_path=$(readlink -f "$(which clang++ 2>/dev/null)" | grep -v "ccache")
         fi
     fi
+
+    if [[ -n "$binary_base_path" ]]; then
+        log "Found $compiler-$major_version: $binary_base_path"
+        [[ -x "$cpp_binary_path" ]] && log "Found ${compiler}++-$major_version: $cpp_binary_path"
+    else
+        error "Could not find $compiler-$major_version. Please ensure it is installed."
+        error "Searched for executables excluding ccache directories."
+        return 1
+    fi
+
+    # Verify that the binaries exist and are executable
+    if [[ ! -x "$binary_base_path" ]]; then
+        error "The $compiler binary $binary_base_path does not exist or is not executable."
+        return 1
+    fi
+
+    if [[ ! -x "$cpp_binary_path" ]]; then
+        error "The ${compiler}++ binary $cpp_binary_path does not exist or is not executable."
+        return 1
+    fi
+
+    # Set alternatives for C compiler
+    update-alternatives --remove-all "$compiler" 2>/dev/null || true
+    update-alternatives --install "/usr/bin/$compiler" "$compiler" "$binary_base_path" 100
+    update-alternatives --set "$compiler" "$binary_base_path"
+    warn "Set $compiler-$major_version as default"
+
+    # Set alternatives for C++ compiler
+    local cpp_compiler="${compiler}++"
+    update-alternatives --remove-all "$cpp_compiler" 2>/dev/null || true
+    update-alternatives --install "/usr/bin/$cpp_compiler" "$cpp_compiler" "$cpp_binary_path" 100
+    update-alternatives --set "$cpp_compiler" "$cpp_binary_path"
+    warn "Set $cpp_compiler-$major_version as default"
+
+    log "Successfully set $compiler-$major_version and ${compiler}++-$major_version as default"
+    echo ""  # Add a blank line for spacing between compiler setups
 }
 
-# Main script function
+install_and_set_compiler() {
+    local compiler="$1"
+    local version="$2"
+    local binary_base_path=""
+    local cpp_binary_path=""
+    local major_version="${version%%.*}"  # Extract major version number
+
+    [[ -z "$version" ]] && version=$(find_highest_version "$compiler")
+    major_version="${version%%.*}"
+
+    log "Setting up $compiler version $version"
+
+    if [[ "$compiler" == "gcc" ]]; then
+        log "Searching for gcc-$major_version and g++-$major_version"
+        
+        # Prioritize /usr/bin directly
+        if [[ -x "/usr/bin/gcc-$major_version" ]]; then
+            binary_base_path="/usr/bin/gcc-$major_version"
+            log "Found gcc-$major_version in /usr/bin: $binary_base_path"
+        else
+            # Exclude ccache directories
+            binary_base_path=$(find /usr -type f -executable -name "gcc-$major_version" ! -path "*/ccache/*" -print -quit 2>/dev/null)
+            log "Searching for gcc-$major_version excluding ccache: $binary_base_path"
+        fi
+        
+        if [[ -x "/usr/bin/g++-$major_version" ]]; then
+            cpp_binary_path="/usr/bin/g++-$major_version"
+            log "Found g++-$major_version in /usr/bin: $cpp_binary_path"
+        else
+            cpp_binary_path=$(find /usr -type f -executable -name "g++-$major_version" ! -path "*/ccache/*" -print -quit 2>/dev/null)
+            log "Searching for g++-$major_version excluding ccache: $cpp_binary_path"
+        fi
+
+        if [[ -z "$binary_base_path" ]]; then
+            log "gcc-$major_version not found, searching for gcc"
+            binary_base_path=$(find /usr -type f -executable -name "gcc" ! -path "*/ccache/*" -print -quit 2>/dev/null)
+            log "Searching for gcc excluding ccache: $binary_base_path"
+            cpp_binary_path=$(find /usr -type f -executable -name "g++" ! -path "*/ccache/*" -print -quit 2>/dev/null)
+            log "Searching for g++ excluding ccache: $cpp_binary_path"
+        fi
+    else
+        log "Searching for clang-$major_version and clang++-$major_version"
+        
+        # Use readlink to determine the correct paths and exclude ccache
+        binary_base_path=$(readlink -f "$(which clang-$major_version 2>/dev/null)" | grep -v "ccache")
+        log "Searching for clang-$major_version excluding ccache: $binary_base_path"
+        cpp_binary_path=$(readlink -f "$(which clang++-$major_version 2>/dev/null)" | grep -v "ccache")
+        log "Searching for clang++-$major_version excluding ccache: $cpp_binary_path"
+
+        if [[ -z "$binary_base_path" ]]; then
+            log "clang-$major_version not found, searching for clang"
+            binary_base_path=$(readlink -f "$(which clang 2>/dev/null)" | grep -v "ccache")
+            log "Searching for clang excluding ccache: $binary_base_path"
+            cpp_binary_path=$(readlink -f "$(which clang++ 2>/dev/null)" | grep -v "ccache")
+            log "Searching for clang++ excluding ccache: $cpp_binary_path"
+        fi
+    fi
+
+    if [[ -n "$binary_base_path" ]]; then
+        log "Found $compiler-$major_version: $binary_base_path"
+        [[ -x "$cpp_binary_path" ]] && log "Found ${compiler}++-$major_version: $cpp_binary_path"
+    else
+        error "Could not find $compiler-$major_version. Please ensure it is installed."
+        error "Searched for executables excluding ccache directories."
+        return 1
+    fi
+
+    # Verify that the binaries exist and are executable
+    if [[ ! -x "$binary_base_path" ]]; then
+        error "The $compiler binary $binary_base_path does not exist or is not executable."
+        return 1
+    fi
+
+    if [[ ! -x "$cpp_binary_path" ]]; then
+        error "The ${compiler}++ binary $cpp_binary_path does not exist or is not executable."
+        return 1
+    fi
+
+    # Set alternatives for C compiler
+    update-alternatives --remove-all "$compiler" 2>/dev/null || true
+    update-alternatives --install "/usr/bin/$compiler" "$compiler" "$binary_base_path" 100
+    update-alternatives --set "$compiler" "$binary_base_path"
+    warn "Set $compiler-$major_version as default"
+
+    # Set alternatives for C++ compiler
+    local cpp_compiler="${compiler}++"
+    update-alternatives --remove-all "$cpp_compiler" 2>/dev/null || true
+    update-alternatives --install "/usr/bin/$cpp_compiler" "$cpp_compiler" "$cpp_binary_path" 100
+    update-alternatives --set "$cpp_compiler" "$cpp_binary_path"
+    warn "Set $cpp_compiler-$major_version as default"
+
+    log "Successfully set $compiler-$major_version and ${compiler}++-$major_version as default"
+    echo ""  # Add a blank line for spacing between compiler setups
+}
+
+# Main execution
 main() {
-    local specific_version=""
+    install_and_set_compiler "gcc" "12.4.0" || exit 1
+    install_and_set_compiler "clang" "" || exit 1
 
-    while [[ "$#" -gt 0 ]]; do
-        case "$1" in
-            -v|--version)
-                specific_version="$2"
-                shift
-                ;;
-            -h|--help)
-                print_help
-                exit 0
-                ;;
-            *)
-                echo "Unknown option: $1"
-                print_help
-                exit 1
-                ;;
-        esac
-        shift
-    done
-
-    # Handle removal of existing alternatives with care to avoid errors
-    update-alternatives --remove-all clang 2>/dev/null || echo "No alternatives for clang to remove."
-    update-alternatives --remove-all clang++ 2>/dev/null || echo "No alternatives for clang++ to remove."
-
-    if [[ -n "$specific_version" ]]; then
-        install_and_configure_clang "$specific_version"
-    else
-        # Fallback to install and set the highest version available
-        local available_versions=$(apt-cache search "^clang-[0-9]+$" | cut -d' ' -f1 | grep -oP "clang-\K[0-9]+")
-        local highest_version=$(echo "$available_versions" | sort -nr | head -n1)
-        install_and_configure_clang "$highest_version"
-    fi
-
-    echo "Clang setup completed."
+    log "The script completed successfully."
 }
 
 main "$@"
