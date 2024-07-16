@@ -3,14 +3,16 @@
 
 # GitHub: https://github.com/slyfox1186/ffmpeg-build-script
 #
-# Script version: 3.9.4
-# Updated: 07.04.24
+# Script version: 3.9.5
+# Updated: 07.16.24
 #
 # Purpose: build ffmpeg from source code with addon development libraries
 #          also compiled from source to help ensure the latest functionality
 # Supported Distros: Debian 11|12
 #                    Ubuntu (20|22|24).04
-#                    Arch Linux (No longer supported due to the low need.)
+#                    Linux Mint 21.x
+#                    Zorin OS 16.x
+#                    (Other Ubuntu-based distributions may also work)
 # Supported architecture: x86_64
 # CUDA SDK Toolkit: Updated to version 12.5.1
 
@@ -21,7 +23,7 @@ fi
 
 # Define global variables
 script_name="${0##*/}"
-script_version="3.9.4"
+script_version="3.9.5"
 cwd="$PWD/ffmpeg-build-script"
 mkdir -p "$cwd"; cd "$cwd" || exit 1
 if [[ "$PWD" =~ ffmpeg-build-script\/ffmpeg-build-script ]]; then
@@ -981,26 +983,20 @@ install_cuda() {
 
 # Required build packages
 apt_pkgs() {
-    local -a available_packages missing_packages pkgs unavailable_packages
-    local libcpp_pkg libcppabi_pkg libunwind_pkg openjdk_pkg pkg reboot_choice
+    local -a pkgs=() missing_packages=() available_packages=() unavailable_packages=()
+    local pkg
 
     # Function to find the latest version of a package by pattern
     find_latest_version() {
-        apt-cache search "$1" | sort -ruV | head -n1 | awk '{print $1}'
+        apt-cache search "^$1" | sort -ruV | head -n1 | awk '{print $1}'
     }
-
-    # Use the function to find the latest versions of specific packages
-    nvidia_driver=$(find_latest_version '^nvidia-driver[0-9-]*$')
-    nvidia_utils=$(find_latest_version '^nvidia-utils-[0-9]+$')
-    openjdk_pkg=$(find_latest_version '^openjdk-[0-9]+-jdk$')
-    libcpp_pkg=$(find_latest_version '^libc\+\+-[0-9]+-dev$')
-    libcppabi_pkg=$(find_latest_version '^libc\+\+abi-[0-9]+-dev$')
-    libunwind_pkg=$(find_latest_version '^libunwind-[0-9]+-dev$')
-    gcc_plugin_pkg=$(find_latest_version '^gcc-[1-3]*-plugin-dev$')
 
     # Define an array of apt package names
     pkgs=(
-        $1 $libcppabi_pkg $libcpp_pkg $libunwind_pkg $nvidia_driver $nvidia_utils $openjdk_pkg $gcc_plugin_pkg
+        $1 $(find_latest_version 'libc\+\+abi-[0-9]+-dev') $(find_latest_version 'libc\+\+-[0-9]+-dev')
+        $(find_latest_version 'libunwind-[0-9]+-dev') $(find_latest_version 'nvidia-driver[0-9-]*')
+        $(find_latest_version 'nvidia-utils-[0-9]+') $(find_latest_version 'openjdk-[0-9]+-jdk')
+        $(find_latest_version 'gcc-[1-3]*-plugin-dev')
         asciidoc autoconf autoconf-archive automake autopoint bc binutils bison build-essential cargo ccache checkinstall
         curl doxygen fcitx-libs-dev flex flite1-dev gawk gcc gettext gimp-data git gnome-desktop-testing gnustep-gui-runtime
         golang-go google-perftools gperf gtk-doc-tools guile-3.0-dev help2man imagemagick jq junit ladspa-sdk lib32stdc++6
@@ -1021,48 +1017,36 @@ apt_pkgs() {
         python3-venv ragel re2c scons texi2html texinfo tk-dev unzip valgrind wget xmlto
     )
 
-    if [[ "$OS" == "Debian" ]] && [[ "$is_nvidia_gpu_present" == "NVIDIA GPU detected" ]]; then
-        pkgs+=("nvidia-smi")
-    fi
-
-    # Initialize arrays for missing, available, and unavailable packages
-    available_packages=()
-    missing_packages=()
-    unavailable_packages=()
+    [[ "$OS" == "Debian" && "$is_nvidia_gpu_present" == "NVIDIA GPU detected" ]] && pkgs+=("nvidia-smi")
 
     log "Checking package installation status..."
 
-    # Loop through the array to find missing packages
+    # Find missing and categorize packages in one loop
     for pkg in "${pkgs[@]}"; do
         if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
-            missing_packages+=("$pkg")
-        fi
-    done
-
-    # Check availability of missing packages and categorize them
-    for pkg in "${missing_packages[@]}"; do
-        if apt-cache show "$pkg" >/dev/null 2>&1; then
-            available_packages+=("$pkg")
-        else
-            unavailable_packages+=("$pkg")
+            if apt-cache show "$pkg" >/dev/null 2>&1; then
+                available_packages+=("$pkg")
+            else
+                unavailable_packages+=("$pkg")
+            fi
         fi
     done
 
     # Print unavailable packages
-    if [[ "${#unavailable_packages[@]}" -gt 0 ]]; then
+    if [[ ${#unavailable_packages[@]} -gt 0 ]]; then
         echo
         warn "Unavailable packages:"
         printf "          %s\n" "${unavailable_packages[@]}"
     fi
 
     # Install available missing packages
-    if [[ "${#available_packages[@]}" -gt 0 ]]; then
+    if [[ ${#available_packages[@]} -gt 0 ]]; then
         echo
         log "Installing available missing packages:"
         printf "       %s\n" "${available_packages[@]}"
         echo
         apt update
-        apt install "${available_packages[@]}"
+        apt install -y "${available_packages[@]}"
         apt -y autoremove
         echo
     else
@@ -1070,26 +1054,15 @@ apt_pkgs() {
         echo
     fi
 
-    amd_gpu_test=$(check_amd_gpu)
-    check_nvidia_gpu
-    if [[ -n "$amd_gpu_test" ]] && [[ "$is_nvidia_gpu_present" == "NVIDIA GPU not detected" ]]; then
+    # Check NVIDIA GPU status
+    if [[ -n "$(check_amd_gpu)" && "$is_nvidia_gpu_present" != "NVIDIA GPU detected" ]]; then
         return 0
-    else
-        if ! nvidia-smi &>/dev/null; then
-            echo
-            echo "You most likely just updated your nvidia-driver version because the \"nvidia-smi\" command is no longer working and won't until you reboot your PC."
-            echo "This is imporant because it is required for the script to complete. My (recommendation) is you for you to reboot your PC now and then re-run this script."
-            echo
-            read -p "Do you want to reboot now? (y/n): " reboot_choice
-            echo
-            case "$reboot_choice" in
-                [yY]*|[yY][eE][sS]*)
-                    reboot
-                    ;;
-                [nN]*|[nN][oO]*)
-                    ;;
-            esac
-        fi
+    elif ! nvidia-smi &>/dev/null; then
+        echo "You most likely just updated your nvidia-driver version because the \"nvidia-smi\" command is no longer working and won't until you reboot your PC."
+        echo "This is important because it is required for the script to complete. My recommendation is for you to reboot your PC now and then re-run this script."
+        echo
+        read -p "Do you want to reboot now? (y/n): " reboot_choice
+        [[ "$reboot_choice" =~ ^[Yy] ]] && reboot
     fi
 }
 
@@ -1194,6 +1167,9 @@ ubuntu_os_version() {
         ubuntu_wsl_pkgs="$2"
     fi
 
+    # Note: Zorin OS 16.x is treated as Ubuntu 20.04
+    # Linux Mint 21.x is treated as Ubuntu 22.04
+
     ubuntu_common_pkgs="cppcheck libgegl-0.4-0 libgoogle-perftools4"
     focal_pkgs="libcunit1 libcunit1-dev libcunit1-doc libdmalloc5 libhwy-dev libreadline-dev librust-jemalloc-sys-dev librust-malloc-buf-dev"
     focal_pkgs+=" libsrt-doc libsrt-gnutls-dev libvmmalloc-dev libvmmalloc1 libyuv-dev nvidia-utils-535 libcamd2 libccolamd2 libcholmod3"
@@ -1244,8 +1220,17 @@ get_os_version() {
         VER_TMP="$VERSION_ID"
         OS=$(echo "$OS_TMP" | awk '{print $1}')
         VER=$(echo "$VER_TMP" | awk '{print $1}')
-        STATIC_OS="$OS"
+        VARIABLE_OS="$OS"
         STATIC_VER="$VER"
+
+        # Add detection for Zorin and Mint
+        if [[ "$OS" == "Zorin" ]]; then
+            OS="Ubuntu"
+            VER="20.04"  # Zorin OS 16 is based on Ubuntu 20.04
+        elif [[ "$OS" == "Linux" && "$NAME" == "Linux Mint" ]]; then
+            OS="Ubuntu"
+            VER="22.04"  # Mint 21.x is based on Ubuntu 22.04
+        fi
     elif [[ -n "$find_lsb_release" ]]; then
         OS=$(lsb_release -d | awk '{print $2}')
         VER=$(lsb_release -r | awk '{print $2}')
@@ -1258,8 +1243,8 @@ get_os_version
 # Check if running Windows WSL2
 if [[ $(grep -i "Microsoft" /proc/version) ]]; then
     wsl_flag="yes_wsl"
-    STATIC_OS="WSL2"
-[[ "$OS" == "WSL2" ]] && STATIC_OS="WSL2"
+    VARIABLE_OS="WSL2"
+[[ "$OS" == "WSL2" ]] && VARIABLE_OS="WSL2"
 fi
 
 # Use the function to find the latest versions of specific packages
@@ -1287,7 +1272,7 @@ nvidia_encode_utils_version() {
 }
 
 nvidia_encode_utils_version
-case "$STATIC_OS" in
+case "$VARIABLE_OS" in
     WSL2) case "$OS" in
               Debian|n/a) debian_os_version "$wsl_flag" "$wsl_common_pkgs" ;;
               Ubuntu)     ubuntu_os_version "$wsl_flag" "$wsl_common_pkgs" ;;
@@ -2632,7 +2617,7 @@ box_out_banner_ffmpeg() {
 box_out_banner_ffmpeg "Building FFmpeg"
 
 # Get DXVA2 and other essential Windows header files
-if [[ "$STATIC_OS" == "WSL2" ]]; then
+if [[ "$VARIABLE_OS" == "WSL2" ]]; then
     install_windows_hardware_acceleration
 fi
 
