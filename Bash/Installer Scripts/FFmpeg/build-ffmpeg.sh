@@ -89,7 +89,7 @@ warn() {
 exit_fn() {
     echo
     echo -e "${GREEN}[INFO]${NC} Make sure to ${YELLOW}star${NC} this repository to show your support!"
-    echo -e "${GREEN}[INFO]${NC} https://github.com/slyfox1186/script-repo"
+    echo -e "${GREEN}[INFO]${NC} https://github.com/slyfox1186/ffmpeg-build-script"
     echo
     exit 0
 }
@@ -98,7 +98,7 @@ fail() {
     echo
     echo -e "${RED}[ERROR]${NC} $1"
     echo
-    echo -e "${GREEN}[INFO]${NC} For help or to report a bug create an issue at: https://github.com/slyfox1186/script-repo/issues"
+    echo -e "${GREEN}[INFO]${NC} For help or to report a bug create an issue at: https://github.com/slyfox1186/ffmpeg-build-script/issues"
     echo
     if $google_speech_flag; then
         google_speech "The FFmpeg build script encountered a fatal error." &>/dev/null
