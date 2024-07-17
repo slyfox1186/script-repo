@@ -6,6 +6,7 @@ import subprocess
 import re
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import urllib.parse
 
 def is_wsl():
     try:
@@ -209,7 +210,8 @@ def main():
             for file, _, duration in video_qualities:
                 if wsl:
                     file = convert_to_wsl_path(file)
-                results_file.write(f"{file},{duration}\n")
+                escaped_file = urllib.parse.quote(file)
+                results_file.write(f"{escaped_file},{duration}\n")
         create_bash_script(input_log_file, output_playlist_file)
 
 if __name__ == "__main__":
