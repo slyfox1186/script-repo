@@ -57,6 +57,8 @@ def connect_results_db():
             conn.execute('''CREATE TABLE IF NOT EXISTS clustered_domains (
                                 domain TEXT,
                                 length INTEGER,
+                                query_count INTEGER,
+                                avg_hour REAL,
                                 cluster INTEGER
                             )''')
             conn.execute('''CREATE TABLE IF NOT EXISTS domain_sentiments (
@@ -100,13 +102,29 @@ def load_results(conn, table_name):
         logger.error(f"Error loading results: {e}")
         return None
 
-def cluster_domains(df, n_clusters=N_CLUSTERS):
-    """Cluster domains using K-means."""
-    logger.info("Clustering domains using K-means...")
+def preprocess_data(df):
+    """Preprocess data to add additional features."""
+    logger.info("Preprocessing data to add additional features...")
     df['length'] = df['domain'].apply(len)
+    df['query_count'] = df['domain'].map(df['domain'].value_counts())
+    
+    if 'timestamp' in df.columns:
+        df['avg_hour'] = df['domain'].apply(
+            lambda x: sum([pd.Timestamp(t).hour for t in df[df['domain'] == x]['timestamp']]) / len(df[df['domain'] == x])
+        )
+    else:
+        logger.warning("'timestamp' column not found in the data. Skipping 'avg_hour' feature.")
+        df['avg_hour'] = 0  # Default value when timestamp is not available
+    
+    return df
+
+def cluster_domains(df, n_clusters=N_CLUSTERS):
+    """Cluster domains using K-means with additional features."""
+    logger.info("Clustering domains using K-means with additional features...")
     try:
+        features = df[['length', 'query_count', 'avg_hour']]
         model = KMeans(n_clusters=n_clusters, n_init=10)
-        df['cluster'] = model.fit_predict(df[['length']])
+        df['cluster'] = model.fit_predict(features)
         logger.info("Clustering completed.")
         return df
     except Exception as e:
@@ -158,7 +176,7 @@ def display_table(df, title):
     print(f"\n### {title}\n")
     print(df.to_string(index=False))
     if title == "Clustered Domains":
-        print("\nThis table shows the domains and their respective clusters. Clustering helps in grouping similar domains together.")
+        print("\nThis table shows the domains and their respective clusters. Clustering helps in grouping similar domains together based on length, query count, and average access time.")
     elif title == "NLP Sentiment Analysis on Domains":
         print("\nThis table displays the sentiment analysis results for each domain. The label indicates whether the sentiment is positive or negative, and the score represents the confidence in the sentiment classification.")
 
@@ -193,13 +211,40 @@ def display_summary(sentiment_df):
     print("These domains are identified as having the most negative sentiment scores:")
     print(top_negative[['domain', 'score']].to_string(index=False))
 
+def review_and_verify_domains(sentiment_df):
+    """Review and verify domains with high sentiment scores."""
+    print("\n### Review and Verification")
+    print("Manually review the following domains with high sentiment scores to verify the accuracy of the sentiment analysis:")
+    
+    top_positive = sentiment_df[sentiment_df['label'] == 'POSITIVE'].nlargest(10, 'score')
+    top_negative = sentiment_df[sentiment_df['label'] == 'NEGATIVE'].nlargest(10, 'score')
+
+    print("\n#### Top 10 Positive Domains for Review")
+    print(top_positive[['domain', 'score']].to_string(index=False))
+
+    print("\n#### Top 10 Negative Domains for Review")
+    print(top_negative[['domain', 'score']].to_string(index=False))
+
+def update_pihole_blocklist(sentiment_df):
+    """Update Pi-hole blocklist based on sentiment analysis."""
+    logger.info("Updating Pi-hole blocklist based on sentiment analysis...")
+    negative_domains = sentiment_df[sentiment_df['label'] == 'NEGATIVE']['domain'].tolist()
+    
+    with open("/etc/pihole/blacklist.txt", "a") as f:
+        for domain in negative_domains:
+            f.write(domain + "\n")
+    
+    logger.info("Pi-hole blocklist updated successfully.")
+
 @click.command()
 @click.option('--query', default='SELECT * FROM domainlist', help='SQL query to fetch data.')
 @click.option('--clusters', default=N_CLUSTERS, help='Number of clusters for K-means.')
 @click.option('--recover', is_flag=True, help='Recover the damaged gravity database.')
 @click.option('--recreate', is_flag=True, help='Recreate the gravity database from scratch.')
 @click.option('--visualize', is_flag=True, help='Visualize domain clusters.')
-def main(query, clusters, recover, recreate, visualize):
+@click.option('--update-blocklist', is_flag=True, help='Update Pi-hole blocklist based on sentiment analysis.')
+@click.option('--force', '-f', is_flag=True, help='Force rescan and recreate the database file from scratch.')
+def main(query, clusters, recover, recreate, visualize, update_blocklist, force):
     """Main function to manage Pi-hole database."""
     if recover:
         recover_database()
@@ -211,7 +256,7 @@ def main(query, clusters, recover, recreate, visualize):
 
     conn = connect_db(DATABASE_PATH)
     results_conn = connect_results_db()
-    
+
     # Fetch data
     data = fetch_data(conn, query)
     if data.empty:
@@ -219,18 +264,27 @@ def main(query, clusters, recover, recreate, visualize):
         print("No data fetched.")
         return
 
+    # Check if forced rescan
+    if force:
+        logger.info("Forced rescan initiated. Recreating the results database.")
+        if os.path.exists(RESULTS_DB_PATH):
+            os.remove(RESULTS_DB_PATH)
+        results_conn = connect_results_db()
+
     # Check if clustering results already exist
     cached_clusters = load_results(results_conn, 'clustered_domains')
     if cached_clusters is not None and len(cached_clusters) == len(data):
         logger.info("Using cached clustering results.")
         clustered_data = cached_clusters
     else:
+        # Preprocess data to add additional features
+        data = preprocess_data(data)
         # Cluster data
         clustered_data = cluster_domains(data, clusters)
         save_results(results_conn, clustered_data, 'clustered_domains')
 
     # Display clustered data
-    display_table(clustered_data[['domain', 'cluster']], "Clustered Domains")
+    display_table(clustered_data[['domain', 'length', 'query_count', 'avg_hour', 'cluster']], "Clustered Domains")
     
     # Check if sentiment analysis results already exist
     cached_sentiments = load_results(results_conn, 'domain_sentiments')
@@ -254,9 +308,16 @@ def main(query, clusters, recover, recreate, visualize):
     # Display summary of sentiment analysis
     display_summary(sentiment_df)
 
+    # Review and verify domains
+    review_and_verify_domains(sentiment_df)
+
     # Visualization
     if visualize:
         visualize_clusters(clustered_data)
+
+    # Update Pi-hole blocklist
+    if update_blocklist:
+        update_pihole_blocklist(sentiment_df)
 
 if __name__ == "__main__":
     main()
