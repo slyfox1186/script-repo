@@ -137,26 +137,30 @@ def visualize_clusters(df):
     """Visualize clusters using matplotlib."""
     logger.info("Visualizing clusters...")
     try:
-        plt.figure(figsize=(10, 6))
+        plt.figure(figsize=(15, 10))
         for cluster in df['cluster'].unique():
             clustered_data = df[df['cluster'] == cluster]
-            plt.scatter(clustered_data['domain'], clustered_data['length'], label=f'Cluster {cluster}')
-        plt.xlabel('Domain')
-        plt.ylabel('Length')
-        plt.title('Domain Clusters')
-        plt.legend()
-        plt.xticks(rotation=90)
+            plt.scatter(clustered_data.index, clustered_data['length'], label=f'Cluster {cluster}', alpha=0.6)
+        plt.xlabel('Domain Index')
+        plt.ylabel('Domain Length')
+        plt.title('Domain Clusters by Length')
+        plt.legend(title="Cluster")
         plt.tight_layout()
+        plt.grid(True)
         plt.show()
         logger.info("Visualization completed.")
     except Exception as e:
         logger.error(f"Error during visualization: {e}")
 
 def display_table(df, title):
-    """Display a formatted table in the terminal."""
+    """Display a formatted table in the terminal with context."""
     logger.info(f"Displaying table: {title}")
-    print(f"\n{title}")
+    print(f"\n### {title}\n")
     print(df.to_string(index=False))
+    if title == "Clustered Domains":
+        print("\nThis table shows the domains and their respective clusters. Clustering helps in grouping similar domains together.")
+    elif title == "NLP Sentiment Analysis on Domains":
+        print("\nThis table displays the sentiment analysis results for each domain. The label indicates whether the sentiment is positive or negative, and the score represents the confidence in the sentiment classification.")
 
 def analyze_sentiments(domains):
     """Analyze sentiments with progress bar."""
@@ -173,7 +177,7 @@ def display_summary(sentiment_df):
     negative_count = sentiment_df[sentiment_df['label'] == 'NEGATIVE'].shape[0]
     total_count = len(sentiment_df)
 
-    print("\nSummary of Sentiment Analysis:")
+    print("\n### Summary of Sentiment Analysis")
     print(f"Total domains analyzed: {total_count}")
     print(f"Positive sentiments: {positive_count} ({positive_count/total_count:.2%})")
     print(f"Negative sentiments: {negative_count} ({negative_count/total_count:.2%})")
@@ -181,10 +185,12 @@ def display_summary(sentiment_df):
     top_positive = sentiment_df[sentiment_df['label'] == 'POSITIVE'].nlargest(5, 'score')
     top_negative = sentiment_df[sentiment_df['label'] == 'NEGATIVE'].nlargest(5, 'score')
 
-    print("\nTop 5 Positive Domains:")
+    print("\n#### Top 5 Positive Domains")
+    print("These domains are identified as having the most positive sentiment scores:")
     print(top_positive[['domain', 'score']].to_string(index=False))
 
-    print("\nTop 5 Negative Domains:")
+    print("\n#### Top 5 Negative Domains")
+    print("These domains are identified as having the most negative sentiment scores:")
     print(top_negative[['domain', 'score']].to_string(index=False))
 
 @click.command()
