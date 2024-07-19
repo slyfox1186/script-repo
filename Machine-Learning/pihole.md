@@ -62,3 +62,6 @@ These domains have the highest negative sentiment scores, indicating they might 
 - Implement automated policies based on the analysis to dynamically update the Pi-hole blocklist, ensuring it remains effective and relevant.
 
 In summary, the data provides valuable insights into the nature of the domains interacting with the network, helping to enhance security measures, improve user experience, and inform policy decisions.
+
+### Source on GitHub
+[here](https://github.com/slyfox1186/script-repo/blob/main/Machine-Learning/pihole.py)
