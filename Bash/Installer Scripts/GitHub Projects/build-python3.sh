@@ -6,17 +6,17 @@
 ## Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-python3
 ## Purpose: Install Python3 from the source code acquired from the official website: https://www.python.org/downloads
 ## Features: Static build, OpenSSL backend
-## Updated: 07.03.24
-## Script version: 2.7
+## Updated: 07.20.24
+## Script version: 2.8
 
 if [[ "$EUID" -eq 0 ]]; then
     echo "You must run this script without root or sudo."
     exit 1
 fi
 
-script_ver="2.7"
+script_ver="2.8"
 prog_name="python3"
-python_version="3.12.3"
+python_version="3.12.4"
 archive_url="https://www.python.org/ftp/python/$python_version/Python-$python_version.tar.xz"
 cwd="$PWD/python3-build-script"
 openssl_prefix=$(dirname "$(readlink -f "$(type -P openssl)")")
