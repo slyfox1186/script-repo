@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 # Script to build LLVM Clang
-# Updated: 07.03.24
-# Script version: 2.3
+# Updated: 07.20.24
+# Script version: 2.4
 # Added multiple script arguments including the ability to set the version of Clang to install.
 
 # ANSI color codes
@@ -43,7 +43,7 @@ install_required_packages() {
         build-essential ccache cmake curl doxygen jq libc6-dev libedit-dev
         libffi-dev libgmp-dev libomp-dev libpfm4-dev librust-atom-dev
         libtool libxml2-dev libzstd-dev m4 ninja-build python3-dev rsync
-        swig zlib1g-dev
+        swig zlib1g-dev nvidia-cuda-toolkit librocm-smi64-1 rocm-cmake rocm-smi
     )
 
     missing_packages=()
@@ -55,7 +55,7 @@ install_required_packages() {
 
     if [[ "${#missing_packages[@]}" -gt 0 ]]; then
         apt-get update
-        apt-get install "${missing_packages[@]}"
+        apt-get install -y "${missing_packages[@]}"
     else
         log "All required packages are already installed."
         echo
@@ -128,7 +128,7 @@ build_llvm_clang() {
           -DCMAKE_C_COMPILER="$CC" \
           -DCMAKE_C_FLAGS="$CFLAGS" \
           -DCMAKE_INSTALL_PREFIX="$install_dir" \
-          -DLLVM_TARGETS_TO_BUILD="X86" \
+          -DLLVM_TARGETS_TO_BUILD="X86;NVPTX;AMDGPU" \
           -DCUDA_TOOLKIT_ROOT_DIR="/usr/local/cuda" \
           -DLLVM_BUILD_DOCS=OFF \
           -DLLVM_BUILD_EXAMPLES=OFF \
@@ -142,7 +142,6 @@ build_llvm_clang() {
           -DLLVM_ENABLE_RTTI=OFF \
           -DLLVM_ENABLE_ZLIB=ON \
           -DLLVM_ENABLE_ZSTD=ON \
-          -DLLVM_INCLUDE_EXAMPLES=OFF \
           -DLLVM_INCLUDE_EXAMPLES=OFF \
           -DLLVM_INCLUDE_RUNTIMES=ON \
           -DLLVM_INCLUDE_TESTS=ON \
