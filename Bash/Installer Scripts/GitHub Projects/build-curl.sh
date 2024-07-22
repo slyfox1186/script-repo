@@ -2,8 +2,8 @@
 
 # GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-curl.sh
 # Purpose: Build the latest release version of cURL from source code including nghttp3 support
-# Updated: 07.03.24
-# Version: 1.1
+# Updated: 07.22.24
+# Version: 1.2
 
 # Define color variables
 RED='\033[0;31m'
@@ -151,6 +151,7 @@ build_and_install_curl() {
 }
 
 create_softlinks() {
+    [[ -f "$install_dir/bin/curl" ]] && sudo ln -sf "$install_dir/bin/curl" "/usr/local/bin/"
     sudo find "$install_dir/lib/pkgconfig/" -type f -name "libcurl.pc" -exec sudo ln -sf {} "/usr/local/lib/pkgconfig/" \;
     if [[ "$?" -eq 0 ]]; then
         printf "\n%s\n\n" "Successful create the softlink for the file 'libcurl.pc'."
