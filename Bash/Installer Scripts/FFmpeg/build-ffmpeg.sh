@@ -806,10 +806,12 @@ nvidia_architecture() {
 
 download_cuda() {
     local -a options
-    local choice cuda_pin_url cuda_url cuda_version_number distro installer_path pin_file pkg_ext user_choice version version_serial
+    local choice cuda_pin_url cuda_url cuda_version_number distro installer_path pin_file pkg_ext version version_serial
     cuda_last_known_update="12.5.0"
+    remote_cuda_version="12.5.1"  # Set this to the version you want to test
     if [[ ! "$remote_cuda_version" == "$remote_cuda_version" ]]; then
-        fail "The script needs to be updated manually. Please report and skip this section until the next update."
+        echo "The script needs to be updated manually. Please report and skip this section until the next update."
+        return
     else
         cuda_version_number="$remote_cuda_version"
     fi
@@ -838,10 +840,10 @@ download_cuda() {
             "Debian 10") distro="debian10"; version="10-12-5"; pkg_ext="deb"; installer_path="local_installers/cuda-repo-debian${version}-local_${version_serial}_amd64.deb" ;;
             "Debian 11") distro="debian11"; version="11-12-5"; pkg_ext="deb"; installer_path="local_installers/cuda-repo-debian${version}-local_${version_serial}_amd64.deb" ;;
             "Debian 12") distro="debian12"; version="12-12-5"; pkg_ext="deb"; installer_path="local_installers/cuda-repo-debian${version}-local_${version_serial}_amd64.deb" ;;
-            "Ubuntu 20.04") distro="ubuntu2004"; version="12-5"; pkg_ext="pin"; pin_file="${distro}/x86_64/cuda-${distro}.pin"; installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_serial}_amd64.deb" ;;
-            "Ubuntu 22.04") distro="ubuntu2204"; version="12-5"; pkg_ext="pin"; pin_file="${distro}/x86_64/cuda-${distro}.pin"; installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_serial}_amd64.deb" ;;
-            "Ubuntu 24.04") distro="ubuntu2404"; version="12-5"; pkg_ext="pin"; pin_file="${distro}/x86_64/cuda-${distro}.pin"; installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_serial}_amd64.deb" ;;
-            "Ubuntu WSL") distro="wsl-ubuntu"; version="12-5"; version_ext="12.5.1-1"; pkg_ext="pin"; pin_file="${distro}/x86_64/cuda-${distro}.pin"; installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_ext}_amd64.deb" ;;
+            "Ubuntu 20.04") distro="ubuntu2004"; version="12-5"; pkg_ext="deb"; pin_file="${distro}/x86_64/cuda-${distro}.pin"; installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_serial}_amd64.deb" ;;
+            "Ubuntu 22.04") distro="ubuntu2204"; version="12-5"; pkg_ext="deb"; pin_file="${distro}/x86_64/cuda-${distro}.pin"; installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_serial}_amd64.deb" ;;
+            "Ubuntu 24.04") distro="ubuntu2404"; version="12-5"; pkg_ext="deb"; pin_file="${distro}/x86_64/cuda-${distro}.pin"; installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_serial}_amd64.deb" ;;
+            "Ubuntu WSL") distro="wsl-ubuntu"; version="12-5"; version_ext="12.5.1-1"; pkg_ext="deb"; pin_file="${distro}/x86_64/cuda-${distro}.pin"; installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_ext}_amd64.deb" ;;
             Skip) return ;;
             *) echo "Invalid choice. Please try again."; continue ;;
         esac
@@ -858,42 +860,40 @@ download_cuda() {
     fi
 
     package_name="$packages/nvidia-cuda/cuda-$distro-$cuda_version_number.$pkg_ext"
-    case "$pkg_ext" in
-        "deb"|"pin")
-            wget --show-progress -cqO "$package_name" "$cuda_url/$installer_path"
-            dpkg -i "$package_name"
-            
-            # Dynamically find and copy the CUDA keyring file
-            cuda_repo_dir="/var/cuda-repo-${distro}${version//./-}-local"
-            cuda_keyring_file=$(find "$cuda_repo_dir" -name "cuda-*-keyring.gpg" 2>/dev/null | head -n 1)
-            
-            if [ -n "$cuda_keyring_file" ]; then
-                execute cp -f "$cuda_keyring_file" /usr/share/keyrings/
-                log "Copied CUDA keyring file: $cuda_keyring_file"
-                
-                # Add the CUDA repository to sources.list
-                echo "deb [signed-by=/usr/share/keyrings/$(basename "$cuda_keyring_file")] file://$cuda_repo_dir /" | sudo tee /etc/apt/sources.list.d/cuda-repository.list
-                
-                # Update package lists
-                apt update
+    
+    if [[ "$distro" == ubuntu* ]]; then
+        wget --show-progress -cqO "$packages/nvidia-cuda/cuda-$distro.pin" "$cuda_pin_url/$pin_file"
+        mv "$packages/nvidia-cuda/cuda-$distro.pin" /etc/apt/preferences.d/cuda-repository-pin-600
+    fi
+    
+    wget --show-progress -cqO "$package_name" "$cuda_url/$installer_path"
+    dpkg -i "$package_name"
+    
+    # Copy the CUDA keyring file
+    cuda_repo_dir="/var/cuda-repo-${distro}${version//./-}-local"
+    cuda_keyring_file=$(ls $cuda_repo_dir/cuda-*-keyring.gpg 2>/dev/null | head -n 1)
+    
+    if [ -n "$cuda_keyring_file" ]; then
+        cp -f "$cuda_keyring_file" /usr/share/keyrings/
+        echo "Copied CUDA keyring file: $cuda_keyring_file"
+        
+        # Add the CUDA repository to sources.list
+        echo "deb [signed-by=/usr/share/keyrings/$(basename "$cuda_keyring_file")] file://$cuda_repo_dir /" | tee /etc/apt/sources.list.d/cuda-repository.list
+        
+        # Update package lists
+        apt update
+        
+        # Install cuda-keyring package
+        apt install -y cuda-keyring
+    else
+        echo "CUDA keyring file not found in $cuda_repo_dir. Manual intervention may be required."
+    fi
 
-                # Install cuda-keyring package
-                apt install -y cuda-keyring
-            else
-                warn "CUDA keyring file not found in $cuda_repo_dir. Manual intervention may be required."
-            fi
-
-            if [[ "$pkg_ext" == "pin" ]]; then
-                wget --show-progress -cqO "/etc/apt/preferences.d/cuda-repository-pin-600" "$cuda_pin_url/$pin_file"
-            elif [[ "$distro" == "debian"* ]]; then
-                add-apt-repository -y contrib
-            fi
-            ;;
-        *)
-            echo "Unsupported package extension: $pkg_ext"
-            exit 1
-            ;;
-    esac
+    if [[ "$distro" == ubuntu* ]]; then
+        echo "Pin file downloaded and moved to /etc/apt/preferences.d/cuda-repository-pin-600"
+    elif [[ "$distro" == debian* ]]; then
+        add-apt-repository -y contrib
+    fi
 
     # Update package lists again and install CUDA toolkit
     apt update
