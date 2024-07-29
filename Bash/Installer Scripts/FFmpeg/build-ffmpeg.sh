@@ -995,8 +995,7 @@ apt_pkgs() {
     pkgs=(
         $1 $(find_latest_version 'libc\+\+abi-[0-9]+-dev') $(find_latest_version 'libc\+\+-[0-9]+-dev')
         $(find_latest_version 'libunwind-[0-9]+-dev') $(find_latest_version 'nvidia-driver[0-9-]*')
-        $(find_latest_version 'nvidia-utils-[0-9]+') $(find_latest_version 'openjdk-[0-9]+-jdk')
-        $(find_latest_version 'gcc-[1-3]*-plugin-dev')
+        $(find_latest_version 'openjdk-[0-9]+-jdk') $(find_latest_version 'gcc-[1-3]*-plugin-dev')
         asciidoc autoconf autoconf-archive automake autopoint bc binutils bison build-essential cargo ccache checkinstall
         curl doxygen fcitx-libs-dev flex flite1-dev gawk gcc gettext gimp-data git gnome-desktop-testing gnustep-gui-runtime
         golang-go google-perftools gperf gtk-doc-tools guile-3.0-dev help2man imagemagick jq junit ladspa-sdk lib32stdc++6
