@@ -3,8 +3,8 @@
 
 # GitHub: https://github.com/slyfox1186/ffmpeg-build-script
 #
-# Script version: 3.9.5
-# Updated: 07.16.24
+# Script version: 3.9.6
+# Updated: 08.18.24
 #
 # Purpose: build ffmpeg from source code with addon development libraries
 #          also compiled from source to help ensure the latest functionality
@@ -14,7 +14,7 @@
 #                    Zorin OS 16.x
 #                    (Other Ubuntu-based distributions may also work)
 # Supported architecture: x86_64
-# CUDA SDK Toolkit: Updated to version 12.5.1
+# CUDA SDK Toolkit: Updated to version 12.6.0
 
 if [[ "$EUID" -ne 0 ]]; then
     echo "You must run this script as root or with sudo."
@@ -807,8 +807,8 @@ nvidia_architecture() {
 download_cuda() {
     local -a options
     local choice cuda_pin_url cuda_url cuda_version_number distro installer_path pin_file pkg_ext version version_serial
-    cuda_last_known_update="12.5.0"
-    remote_cuda_version="12.5.1"  # Set this to the version you want to test
+    cuda_last_known_update="12.6.0"
+    remote_cuda_version="12.6.0"  # Updated to the latest version
     if [[ ! "$remote_cuda_version" == "$remote_cuda_version" ]]; then
         echo "The script needs to be updated manually. Please report and skip this section until the next update."
         return
@@ -824,7 +824,6 @@ download_cuda() {
     echo
 
     options=(
-        "Debian 10"
         "Debian 11"
         "Debian 12"
         "Ubuntu 20.04"
@@ -834,16 +833,15 @@ download_cuda() {
         "Skip"
     )
 
-    version_serial="12.5.1-555.42.06-1"
+    version_serial="12.6.0-560.28.03-1"
     select choice in "${options[@]}"; do
         case "$choice" in
-            "Debian 10") distro="debian10"; version="10-12-5"; pkg_ext="deb"; installer_path="local_installers/cuda-repo-debian${version}-local_${version_serial}_amd64.deb" ;;
-            "Debian 11") distro="debian11"; version="11-12-5"; pkg_ext="deb"; installer_path="local_installers/cuda-repo-debian${version}-local_${version_serial}_amd64.deb" ;;
-            "Debian 12") distro="debian12"; version="12-12-5"; pkg_ext="deb"; installer_path="local_installers/cuda-repo-debian${version}-local_${version_serial}_amd64.deb" ;;
-            "Ubuntu 20.04") distro="ubuntu2004"; version="12-5"; pkg_ext="deb"; pin_file="${distro}/x86_64/cuda-${distro}.pin"; installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_serial}_amd64.deb" ;;
-            "Ubuntu 22.04") distro="ubuntu2204"; version="12-5"; pkg_ext="deb"; pin_file="${distro}/x86_64/cuda-${distro}.pin"; installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_serial}_amd64.deb" ;;
-            "Ubuntu 24.04") distro="ubuntu2404"; version="12-5"; pkg_ext="deb"; pin_file="${distro}/x86_64/cuda-${distro}.pin"; installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_serial}_amd64.deb" ;;
-            "Ubuntu WSL") distro="wsl-ubuntu"; version="12-5"; version_ext="12.5.1-1"; pkg_ext="deb"; pin_file="${distro}/x86_64/cuda-${distro}.pin"; installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_ext}_amd64.deb" ;;
+            "Debian 11") distro="debian11"; version="11-12-6"; pkg_ext="deb"; installer_path="local_installers/cuda-repo-debian${version}-local_${version_serial}_amd64.deb" ;;
+            "Debian 12") distro="debian12"; version="12-12-6"; pkg_ext="deb"; installer_path="local_installers/cuda-repo-debian${version}-local_${version_serial}_amd64.deb" ;;
+            "Ubuntu 20.04") distro="ubuntu2004"; version="12-6"; pkg_ext="deb"; pin_file="${distro}/x86_64/cuda-${distro}.pin"; installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_serial}_amd64.deb" ;;
+            "Ubuntu 22.04") distro="ubuntu2204"; version="12-6"; pkg_ext="deb"; pin_file="${distro}/x86_64/cuda-${distro}.pin"; installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_serial}_amd64.deb" ;;
+            "Ubuntu 24.04") distro="ubuntu2404"; version="12-6"; pkg_ext="deb"; pin_file="${distro}/x86_64/cuda-${distro}.pin"; installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_serial}_amd64.deb" ;;
+            "Ubuntu WSL") distro="wsl-ubuntu"; version="12-6"; version_ext="12.6.0-1"; pkg_ext="deb"; pin_file="${distro}/x86_64/cuda-${distro}.pin"; installer_path="local_installers/cuda-repo-${distro}-${version}-local_${version_ext}_amd64.deb" ;;
             Skip) return ;;
             *) echo "Invalid choice. Please try again."; continue ;;
         esac
@@ -870,8 +868,8 @@ download_cuda() {
     dpkg -i "$package_name"
     
     # Copy the CUDA keyring file
-    cuda_repo_dir="/var/cuda-repo-${distro}${version//./-}-local"
-    cuda_keyring_file=$(ls $cuda_repo_dir/cuda-*-keyring.gpg 2>/dev/null | head -n 1)
+    sudo cp -f /var/cuda-repo-${distro}${version//./-}-local/cuda-*-keyring.gpg /usr/share/keyrings/
+    echo "Copied CUDA keyring file to /usr/share/keyrings/"
     
     if [ -n "$cuda_keyring_file" ]; then
         cp -f "$cuda_keyring_file" /usr/share/keyrings/
@@ -897,7 +895,7 @@ download_cuda() {
 
     # Update package lists again and install CUDA toolkit
     apt update
-    apt install -y cuda-toolkit-12-5
+    apt install -y cuda-toolkit-12-6
 }
 
 # Function to detect the environment and check for an NVIDIA GPU
@@ -1036,21 +1034,6 @@ apt_pkgs() {
         echo
         warn "Unavailable packages:"
         printf "          %s\n" "${unavailable_packages[@]}"
-    fi
-
-    # Install available missing packages
-    if [[ ${#available_packages[@]} -gt 0 ]]; then
-        echo
-        log "Installing available missing packages:"
-        printf "       %s\n" "${available_packages[@]}"
-        echo
-        apt update
-        apt install -y "${available_packages[@]}"
-        apt -y autoremove
-        echo
-    else
-        log "No missing packages to install or all missing packages are unavailable."
-        echo
     fi
 
     # Check NVIDIA GPU status
