@@ -3,11 +3,11 @@
 
 # GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/SlyFox1186%20Scripts/7zip-installer.sh
 # Purpose: install the latest 7-zip package across multiple linux distributions and macos
-# Updated: 06-03-2024
-# Script version: 3.4
+# Updated: 08-25-2024
+# Script version: 3.5
 
 # Set variables
-readonly script_version="3.4"
+readonly script_version="3.5"
 readonly working="$PWD/7zip-install-script"
 readonly install_dir="/usr/local/bin"
 readonly download_files_dir="$working/7zip-$version"
@@ -195,7 +195,7 @@ if ! command -v wget &>/dev/null || ! command -v tar &>/dev/null; then
 fi
 
 # Set current version
-version="7z2407"
+version="7z2408"
 
 # Detect architecture and set download url based on the operating system
 case "$OS" in
