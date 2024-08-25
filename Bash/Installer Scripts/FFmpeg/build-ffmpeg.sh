@@ -3,8 +3,8 @@
 
 # GitHub: https://github.com/slyfox1186/ffmpeg-build-script
 #
-# Script version: 3.9.6
-# Updated: 08.18.24
+# Script version: 3.9.7
+# Updated: 08.25.24
 #
 # Purpose: build ffmpeg from source code with addon development libraries
 #          also compiled from source to help ensure the latest functionality
@@ -23,7 +23,7 @@ fi
 
 # Define global variables
 script_name="${0##*/}"
-script_version="3.9.5"
+script_version="3.9.7"
 cwd="$PWD/ffmpeg-build-script"
 mkdir -p "$cwd"; cd "$cwd" || exit 1
 if [[ "$PWD" =~ ffmpeg-build-script\/ffmpeg-build-script ]]; then
@@ -1091,7 +1091,7 @@ fix_x265_libs() {
 
 find_latest_nasm_version() {
     latest_nasm_version=$(
-                    curl -fsS "https://openssl-library.org/source/" |
+                    curl -fsS "https://www.nasm.us/pub/nasm/stable/" |
                     grep -oP 'nasm-\K[0-9]+\.[0-9]+\.[0-9]+(?=\.tar\.xz)' |
                     sort -ruV | head -n1
                 )
@@ -1099,7 +1099,7 @@ find_latest_nasm_version() {
 
 get_openssl_version() {
     openssl_version=$(
-                curl -fsS "https://www.openssl.org/source/" |
+                curl -fsS "https://openssl-library.org/source/" |
                 grep -oP 'openssl-\K3\.0\.[0-9]+' | sort -ruV |
                 head -n1
             )
