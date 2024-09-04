@@ -6,16 +6,16 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-overwrite=0
-append_text="-trimmed"
-prepend_text=""
+append_text="_trimmed"
+batch_mode=0 # Flag to indicate batch processing
 file_list=""
 input_list="" # New variable for list of video paths
+overwrite=0
+prepend_text=""
 single_input_file="" # New variable for directly passed video file
-trim_start=0 # Duration to trim from the start in seconds
 trim_end=0 # Duration to trim from the end in seconds
+trim_start=0 # Duration to trim from the start in seconds
 verbose=0 # Verbose flag added
-batch_mode=0 # Flag to indicate batch processing
 
 # Function to display usage
 usage() {
@@ -34,9 +34,9 @@ usage() {
     echo -e "  -v, --verbose          Enable verbose output."
     echo
     echo "Examples:"
-    echo "./fix-start-of-video.sh -v -i \"video.mp4\""
-    echo "./fix-start-of-video.sh -o -v -i \"video.mp4\""
-    echo "./fix-start-of-video.sh -l \"video_list.txt\""
+    echo "./${0##/*} -v -i \"video.mp4\""
+    echo "./${0##/*} -o -v -i \"video.mp4\""
+    echo "./${0##/*} -l \"video_list.txt\""
     exit 1
 }
 
