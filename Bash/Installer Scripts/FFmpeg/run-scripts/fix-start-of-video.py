@@ -7,8 +7,10 @@ import signal
 import subprocess
 import sys
 import tempfile
+import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
+from contextlib import ExitStack
 
 # Color codes for terminal output
 class Colors:
@@ -17,25 +19,31 @@ class Colors:
     YELLOW = '\033[1;33m'
     NC = '\033[0m'
 
-MAX_PARALLEL = 2  # Default maximum number of parallel jobs
-temp_files = []   # List to store temporary files
+# Calculate max parallel jobs based on logical CPU count
+cpu_count = os.cpu_count() or 2
+MAX_PARALLEL = max(cpu_count // 2, 2)  # Max parallel jobs is logical CPUs / 2 or 2, whichever is greater
+
+# List to store temporary files
+temp_files = []
 
 def parse_args():
     script_name = os.path.basename(sys.argv[0])
     parser = argparse.ArgumentParser(
-        description="Trim start and end of video files.",
+        description="Trim start and end of video files while aligning with keyframes.",
         formatter_class=argparse.RawTextHelpFormatter
     )
-    parser.add_argument('-f', '--file', type=str, help='Path to the text file containing the list of video files.')
+    parser.add_argument('--start', type=float, default=0, help='Duration in seconds to trim from the start of the video.')
+    parser.add_argument('--end', type=float, default=0, help='Duration in seconds to trim from the end of the video.')
+
+    parser.add_argument('-f', '--file-list', type=str, help='Path to the text file containing the list of video files or single video path.')
     parser.add_argument('-i', '--input', type=str, help='Path to a single video file.')
-    parser.add_argument('-l', '--list', type=str, help='Path to a text file containing the full paths to the video files.')
-    parser.add_argument('--start', type=int, default=0, help='Duration in seconds to trim from the start of the video.')
-    parser.add_argument('--end', type=int, default=0, help='Duration in seconds to trim from the end of the video.')
+    parser.add_argument('-o', '--overwrite', action='store_true', help='Overwrite the input file instead of creating a new one.')
+
     parser.add_argument('-a', '--append', type=str, default='-trimmed', help='Text to append to the output file name.')
     parser.add_argument('-p', '--prepend', type=str, default='', help='Text to prepend to the output file name.')
-    parser.add_argument('-o', '--overwrite', action='store_true', help='Overwrite the input file instead of creating a new one.')
-    parser.add_argument('-v', '--verbose', action='store_true', help='Enable verbose output.')
     parser.add_argument('-t', '--threads', type=int, default=MAX_PARALLEL, help='Number of threads for parallel processing.')
+    parser.add_argument('-v', '--verbose', action='store_true', help='Enable verbose output.')
+
     parser.add_argument('-e', '--examples', action='store_true', help='Show command line examples.')
     args = parser.parse_args()
 
@@ -62,7 +70,7 @@ def parse_args():
            ./{script_name} -i video.mp4 --start 10 --end 5 -p new- -a -new
 
         7. Batch process, overwrite, and utilize two threads using an input text file:
-           ./{script_name} -o -t=2 -l="fix-start-of-video.txt"
+           ./{script_name} -o -t=2 -f="fix-start-of-video.txt"
         """)
         sys.exit(0)
 
@@ -71,18 +79,55 @@ def parse_args():
 def log(message, color=Colors.NC):
     print(f"{color}{message}{Colors.NC}")
 
-def get_video_duration(file_path):
-    result = subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'format=duration',
-                             '-of', 'default=noprint_wrappers=1:nokey=1', file_path],
-                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    return float(result.stdout.strip())
+def get_video_info(file_path):
+    command = [
+        'ffprobe', '-v', 'error',
+        '-select_streams', 'v:0',
+        '-show_entries', 'stream=avg_frame_rate,duration',
+        '-show_entries', 'format=duration',
+        '-of', 'json',
+        file_path
+    ]
+    result = subprocess.run(command, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise ValueError(f"Error getting video info: {result.stderr}")
+    
+    info = json.loads(result.stdout)
+    duration = float(info['format']['duration'])
+    fps = eval(info['streams'][0]['avg_frame_rate'])
+    return duration, fps
 
-def get_keyframe_time(file_path, time_offset):
-    result = subprocess.run(['ffprobe', '-v', 'error', '-select_streams', 'v', '-of', 'csv=p=0',
-                             '-show_entries', 'frame=best_effort_timestamp_time',
-                             '-read_intervals', f'{time_offset}%+{time_offset}', '-i', file_path],
-                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    return result.stdout.decode('utf-8').strip().split('\n')[0]
+def get_keyframe_time(file_path, time_offset, search_forward=True):
+    direction = '+' if search_forward else '-'
+    command = [
+        'ffprobe', '-v', 'error',
+        '-select_streams', 'v:0',
+        '-skip_frame', 'nokey',
+        '-show_entries', 'frame=pkt_pts_time',
+        '-of', 'csv=p=0',
+        '-read_intervals', f'{time_offset}%{direction}5',  # Search 5 seconds forward or backward
+        file_path
+    ]
+    result = subprocess.run(command, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise ValueError(f"Error getting keyframe time: {result.stderr}")
+    
+    output = result.stdout.strip().split('\n')
+    if not output or output[0] == '':
+        return None
+    return float(output[0])
+
+def find_nearest_keyframe(file_path, target_time, duration, start=True):
+    if start:
+        forward_keyframe = get_keyframe_time(file_path, target_time, search_forward=True)
+        if forward_keyframe is not None:
+            return forward_keyframe
+        return target_time
+    else:
+        backward_keyframe = get_keyframe_time(file_path, target_time, search_forward=False)
+        if backward_keyframe is not None:
+            return backward_keyframe
+        return target_time
 
 def cleanup_temp_files():
     global temp_files
@@ -104,40 +149,56 @@ signal.signal(signal.SIGTERM, handle_exit)
 
 def process_video(file_path, start, end, prepend_text, append_text, overwrite, verbose):
     try:
-        duration = get_video_duration(file_path)
-    except ValueError:
-        log(f"Error: Unable to get duration for {file_path}", Colors.RED)
-        return
+        duration, fps = get_video_info(file_path)
+        
+        start_time = max(find_nearest_keyframe(file_path, start, duration, start=True), start) if start > 0 else 0
+        end_time = find_nearest_keyframe(file_path, duration - end, duration, start=False) if end > 0 else duration
 
-    start_time = get_keyframe_time(file_path, start) if start > 0 else '0'
-    end_time = get_keyframe_time(file_path, duration - end) if end > 0 else str(duration)
+        if verbose:
+            log(f"Trimming {file_path} from {start_time:.2f}s to {end_time:.2f}s", Colors.YELLOW)
 
-    if verbose:
-        log(f"Trimming from {start_time} to {end_time}.", Colors.YELLOW)
+        base_name = Path(file_path).stem
+        extension = Path(file_path).suffix
+        final_output = f"{prepend_text}{base_name}{append_text}{extension}" if not overwrite else file_path
+        temp_output_dir = Path(file_path).parent
 
-    base_name = Path(file_path).stem
-    extension = Path(file_path).suffix
-    final_output = f"{prepend_text}{base_name}{append_text}{extension}" if not overwrite else file_path
-    temp_output_dir = Path(file_path).parent
+        with ExitStack() as stack:
+            temp_output = stack.enter_context(tempfile.NamedTemporaryFile(delete=False, suffix=extension, dir=temp_output_dir))
+            temp_files.append(temp_output.name)
 
-    with tempfile.NamedTemporaryFile(delete=False, suffix=extension, dir=temp_output_dir) as temp_output:
-        temp_files.append(temp_output.name)
-        command = ['ffmpeg', '-y', '-hide_banner', '-ss', start_time, '-i', file_path,
-                   '-to', end_time, '-c', 'copy', temp_output.name]
+            command = [
+                'ffmpeg',
+                '-hide_banner',
+                '-i', file_path,
+                '-ss', f'{start_time:.3f}',
+                '-to', f'{end_time:.3f}',
+                '-c', 'copy',
+                '-avoid_negative_ts', 'make_zero',
+                '-map', '0',
+                '-y',
+                temp_output.name
+            ]
 
-        if subprocess.run(command).returncode == 0:
-            if overwrite:
-                shutil.move(temp_output.name, file_path)
-                temp_files.remove(temp_output.name)
-                log(f"Successfully processed and overwritten {file_path}", Colors.GREEN)
+            log(f"Running command: {' '.join(command)}", Colors.YELLOW)
+            process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+            
+            for line in process.stderr:
+                print(line, end='')
+
+            process.wait()
+
+            if process.returncode == 0:
+                if overwrite:
+                    shutil.move(temp_output.name, file_path)
+                    log(f"Successfully processed and overwritten {file_path}", Colors.GREEN)
+                else:
+                    shutil.move(temp_output.name, final_output)
+                    log(f"Successfully processed {file_path} into {final_output}", Colors.GREEN)
             else:
-                shutil.move(temp_output.name, final_output)
-                temp_files.remove(temp_output.name)
-                log(f"Successfully processed {file_path} into {final_output}", Colors.GREEN)
-        else:
-            log(f"Failed to process {file_path}", Colors.RED)
-            os.remove(temp_output.name)
-            temp_files.remove(temp_output.name)
+                raise subprocess.CalledProcessError(process.returncode, command)
+
+    except Exception as e:
+        log(f"Error processing {file_path}: {str(e)}", Colors.RED)
 
 def main():
     args = parse_args()
@@ -149,7 +210,7 @@ def main():
     # Output the settings
     log("Settings:", Colors.YELLOW)
     log(f"  Input file: {args.input}", Colors.YELLOW)
-    log(f"  File list: {args.file}", Colors.YELLOW)
+    log(f"  File list: {args.file_list}", Colors.YELLOW)
     log(f"  Start trim: {args.start} seconds", Colors.YELLOW)
     log(f"  End trim: {args.end} seconds", Colors.YELLOW)
     log(f"  Append text: {append_text}", Colors.YELLOW)
@@ -159,14 +220,11 @@ def main():
     log(f"  Threads: {args.threads}", Colors.YELLOW)
     
     video_files = []
-    if args.file:
-        with open(args.file, 'r') as f:
+    if args.file_list:
+        with open(args.file_list, 'r') as f:
             video_files = [line.strip() for line in f]
     elif args.input:
         video_files.append(args.input)
-    elif args.list:
-        with open(args.list, 'r') as f:
-            video_files = [line.strip() for line in f]
 
     if not video_files:
         log("Error: No input video or file list provided, or file does not exist.", Colors.RED)
