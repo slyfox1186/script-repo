@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # Recursively search and re-encode all found wmv files to mp4
 
-echo "Searching for .wmv files to convert to .mp4 with NVIDIA CUDA acceleration..."
-echo
+printf "%s\n\n" "Searching for .wmv files to convert to .mp4 with NVIDIA CUDA acceleration..."
 
 # Define the conversion process as a function for clarity
 convert_to_mp4() {
@@ -32,4 +31,3 @@ export -f convert_to_mp4
 
 # Find and convert all .wmv files
 find "$(dirname "$0")" -type f -iname "*.wmv" -exec bash -c 'convert_to_mp4 "$1"' _ {} \;
-
