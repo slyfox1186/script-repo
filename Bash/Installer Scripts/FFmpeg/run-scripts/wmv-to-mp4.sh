@@ -19,6 +19,7 @@ convert_to_mp4() {
     echo "CWD:      $PWD/${folder_path//.\//}"
     echo
 
+    # CUDA accelerated conversion
     if ffpb -y -hide_banner -hwaccel cuda -hwaccel_output_format cuda -fflags '+genpts' -i "$file_in" -c:v h264_nvenc -preset slow -c:a libfdk_aac "$file_out"; then
         echo "Conversion complete: $file_out"
         rm "$file_in"
@@ -30,4 +31,5 @@ convert_to_mp4() {
 export -f convert_to_mp4
 
 # Find and convert all .wmv files
-find "$(dirname "$0")" -type f -iname "*.wmv" -exec bash -c 'convert_to_mp4 "$0"' "{}" \;
+find "$(dirname "$0")" -type f -iname "*.wmv" -exec bash -c 'convert_to_mp4 "$1"' _ {} \;
+
