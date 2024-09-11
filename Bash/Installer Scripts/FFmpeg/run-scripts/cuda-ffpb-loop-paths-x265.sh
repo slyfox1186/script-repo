@@ -5,8 +5,8 @@ temp_file=$(mktemp)
 
 # Add the video paths that FFmpeg will process to the temporary file that was created above
 cat > "$temp_file" <<'EOF'
-/path/to/video.mkv
 /path/to/video.mp4
+/path/to/video.mkv
 EOF
 
 # Define color codes
@@ -182,7 +182,7 @@ convert_videos() {
         width=$(ffprobe -v error -select_streams v:0 -show_entries stream=width -of csv=s=x:p=0 "$video")
 
         # Find the first timestamp
-        start_time=$(ffprobe -v error -select_streams v:0 -show_entries frame=best_effort_timestamp_time -of default=nk=1:nw=1 -read_intervals "%+#1" "$video")
+        start_time=$(ffprobe -v error -show_entries format=start_time -of default=nk=1:nw=1 "$video")
 
         file_out="${video%.*} (x265).${video##*.}"
 
