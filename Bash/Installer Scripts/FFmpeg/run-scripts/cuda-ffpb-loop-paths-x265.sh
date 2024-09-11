@@ -20,11 +20,15 @@ NC='\033[0m' # No Color
 
 # Log functions
 log() {
-    echo -e "\n${GREEN}[INFO]${NC} $1 $2\n"
+    echo -e "\n${GREEN}[INFO]${NC} $*\n"
+}
+
+warn() {
+    echo -e "\n${YELLOW}[WARNING]${NC} $1\n"
 }
 
 fail() {
-    echo -e "\n${RED}[ERROR]${NC} $1 $2\n"
+    echo -e "\n${RED}[ERROR]${NC} $*\n"
     exit 1
 }
 
@@ -45,9 +49,9 @@ kill_related_processes() {
     mapfile -t all_pids < <(printf "%s\n" "${script_pids[@]}" "${ffpb_pids[@]}" "${ffmpeg_pids[@]}" "${google_speech_pids[@]}")
     
     if [ ${#all_pids[@]} -eq 0 ]; then
-        echo -e "${GREEN}[INFO]${NC} No related processes found."
+        log "No related processes found."
     else
-        log "Found ${#all_pids[@]} related process(es). Killing them..."
+        warn "Found ${#all_pids[@]} related process(es). Killing them..."
         for pid in ${all_pids[@]}; do
             if ps -p "$pid" &>/dev/null; then
                 if [[ -n ${ffpb_pids[@]} ]]; then
@@ -63,15 +67,10 @@ kill_related_processes() {
                     echo -e "${YELLOW}[WARNING]${NC} Killing process - script with PID: $pid"
                     sudo kill -9 "$pid"
                 fi
-            else
-                echo -e "${YELLOW}[WARNING]${NC} Process \"$pid\" with PID $pid not found. Skipping."
             fi
         done
     fi
 }
-
-# Call the function to kill related processes
-kill_related_processes
 
 # Check for required dependencies before proceeding
 check_dependencies() {
@@ -182,7 +181,7 @@ convert_videos() {
         width=$(ffprobe -v error -select_streams v:0 -show_entries stream=width -of csv=s=x:p=0 "$video")
 
         # Find the first timestamp
-        start_time=$(ffprobe -v error -show_entries format=start_time -of default=nk=1:nw=1 "$video")
+        start_time=$(ffprobe -v error -select_streams v:0 -show_entries frame=best_effort_timestamp_time -of default=nk=1:nw=1 -read_intervals "%+#1" "$video")
 
         file_out="${video%.*} (x265).${video##*.}"
 
@@ -259,7 +258,6 @@ convert_videos() {
             fi
         fi
     done 9< "$temp_file"
-    rm "$temp_file"
 
     log "Total input size: ${total_input_size} MB"
     log "Total output size: ${total_output_size} MB"
@@ -267,5 +265,9 @@ convert_videos() {
 }
 
 # Check dependencies and start the video conversion process
+kill_related_processes
 check_dependencies
 convert_videos
+
+# Remove the temporary file after all processing is done
+rm -f "$temp_file"
