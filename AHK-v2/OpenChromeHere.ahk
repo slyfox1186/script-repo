@@ -32,6 +32,7 @@
 
 ^!c Up::
 {
+    BlockInput("MouseMove")
     Browser := GetDefaultBrowser()
     win := "ahk_class Chrome_WidgetWin_1 ahk_exe chrome.exe"
     ClipSaved := A_Clipboard
@@ -48,11 +49,14 @@
         searchThis := RegExMatch(searchText, "i)^(https?:\/\/|www\.)|(\.[a-z]{2,}\/?$)") ? searchText : "https://google.com/search?q=" . UrlEncode(searchText)
         Run(Browser . " --new-tab " . searchThis,, "Max")
         WinWaitActive(win,, 1)
-        sleepThis := Random(500, 1350)  ; Random delay between 0.5 and 1.35 minutes (in milliseconds)
+        sleepThis := Random(350, 1200)  ; Random delay between 0.35 and 1.2 minutes (in milliseconds)
         Sleep(sleepThis)
         Sleep(25)
     }
     A_Clipboard := ""
+    Sleep(25)
+    A_Clipboard := ClipSaved
+    BlockInput("MouseMoveOff")
 }
 
 GetDefaultBrowser() {
