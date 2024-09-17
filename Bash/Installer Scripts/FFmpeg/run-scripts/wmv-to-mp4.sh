@@ -20,8 +20,12 @@ convert_to_mp4() {
 
     # CUDA accelerated conversion
     if ffpb -y -hide_banner -hwaccel cuda -hwaccel_output_format cuda -fflags '+genpts' -i "$file_in" -c:v h264_nvenc -preset slow -c:a libfdk_aac "$file_out"; then
-        echo "Conversion complete: $file_out"
-        rm "$file_in"
+        printf "\n%s\n\n" "Conversion complete: $file_out"
+        read -p "Do you want to delete the input WMV file (y/n)?: " choice
+        case "$choice" in
+            [yY]*) rm -f "$file_in" ;;
+            [nN]*) ;;
+        esac
     else
         echo "Conversion failed: $file_out"
     fi
@@ -30,4 +34,4 @@ convert_to_mp4() {
 export -f convert_to_mp4
 
 # Find and convert all .wmv files
-find "$(dirname "$0")" -type f -iname "*.wmv" -exec bash -c 'convert_to_mp4 "$1"' _ {} \;
+find "${BASH_SOURCE%/*}" -type f -iname "*.wmv" -exec bash -c 'convert_to_mp4 "$1"' _ {} \;
