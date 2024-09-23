@@ -329,18 +329,25 @@ create_symlinks() {
     versioned_clangpp="clang++-$llvm_version_trim"
 
     tools=(
-        clang-$llvm_version_trim clang++-$llvm_version_trim clang-format
-        clang-tidy clangd llvm-ar llvm-nm llvm-objdump llvm-dis llc lli opt
+        "clang-$llvm_version_trim" "clang++-$llvm_version_trim"
+        "clang-format" "clang-tidy" "clangd" "llvm-ar" "llvm-nm"
+        "llvm-objdump" "llvm-dis" "llc" "lli" "opt"
     )
 
+    echo
+    log "Creating Soft Links..."
+    echo
     for tool in "${tools[@]}"; do
         if [[ "$tool" == "clang++-$llvm_version_trim" ]]; then
-            ln -sf "$install_dir/bin/clang++" "/usr/local/bin/$tool" || warn "Failed to create symlink for $tool."
+            echo "sudo ln -sf \"$install_dir/bin/clang++\" \"/usr/local/bin/$tool\""
+            sudo ln -sf "$install_dir/bin/clang++" "/usr/local/bin/$tool" || warn "Failed to create symlink for $tool."
         else
-            ln -sf "$install_dir/bin/$tool" "/usr/local/bin/$tool" || warn "Failed to create symlink for $tool."
+            echo "sudo ln -sf \"$install_dir/bin/$tool\" \"/usr/local/bin/$tool\""
+            sudo ln -sf "$install_dir/bin/$tool" "/usr/local/bin/$tool" || warn "Failed to create symlink for $tool."
             non_versioned_tool="${tool%-*}"
             if [[ "$tool" != "$non_versioned_tool" ]]; then
-                ln -sf "$install_dir/bin/$tool" "/usr/local/bin/$non_versioned_tool" || warn "Failed to create symlink for $non_versioned_tool."
+                echo "sudo ln -sf \"$install_dir/bin/$tool\" \"/usr/local/bin/$non_versioned_tool\""
+                sudo ln -sf "$install_dir/bin/$tool" "/usr/local/bin/$non_versioned_tool" || warn "Failed to create symlink for $non_versioned_tool."
             fi
         fi
     done
@@ -352,9 +359,9 @@ create_linker_config_file() {
     {
         echo "$install_dir/lib"
         echo "$(dirname "$python_shared_lib")"
-    } | tee "$linker_config_file" >/dev/null || fail "Failed to create linker config file."
+    } | sudo tee "$linker_config_file" >/dev/null || fail "Failed to create linker config file."
 
-    ldconfig || fail "Failed to run ldconfig."
+    sudo ldconfig || fail "Failed to run ldconfig."
 }
 
 cleanup_build() {
