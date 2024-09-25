@@ -1,16 +1,15 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2000,SC2034,SC2086 source=/dev/null
 
-# GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/SlyFox1186%20Scripts/7zip-installer.sh
-# Purpose: install the latest 7-zip package across multiple linux distributions and macos
-# Updated: 08-25-2024
-# Script version: 3.5
+if [[ "$EUID" -ne 0 ]]; then
+    echo "You must run this script as root or with sudo."
+    exit 1
+fi
 
 # Set variables
-readonly script_version="3.5"
+readonly script_version="4.0"
 readonly working="$PWD/7zip-install-script"
 readonly install_dir="/usr/local/bin"
-readonly download_files_dir="$working/7zip-$version"
 no_cleanup=false
 
 # Ansi escape codes for colors
@@ -19,7 +18,8 @@ GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
 NC='\033[0m'
 
-# Function to log messages
+# Functions to log messages
+
 log() {
     echo -e "${GREEN}[INFO]${NC} $1"
 }
@@ -28,12 +28,10 @@ log_update() {
     echo -e "${GREEN}[UPDATE]${NC} $1"
 }
 
-# Function to log warnings
 warn() {
     echo -e "${YELLOW}[WARNING]${NC} $1"
 }
 
-# Function to handle errors and exit
 fail() {
     echo -e "${RED}[ERROR]${NC} $1"
     echo -e "${YELLOW}[WARNING]${NC} Please create a support ticket at: https://github.com/slyfox1186/script-repo/issues"
@@ -60,15 +58,11 @@ print_version() {
 # Function to print script banner
 box_out_banner() {
     input_char=$(echo "$@" | wc -c)
-    line=$(for i in $(seq 0 $input_char); do printf '-'; done)
+    line=$(printf '%*s' "$input_char" | tr ' ' '-')
     tput bold
     line="$(tput setaf 3)$line"
     space="${line//-/ }"
-    echo -e "\n $line"
-    printf "|" ; echo -n "$space" ; printf "%s\n" "|";
-    printf "| " ;tput setaf 4; echo -n "$@"; tput setaf 3 ; printf "%s\n" " |";
-    printf "|" ; echo -n "$space" ; printf "%s\n" "|";
-    echo -e " $line\n"
+    printf "\n %s\n|%s|\n| %s |\n|%s|\n %s\n\n" "$line" "$space" "$(tput setaf 4)$@$(tput setaf 3)" "$space" "$line"
     tput sgr 0
 }
 
@@ -96,23 +90,21 @@ detect_os_distro() {
     fi
 }
 
-# Function to install dependencies based on the operating system and distribution
+# Function to install dependencies
 install_dependencies() {
     log "Installing dependencies..."
-
     case "$OS" in
         linux)
             case "$DISTRO" in
                 ubuntu|debian|raspbian)
-                    sudo apt update
+                    sudo apt update && \
                     sudo apt -y install tar wget xz-utils
                     ;;
                 centos|fedora|rhel)
                     sudo yum install -y tar wget
                     ;;
                 arch|manjaro)
-                    sudo pacman -Syu
-                    sudo pacman -Sy --needed --noconfirm tar wget xz
+                    sudo pacman -Syu --needed --noconfirm tar wget xz
                     ;;
                 opensuse*)
                     sudo zypper install -y tar wget
@@ -123,16 +115,13 @@ install_dependencies() {
             esac
             ;;
         macos)
-            if ! command -v brew &>/dev/null; then
-                fail "Homebrew is not installed. Please install Homebrew and try again."
-            fi
+            command -v brew &>/dev/null || fail "Homebrew is not installed. Please install Homebrew and try again."
             brew install tar wget
             ;;
         *)
             fail "Unsupported operating system: $OS"
             ;;
     esac
-
     log_update "Dependencies installed successfully."
 }
 
@@ -177,59 +166,55 @@ while [[ "$#" -gt 0 ]]; do
             log "Script version: $script_version"
             exit 0
             ;;
-        *)  warn "Unknown option: $1"
-            display_help
+        *)
+            warn "Unknown option: $1"; display_help
             exit 1
             ;;
     esac
     shift
 done
 
-# Display the script banner
+# Main script execution
 box_out_banner "7-Zip Install Script"
 detect_os_distro
 
 # Check if wget and tar are installed and install them if missing
-if ! command -v wget &>/dev/null || ! command -v tar &>/dev/null; then
-    install_dependencies
-fi
+command -v wget &>/dev/null && command -v tar &>/dev/null || install_dependencies
 
-# Set current version
-version="7z2408"
+# Fetch and parse the 7-zip download page
+download_page=$(wget -qO- "https://www.7-zip.org/download.html")
+release_version=$(echo "$download_page" | grep -oP '(?<=Download 7-Zip )[0-9.]+(?= \()' | head -n1)
+beta_version=$(echo "$download_page" | grep -oP '(?<=Download 7-Zip )[0-9.]+ beta(?= \()' | head -n1)
+
+if [[ -n "$beta_version" ]]; then
+    version="${release_version}-beta"
+else
+    version="$release_version"
+fi
 
 # Detect architecture and set download url based on the operating system
 case "$OS" in
     linux)
-        case "$(uname -m)" in
-            x86_64)
-                url="https://www.7-zip.org/a/${version}-linux-x64.tar.xz"
-                ;;
-            i386|i686)
-                url="https://www.7-zip.org/a/${version}-linux-x86.tar.xz"
-                ;;
-            aarch64*|armv8*)
-                url="https://www.7-zip.org/a/${version}-linux-arm64.tar.xz"
-                ;;
-            arm|armv7*)
-                url="https://www.7-zip.org/a/${version}-linux-arm.tar.xz"
-                ;;
-            *)
-                fail "Unrecognized architecture: $(uname -m)"
-                ;;
+        arch=$(uname -m)
+        case "$arch" in
+            x86_64) arch_suffix="x64" ;;
+            i386|i686) arch_suffix="x86" ;;
+            aarch64*|armv8*) arch_suffix="arm64" ;;
+            arm|armv7*) arch_suffix="arm" ;;
+            *) fail "Unrecognized architecture: $arch" ;;
         esac
+        url="https://www.7-zip.org/a/7z${version//./}-linux-$arch_suffix.tar.xz"
         ;;
-    macos) url="https://www.7-zip.org/a/${version}-mac.tar.xz" ;;
+    macos) url="https://www.7-zip.org/a/7z${version//./}-mac.tar.xz" ;;
+    *) fail "Unsupported operating system: $OS" ;;
 esac
 
 # Create variables to make the script easier to read
 tar_file="7zip-$version.tar.xz"
+download_files_dir="$working/7zip-$version"
 
 # Clean up any found existing installation directory
-if [[ -d "$working" ]]; then
-    log "Deleting existing 7zip-install-script directory..."
-    echo
-    rm -fr "$working"
-fi
+[[ -d "$working" ]] && { log "Deleting existing 7zip-install-script directory..."; rm -fr "$working"; }
 
 # Create the installation directory and the output folder to store the sourced files
 mkdir -p "$download_files_dir"
@@ -238,23 +223,15 @@ mkdir -p "$download_files_dir"
 [[ ! -f "$working/$tar_file" ]] && download "$url" "$working/$tar_file"
 
 # Extract the downloaded files
-if ! tar -xf "$working/$tar_file" -C "$download_files_dir"; then
-    fail "The script was unable to extract the archive: '$working/$tar_file'"
-fi
+tar -xf "$working/$tar_file" -C "$download_files_dir" || fail "The script was unable to extract the archive: '$working/$tar_file'"
 
 # Copy the 7z binary file to the /usr/local/bin folder
 case "$OS" in
-    linux)
-        sudo cp -f "$download_files_dir/7zzs" "$install_dir/7z" || fail "The script was unable to copy the static file '7zzs' to '$install_dir/7z'"
-        sudo chmod 755 "$install_dir/7z"
-        ;;
-    macos)
-        sudo cp -f "$download_files_dir/7zz" "$install_dir/7z" || fail "The script was unable to copy the static file '7zz' to '$install_dir/7z'"
-        sudo chmod 755 "$install_dir/7z"
-        ;;
+    linux) sudo cp -f "$download_files_dir/7zzs" "$install_dir/7z" || fail "The script was unable to copy the static file '7zzs' to '$install_dir/7z'" ;;
+    macos) sudo cp -f "$download_files_dir/7zz" "$install_dir/7z" || fail "The script was unable to copy the static file '7zz' to '$install_dir/7z'" ;;
 esac
+sudo chmod 755 "$install_dir/7z"
 
-echo
 log_update "7-Zip installation completed successfully."
 
 # Display the installed version
