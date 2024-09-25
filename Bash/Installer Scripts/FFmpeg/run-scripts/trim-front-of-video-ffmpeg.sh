@@ -91,26 +91,37 @@ process_video() {
     # Calculate start and end keyframe timestamps
     local formatted_start_time formatted_end_time
     if [[ $trim_start -gt 0 ]]; then
-        formatted_start_time=$(ffprobe -v error -select_streams v -of csv=p=0 -show_entries frame=best_effort_timestamp_time -read_intervals $trim_start%+$trim_start -i "$input_file" | head -n1)
+        formatted_start_time=$(ffprobe -v error -select_streams v -of csv=p=0 -show_entries frame=best_effort_timestamp_time -read_intervals $trim_start%+$trim_start -i "$input_file" | head -n1 | tr -d '[:space:],' | grep -E '^[0-9]+(\.[0-9]+)?$')
         if [[ -z "$formatted_start_time" ]]; then
             echo -e "${YELLOW}No keyframe found near start time $trim_start, using the exact time instead.${NC}"
             formatted_start_time=$trim_start
         fi
     else
         formatted_start_time=$(ffprobe -v error -of default=noprint_wrappers=1:nokey=1 -select_streams v:0 -skip_frame nokey -show_frames -show_entries frame=pkt_dts_time "$input_file" |
-                               grep -E '^[0-9]+\.[0-9]+$' | head -n1)
+                               grep -E '^[0-9]+(\.[0-9]+)?$' | head -n1)
     fi
 
     if [[ $trim_end -gt 0 ]]; then
         local target_end_time=$(echo "$total_duration - $trim_end" | bc)
         formatted_end_time=$(ffprobe -v error -select_streams v -of csv=p=0 -show_entries frame=best_effort_timestamp_time -read_intervals -$trim_end%-$trim_end -i "$input_file" |
-                             sort -rV | head -n1)
+                             sort -rV | head -n1 | tr -d '[:space:],' | grep -E '^[0-9]+(\.[0-9]+)?$')
         if [[ -z "$formatted_end_time" ]]; then
             echo -e "${YELLOW}No keyframe found near end time $trim_end, using the exact time instead.${NC}"
             formatted_end_time="$target_end_time"
         fi
     else
         formatted_end_time="$total_duration"
+    fi
+
+    # Validate timestamps
+    if [[ ! "$formatted_start_time" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+        echo -e "${RED}Error: Invalid start time format: $formatted_start_time${NC}"
+        return 1
+    fi
+
+    if [[ ! "$formatted_end_time" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+        echo -e "${RED}Error: Invalid end time format: $formatted_end_time${NC}"
+        return 1
     fi
 
     if [[ "$verbose" -eq 1 ]]; then
@@ -125,8 +136,8 @@ process_video() {
     fi
 
     local trim_start_cmd trim_end_cmd
-    [[ -n "$formatted_start_time" ]] && trim_start_cmd="-ss \"$formatted_start_time\""
-    [[ -n "$formatted_end_time" ]] && trim_end_cmd="-to \"$formatted_end_time\""
+    [[ -n "$formatted_start_time" ]] && trim_start_cmd="-ss $formatted_start_time"
+    [[ -n "$formatted_end_time" ]] && trim_end_cmd="-to $formatted_end_time"
 
     # Prompt user before processing in interactive mode
     if [[ "$verbose" -eq 1 && "$batch_mode" -eq 0 ]]; then
