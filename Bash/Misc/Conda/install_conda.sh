@@ -459,15 +459,9 @@ main() {
 
     log "==== Miniconda Installation Complete ===="
     log "Please restart your terminal or run 'source ~/.bashrc' to start using Conda."
-    log "Activating your new environment: conda activate $env_name"
-    conda activate $env_name
-
-    # Optional: If the script is being sourced, source ~/.bashrc to update the current shell
-    if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
-        log "Sourcing '~/.bashrc' to update the current shell session."
-        source ~/.bashrc
-    fi
-    
+    log "Activate your new environment with: conda activate $env_name"
+    echo
+    log "Full command: source ~/.bashrc; conda activate $env_name"
 }
 
 # Run the script
