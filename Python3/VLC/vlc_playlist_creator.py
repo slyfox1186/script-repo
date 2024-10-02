@@ -8,6 +8,7 @@ import platform
 import re
 import subprocess
 import sys
+import json
 import xml.dom.minidom
 import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -100,7 +101,7 @@ def natural_sort_key(path):
     return [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', name)]
 
 
-def get_video_files(start_dir, video_extensions, recursive=True):
+def get_video_files(start_dir, video_extensions, recursive=True, verbose=False):
     """
     Scan the start_dir for files with extensions in video_extensions.
     Returns a sorted list of absolute POSIX paths.
@@ -109,61 +110,170 @@ def get_video_files(start_dir, video_extensions, recursive=True):
         start_dir (Path): The directory to scan.
         video_extensions (tuple): Tuple of video file extensions to look for.
         recursive (bool): Whether to search directories recursively.
+        verbose (bool): Whether to print verbose logs.
 
     Returns:
         list of Path: Sorted list of video file paths.
     """
     video_files = []
     if recursive:
+        if verbose:
+            print(f"{CYAN}Scanning directories recursively in '{start_dir}' for video files...{RESET_ALL}")
         for root, dirs, files in os.walk(start_dir):
             for file in files:
                 if file.lower().endswith(video_extensions):
                     full_path = os.path.join(root, file)
                     video_files.append(Path(full_path).resolve())
     else:
+        if verbose:
+            print(f"{CYAN}Scanning directory '{start_dir}' for video files (non-recursive)...{RESET_ALL}")
         for file in os.listdir(start_dir):
             full_path = start_dir / file
             if full_path.is_file() and file.lower().endswith(video_extensions):
                 video_files.append(full_path.resolve())
     # Sort the video files naturally
     video_files.sort(key=natural_sort_key)
+    if verbose:
+        print(f"{CYAN}Found {len(video_files)} video file{'s' if len(video_files) != 1 else ''}:")
+        for vf in video_files:
+            print(f"  - {vf}")
     return video_files
 
 
-def get_video_duration(unix_path):
+def get_video_info(unix_path, verbose=False):
     """
-    Retrieves the duration of the video file in milliseconds using ffprobe.
-    Returns the duration as an integer.
+    Retrieves video metadata using ffprobe in JSON format.
+    Extracts duration, resolution, codec, bitrate, fps, bit-depth.
 
     Args:
         unix_path (Path): The video file path.
+        verbose (bool): Whether to print verbose logs.
 
     Returns:
-        int: Duration in milliseconds. Returns 0 if retrieval fails.
+        dict: Dictionary containing 'duration' (int) in milliseconds,
+              'resolution' (tuple) as (width, height),
+              'codec' (str),
+              'bitrate' (int) in kbps,
+              'fps' (float),
+              'bit_depth' (int)
     """
     try:
+        if verbose:
+            print(f"{CYAN}Running ffprobe on '{unix_path}'...{RESET_ALL}")
+        # Run ffprobe to get detailed metadata in JSON
         result = subprocess.run(
             [
                 'ffprobe',
                 '-v', 'error',
-                '-select_streams', 'v:0',
-                '-show_entries', 'format=duration',
-                '-of', 'default=noprint_wrappers=1:nokey=1',
+                '-print_format', 'json',
+                '-show_format',
+                '-show_streams',
                 str(unix_path)
             ],
             capture_output=True,
             text=True,
             check=True
         )
-        duration_seconds = float(result.stdout.strip())
+        data = json.loads(result.stdout)
+        
+        # Extract format information
+        format_info = data.get('format', {})
+        duration_seconds = float(format_info.get('duration', 0))
         duration_milliseconds = int(duration_seconds * 1000)
-        return duration_milliseconds
+        bitrate_kbps = int(format_info.get('bit_rate', 0)) // 1000  # Convert to kbps
+
+        # Extract stream information (video stream)
+        streams = data.get('streams', [])
+        video_stream = None
+        for stream in streams:
+            if stream.get('codec_type') == 'video':
+                video_stream = stream
+                break
+        if not video_stream:
+            raise ValueError("No video stream found.")
+
+        width = int(video_stream.get('width', 0))
+        height = int(video_stream.get('height', 0))
+        codec = video_stream.get('codec_name', 'unknown').lower()
+        r_frame_rate = video_stream.get('r_frame_rate', '0/0')
+        try:
+            num, denom = map(int, r_frame_rate.split('/'))
+            fps = num / denom if denom != 0 else 0
+        except:
+            fps = 0.0
+        bit_depth = int(video_stream.get('bits_per_raw_sample', 8))  # Default to 8 if not available
+
+        if verbose:
+            print(f"{GREEN}Retrieved info for '{unix_path.name}': Duration={duration_milliseconds}ms, "
+                  f"Resolution={width}x{height}, Codec={codec}, Bitrate={bitrate_kbps}kbps, "
+                  f"FPS={fps}, Bit-depth={bit_depth}{RESET_ALL}")
+
+        return {
+            'duration': duration_milliseconds,
+            'resolution': (width, height),
+            'codec': codec,
+            'bitrate': bitrate_kbps,
+            'fps': fps,
+            'bit_depth': bit_depth
+        }
+
     except subprocess.CalledProcessError as e:
-        print(f"\n{RED}Error retrieving duration for {unix_path}: {e}{RESET_ALL}", file=sys.stderr)
-        return 0
-    except ValueError:
-        print(f"\n{RED}Invalid duration format for {unix_path}.{RESET_ALL}", file=sys.stderr)
-        return 0
+        print(f"\n{RED}Error retrieving info for {unix_path}: {e}{RESET_ALL}", file=sys.stderr)
+        return {'duration': 0, 'resolution': (0, 0), 'codec': 'unknown', 'bitrate': 0, 'fps': 0.0, 'bit_depth': 0}
+    except (ValueError, IndexError, KeyError) as e:
+        print(f"\n{RED}Invalid info format for {unix_path}: {e}{RESET_ALL}", file=sys.stderr)
+        return {'duration': 0, 'resolution': (0, 0), 'codec': 'unknown', 'bitrate': 0, 'fps': 0.0, 'bit_depth': 0}
+
+
+def calculate_quality_score(info):
+    """
+    Calculates a quality score based on video metadata.
+
+    Args:
+        info (dict): Dictionary containing video metadata.
+
+    Returns:
+        float: Quality score.
+    """
+    score = 0.0
+
+    # Encoder type weights
+    codec_weights = {
+        'hevc': 5,
+        'x265': 5,
+        'vp9': 4,
+        'h264': 3,
+        'x264': 3,
+        'av1': 6
+    }
+    codec = info.get('codec', 'unknown')
+    codec_weight = codec_weights.get(codec, 2)  # Default weight for unknown codecs
+    score += codec_weight
+
+    # Resolution weight (more pixels = higher score)
+    width, height = info.get('resolution', (0, 0))
+    resolution_pixels = width * height
+    # Normalize resolution to a scale, e.g., 1080p=1920*1080=2073600
+    resolution_weight = resolution_pixels / 1000000  # e.g., 2073600 / 1000000 = ~2.07
+    score += resolution_weight
+
+    # Bitrate weight (higher bitrate = higher score)
+    bitrate = info.get('bitrate', 0)  # in kbps
+    bitrate_weight = bitrate / 1000  # e.g., 5000 kbps = 5
+    score += bitrate_weight
+
+    # FPS weight (higher fps = higher score)
+    fps = info.get('fps', 0.0)
+    fps_weight = fps / 60  # Assuming 60 fps is very high, scale accordingly
+    score += fps_weight
+
+    # Bit-depth weight (higher bit-depth = higher score)
+    bit_depth = info.get('bit_depth', 8)
+    bit_depth_weight = (bit_depth - 8) * 1.5  # e.g., 10-bit = (10-8)*1.5 = 3
+    if bit_depth > 8:
+        score += bit_depth_weight
+
+    return score
 
 
 def prettify_xml(tree):
@@ -182,7 +292,7 @@ def prettify_xml(tree):
     return reparsed.toprettyxml(indent="\t", encoding="UTF-8").decode('utf-8')
 
 
-def create_xspf_playlist(unix_paths, durations, distro_name, environment):
+def create_xspf_playlist(unix_paths, durations, distro_name, environment, verbose=False):
     """
     Creates an XSPF playlist XML structure with VLC extensions.
     Returns the XML as a string.
@@ -192,6 +302,7 @@ def create_xspf_playlist(unix_paths, durations, distro_name, environment):
         durations (list of int): List of video durations in milliseconds.
         distro_name (str): The WSL distribution name.
         environment (str): 'wsl' or 'windows'
+        verbose (bool): Whether to print verbose logs.
 
     Returns:
         str: Pretty-printed XSPF XML content.
@@ -261,10 +372,18 @@ def create_xspf_playlist(unix_paths, durations, distro_name, environment):
     for idx in range(len(unix_paths)):
         vlc_item = ET.SubElement(playlist_extension, f"{{{NS_VLC}}}item", tid=str(idx))
     
+    if verbose:
+        print(f"{CYAN}Creating XSPF playlist with {len(unix_paths)} tracks...{RESET_ALL}")
+
     # Generate pretty XML with tab indentation
     xml_string = ET.tostring(playlist, encoding='utf-8')
     parsed_xml = ET.ElementTree(ET.fromstring(xml_string))
-    return prettify_xml(parsed_xml)
+    pretty_xml = prettify_xml(parsed_xml)
+
+    if verbose:
+        print(f"{GREEN}XSPF playlist XML generated successfully.{RESET_ALL}")
+
+    return pretty_xml
 
 
 def is_windows_path(path):
@@ -344,7 +463,7 @@ def parse_arguments():
 Generate a VLC-compatible XSPF playlist from video files in a specified directory.
 
 This script scans the current directory for video files with specified extensions,
-extracts their durations, and compiles them into an XSPF playlist file compatible with VLC Media Player.
+extracts their durations, resolutions, and other metadata, and compiles them into an XSPF playlist file compatible with VLC Media Player.
 
 Usage Examples:
     - Scan the current directory non-recursively and generate a playlist:
@@ -358,6 +477,12 @@ Usage Examples:
 
     - Specify a custom output file path:
         python3 vlc_playlist_creator.py -o /c/home/jman/tmp/mp4/vlc_test_playlist.xspf
+
+    - Sort the playlist by video quality:
+        python3 vlc_playlist_creator.py -q
+
+    - Enable verbose logging:
+        python3 vlc_playlist_creator.py -v
 
     - Display help message:
         python3 vlc_playlist_creator.py -h
@@ -374,6 +499,12 @@ Usage Examples:
     parser.add_argument('-o', '--output-file', type=str, default='vlc.xspf',
         help='Set the relative or full path to the output VLC playlist file. Example: /home/user_name/tmp/mp4/vlc_test_playlist.xspf or mp4/vlc_test_playlist.xspf'
     )
+    parser.add_argument('-q', '--quality', action='store_true',
+        help='Sort the playlist by video quality instead of alphanumerically.'
+    )
+    parser.add_argument('-v', '--verbose', action='store_true',
+        help='Enable verbose logging for detailed output.'
+    )
 
     return parser.parse_args()
 
@@ -384,10 +515,15 @@ def main():
     recursive_search = args.recursive
     open_vlc = args.play
     output_file = args.output_file
+    sort_by_quality = args.quality
+    verbose = args.verbose
 
     # Detect the execution environment
     wsl = is_wsl()
     environment = 'wsl' if wsl else 'windows'
+
+    if verbose:
+        print(f"{CYAN}Detected environment: {environment.upper()}{RESET_ALL}")
 
     # Retrieve WSL distribution name dynamically if in WSL
     if wsl:
@@ -395,6 +531,8 @@ def main():
         if distro_name == "UnknownDistro":
             print(f"{RED}Unable to determine WSL distribution name. Please ensure you're running within a WSL environment.{RESET_ALL}", file=sys.stderr)
             sys.exit(1)
+        if verbose:
+            print(f"{CYAN}WSL Distribution Name: {distro_name}{RESET_ALL}")
     else:
         distro_name = None  # Not needed in native Windows
 
@@ -407,16 +545,21 @@ def main():
     # Define the output playlist path
     output_playlist = Path(output_file).expanduser().resolve()
 
+    if verbose:
+        print(f"{CYAN}Output playlist will be saved to: {output_playlist}{RESET_ALL}")
+
     # Ensure the output directory exists
     output_dir = output_playlist.parent
     try:
         output_dir.mkdir(parents=True, exist_ok=True)
+        if verbose:
+            print(f"{CYAN}Ensured that the output directory exists: {output_dir}{RESET_ALL}")
     except Exception as e:
         print(f"\n{RED}Error creating directories for the output file: {e}{RESET_ALL}", file=sys.stderr)
         sys.exit(1)
 
     # Get list of video files
-    video_files = get_video_files(start_dir, video_extensions, recursive=recursive_search)
+    video_files = get_video_files(start_dir, video_extensions, recursive=recursive_search, verbose=verbose)
 
     if not video_files:
         if recursive_search:
@@ -431,7 +574,8 @@ def main():
     cpu_count = MAX_WORKERS
     max_workers = cpu_count
 
-    print(f"{CYAN}Using ThreadPoolExecutor with max_workers={max_workers} to retrieve video durations.\n{RESET_ALL}")
+    if verbose:
+        print(f"{CYAN}Using ThreadPoolExecutor with max_workers={max_workers} to retrieve video information.{RESET_ALL}\n")
 
     # Calculate the dynamic width based on the longest file name
     if video_files:
@@ -439,27 +583,73 @@ def main():
     else:
         fixed_width = 30  # Fallback if no files are found
 
-    # Process video files and retrieve durations with colorized output
-    durations = [0] * len(video_files)
+    # Process video files and retrieve durations and resolutions with colorized output
+    video_infos = [{'duration': 0, 'resolution': (0, 0), 'codec': 'unknown', 'bitrate': 0, 'fps': 0.0, 'bit_depth': 0} for _ in video_files]
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        future_to_index = {executor.submit(get_video_duration, path): idx for idx, path in enumerate(video_files)}
+        future_to_index = {executor.submit(get_video_info, path, verbose): idx for idx, path in enumerate(video_files)}
 
         for future in as_completed(future_to_index):
             idx = future_to_index[future]
             try:
-                duration = future.result()
-                durations[idx] = duration
+                info = future.result()
+                video_infos[idx] = info
                 # Indicating successful processing with a green check mark in a white box, aligned with file name
                 print(f"{Fore.BLUE}Processing:{RESET_ALL} {video_files[idx].name.ljust(fixed_width)} {SUCCESS_SYMBOL} {RESET_ALL}")
             except Exception as e:
                 # Indicating an error with a red cross in a white box, aligned with file name
-                print(f"\n{RED}Error retrieving duration for {video_files[idx].name}: {e}{RESET_ALL}", file=sys.stderr)
+                print(f"\n{RED}Error retrieving info for {video_files[idx].name}: {e}{RESET_ALL}", file=sys.stderr)
                 print(f"{Fore.BLUE}Processing:{RESET_ALL} {video_files[idx].name.ljust(fixed_width)} {FAILURE_SYMBOL}")
                 print(f"{Fore.BLUE}Duration:{RESET_ALL} [Error] {FAILURE_SYMBOL}\n")
 
+    # Now sort the video_files and video_infos based on the sort_by_quality flag
+    if sort_by_quality:
+        if verbose:
+            print(f"{CYAN}Sorting playlist by video quality...{RESET_ALL}")
+        # Calculate quality scores
+        combined = list(zip(video_files, video_infos))
+        combined_with_scores = [(video, info, calculate_quality_score(info)) for video, info in combined]
+        # Sort by quality score descending
+        combined_sorted = sorted(combined_with_scores, key=lambda x: x[2], reverse=True)
+        # Unzip back to video_files and video_infos
+        if combined_sorted:
+            video_files_sorted, video_infos_sorted, scores_sorted = zip(*combined_sorted)
+            video_files = list(video_files_sorted)
+            video_infos = list(video_infos_sorted)
+            if verbose:
+                print(f"{CYAN}Playlist sorted by video quality (encoder, resolution, bitrate, fps, bit-depth).{RESET_ALL}")
+                print(f"{CYAN}Top 5 highest quality videos:{RESET_ALL}")
+                for i in range(min(5, len(video_files))):
+                    score = scores_sorted[i]
+                    print(f"  {i+1}. {video_files[i].name} - Score: {score:.2f}")
+            else:
+                print(f"{CYAN}Playlist sorted by video quality (encoder, resolution, bitrate, fps, bit-depth).{RESET_ALL}\n")
+        else:
+            print(f"{RED}No valid video information to sort by quality.{RESET_ALL}\n")
+    else:
+        if verbose:
+            print(f"{CYAN}Sorting playlist alphanumerically by filename...{RESET_ALL}")
+        # Sort alphanumerically based on natural_sort_key
+        combined = list(zip(video_files, video_infos))
+        combined_sorted = sorted(combined, key=lambda x: natural_sort_key(x[0]))
+        if combined_sorted:
+            video_files_sorted, video_infos_sorted = zip(*combined_sorted)
+            video_files = list(video_files_sorted)
+            video_infos = list(video_infos_sorted)
+            if verbose:
+                print(f"{CYAN}Playlist sorted alphanumerically by filename.{RESET_ALL}")
+                print(f"{CYAN}First 5 videos in sorted order:{RESET_ALL}")
+                for i in range(min(5, len(video_files))):
+                    print(f"  {i+1}. {video_files[i].name}")
+            else:
+                print(f"{CYAN}Playlist sorted alphanumerically by filename.{RESET_ALL}\n")
+        else:
+            print(f"{RED}No video files to sort.{RESET_ALL}\n")
+
     # Now Create XSPF playlist content using appropriate paths, if durations and video_files are valid.
-    if durations and video_files:
-        xspf_content = create_xspf_playlist(video_files, durations, distro_name, environment)
+    if video_files and video_infos:
+        # Extract durations for playlist creation
+        durations = [info['duration'] for info in video_infos]
+        xspf_content = create_xspf_playlist(video_files, durations, distro_name, environment, verbose)
     else:
         print(f"{RED}Error: No valid video files or durations found, unable to create playlist.{RESET_ALL}")
         sys.exit(1)  # Exit gracefully if something went wrong
@@ -468,12 +658,10 @@ def main():
     try:
         with open(output_playlist, 'w', encoding='utf-8') as f:
             f.write(xspf_content)
+        print(f"\n{DESCRIPTION_COLOR}Playlist successfully created at:{RESET_ALL} {VALUE_COLOR}{output_playlist}{RESET_ALL}\n")
     except Exception as e:
         print(f"\n{RED}Error writing playlist to {output_playlist}: {e}{RESET_ALL}", file=sys.stderr)
         sys.exit(1)
-    
-    # Indicate successful playlist creation
-    print(f"\n{DESCRIPTION_COLOR}Playlist successfully created at:{RESET_ALL} {VALUE_COLOR}{output_playlist}{RESET_ALL}\n")
 
     # Conditionally open the playlist with VLC if the --play flag is set
     if open_vlc:
@@ -486,11 +674,13 @@ def main():
                 print(f"{RED}Failed to convert VLC executable path to WSL format.{RESET_ALL}", file=sys.stderr)
                 sys.exit(1)
             vlc_executable = mixed_vlc_path
-            print(f"{DESCRIPTION_COLOR}Using VLC executable path in WSL:{RESET_ALL} {VALUE_COLOR}{mixed_vlc_path}{RESET_ALL}")
+            if verbose:
+                print(f"{DESCRIPTION_COLOR}Using VLC executable path in WSL:{RESET_ALL} {VALUE_COLOR}{mixed_vlc_path}{RESET_ALL}")
         else:
             # Native Windows environment
             vlc_executable = VLC_PATH
-            print(f"{DESCRIPTION_COLOR}Using VLC executable path on Windows:{RESET_ALL} {VALUE_COLOR}{vlc_executable}{RESET_ALL}")
+            if verbose:
+                print(f"{DESCRIPTION_COLOR}Using VLC executable path on Windows:{RESET_ALL} {VALUE_COLOR}{vlc_executable}{RESET_ALL}")
 
         # Verify that the VLC executable exists
         if not Path(vlc_executable).exists():
@@ -504,20 +694,24 @@ def main():
             if not mixed_playlist_path:
                 print(f"{RED}Failed to convert playlist path to Windows format.{RESET_ALL}", file=sys.stderr)
                 sys.exit(1)
-            print(f"{DESCRIPTION_COLOR}Converted playlist path for VLC:{RESET_ALL} {VALUE_COLOR}{mixed_playlist_path}{RESET_ALL}")
+            if verbose:
+                print(f"{DESCRIPTION_COLOR}Converted playlist path for VLC:{RESET_ALL} {VALUE_COLOR}{mixed_playlist_path}{RESET_ALL}")
         else:
             # Native Windows environment
             mixed_playlist_path = str(output_playlist)
-            print(f"{DESCRIPTION_COLOR}Converted playlist path for VLC:{RESET_ALL} {VALUE_COLOR}{mixed_playlist_path}{RESET_ALL}")
+            if verbose:
+                print(f"{DESCRIPTION_COLOR}Converted playlist path for VLC:{RESET_ALL} {VALUE_COLOR}{mixed_playlist_path}{RESET_ALL}")
         
         # Launch VLC with the appropriate playlist path
         try:
+            if verbose:
+                print(f"{CYAN}Launching VLC Media Player with the playlist...{RESET_ALL}")
             subprocess.run([vlc_executable, mixed_playlist_path], check=True)
-            print(f"\n{GREEN}VLC Media Player has been launched with the generated playlist.{RESET_ALL}\n")
+            print(f"{GREEN}VLC Media Player has been launched with the generated playlist.{RESET_ALL}")
         except subprocess.CalledProcessError as e:
-            print(f"\n{RED}Error opening playlist with VLC: {e}{RESET_ALL}\n", file=sys.stderr)
+            print(f"{RED}Error opening playlist with VLC: {e}{RESET_ALL}", file=sys.stderr)
         except FileNotFoundError:
-            print(f"\n{RED}VLC Media Player is not installed or not found at the specified path.{RESET_ALL}\n", file=sys.stderr)
+            print(f"{RED}VLC Media Player is not installed or not found at the specified path.{RESET_ALL}", file=sys.stderr)
 
 
 if __name__ == "__main__":
