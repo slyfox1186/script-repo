@@ -10,9 +10,14 @@ import subprocess
 import sys
 import xml.dom.minidom
 import xml.etree.ElementTree as ET
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
-VLC_PATH = 'C:\\Program Files\\VideoLAN\\VLC\\vlc.exe' # Set this as needed.
+# You must set this to the path or your VLC program as needed. This uses the defaul vlc.exe installation path.
+VLC_PATH = 'C:\\Program Files\\VideoLAN\\VLC\\vlc.exe'
+
+# Set max_workers to the full logical cpu count divided by 2 or 2 whichever is higher
+MAX_WORKERS = os.cpu_count() or 1
 
 def is_wsl():
     """
@@ -27,6 +32,7 @@ def is_wsl():
             return 'microsoft' in version_info or 'wsl' in version_info
     except Exception:
         return False
+
 
 def get_distro_name():
     """
@@ -53,6 +59,7 @@ def get_distro_name():
         print(f"Error retrieving distribution name: {e}", file=sys.stderr)
         return "UnknownDistro"
 
+
 def natural_sort_key(path):
     """
     Generates a natural sort key for sorting file paths.
@@ -65,6 +72,7 @@ def natural_sort_key(path):
     """
     name = path.name
     return [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', name)]
+
 
 def get_video_files(start_dir, video_extensions, recursive=True):
     """
@@ -94,6 +102,7 @@ def get_video_files(start_dir, video_extensions, recursive=True):
     # Sort the video files naturally
     video_files.sort(key=natural_sort_key)
     return video_files
+
 
 def get_video_duration(unix_path):
     """
@@ -130,6 +139,7 @@ def get_video_duration(unix_path):
         print(f"Invalid duration format for {unix_path}.", file=sys.stderr)
         return 0
 
+
 def prettify_xml(tree):
     """
     Return a pretty-printed XML string for the ElementTree with tab indentation.
@@ -144,6 +154,7 @@ def prettify_xml(tree):
     reparsed = xml.dom.minidom.parseString(rough_string)
     # Use tab for indentation
     return reparsed.toprettyxml(indent="\t", encoding="UTF-8").decode('utf-8')
+
 
 def create_xspf_playlist(unix_paths, durations, distro_name, environment):
     """
@@ -215,12 +226,12 @@ def create_xspf_playlist(unix_paths, durations, distro_name, environment):
         duration_elem.text = str(duration)
         
         # Extension with vlc:id
-        extension = ET.SubElement(track, 'extension', application="http://www.videolan.org/vlc/playlist/0")
+        extension = ET.SubElement(track, 'extension', application="http://www.videolan.org/vlc/playlist/ns/0/")
         vlc_id = ET.SubElement(extension, f"{{{NS_VLC}}}id")
         vlc_id.text = str(idx)
     
     # VLC extension for playlist items
-    playlist_extension = ET.SubElement(playlist, 'extension', application="http://www.videolan.org/vlc/playlist/0")
+    playlist_extension = ET.SubElement(playlist, 'extension', application="http://www.videolan.org/vlc/playlist/ns/0/")
     for idx in range(len(unix_paths)):
         vlc_item = ET.SubElement(playlist_extension, f"{{{NS_VLC}}}item", tid=str(idx))
     
@@ -228,6 +239,7 @@ def create_xspf_playlist(unix_paths, durations, distro_name, environment):
     xml_string = ET.tostring(playlist, encoding='utf-8')
     parsed_xml = ET.ElementTree(ET.fromstring(xml_string))
     return prettify_xml(parsed_xml)
+
 
 def is_windows_path(path):
     """
@@ -242,6 +254,7 @@ def is_windows_path(path):
     posix = path.as_posix()
     # In WSL, Windows paths are typically under /mnt/<drive letter>/ or /<drive letter>/
     return posix.startswith('/mnt/') or re.match(r'^/[A-Za-z]/', posix) is not None
+
 
 def convert_to_windows_path(unix_path):
     """
@@ -267,6 +280,7 @@ def convert_to_windows_path(unix_path):
         print(f"Error converting path {unix_path} to Windows path: {e}", file=sys.stderr)
         return None
 
+
 def convert_to_wsl_path(windows_path):
     """
     Converts a Windows path to a WSL-compatible UNIX path using wslpath -u.
@@ -291,6 +305,7 @@ def convert_to_wsl_path(windows_path):
         print(f"Error converting path {windows_path} to WSL path: {e}", file=sys.stderr)
         return None
 
+
 def parse_arguments():
     """
     Parses command-line arguments.
@@ -307,39 +322,42 @@ extracts their durations, and compiles them into an XSPF playlist file compatibl
 
 Usage Examples:
     - Scan the current directory non-recursively and generate a playlist:
-        python3 a.py
+        python3 vlc_playlist_creator.py
 
     - Scan the current directory and all subdirectories recursively:
-        python3 a.py -r
+        python3 vlc_playlist_creator.py -r
 
     - Scan recursively and open the playlist with VLC:
-        python3 a.py -r -p
+        python3 vlc_playlist_creator.py -r -p
+
+    - Specify a custom output file path:
+        python3 vlc_playlist_creator.py -o /c/home/jman/tmp/mp4/vlc_test_playlist.xspf
 
     - Display help message:
-        python3 a.py -h
+        python3 vlc_playlist_creator.py -h
         """,
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
 
-    parser.add_argument(
-        '-r', '--recursive',
-        action='store_true',
+    parser.add_argument('-r', '--recursive', action='store_true',
         help='Enable recursive searching for video files in all subdirectories.'
     )
-
-    parser.add_argument(
-        '-p', '--play',
-        action='store_true',
+    parser.add_argument('-p', '--play', action='store_true',
         help='Open the generated playlist with VLC Media Player after creation.'
+    )
+    parser.add_argument('-o', '--output-file', type=str, default='vlc.xspf',
+        help='Set the relative or full path to the output VLC playlist file. Example: /c/home/jman/tmp/mp4/vlc_test_playlist.xspf or mp4/vlc_test_playlist.xspf'
     )
 
     return parser.parse_args()
+
 
 def main():
     # Parse command-line arguments
     args = parse_arguments()
     recursive_search = args.recursive
     open_vlc = args.play
+    output_file = args.output_file
 
     # Detect the execution environment
     wsl = is_wsl()
@@ -363,6 +381,7 @@ def main():
     print(f"Scanning for video files in: {start_dir}")
     print(f"Recursive search enabled: {'Yes' if recursive_search else 'No'}")
     print(f"Execution environment: {'WSL' if wsl else 'Windows'}")
+    print(f"Output playlist file: {output_file}")
 
     # Get list of video files
     video_files = get_video_files(start_dir, video_extensions, recursive=recursive_search)
@@ -376,25 +395,39 @@ def main():
     
     print(f"Found {len(video_files)} video file{'s' if len(video_files) != 1 else ''}.")
 
-    # Get durations for each video file
-    durations = []
-    for unix_path in video_files:
-        duration = get_video_duration(unix_path)
-        durations.append(duration)
-        print(f"Duration for {unix_path.name}: {duration} ms")
+    # Determine max_workers based on CPU count
+    cpu_count = MAX_WORKERS
+    max_workers = max(cpu_count // 2, 2)
+
+    print(f"Using ThreadPoolExecutor with max_workers={max_workers} to retrieve video durations.")
+
+    # Get durations for each video file using ThreadPoolExecutor
+    durations = [0] * len(video_files)
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_to_index = {executor.submit(get_video_duration, path): idx for idx, path in enumerate(video_files)}
+        for future in as_completed(future_to_index):
+            idx = future_to_index[future]
+            try:
+                duration = future.result()
+            except Exception as e:
+                print(f"Error retrieving duration for {video_files[idx].name}: {e}", file=sys.stderr)
+                duration = 0
+            durations[idx] = duration
+            print(f"Duration for {video_files[idx].name}: {duration} ms")
 
     # Create XSPF playlist content using appropriate paths
     xspf_content = create_xspf_playlist(video_files, durations, distro_name, environment)
 
-    # Determine the script's directory to save the playlist
-    try:
-        script_dir = Path(__file__).parent.resolve()
-    except NameError:
-        # Fallback if __file__ is not defined
-        script_dir = Path.cwd()
-
     # Define the output playlist path
-    output_playlist = script_dir / 'vlc.xspf'
+    output_playlist = Path(output_file).expanduser().resolve()
+
+    # Ensure the output directory exists
+    output_dir = output_playlist.parent
+    try:
+        output_dir.mkdir(parents=True, exist_ok=True)
+    except Exception as e:
+        print(f"Error creating directories for the output file: {e}", file=sys.stderr)
+        sys.exit(1)
 
     # Write the XSPF content to the output file with correct encoding
     try:
@@ -448,6 +481,7 @@ def main():
             print(f"Error opening playlist with VLC: {e}", file=sys.stderr)
         except FileNotFoundError:
             print("VLC Media Player is not installed or not found at the specified path.", file=sys.stderr)
+
 
 if __name__ == "__main__":
     main()
