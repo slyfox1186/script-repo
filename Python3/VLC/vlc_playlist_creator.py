@@ -346,7 +346,7 @@ Usage Examples:
         help='Open the generated playlist with VLC Media Player after creation.'
     )
     parser.add_argument('-o', '--output-file', type=str, default='vlc.xspf',
-        help='Set the relative or full path to the output VLC playlist file. Example: /c/home/jman/tmp/mp4/vlc_test_playlist.xspf or mp4/vlc_test_playlist.xspf'
+        help='Set the relative or full path to the output VLC playlist file. Example: /home/user_name/tmp/mp4/vlc_test_playlist.xspf or mp4/vlc_test_playlist.xspf'
     )
 
     return parser.parse_args()
