@@ -13,11 +13,37 @@ import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
-# You must set this to the path or your VLC program as needed. This uses the defaul vlc.exe installation path.
+# Import colorama for cross-platform colored output
+try:
+    from colorama import init, Fore, Back, Style
+except ImportError:
+    print("colorama module not found. Please install it using 'pip install colorama'.", file=sys.stderr)
+    sys.exit(1)
+
+# Initialize colorama
+init(autoreset=True)
+
+# Define color constants with clear contrasts
+GREEN = Fore.GREEN + Style.BRIGHT
+RED = Fore.RED + Style.BRIGHT
+CYAN = Fore.CYAN + Style.BRIGHT
+YELLOW = Fore.YELLOW + Style.BRIGHT
+WHITE_BG = Back.WHITE
+RESET_ALL = Style.RESET_ALL
+
+# Define additional color constants for descriptions and values
+DESCRIPTION_COLOR = YELLOW
+VALUE_COLOR = Fore.WHITE + Style.BRIGHT
+
+# Define symbols with colored backgrounds
+SUCCESS_SYMBOL = f"{WHITE_BG}{GREEN}✓{RESET_ALL}"
+FAILURE_SYMBOL = f"{WHITE_BG}{RED}✗{RESET_ALL}"
+
+# You must set this to the path of your VLC program as needed. This uses the default vlc.exe installation path.
 VLC_PATH = 'C:\\Program Files\\VideoLAN\\VLC\\vlc.exe'
 
-# Set max_workers to the full logical cpu count divided by 2 or 2 whichever is higher
-MAX_WORKERS = os.cpu_count() or 1
+# Set max_workers to the full logical CPU count divided by 2 or 2 whichever is higher
+MAX_WORKERS = (os.cpu_count() // 2) if (os.cpu_count() and os.cpu_count() // 2 >= 2) else 2
 
 def is_wsl():
     """
@@ -56,7 +82,7 @@ def get_distro_name():
         else:
             return distro_name
     except Exception as e:
-        print(f"Error retrieving distribution name: {e}", file=sys.stderr)
+        print(f"\n{RED}Error retrieving distribution name: {e}{RESET_ALL}", file=sys.stderr)
         return "UnknownDistro"
 
 
@@ -133,10 +159,10 @@ def get_video_duration(unix_path):
         duration_milliseconds = int(duration_seconds * 1000)
         return duration_milliseconds
     except subprocess.CalledProcessError as e:
-        print(f"Error retrieving duration for {unix_path}: {e}", file=sys.stderr)
+        print(f"\n{RED}Error retrieving duration for {unix_path}: {e}{RESET_ALL}", file=sys.stderr)
         return 0
     except ValueError:
-        print(f"Invalid duration format for {unix_path}.", file=sys.stderr)
+        print(f"\n{RED}Invalid duration format for {unix_path}.{RESET_ALL}", file=sys.stderr)
         return 0
 
 
@@ -201,7 +227,7 @@ def create_xspf_playlist(unix_paths, durations, distro_name, environment):
                 if windows_path:
                     location.text = f"file:///{windows_path.replace('\\', '/')}"
                 else:
-                    print(f"Skipping file due to path conversion failure: {path}", file=sys.stderr)
+                    print(f"\n{RED}Skipping file due to path conversion failure: {path}{RESET_ALL}", file=sys.stderr)
                     continue
             else:
                 # WSL filesystem path
@@ -277,7 +303,7 @@ def convert_to_windows_path(unix_path):
         windows_path = result.stdout.strip()
         return windows_path
     except subprocess.CalledProcessError as e:
-        print(f"Error converting path {unix_path} to Windows path: {e}", file=sys.stderr)
+        print(f"\n{RED}Error converting path {unix_path} to Windows path: {e}{RESET_ALL}", file=sys.stderr)
         return None
 
 
@@ -302,7 +328,7 @@ def convert_to_wsl_path(windows_path):
         unix_path = result.stdout.strip()
         return unix_path
     except subprocess.CalledProcessError as e:
-        print(f"Error converting path {windows_path} to WSL path: {e}", file=sys.stderr)
+        print(f"\n{RED}Error converting path {windows_path} to WSL path: {e}{RESET_ALL}", file=sys.stderr)
         return None
 
 
@@ -367,7 +393,7 @@ def main():
     if wsl:
         distro_name = get_distro_name()
         if distro_name == "UnknownDistro":
-            print("Unable to determine WSL distribution name. Please ensure you're running within a WSL environment.", file=sys.stderr)
+            print(f"{RED}Unable to determine WSL distribution name. Please ensure you're running within a WSL environment.{RESET_ALL}", file=sys.stderr)
             sys.exit(1)
     else:
         distro_name = None  # Not needed in native Windows
@@ -378,46 +404,6 @@ def main():
     # Determine the directory to scan (current working directory)
     start_dir = Path.cwd()
 
-    print(f"Scanning for video files in: {start_dir}")
-    print(f"Recursive search enabled: {'Yes' if recursive_search else 'No'}")
-    print(f"Execution environment: {'WSL' if wsl else 'Windows'}")
-    print(f"Output playlist file: {output_file}")
-
-    # Get list of video files
-    video_files = get_video_files(start_dir, video_extensions, recursive=recursive_search)
-
-    if not video_files:
-        if recursive_search:
-            print("No video files found in the specified directory and its subdirectories.")
-        else:
-            print("No video files found in the current directory.")
-        sys.exit(0)
-    
-    print(f"Found {len(video_files)} video file{'s' if len(video_files) != 1 else ''}.")
-
-    # Determine max_workers based on CPU count
-    cpu_count = MAX_WORKERS
-    max_workers = max(cpu_count // 2, 2)
-
-    print(f"Using ThreadPoolExecutor with max_workers={max_workers} to retrieve video durations.")
-
-    # Get durations for each video file using ThreadPoolExecutor
-    durations = [0] * len(video_files)
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        future_to_index = {executor.submit(get_video_duration, path): idx for idx, path in enumerate(video_files)}
-        for future in as_completed(future_to_index):
-            idx = future_to_index[future]
-            try:
-                duration = future.result()
-            except Exception as e:
-                print(f"Error retrieving duration for {video_files[idx].name}: {e}", file=sys.stderr)
-                duration = 0
-            durations[idx] = duration
-            print(f"Duration for {video_files[idx].name}: {duration} ms")
-
-    # Create XSPF playlist content using appropriate paths
-    xspf_content = create_xspf_playlist(video_files, durations, distro_name, environment)
-
     # Define the output playlist path
     output_playlist = Path(output_file).expanduser().resolve()
 
@@ -426,18 +412,68 @@ def main():
     try:
         output_dir.mkdir(parents=True, exist_ok=True)
     except Exception as e:
-        print(f"Error creating directories for the output file: {e}", file=sys.stderr)
+        print(f"\n{RED}Error creating directories for the output file: {e}{RESET_ALL}", file=sys.stderr)
         sys.exit(1)
+
+    # Get list of video files
+    video_files = get_video_files(start_dir, video_extensions, recursive=recursive_search)
+
+    if not video_files:
+        if recursive_search:
+            print(f"{RED}No video files found in the specified directory and its subdirectories.{RESET_ALL}")
+        else:
+            print(f"{RED}No video files found in the current directory.{RESET_ALL}")
+        sys.exit(0)
+    
+    print(f"{CYAN}Found {len(video_files)} video file{'s' if len(video_files) != 1 else ''}.\n{RESET_ALL}")
+
+    # Determine max_workers based on CPU count
+    cpu_count = MAX_WORKERS
+    max_workers = cpu_count
+
+    print(f"{CYAN}Using ThreadPoolExecutor with max_workers={max_workers} to retrieve video durations.\n{RESET_ALL}")
+
+    # Calculate the dynamic width based on the longest file name
+    if video_files:
+        fixed_width = max(len(video.name) for video in video_files) + 5  # Add padding to ensure proper alignment
+    else:
+        fixed_width = 30  # Fallback if no files are found
+
+    # Process video files and retrieve durations with colorized output
+    durations = [0] * len(video_files)
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_to_index = {executor.submit(get_video_duration, path): idx for idx, path in enumerate(video_files)}
+
+        for future in as_completed(future_to_index):
+            idx = future_to_index[future]
+            try:
+                duration = future.result()
+                durations[idx] = duration
+                # Indicating successful processing with a green check mark in a white box, aligned with file name
+                print(f"{Fore.BLUE}Processing:{RESET_ALL} {video_files[idx].name.ljust(fixed_width)} {SUCCESS_SYMBOL} {RESET_ALL}")
+            except Exception as e:
+                # Indicating an error with a red cross in a white box, aligned with file name
+                print(f"\n{RED}Error retrieving duration for {video_files[idx].name}: {e}{RESET_ALL}", file=sys.stderr)
+                print(f"{Fore.BLUE}Processing:{RESET_ALL} {video_files[idx].name.ljust(fixed_width)} {FAILURE_SYMBOL}")
+                print(f"{Fore.BLUE}Duration:{RESET_ALL} [Error] {FAILURE_SYMBOL}\n")
+
+    # Now Create XSPF playlist content using appropriate paths, if durations and video_files are valid.
+    if durations and video_files:
+        xspf_content = create_xspf_playlist(video_files, durations, distro_name, environment)
+    else:
+        print(f"{RED}Error: No valid video files or durations found, unable to create playlist.{RESET_ALL}")
+        sys.exit(1)  # Exit gracefully if something went wrong
 
     # Write the XSPF content to the output file with correct encoding
     try:
         with open(output_playlist, 'w', encoding='utf-8') as f:
             f.write(xspf_content)
     except Exception as e:
-        print(f"Error writing playlist to {output_playlist}: {e}", file=sys.stderr)
+        print(f"\n{RED}Error writing playlist to {output_playlist}: {e}{RESET_ALL}", file=sys.stderr)
         sys.exit(1)
     
-    print(f"Playlist successfully created at: {output_playlist}")
+    # Indicate successful playlist creation
+    print(f"\n{DESCRIPTION_COLOR}Playlist successfully created at:{RESET_ALL} {VALUE_COLOR}{output_playlist}{RESET_ALL}\n")
 
     # Conditionally open the playlist with VLC if the --play flag is set
     if open_vlc:
@@ -447,18 +483,18 @@ def main():
             # Convert to WSL path
             mixed_vlc_path = convert_to_wsl_path(vlc_windows_path)
             if not mixed_vlc_path:
-                print("Failed to convert VLC executable path to WSL format.", file=sys.stderr)
+                print(f"{RED}Failed to convert VLC executable path to WSL format.{RESET_ALL}", file=sys.stderr)
                 sys.exit(1)
             vlc_executable = mixed_vlc_path
-            print(f"Using VLC executable path in WSL: {vlc_executable}")
+            print(f"{DESCRIPTION_COLOR}Using VLC executable path in WSL:{RESET_ALL} {VALUE_COLOR}{mixed_vlc_path}{RESET_ALL}")
         else:
             # Native Windows environment
             vlc_executable = VLC_PATH
-            print(f"Using VLC executable path on Windows: {vlc_executable}")
+            print(f"{DESCRIPTION_COLOR}Using VLC executable path on Windows:{RESET_ALL} {VALUE_COLOR}{vlc_executable}{RESET_ALL}")
 
         # Verify that the VLC executable exists
         if not Path(vlc_executable).exists():
-            print(f"VLC executable not found at: {vlc_executable}", file=sys.stderr)
+            print(f"\n{RED}VLC executable not found at: {vlc_executable}{RESET_ALL}", file=sys.stderr)
             sys.exit(1)
 
         # Determine the playlist path based on environment
@@ -466,21 +502,22 @@ def main():
             # Convert the playlist path to Windows format
             mixed_playlist_path = convert_to_windows_path(str(output_playlist))
             if not mixed_playlist_path:
-                print("Failed to convert playlist path to Windows format.", file=sys.stderr)
+                print(f"{RED}Failed to convert playlist path to Windows format.{RESET_ALL}", file=sys.stderr)
                 sys.exit(1)
-            print(f"Converted playlist path for VLC: {mixed_playlist_path}")
+            print(f"{DESCRIPTION_COLOR}Converted playlist path for VLC:{RESET_ALL} {VALUE_COLOR}{mixed_playlist_path}{RESET_ALL}")
         else:
             # Native Windows environment
             mixed_playlist_path = str(output_playlist)
+            print(f"{DESCRIPTION_COLOR}Converted playlist path for VLC:{RESET_ALL} {VALUE_COLOR}{mixed_playlist_path}{RESET_ALL}")
         
         # Launch VLC with the appropriate playlist path
         try:
             subprocess.run([vlc_executable, mixed_playlist_path], check=True)
-            print("VLC Media Player has been launched with the generated playlist.")
+            print(f"\n{GREEN}VLC Media Player has been launched with the generated playlist.{RESET_ALL}\n")
         except subprocess.CalledProcessError as e:
-            print(f"Error opening playlist with VLC: {e}", file=sys.stderr)
+            print(f"\n{RED}Error opening playlist with VLC: {e}{RESET_ALL}\n", file=sys.stderr)
         except FileNotFoundError:
-            print("VLC Media Player is not installed or not found at the specified path.", file=sys.stderr)
+            print(f"\n{RED}VLC Media Player is not installed or not found at the specified path.{RESET_ALL}\n", file=sys.stderr)
 
 
 if __name__ == "__main__":
