@@ -72,6 +72,23 @@ while true; do
     esac
 done
 
+# Function to prompt for input file
+prompt_for_input() {
+    while true; do
+        read -p "Enter the path to the input video file (or 'q' to quit): " single_input_file
+        if [[ "$single_input_file" == "q" ]]; then
+            echo "Quitting..."
+            exit 0
+        elif [[ -f "$single_input_file" ]]; then
+            video_files+=("$single_input_file")
+            clear
+            break
+        else
+            echo -e "${RED}Error: The file $single_input_file does not exist. Please try again.${NC}"
+        fi
+    done
+}
+
 # Function to find the nearest keyframe
 find_nearest_keyframe() {
     local input_file="$1"
@@ -158,9 +175,11 @@ while true; do
 
         # Prompt user before processing in interactive mode
         if [[ "$verbose" -eq 1 && "$batch_mode" -eq 0 ]]; then
-            read -p "Proceed with trimming? (y/n) " choice
+            read -p "Proceed with trimming? (y/n) [Y] " choice
             echo    # Move to a new line
-            if [[ "$choice" != [Yy] ]]; then
+            if [[ "$choice" == "" || "$choice" == [Yy]* ]]; then
+                echo -e "${GREEN}Proceeding with trimming...${NC}"
+            else
                 echo -e "${YELLOW}Skipping $input_file based on user choice.${NC}"
                 continue
             fi
@@ -188,7 +207,11 @@ while true; do
 
         # In interactive mode, prompt user to continue
         if [[ "$batch_mode" -eq 0 ]]; then
-            read -p "Press Enter to continue..."
+            read -p "Press Enter to continue or 'q' to quit..." choice
+            if [[ "$choice" == [Qq] ]]; then
+                echo -e "${YELLOW}Exiting as per user request.${NC}"
+                exit 0
+            fi
             clear
         fi
     done
