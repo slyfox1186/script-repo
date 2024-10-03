@@ -13,6 +13,7 @@ import xml.dom.minidom
 import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
+from urllib.parse import quote
 
 # Import colorama for cross-platform colored output
 try:
@@ -322,7 +323,6 @@ def create_xspf_playlist(unix_paths, durations, distro_name, environment, verbos
         
         # Location
         location = ET.SubElement(track, 'location')
-        # Determine the correct file URL based on environment and file location
         if environment == 'wsl':
             # In WSL, check if the path is in Windows filesystem
             if is_windows_path(path):
@@ -338,18 +338,14 @@ def create_xspf_playlist(unix_paths, durations, distro_name, environment, verbos
                 formatted_path = path.as_posix().lstrip('/')
                 location.text = f"file://wsl.localhost/{distro_name}/{formatted_path}"
         elif environment == 'windows':
-            # Native Windows environment
-            windows_path = str(path)
-            # Ensure backslashes are replaced with forward slashes and colon after drive letter
-            windows_path = windows_path.replace('\\', '/')
-            # Handle paths that start with a drive letter
-            if not re.match(r'^[A-Za-z]:/', windows_path):
-                # If path does not start with drive letter, attempt to add it
-                windows_path = f"C:/{windows_path.lstrip('/')}"
-            location.text = f"file:///{windows_path}"
+            windows_path = str(path).replace('\\', '/')
+            # URL-encode the path
+            encoded_path = quote(windows_path, safe='/')
+            location.text = f"file:///{encoded_path}"
         else:
-            # Fallback to absolute path
-            location.text = f"file:///{path.as_posix()}"
+            # Fallback to absolute path and URL-encode it
+            encoded_path = quote(path.as_posix(), safe='/')
+            location.text = f"file:///{encoded_path}"
 
         # Duration
         duration_elem = ET.SubElement(track, 'duration')
@@ -389,8 +385,11 @@ def is_windows_path(path):
         bool: True if path is in Windows filesystem, False otherwise.
     """
     posix = path.as_posix()
-    # In WSL, Windows paths are typically under /mnt/<drive letter>/ or /<drive letter>/
-    return posix.startswith('/mnt/') or re.match(r'^/[A-Za-z]/', posix) is not None
+    # Check for various possible Windows path patterns
+    return (posix.startswith('/mnt/') or 
+            posix.startswith('/c/') or
+            re.match(r'^/[A-Za-z]/', posix) is not None or
+            '/Windows/' in posix)
 
 def convert_to_windows_path(unix_path):
     """
@@ -438,6 +437,26 @@ def convert_to_wsl_path(windows_path):
         return unix_path
     except subprocess.CalledProcessError as e:
         print(f"\n{RED}Error converting path {windows_path} to WSL path: {e}{RESET_ALL}", file=sys.stderr)
+        return None
+
+def get_windows_cmd_path(verbose=False):
+    """
+    Get the WSL path to cmd.exe using wslpath.
+    """
+    windows_cmd_path = r'C:\Windows\System32\cmd.exe'
+    try:
+        result = subprocess.run(
+            ['wslpath', '-u', windows_cmd_path],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        wsl_cmd_path = result.stdout.strip()
+        if verbose:
+            print(f"{CYAN}Found cmd.exe at: {wsl_cmd_path}{RESET_ALL}")
+        return wsl_cmd_path
+    except subprocess.CalledProcessError as e:
+        print(f"{RED}Error converting Windows cmd path to WSL path: {e}{RESET_ALL}", file=sys.stderr)
         return None
 
 def parse_arguments():
@@ -690,11 +709,21 @@ def main():
             if verbose:
                 print(f"{DESCRIPTION_COLOR}Converted playlist path for VLC:{RESET_ALL} {VALUE_COLOR}{mixed_playlist_path}{RESET_ALL}")
         
-        # Launch VLC as a background process (non-blocking)
+        # Launch VLC
         try:
             if verbose:
-                print(f"{CYAN}Launching VLC Media Player with the playlist (non-blocking)...{RESET_ALL}")
-            subprocess.Popen([vlc_executable, mixed_playlist_path])  # Use Popen for non-blocking process
+                print(f"{CYAN}Attempting to launch VLC...{RESET_ALL}")
+                print(f"{CYAN}Environment: {environment}{RESET_ALL}")
+                print(f"{CYAN}VLC executable: {vlc_executable}{RESET_ALL}")
+                print(f"{CYAN}Playlist path: {mixed_playlist_path}{RESET_ALL}")
+            
+            # Use subprocess.Popen to launch VLC without waiting, redirecting output
+            with open(os.devnull, 'w') as devnull:
+                subprocess.Popen([vlc_executable, mixed_playlist_path], 
+                                 start_new_session=True, 
+                                 stdout=devnull, 
+                                 stderr=devnull)
+            
             print(f"{GREEN}VLC Media Player has been launched with the generated playlist.{RESET_ALL}")
         except subprocess.CalledProcessError as e:
             print(f"{RED}Error opening playlist with VLC: {e}{RESET_ALL}", file=sys.stderr)
