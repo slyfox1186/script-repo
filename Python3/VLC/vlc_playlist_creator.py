@@ -13,7 +13,7 @@ import xml.dom.minidom
 import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from urllib.parse import quote
+from urllib.parse import quote, unquote
 import shlex
 
 # Import colorama for cross-platform colored output
@@ -38,9 +38,9 @@ RESET_ALL = Style.RESET_ALL
 DESCRIPTION_COLOR = YELLOW
 VALUE_COLOR = Fore.WHITE + Style.BRIGHT
 
-# Define symbols with colored backgrounds
-SUCCESS_SYMBOL = f"{WHITE_BG}{GREEN}✓{RESET_ALL}"
-FAILURE_SYMBOL = f"{WHITE_BG}{RED}✗{RESET_ALL}"
+# Define symbols without colored backgrounds
+SUCCESS_SYMBOL = f"{GREEN}✓{RESET_ALL}"
+FAILURE_SYMBOL = f"{RED}✗{RESET_ALL}"
 
 # You must set this to the path of your VLC program as needed. This uses the default vlc.exe installation path.
 VLC_PATH = 'C:\\Program Files\\VideoLAN\\VLC\\vlc.exe'
@@ -120,15 +120,15 @@ def get_video_files(start_dir, video_extensions, recursive=True, verbose=False):
         for root, dirs, files in os.walk(start_dir):
             for file in files:
                 if file.lower().endswith(video_extensions):
-                    full_path = os.path.join(root, file)
-                    video_files.append(Path(full_path).resolve())
+                    full_path = Path(os.path.join(root, file)).resolve()
+                    video_files.append(full_path)
     else:
         if verbose:
             print(f"{CYAN}Scanning directory '{start_dir}' for video files (non-recursive)...{RESET_ALL}")
         for file in os.listdir(start_dir):
-            full_path = start_dir / file
+            full_path = (start_dir / file).resolve()
             if full_path.is_file() and file.lower().endswith(video_extensions):
-                video_files.append(full_path.resolve())
+                video_files.append(full_path)
     # Sort the video files naturally
     video_files.sort(key=natural_sort_key)
     if verbose:
@@ -137,26 +137,25 @@ def get_video_files(start_dir, video_extensions, recursive=True, verbose=False):
             print(f"  - {vf}")
     return video_files
 
-def get_video_info(unix_path, verbose=False):
+def get_video_info(path, verbose=False):
     """
     Retrieves video metadata using ffprobe in JSON format.
     Extracts duration, resolution, codec, bitrate, fps, bit-depth.
 
     Args:
-        unix_path (Path): The video file path.
+        path (Path): The video file path.
         verbose (bool): Whether to print verbose logs.
 
     Returns:
-        dict: Dictionary containing 'duration' (int) in milliseconds,
-              'resolution' (tuple) as (width, height),
-              'codec' (str),
-              'bitrate' (int) in kbps,
-              'fps' (float),
-              'bit_depth' (int)
+        dict: Dictionary containing video metadata.
     """
     try:
         if verbose:
-            print(f"{CYAN}Running ffprobe on '{unix_path}'...{RESET_ALL}")
+            print(f"{CYAN}Running ffprobe on '{path}'...{RESET_ALL}")
+        
+        # Use the raw string representation of the path
+        escaped_path = str(path)
+        
         # Run ffprobe to get detailed metadata in JSON
         result = subprocess.run(
             [
@@ -165,7 +164,7 @@ def get_video_info(unix_path, verbose=False):
                 '-print_format', 'json',
                 '-show_format',
                 '-show_streams',
-                str(unix_path)
+                escaped_path
             ],
             capture_output=True,
             text=True,
@@ -181,11 +180,7 @@ def get_video_info(unix_path, verbose=False):
 
         # Extract stream information (video stream)
         streams = data.get('streams', [])
-        video_stream = None
-        for stream in streams:
-            if stream.get('codec_type') == 'video':
-                video_stream = stream
-                break
+        video_stream = next((stream for stream in streams if stream.get('codec_type') == 'video'), None)
         if not video_stream:
             raise ValueError("No video stream found.")
 
@@ -201,7 +196,7 @@ def get_video_info(unix_path, verbose=False):
         bit_depth = int(video_stream.get('bits_per_raw_sample', 8))  # Default to 8 if not available
 
         if verbose:
-            print(f"{GREEN}Retrieved info for '{unix_path.name}': Duration={duration_milliseconds}ms, "
+            print(f"{GREEN}Retrieved info for '{path.name}': Duration={duration_milliseconds}ms, "
                   f"Resolution={width}x{height}, Codec={codec}, Bitrate={bitrate_kbps}kbps, "
                   f"FPS={fps}, Bit-depth={bit_depth}{RESET_ALL}")
 
@@ -215,10 +210,10 @@ def get_video_info(unix_path, verbose=False):
         }
 
     except subprocess.CalledProcessError as e:
-        print(f"\n{RED}Error retrieving info for {unix_path}: {e}{RESET_ALL}", file=sys.stderr)
+        print(f"\n{RED}Error retrieving info for {path}: {e}{RESET_ALL}", file=sys.stderr)
         return {'duration': 0, 'resolution': (0, 0), 'codec': 'unknown', 'bitrate': 0, 'fps': 0.0, 'bit_depth': 0}
     except (ValueError, IndexError, KeyError) as e:
-        print(f"\n{RED}Invalid info format for {unix_path}: {e}{RESET_ALL}", file=sys.stderr)
+        print(f"\n{RED}Invalid info format for {path}: {e}{RESET_ALL}", file=sys.stderr)
         return {'duration': 0, 'resolution': (0, 0), 'codec': 'unknown', 'bitrate': 0, 'fps': 0.0, 'bit_depth': 0}
 
 def calculate_quality_score(info):
@@ -287,13 +282,13 @@ def prettify_xml(tree):
     # Use tab for indentation
     return reparsed.toprettyxml(indent="\t", encoding="UTF-8").decode('utf-8')
 
-def create_xspf_playlist(unix_paths, durations, distro_name, environment, verbose=False):
+def create_xspf_playlist(paths, durations, distro_name, environment, verbose=False):
     """
     Creates an XSPF playlist XML structure with VLC extensions.
     Returns the XML as a string.
 
     Args:
-        unix_paths (list of Path): List of UNIX paths to video files.
+        paths (list of Path): List of UNIX paths to video files.
         durations (list of int): List of video durations in milliseconds.
         distro_name (str): The WSL distribution name.
         environment (str): 'wsl' or 'windows'
@@ -319,7 +314,7 @@ def create_xspf_playlist(unix_paths, durations, distro_name, environment, verbos
     trackList = ET.SubElement(playlist, 'trackList')
 
     # Add tracks
-    for idx, (path, duration) in enumerate(zip(unix_paths, durations)):
+    for idx, (path, duration) in enumerate(zip(paths, durations)):
         track = ET.SubElement(trackList, 'track')
         
         # Location
@@ -330,14 +325,14 @@ def create_xspf_playlist(unix_paths, durations, distro_name, environment, verbos
                 # Convert to Windows path
                 windows_path = convert_to_windows_path(str(path))
                 if windows_path:
-                    location.text = "file:///{0}".format(windows_path.replace('\\', '/'))
+                    location.text = "file:///{0}".format(quote(windows_path.replace('\\', '/'), safe='/'))
                 else:
                     print(f"\n{RED}Skipping file due to path conversion failure: {path}{RESET_ALL}", file=sys.stderr)
                     continue
             else:
                 # WSL filesystem path
                 formatted_path = path.as_posix().lstrip('/')
-                location.text = f"file://wsl.localhost/{distro_name}/{formatted_path}"
+                location.text = f"file://wsl.localhost/{distro_name}/{quote(formatted_path, safe='/')}"
         elif environment == 'windows':
             windows_path = str(path).replace('\\', '/')
             # URL-encode the path
@@ -359,11 +354,11 @@ def create_xspf_playlist(unix_paths, durations, distro_name, environment, verbos
     
     # VLC extension for playlist items
     playlist_extension = ET.SubElement(playlist, 'extension', application="http://www.videolan.org/vlc/playlist/ns/0/")
-    for idx in range(len(unix_paths)):
+    for idx in range(len(paths)):
         vlc_item = ET.SubElement(playlist_extension, f"{{{NS_VLC}}}item", tid=str(idx))
     
     if verbose:
-        print(f"{CYAN}Creating XSPF playlist with {len(unix_paths)} tracks...{RESET_ALL}")
+        print(f"{CYAN}Creating XSPF playlist with {len(paths)} tracks...{RESET_ALL}")
 
     # Generate pretty XML with tab indentation
     xml_string = ET.tostring(playlist, encoding='utf-8')
@@ -602,7 +597,7 @@ def main():
                 info = future.result()
                 video_infos[idx] = info
                 # Indicating successful processing with a green check mark in a white box, aligned with file name
-                print(f"{Fore.BLUE}Processing:{RESET_ALL} {video_files[idx].name.ljust(fixed_width)} {SUCCESS_SYMBOL} {RESET_ALL}")
+                print(f"{Fore.BLUE}Processing:{RESET_ALL} {video_files[idx].name.ljust(fixed_width)} {SUCCESS_SYMBOL}")
             except Exception as e:
                 # Indicating an error with a red cross in a white box, aligned with file name
                 print(f"\n{RED}Error retrieving info for {video_files[idx].name}: {e}{RESET_ALL}", file=sys.stderr)
