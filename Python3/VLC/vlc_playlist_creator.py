@@ -15,6 +15,7 @@ import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from urllib.parse import quote
+import shlex
 
 # Import colorama for cross-platform colored output
 try:
@@ -718,12 +719,18 @@ def main():
                 print(f"{CYAN}VLC executable: {vlc_executable}{RESET_ALL}")
                 print(f"{CYAN}Playlist path: {mixed_playlist_path}{RESET_ALL}")
             
-            # Use subprocess.Popen to launch VLC without waiting, redirecting output
-            with open(os.devnull, 'w') as devnull:
+            if environment == 'wsl':
+                # Use nohup to run VLC in the background
+                command = f"nohup {shlex.quote(vlc_executable)} {shlex.quote(mixed_playlist_path)} > /dev/null 2>&1 &"
+                subprocess.Popen(command, shell=True, start_new_session=True)
+            else:
+                # On Windows, use CREATE_NEW_CONSOLE to run VLC in a new console window
+                startupinfo = subprocess.STARTUPINFO()
+                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                startupinfo.wShowWindow = subprocess.SW_HIDE
                 subprocess.Popen([vlc_executable, mixed_playlist_path], 
-                                 start_new_session=True, 
-                                 stdout=devnull, 
-                                 stderr=devnull)
+                                 startupinfo=startupinfo,
+                                 creationflags=subprocess.CREATE_NEW_CONSOLE)
             
             print(f"{GREEN}VLC Media Player has been launched with the generated playlist.{RESET_ALL}")
         except subprocess.CalledProcessError as e:
