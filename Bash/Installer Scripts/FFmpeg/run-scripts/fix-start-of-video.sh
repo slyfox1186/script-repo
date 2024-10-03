@@ -54,7 +54,13 @@ while true; do
         -f | --file ) file_list="$2"; batch_mode=1; shift 2 ;;
         -i | --input ) single_input_file="$2"; shift 2 ;;
         -l | --list ) input_list="$2"; batch_mode=1; shift 2 ;;
-        --start ) trim_start="$2"; shift 2 ;;
+        --start ) 
+            if [[ "$2" =~ ^[0-9]+:[0-9]+:[0-9]+$ ]]; then
+                trim_start=$(echo "$2" | awk -F: '{ print ($1 * 3600) + ($2 * 60) + $3 }')
+            else
+                trim_start="$2"
+            fi
+            shift 2 ;;
         --end ) trim_end="$2"; shift 2 ;;
         -a | --append ) append_text="$2"; shift 2 ;;
         -p | --prepend ) prepend_text="$2"; shift 2 ;;
@@ -66,21 +72,22 @@ while true; do
     esac
 done
 
-# Function to prompt for input file
-prompt_for_input() {
-    while true; do
-        read -p "Enter the path to the input video file (or 'q' to quit): " single_input_file
-        if [[ "$single_input_file" == "q" ]]; then
-            echo "Quitting..."
-            exit 0
-        elif [[ -f "$single_input_file" ]]; then
-            video_files+=("$single_input_file")
-            clear
-            break
-        else
-            echo -e "${RED}Error: The file $single_input_file does not exist. Please try again.${NC}"
-        fi
-    done
+# Function to find the nearest keyframe
+find_nearest_keyframe() {
+    local input_file="$1"
+    local target_time="$2"
+    
+    ffprobe -v error -skip_frame nokey -select_streams v:0 -show_entries frame=pkt_pts_time -of csv=p=0 "$input_file" |
+    awk -v target="$target_time" '
+    function abs(x) { return x < 0 ? -x : x }
+    {
+        diff = abs($1 - target)
+        if (diff < min_diff || NR == 1) {
+            min_diff = diff
+            nearest = $1
+        }
+    }
+    END { print nearest }'
 }
 
 # Loop to process videos and prompt for new input
@@ -113,7 +120,7 @@ while true; do
 
         # Calculate start and end keyframe timestamps
         if [[ $trim_start -gt 0 ]]; then
-            formatted_start_time=$(ffprobe -v error -select_streams v -of csv=p=0 -show_entries frame=best_effort_timestamp_time -read_intervals $trim_start%+$trim_start -i "$input_file" | head -n1)
+            formatted_start_time=$(find_nearest_keyframe "$input_file" "$trim_start")
             if [[ -z "$formatted_start_time" ]]; then
                 echo -e "${YELLOW}No keyframe found near start time $trim_start, using the exact time instead.${NC}"
                 formatted_start_time=$trim_start
@@ -146,7 +153,7 @@ while true; do
             final_output="$input_file"
         fi
 
-        [[ -n "$formatted_start_time" ]] && trim_start_cmd="-ss \"$formatted_start_time\""
+        [[ -n "$formatted_start_time" ]] && trim_start_cmd="-ss $formatted_start_time"
         [[ -n "$formatted_end_time" ]] && trim_end_cmd="-to \"$formatted_end_time\""
 
         # Prompt user before processing in interactive mode
