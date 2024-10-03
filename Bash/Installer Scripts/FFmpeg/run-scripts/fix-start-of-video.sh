@@ -107,6 +107,12 @@ find_nearest_keyframe() {
     END { print nearest }'
 }
 
+# Function to convert seconds to HH:MM:SS format
+seconds_to_hms() {
+    local seconds=$1
+    printf "%02d:%02d:%02d" $((seconds/3600)) $((seconds%3600/60)) $((seconds%60))
+}
+
 # Loop to process videos and prompt for new input
 while true; do
     video_files=()
@@ -160,7 +166,9 @@ while true; do
         fi
 
         if [[ "$verbose" -eq 1 ]]; then
-            echo -e "${YELLOW}Trimming from $formatted_start_time to $formatted_end_time.${NC}"
+            start_hms=$(seconds_to_hms $(printf "%.0f" "$formatted_start_time"))
+            end_hms=$(seconds_to_hms $(printf "%.0f" "$formatted_end_time"))
+            echo -e "${YELLOW}Trimming from $start_hms (${formatted_start_time}s) to $end_hms (${formatted_end_time}s)${NC}"
         fi
 
         base_name="${input_file%.*}"
@@ -188,7 +196,7 @@ while true; do
         temp_output_dir="$(dirname "$input_file")"
         if [[ $overwrite -eq 1 ]]; then
             temp_output=$(mktemp "$temp_output_dir/ffmpeg.XXXXXX.$extension")
-            command="ffmpeg -hide_banner -ss $formatted_start_time -i \"$input_file\" -ss 0 $trim_end_cmd -c copy \"$temp_output\""
+            command="ffmpeg -hide_banner -y -ss $formatted_start_time -i \"$input_file\" -ss 0 $trim_end_cmd -c copy \"$temp_output\""
             if eval $command && mv "$temp_output" "$input_file"; then
                 echo -e "${GREEN}Successfully processed and overwritten $input_file${NC}\\n"
             else
