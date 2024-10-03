@@ -1,4 +1,5 @@
 # vlc_playlist_creator.py
+# GitHub: https://github.com/slyfox1186/script-repo/blob/main/Python3/VLC/vlc_playlist_creator.py
 
 #!/usr/bin/env python3
 
