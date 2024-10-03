@@ -1,3 +1,4 @@
+# vlc_playlist_creator.py
 # GitHub: https://github.com/slyfox1186/script-repo/blob/main/Python3/VLC/vlc_playlist_creator.py
 
 #!/usr/bin/env python3
@@ -336,7 +337,7 @@ def create_xspf_playlist(unix_paths, durations, distro_name, environment, verbos
                 # Convert to Windows path
                 windows_path = convert_to_windows_path(str(path))
                 if windows_path:
-                    location.text = f"file:///{windows_path.replace('\\', '/')}"
+                    location.text = "file:///{0}".format(windows_path.replace('\\', '/'))
                 else:
                     print(f"\n{RED}Skipping file due to path conversion failure: {path}{RESET_ALL}", file=sys.stderr)
                     continue
