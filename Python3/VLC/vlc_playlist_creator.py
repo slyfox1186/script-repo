@@ -61,7 +61,6 @@ def is_wsl():
     except Exception:
         return False
 
-
 def get_distro_name():
     """
     Retrieves the WSL distribution name by reading /etc/os-release.
@@ -75,7 +74,6 @@ def get_distro_name():
         with open('/etc/os-release', 'r') as f:
             for line in f:
                 if line.startswith('NAME='):
-                    # Extract the value and remove quotes
                     distro_name = line.strip().split('=')[1].strip('"')
                 elif line.startswith('VERSION_ID='):
                     version_id = line.strip().split('=')[1].strip('"')
@@ -86,7 +84,6 @@ def get_distro_name():
     except Exception as e:
         print(f"\n{RED}Error retrieving distribution name: {e}{RESET_ALL}", file=sys.stderr)
         return "UnknownDistro"
-
 
 def natural_sort_key(path):
     """
@@ -100,7 +97,6 @@ def natural_sort_key(path):
     """
     name = path.name
     return [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', name)]
-
 
 def get_video_files(start_dir, video_extensions, recursive=True, verbose=False):
     """
@@ -139,7 +135,6 @@ def get_video_files(start_dir, video_extensions, recursive=True, verbose=False):
         for vf in video_files:
             print(f"  - {vf}")
     return video_files
-
 
 def get_video_info(unix_path, verbose=False):
     """
@@ -225,7 +220,6 @@ def get_video_info(unix_path, verbose=False):
         print(f"\n{RED}Invalid info format for {unix_path}: {e}{RESET_ALL}", file=sys.stderr)
         return {'duration': 0, 'resolution': (0, 0), 'codec': 'unknown', 'bitrate': 0, 'fps': 0.0, 'bit_depth': 0}
 
-
 def calculate_quality_score(info):
     """
     Calculates a quality score based on video metadata.
@@ -291,7 +285,6 @@ def prettify_xml(tree):
     reparsed = xml.dom.minidom.parseString(rough_string)
     # Use tab for indentation
     return reparsed.toprettyxml(indent="\t", encoding="UTF-8").decode('utf-8')
-
 
 def create_xspf_playlist(unix_paths, durations, distro_name, environment, verbose=False):
     """
@@ -386,7 +379,6 @@ def create_xspf_playlist(unix_paths, durations, distro_name, environment, verbos
 
     return pretty_xml
 
-
 def is_windows_path(path):
     """
     Determines if the given path is a Windows filesystem path.
@@ -400,7 +392,6 @@ def is_windows_path(path):
     posix = path.as_posix()
     # In WSL, Windows paths are typically under /mnt/<drive letter>/ or /<drive letter>/
     return posix.startswith('/mnt/') or re.match(r'^/[A-Za-z]/', posix) is not None
-
 
 def convert_to_windows_path(unix_path):
     """
@@ -426,7 +417,6 @@ def convert_to_windows_path(unix_path):
         print(f"\n{RED}Error converting path {unix_path} to Windows path: {e}{RESET_ALL}", file=sys.stderr)
         return None
 
-
 def convert_to_wsl_path(windows_path):
     """
     Converts a Windows path to a WSL-compatible UNIX path using wslpath -u.
@@ -450,7 +440,6 @@ def convert_to_wsl_path(windows_path):
     except subprocess.CalledProcessError as e:
         print(f"\n{RED}Error converting path {windows_path} to WSL path: {e}{RESET_ALL}", file=sys.stderr)
         return None
-
 
 def parse_arguments():
     """
@@ -508,7 +497,6 @@ Usage Examples:
     )
 
     return parser.parse_args()
-
 
 def main():
     # Parse command-line arguments
@@ -703,17 +691,16 @@ def main():
             if verbose:
                 print(f"{DESCRIPTION_COLOR}Converted playlist path for VLC:{RESET_ALL} {VALUE_COLOR}{mixed_playlist_path}{RESET_ALL}")
         
-        # Launch VLC with the appropriate playlist path
+        # Launch VLC as a background process (non-blocking)
         try:
             if verbose:
-                print(f"{CYAN}Launching VLC Media Player with the playlist...{RESET_ALL}")
-            subprocess.run([vlc_executable, mixed_playlist_path], check=True)
+                print(f"{CYAN}Launching VLC Media Player with the playlist (non-blocking)...{RESET_ALL}")
+            subprocess.Popen([vlc_executable, mixed_playlist_path])  # Use Popen for non-blocking process
             print(f"{GREEN}VLC Media Player has been launched with the generated playlist.{RESET_ALL}")
         except subprocess.CalledProcessError as e:
             print(f"{RED}Error opening playlist with VLC: {e}{RESET_ALL}", file=sys.stderr)
         except FileNotFoundError:
             print(f"{RED}VLC Media Player is not installed or not found at the specified path.{RESET_ALL}", file=sys.stderr)
-
 
 if __name__ == "__main__":
     main()
