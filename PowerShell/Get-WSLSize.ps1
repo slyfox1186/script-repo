@@ -1,3 +1,5 @@
+# GitHub: https://github.com/slyfox1186/script-repo/blob/main/PowerShell/Get-WSLSize.ps1
+
 # Function to prompt user for WSL distro name and get WSL size
 function Get-WSLSize {
     param (
