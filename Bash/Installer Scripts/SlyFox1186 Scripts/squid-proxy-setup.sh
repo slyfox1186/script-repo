@@ -15,13 +15,13 @@ backup_dir="/etc/squid/backup"
 log_file="/var/log/squid-setup.log"
 health_check_interval=60 # seconds
 ssh_port=31500 # default SSH port, user can modify this
-dns_servers="127.0.0.1 1.1.1.1 1.0.0.1"
+dns_servers="127.0.0.1 8.8.8.8 8.8.4.4"
 max_obj_size=1
 cache_mem=512
 http_port=3128
+visible_hostname="$(hostname)"
 
 # Functions
-
 create_squid_user() {
     echo "Creating user 'squid'..."
     if ! useradd -m squid; then
@@ -105,7 +105,7 @@ http_access allow whitelist
 http_access deny blacklist
 http_access deny all
 
-via off
+via on
 
 client_request_buffer_max_size 512 KB
 
@@ -324,16 +324,18 @@ main() {
     case "$config_choice" in
         1)  backup_configs ;;
         2)  restore_configs ;;
-        3)  interactive_config
-            configure_squid
-            restart_squid
-            ;;
-        4)  ;;
-        "") ;;
+        3)  interactive_config ;;
+        4|"") ;;
         *)  printf "%s\n\n" 'Bad user input.'
             exit 1
             ;;
     esac
+
+    # Create a new squid.conf
+    configure_squid
+
+    # Restart Squid
+    restart_squid
 }
 
 # Parse command-line arguments
