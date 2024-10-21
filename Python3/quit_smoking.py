@@ -31,14 +31,28 @@ INTERVALS = (
 
 @lru_cache(maxsize=1000)
 def display_time(seconds, granularity=2):
+    intervals = [
+        ('years', 31536000),  # 365 days
+        ('months', 2592000),  # 30 days
+        ('weeks', 604800),
+        ('days', 86400),
+        ('hours', 3600),
+        ('minutes', 60),
+        ('seconds', 1)
+    ]
     result = []
-    for name, count in INTERVALS:
+    for name, count in intervals:
         value = seconds // count
         if value:
             seconds -= value * count
             if value == 1:
                 name = name.rstrip('s')
             result.append(f"{int(value)} {name}")
+    
+    # If we have years or months, limit to those two units
+    if result and result[0].endswith(('years', 'year', 'months', 'month')):
+        return ', '.join(result[:2])
+    
     return ', '.join(result[:granularity])
 
 BENEFITS = [
@@ -83,24 +97,28 @@ HTML_TEMPLATE = '''
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quit Smoking Progress</title>
     <style>
-        body { font-family: Verdana, sans-serif; line-height: 1.6; margin: 20px; background-color: #1e1e1e; color: #ffffff; }
+        body { font-family: Verdana, sans-serif; line-height: 1.6; margin: 20px; background-color: #121212; color: #e0e0e0; }
         .container { max-width: 95%; margin: 0 auto; text-align: left; }
         .stats { font-size: 26px; margin-bottom: 20px; }
-        .milestones, .purchases { font-size: 22px; margin-bottom: 20px; }
-        .benefits { margin: 20px 0; }
-        h1, h2 { margin-bottom: 10px; }
+        .milestones, .purchases, .benefits { font-size: 22px; margin-bottom: 20px; }
+        h1, h2 { margin-bottom: 10px; font-size: 24px; color: #bb86fc; }
+        h3 { color: #03dac6; }
         ul { padding-left: 20px; }
-        .save-more { color: #3498DB; }
-        .purchase-item { color: #25F969; }
-        .important-word { color: #FF5733; }
-        .time-left-label { color: #FFFF00; }
-        .time-left-value { color: #FFFFFF; }
-        .time-interval { color: #25F969; font-weight: bold; }
-        .benefit-description { color: #FFD700; }
-        .progress-title { color: #FF6B6B; font-size: 32px; font-weight: bold; }
-        .quit-date { color: #FFFF00; }
-        .time-quit { color: #45B7D1; font-weight: bold; }
-        .money-saved { color: #00A738; font-weight: bold; }
+        li { margin-bottom: 10px; }
+        .save-more { color: #ff7597; }
+        .purchase-item { color: #64ffda; }
+        .important-word { color: #ff7597; font-weight: bold; }
+        .time-left-label { color: #bb86fc; }
+        .time-left-value { color: #03dac6; }
+        .time-interval { color: #64ffda; font-weight: bold; }
+        .benefit-description { color: #e0e0e0; }
+        .progress-title { color: #cf6679; font-size: 32px; font-weight: bold; }
+        .quit-date { color: #64ffda; }
+        .time-quit { color: #03dac6; font-weight: bold; }
+        .money-saved { color: #64ffda; font-weight: bold; }
+        .purchase-amount { color: #bb86fc; }
+        a { color: #bb86fc; }
+        a:hover { color: #03dac6; }
     </style>
     <script>
         function updateTime() {
@@ -143,28 +161,28 @@ HTML_TEMPLATE = '''
             Money Saved: <span class="money-saved"><span id="money-saved"></span></span>
         </div>
         
+        <h2>Suggested purchases based on your savings:</h2>
         <div class="purchases">
-            <h2>Suggested purchases based on your savings:</h2>
             <ul>
             {% for amount, item in suggested_purchases %}
                 {% if total_saved >= amount %}
-                    <li><span class="purchase-item">{{ item }}</span></li>
+                    <li><span class="purchase-item">{{ item.split('(')[0] }}</span><span class="purchase-amount">({{ item.split('(')[1] }}</span></li>
                 {% else %}
                     {% set money_needed = (amount - total_saved) | round(2) %}
                     {% set days_left = ceil(money_needed / saved_per_day) %}
                     {% set time_left = display_time(days_left * 24 * 60 * 60, 2) %}
-                    <li><span class="purchase-item">{{ item }}</span> - <span class="save-more">Save {{ format_money(money_needed) }} more</span> <span class="time-left">(about {{ time_left }} left)</span></li>
+                    <li><span class="purchase-item">{{ item.split('(')[0] }}</span><span class="purchase-amount">({{ item.split('(')[1] }}</span> - <span class="save-more">Save {{ format_money(money_needed) }} more</span> <span class="time-left-value">(about {{ time_left }} left)</span></li>
                 {% endif %}
             {% endfor %}
             </ul>
         </div>
         
+        <h2>Health benefits:</h2>
         <div class="benefits">
-            <h2>Health benefits:</h2>
             <h3>Achieved benefits:</h3>
             <ul>
             {% for seconds, desc in achieved_benefits %}
-                <li><span class="time-interval">{{ desc.split(':')[0] }}:</span> {{ desc.split(':', 1)[1] | safe }}</li>
+                <li><span class="benefit-description">{{ desc | safe }}</span></li>
             {% endfor %}
             </ul>
             
@@ -172,7 +190,7 @@ HTML_TEMPLATE = '''
             <ul>
             {% for seconds, desc, time_left in upcoming_benefits %}
                 <li>
-                    <span class="time-interval">{{ desc.split(':')[0] }}:</span> {{ desc.split(':', 1)[1] | safe }}
+                    <span class="benefit-description">{{ desc | safe }}</span>
                     <br>
                     <span class="time-left-label">Time left:</span> <span class="time-left-value">{{ time_left }}</span>
                 </li>
@@ -254,7 +272,7 @@ def generate_tracking_page(quit_date, saved_per_day):
                 app.logger.debug(f"Achieved Benefit: {highlighted_desc}")
             else:
                 time_to_benefit = seconds - quittime_seconds
-                time_left = display_time(int(time_to_benefit), 2)
+                time_left = display_time(int(time_to_benefit))
                 upcoming_benefits.append((seconds, highlighted_desc, time_left))
         
         app.logger.debug(f"Total Achieved Benefits: {len(achieved_benefits)}")
