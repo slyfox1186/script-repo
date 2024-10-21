@@ -5,7 +5,7 @@
 set -euo pipefail
 
 # Generate a unique temporary directory
-TEMP_DIR="/tmp/vlc_playlist_creator_$(date +%s)_$RANDOM"
+TEMP_DIR="/tmp/conda_installer_$(date +%s)_$RANDOM"
 mkdir -p "$TEMP_DIR"
 
 # Variables
