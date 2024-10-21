@@ -1,6 +1,6 @@
-# install_conda.sh
-
 #!/usr/bin/env bash
+
+# GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Misc/Conda/install_conda.sh
 
 set -euo pipefail
 
