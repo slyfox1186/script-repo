@@ -15,6 +15,10 @@ backup_dir="/etc/squid/backup"
 log_file="/var/log/squid-setup.log"
 health_check_interval=60 # seconds
 ssh_port=31500 # default SSH port, user can modify this
+dns_servers="127.0.0.1 1.1.1.1 1.0.0.1"
+max_obj_size=1
+cache_mem=512
+http_port=3128
 
 # Functions
 
@@ -51,24 +55,23 @@ restore_configs() {
 }
 
 interactive_config() {
-    get_hostname="$(hostname)"
-    read -p "Enter visible hostname (default: $get_hostname): " visible_hostname
-    visible_hostname="${visible_hostname:-$get_hostname}"
+    read -p "Enter visible hostname (default: $(hostname)): " visible_hostname_input
+    visible_hostname="${visible_hostname_input:-$(hostname)}"
 
-    read -p "Enter Squid HTTP port (default: 3128): " http_port
-    http_port="${http_port:-3128}"
+    read -p "Enter Squid HTTP port (default: $http_port): " http_port_input
+    http_port="${http_port_input:-$http_port}"
 
-    read -p "Enter memory cache size in MB (default: 512): " cache_mem
-    cache_mem="${cache_mem:-512}"
+    read -p "Enter memory cache size in MB (default: $cache_mem): " cache_mem_input
+    cache_mem="${cache_mem_input:-$cache_mem}"
 
-    read -p "Enter maximum object size in MB (default: 1): " max_obj_size
-    max_obj_size="${max_obj_size:-1}"
+    read -p "Enter maximum object size in MB (default: $max_obj_size): " max_obj_size_input
+    max_obj_size="${max_obj_size_input:-$max_obj_size}"
 
-    read -p "Enter DNS nameservers (default: 1.1.1.1 1.0.0.1): " dns_servers
-    dns_servers="${dns_servers:-"1.1.1.1 1.0.0.1"}"
+    read -p "Enter DNS nameservers (default: $dns_servers): " dns_servers_input
+    dns_servers="${dns_servers_input:-"$dns_servers"}"
 
-    read -p "Enter SSH port (default: 31500): " ssh_port_input
-    ssh_port="${ssh_port_input:-31500}"
+    read -p "Enter SSH port (default: $ssh_port): " ssh_port_input
+    ssh_port="${ssh_port_input:-$ssh_port}"
 }
 
 configure_squid() {
@@ -109,12 +112,12 @@ client_request_buffer_max_size 512 KB
 dns_nameservers $dns_servers
 
 minimum_object_size 64 bytes
-maximum_object_size ${max_obj_size} MB
-maximum_object_size_in_memory ${max_obj_size} MB
+maximum_object_size $max_obj_size MB
+maximum_object_size_in_memory $max_obj_size MB
 
 cache_swap_low 90
 cache_swap_high 95
-cache_mem ${cache_mem} MB
+cache_mem $cache_mem MB
 
 memory_cache_mode always
 
