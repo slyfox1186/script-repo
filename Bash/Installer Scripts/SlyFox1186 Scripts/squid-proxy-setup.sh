@@ -224,7 +224,7 @@ configure_firewall() {
             ufw allow 67/udp
             ufw allow 80/tcp
             ufw allow 546:547/udp
-            ufw allow 3128/tcp
+            ufw allow "$http_port/tcp"
             ufw allow "$ssh_port/tcp"
             ufw enable
             service ufw start
