@@ -68,7 +68,7 @@ interactive_config() {
     dns_servers="${dns_servers:-"1.1.1.1 1.0.0.1"}"
 
     read -p "Enter SSH port (default: 31500): " ssh_port_input
-    ssh_port="${ssh_port_input:-22}"
+    ssh_port="${ssh_port_input:-31500}"
 }
 
 configure_squid() {
