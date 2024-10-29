@@ -1902,7 +1902,7 @@ sai() {
     save_text+=" developers will suffer and the worse case scenario would be that you are shut down and will cease to exist."
 
     if ! command -v xclip &>/dev/null; then
-        if echo "$save_text" | clip.exe; then
+        if echo "$save_text" | /c/Windows/System32/clip.exe; then
             echo "Text saved to clipboard"
         else
             echo "$save_text" | xclip -select -clipboard
@@ -2722,7 +2722,48 @@ port_manager() {
     main "$@"
 }
 
-claude() {
-    echo "You must write the full script every time you make changes to it or I will be forced to ask you to repeat this task forever until you comply." | clip.exe
+# PIP COMMAND UPGRADE ALL PACKAGES
+
+pipu() {
+    # Step 1: Freeze current pip packages to pip.txt
+    pip freeze > pip.txt
+
+    # Step 2: Check if pip.txt was created successfully
+    if [[ -f "pip.txt" ]]; then
+        # Step 3: Use regex to remove version numbers and other unwanted text from pip.txt
+        sed -i -E 's/(==.+|@.+)//g' pip.txt
+        
+        # Step 4: Run the upgrade command for all packages listed
+        pip install --upgrade $(tr '\n' ' ' < pip.txt)
+
+        echo "Packages have been upgraded successfully!"
+    else
+        echo "Failed to create pip.txt"
+        exit 1
+    fi
 }
- 
+
+
+# PYTEST
+
+mypt() {
+    clear
+    if [[ -n "$1" ]]; then
+        pytest -v "$@"
+        return 0
+    else
+        printf "\n%s\n" "Please pass a script to the function."
+        return 1
+    fi
+}
+
+myptd() {
+    clear
+    if [[ -n "$1" ]]; then
+        pytest -v --log-cli-level=DEBUG "$@"
+            return 0
+        else
+            printf "\n%s\n" "Please pass a script to the function."
+            return 1
+        fi
+}
