@@ -56,10 +56,10 @@ CMAKE_ARGS="-DGGML_CUDA=ON \
            -DCMAKE_CUDA_HOST_COMPILER=$(type -P gcc-12)" \
 CUDACXX="/usr/local/cuda/bin/nvcc" \
 CUDA_PATH="/usr/local/cuda" \
-pip install llama-cpp-python --no-cache-dir -v || {
+if ! pip install llama-cpp-python --no-cache-dir -v; then
     echo "Failed to install llama-cpp-python. Exiting..."
     exit 1
-}
+fi
 
 # Clean up
 [[ -f $file ]] && rm $file
