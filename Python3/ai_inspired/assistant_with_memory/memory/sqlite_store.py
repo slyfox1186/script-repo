@@ -1,3 +1,5 @@
+# memory/sqlite_store.py
+
 import sqlite3
 from typing import Dict, List, Optional
 from datetime import datetime, timezone, timedelta
@@ -10,9 +12,9 @@ import os
 import time
 
 class SQLiteStore:
-    def __init__(self, db_path: str = None):
+    def __init__(self, db_str = None):
         """Initialize SQLite store with schema for memories and entities"""
-        if db_path is None:
+        if db_str is None:
             db_path = Path(__file__).parent.parent / "memory_store" / "memory.db"
             db_path.parent.mkdir(exist_ok=True)
             
