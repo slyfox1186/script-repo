@@ -1,7 +1,4 @@
-```markdown
 # Advanced Chatbot with Memory Management
-
-![Project Logo](static/logo.png)
 
 ## Overview
 
@@ -41,44 +38,159 @@ Follow the steps below to set up the project locally:
 
 1. **Clone the Repository**
 
-   ```bash
-   git clone https://github.com/yourusername/advanced-chatbot-memory.git
-   cd advanced-chatbot-memory
-   ```
+    ```bash
+    git clone https://github.com/yourusername/advanced-chatbot-memory.git
+    cd advanced-chatbot-memory
+    ```
 
 2. **Set Up a Virtual Environment**
 
-   ```bash
-   python3 -m venv venv
-   source venv/bin/activate
-   ```
+    ```bash
+    python3 -m venv venv
+    source venv/bin/activate
+    ```
 
 3. **Install Dependencies**
 
-   ```bash
-   pip install -r requirements.txt
-   ```
+    Install the required Python packages using `pip`:
+
+    ```bash
+    pip install -r requirements.txt
+    ```
 
 4. **Configure the Application**
 
-   - **Model Setup:**
-     - Ensure you have downloaded the required LLM model [`Replete-LLM-V2.5-Qwen-14b-GGUF`](https://huggingface.co/bartowski/Replete-LLM-V2.5-Qwen-14b-GGUF) and placed it in the `models/` directory.
-     - If using a different model, update the `CHOSEN_MODEL` variable in `config.py` accordingly.
+    - **Model Setup:**
+        - Ensure you have downloaded the required LLM model [`Replete-LLM-V2.5-Qwen-14b-GGUF`](https://huggingface.co/bartowski/Replete-LLM-V2.5-Qwen-14b-GGUF) and placed it in the `models/` directory.
+        - If using a different model, update the `CHOSEN_MODEL` variable in `config.py` accordingly.
 
-   - **Memory Directory:**
-     - The application uses a SQLite database for memory storage located at `memory_store/memory.db`. Ensure the `memory_store/` directory exists or is created automatically.
+    - **Memory Directory:**
+        - The application uses a SQLite database for memory storage located at `memory_store/memory.db`. Ensure the `memory_store/` directory exists or is created automatically.
 
 5. **Run Database Migrations**
 
-   The application initializes the database schema automatically on the first run. No manual migrations are required.
+    The application initializes the database schema automatically on the first run. No manual migrations are required.
 
 6. **Start the Application**
 
-   ```bash
-   python app.py
-   ```
+    ```bash
+    python app.py
+    ```
 
-   The application will be accessible at `http://localhost:5000`.
+    The application will be accessible at `http://localhost:5000`.
+
+## Requirements
+
+The project relies on several Python packages to ensure functionality, performance, and maintainability. Below is a detailed list of these packages along with their purposes and installation instructions.
+
+### `requirements.txt`
+
+```plaintext
+flask>=2.0.0
+llama-cpp-python>=0.2.0
+pydantic>=2.0.0
+sqlite3
+asyncio
+numpy>=1.24.0
+psutil>=5.9.0
+logging
+traceback
+datetime
+pytz>=2023.3
+pathlib
+os
+typing
+json
+torch>=2.0.0
+python-dotenv>=1.0.0 
+```
+
+### Package Descriptions
+
+1. **Flask (`flask>=2.0.0`)**
+    - **Description:** A lightweight WSGI web application framework used to build the backend of the chatbot application.
+    - **Installation:** Automatically installed via `pip install -r requirements.txt`.
+
+2. **Llama C++ Python Bindings (`llama-cpp-python>=0.2.0`)**
+    - **Description:** Provides Python bindings for interacting with the Llama C++ library, enabling efficient execution of large language models.
+    - **Installation:** Automatically installed via `pip install -r requirements.txt`.
+
+3. **Pydantic (`pydantic>=2.0.0`)**
+    - **Description:** Used for data validation and settings management using Python type annotations.
+    - **Installation:** Automatically installed via `pip install -r requirements.txt`.
+
+4. **SQLite3 (`sqlite3`)**
+    - **Description:** A C-language library that implements a small, fast, self-contained SQL database engine for managing memory storage.
+    - **Installation:** Comes pre-installed with Python's standard library.
+
+5. **Asyncio (`asyncio`)**
+    - **Description:** Provides infrastructure for writing single-threaded concurrent code using coroutines, facilitating asynchronous processing.
+    - **Installation:** Comes pre-installed with Python's standard library.
+
+6. **NumPy (`numpy>=1.24.0`)**
+    - **Description:** A fundamental package for scientific computing with Python, used here for efficient numerical operations.
+    - **Installation:** Automatically installed via `pip install -r requirements.txt`.
+
+7. **Psutil (`psutil>=5.9.0`)**
+    - **Description:** Provides an interface for retrieving information on running processes and system utilization (CPU, memory, disks, network).
+    - **Installation:** Automatically installed via `pip install -r requirements.txt`.
+
+8. **Logging (`logging`)**
+    - **Description:** Facilitates tracking events that happen when some software runs, essential for debugging and monitoring.
+    - **Installation:** Comes pre-installed with Python's standard library.
+
+9. **Traceback (`traceback`)**
+    - **Description:** Provides utilities for extracting, formatting, and printing stack traces of Python programs, useful for error handling.
+    - **Installation:** Comes pre-installed with Python's standard library.
+
+10. **Datetime (`datetime`)**
+     - **Description:** Supplies classes for manipulating dates and times, crucial for timestamping interactions.
+     - **Installation:** Comes pre-installed with Python's standard library.
+
+11. **Pytz (`pytz>=2023.3`)**
+     - **Description:** Brings the Olson timezone database into Python, allowing accurate and cross-platform timezone calculations.
+     - **Installation:** Automatically installed via `pip install -r requirements.txt`.
+
+12. **Pathlib (`pathlib`)**
+     - **Description:** Offers an object-oriented approach to handling filesystem paths, enhancing code readability and maintainability.
+     - **Installation:** Comes pre-installed with Python's standard library.
+
+13. **OS (`os`)**
+     - **Description:** Provides a way of using operating system dependent functionality, such as reading environment variables.
+     - **Installation:** Comes pre-installed with Python's standard library.
+
+14. **Typing (`typing`)**
+     - **Description:** Supports type hints as specified by PEP 484, improving code clarity and assisting in static type checking.
+     - **Installation:** Comes pre-installed with Python's standard library.
+
+15. **JSON (`json`)**
+     - **Description:** Enables parsing and generating JSON data, essential for API communication.
+     - **Installation:** Comes pre-installed with Python's standard library.
+
+16. **Torch (`torch>=2.0.0`)**
+     - **Description:** A deep learning framework providing tensors and dynamic neural networks in Python with strong GPU acceleration.
+     - **Installation:** Automatically installed via `pip install -r requirements.txt`.
+
+17. **Python Dotenv (`python-dotenv>=1.0.0`)**
+     - **Description:** Reads key-value pairs from a `.env` file and sets them as environment variables, aiding in configuration management.
+     - **Installation:** Automatically installed via `pip install -r requirements.txt`.
+
+### Installing Dependencies Manually
+
+While it's recommended to install all dependencies using the provided `requirements.txt` file, you can also install each package individually using `pip`. Here's how:
+
+```bash
+pip install flask>=2.0.0
+pip install llama-cpp-python>=0.2.0
+pip install pydantic>=2.0.0
+pip install numpy>=1.24.0
+pip install psutil>=5.9.0
+pip install pytz>=2023.3
+pip install torch>=2.0.0
+pip install python-dotenv>=1.0.0
+```
+
+*Note:* Packages like `sqlite3`, `asyncio`, `logging`, `traceback`, `datetime`, `pathlib`, `os`, `typing`, and `json` are part of Python's standard library and do not require separate installation.
 
 ## Usage
 
@@ -97,39 +209,6 @@ X-User-Id: user123
 }
 ```
 
-### Response
-
-The API responds with a Server-Sent Events (SSE) stream containing the chatbot's response tokens, allowing for real-time streaming of messages.
-
-## Contributing
-
-We welcome contributions from the community to enhance the functionality and performance of this chatbot application. Please follow the guidelines below:
-
-1. **Fork the Repository**
-2. **Create a Feature Branch**
-
-   ```bash
-   git checkout -b feature/YourFeature
-   ```
-
-3. **Commit Your Changes**
-
-   ```bash
-   git commit -m "Add Your Feature"
-   ```
-
-4. **Push to the Branch**
-
-   ```bash
-   git push origin feature/YourFeature
-   ```
-
-5. **Create a Pull Request**
-
-## License
-
-This project is licensed under the [MIT License](LICENSE).
-
 ## Acknowledgements
 
 - **Flask:** A lightweight WSGI web application framework.
@@ -137,11 +216,6 @@ This project is licensed under the [MIT License](LICENSE).
 - **SQLite:** A C-language library that implements a small, fast, self-contained SQL database engine.
 - **[Replete-LLM-V2.5-Qwen-14b-GGUF](https://huggingface.co/bartowski/Replete-LLM-V2.5-Qwen-14b-GGUF):** The chosen large language model for this application.
 
-## Contact
-
-For any inquiries or support, please contact [your.email@example.com](mailto:your.email@example.com).
-
 ---
 
-*This project represents a significant effort in developing a memory-enhanced chatbot system. We are committed to advancing conversational AI technologies and appreciate your interest and support.*
-```
+This project represents a significant effort in developing a memory-enhanced chatbot system. We are committed to advancing conversational AI technologies and appreciate your interest and support.
