@@ -14,11 +14,11 @@ echo "PATH is set to: $PATH"
 echo
 
 # Install conda packages
-conda install -y bs4 bitsandbytes langdetect markdown2 nltk numpy psutil pytest-asyncio pytest python-dotenv \
-                 scikit-learn sentencepiece spacy textblob tiktoken tqdm transformers unidecode wikipedia
+conda install -y bs4 bitsandbytes langdetect markdown2 nltk psutil pytest-asyncio pytest python-dotenv \
+                 scikit-learn sentencepiece spacy textblob tiktoken tqdm transformers unidecode
 
 # Install pip packages
-pip install accelerate cloud-tpu-client fake_useragent
+pip install accelerate cloud-tpu-client fake_useragent "numpy<2.1.0,>=2.0.0"
 
 # Install llama-cpp-python with verbose output for debugging
 CMAKE_ARGS="-DGGML_CUDA=ON \
