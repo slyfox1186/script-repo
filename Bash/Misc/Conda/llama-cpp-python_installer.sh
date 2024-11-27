@@ -18,7 +18,7 @@ conda install -y bs4 bitsandbytes langdetect markdown2 nltk numpy psutil pytest-
                  scikit-learn sentencepiece spacy textblob tiktoken tqdm transformers unidecode wikipedia
 
 # Install pip packages
-pip install -r accelerate cloud-tpu-client fake_useragent
+pip install accelerate cloud-tpu-client fake_useragent
 
 # Install llama-cpp-python with verbose output for debugging
 CMAKE_ARGS="-DGGML_CUDA=ON \
