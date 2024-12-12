@@ -14,7 +14,7 @@ A powerful local AI coding assistant that leverages dual LLMs for intelligent co
 
 - **Dual LLM Architecture**
   - Primary 32B model for code generation
-  - Secondary 7B model for fast context handling
+  - Secondary 1.5B model for fast context handling
   - Efficient GPU memory management
   - Automatic model switching based on query type
 
@@ -25,18 +25,17 @@ A powerful local AI coding assistant that leverages dual LLMs for intelligent co
   - Clear conversation history management
 
 - **Memory Management**
-  - Persistent conversation history
-  - Context-aware responses
+  - Persistent conversation history with backup system
+  - Code response caching
   - Efficient token usage tracking
-  - Automatic garbage collection
+  - Automatic context pruning
 
 ## System Recommendations
 
 ### Hardware Requirements
-- **GPU**: NVIDIA GeForce RTX 4090 (24GB VRAM) or equivalent
-- **CPU**: AMD Ryzen 7950x or equivalent
-- **RAM**: 64GB minimum recommended
-- **Storage**: 100GB+ free space for models and cache
+- **GPU**: NVIDIA GPU with 24GB+ VRAM
+- **RAM**: 32GB minimum recommended
+- **Storage**: 50GB+ free space for models and cache
 
 ### Required Models
 
@@ -44,19 +43,19 @@ A powerful local AI coding assistant that leverages dual LLMs for intelligent co
    - Name: Qwen2.5-Coder-32B-Instruct
    - Size: 32B parameters (Q5_K_L quantized)
    - VRAM Usage: ~16GB
+   - GPU Layers: 63 layers offloaded
    - [Download Link](https://huggingface.co/bartowski/Qwen2.5-Coder-32B-Instruct-GGUF/blob/main/Qwen2.5-Coder-32B-Instruct-Q5_K_L.gguf)
 
 2. **Context Management Model**
-   - Name: Replete-LLM-V2.5-Qwen-7b
-   - Size: 7B parameters (Q8_0 quantized)
-   - VRAM Usage: ~3GB
-   - [Download Link](https://huggingface.co/bartowski/Replete-LLM-V2.5-Qwen-7b-GGUF/blob/main/Replete-LLM-V2.5-Qwen-7b-Q8_0.gguf)
+   - Name: Qwen2.5-1.5B-Instruct
+   - Size: 1.5B parameters (Q8_0 quantized)
+   - VRAM Usage: ~2GB
+   - GPU Layers: 29 layers offloaded
+   - [Download Link](https://huggingface.co/bartowski/Qwen2.5-1.5B-Instruct-GGUF/blob/main/Qwen2.5-1.5B-Instruct-Q8_0.gguf)
 
 ## Quick Start
 
-1. **Clone the Repository**   ```bash
-   git clone https://github.com/yourusername/ai-code-assistant.git
-   cd ai-code-assistant   ```
+1. **Clone the Repository**
 
 2. **Create Virtual Environment**   ```bash
    python -m venv venv
