@@ -78,22 +78,22 @@ A powerful local AI coding assistant that leverages dual LLMs for intelligent co
    # and place them in the models/ directory
    ```
 
-5. **Run the Application**
-   ```bash
-   python3 app.py
-   ```
-
-6. **Access the Interface**
-   - Open your browser and go to:  
-     `http://localhost:5000`
-
-7. **Tune the script to your VRAM limits**
+5. **Tune the script to your VRAM limits**
    - These options are located in the `persistent_memory.py` script
    ```bash
    # Set these according to the amount of VRAM you have available
    GPU_LAYERS_CODER = 63
    GPU_LAYERS_FAST = 29
    ```
+
+6. **Run the Application**
+   ```bash
+   python3 app.py
+   ```
+
+7. **Access the Interface**
+   - Open your browser and go to:  
+     `http://localhost:5000`
 
 ## Technical Details
 
