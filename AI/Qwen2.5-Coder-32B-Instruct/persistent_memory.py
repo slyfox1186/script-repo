@@ -147,28 +147,47 @@ class MemoryStore:
     def __init__(self, 
                  storage_path: str = "conversation_history",
                  max_context_length: int = 32768):
+        # Create base storage directory
         self.storage_path = Path(storage_path)
         self.storage_path.mkdir(parents=True, exist_ok=True)
+        
+        # Define paths for all storage files
+        self.tokens_file = self.storage_path / "token_count.json"
+        self.code_cache_file = self.storage_path / "code_responses.json"
+        self.chat_history_file = self.storage_path / "chat_history.json"
+        
+        # Move existing chat history if it exists in root
+        old_chat_history = Path("chat_history.json")
+        if old_chat_history.exists():
+            try:
+                print(f"Moving chat_history.json to {self.storage_path}")
+                old_chat_history.rename(self.chat_history_file)
+                print("Successfully moved chat history file")
+            except Exception as e:
+                print(f"Error moving chat history: {e}")
+                # If move fails, try to copy instead
+                try:
+                    import shutil
+                    shutil.copy2(old_chat_history, self.chat_history_file)
+                    old_chat_history.unlink()  # Remove original after successful copy
+                    print("Successfully copied chat history file")
+                except Exception as e:
+                    print(f"Error copying chat history: {e}")
+        
+        # Rest of initialization...
         self.max_context_length = max_context_length
         self.model_manager = ModelManager()
-        
-        # Load total tokens from persistent storage
-        self.tokens_file = self.storage_path / "token_count.json"
         self.load_token_count()
-        
         self.semantic_store = InMemoryStore()
         
-        # Ensure storage directory exists and has write permissions
-        if not self.storage_path.exists():
-            self.storage_path.mkdir(parents=True)
+        # Ensure write permissions
         if not os.access(self.storage_path, os.W_OK):
             raise PermissionError(f"No write access to {self.storage_path}")
         
-        # Add cache for code responses with versioning
-        self.code_cache_file = self.storage_path / "code_responses.json"
-        self.cache_version = "1.0"  # Add versioning
+        # Initialize cache
+        self.cache_version = "1.0"
         self.code_cache = self._load_code_cache()
-        self.similarity_threshold = 0.95  # Increased threshold for code matching
+        self.similarity_threshold = 0.95
 
     def load_token_count(self):
         """Load total token count from persistent storage"""
