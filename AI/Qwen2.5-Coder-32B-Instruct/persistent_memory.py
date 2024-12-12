@@ -154,25 +154,9 @@ class MemoryStore:
         # Define paths for all storage files
         self.tokens_file = self.storage_path / "token_count.json"
         self.code_cache_file = self.storage_path / "code_responses.json"
-        self.chat_history_file = self.storage_path / "chat_history.json"
         
-        # Move existing chat history if it exists in root
-        old_chat_history = Path("chat_history.json")
-        if old_chat_history.exists():
-            try:
-                print(f"Moving chat_history.json to {self.storage_path}")
-                old_chat_history.rename(self.chat_history_file)
-                print("Successfully moved chat history file")
-            except Exception as e:
-                print(f"Error moving chat history: {e}")
-                # If move fails, try to copy instead
-                try:
-                    import shutil
-                    shutil.copy2(old_chat_history, self.chat_history_file)
-                    old_chat_history.unlink()  # Remove original after successful copy
-                    print("Successfully copied chat history file")
-                except Exception as e:
-                    print(f"Error copying chat history: {e}")
+        # Handle migration of old chat history if it exists
+        self._migrate_old_chat_history()
         
         # Rest of initialization...
         self.max_context_length = max_context_length
@@ -188,6 +172,51 @@ class MemoryStore:
         self.cache_version = "1.0"
         self.code_cache = self._load_code_cache()
         self.similarity_threshold = 0.95
+
+    def _migrate_old_chat_history(self):
+        """Migrate old chat_history.json to thread-based system"""
+        old_chat_history = Path("chat_history.json")
+        if old_chat_history.exists():
+            try:
+                print("Found old chat_history.json, migrating to thread-based system...")
+                with open(old_chat_history, 'r') as f:
+                    old_messages = json.load(f)
+                
+                if isinstance(old_messages, list):
+                    # Create default thread file
+                    default_thread_file = self._get_thread_file('default')
+                    
+                    # Don't overwrite existing thread file
+                    if not default_thread_file.exists():
+                        print("Migrating messages to default thread")
+                        with open(default_thread_file, 'w') as f:
+                            json.dump(old_messages, f, indent=2)
+                        
+                        # Create backup of old file
+                        backup_file = old_chat_history.with_suffix('.json.bak')
+                        import shutil
+                        shutil.copy2(old_chat_history, backup_file)
+                        
+                        # Remove old file only if migration successful
+                        old_chat_history.unlink()
+                        print("Successfully migrated chat history to thread-based system")
+                    else:
+                        print("Default thread already exists, skipping migration")
+                else:
+                    print("Old chat history format not recognized, skipping migration")
+                    
+            except Exception as e:
+                print(f"Error migrating chat history: {e}")
+                # Don't delete original file if migration failed
+                print("Original chat_history.json preserved")
+
+    def _get_thread_file(self, thread_id: str) -> Path:
+        """Get path to thread file with validation"""
+        # Sanitize thread_id to prevent directory traversal
+        safe_thread_id = "".join(c for c in thread_id if c.isalnum() or c in ('-', '_'))
+        if safe_thread_id != thread_id:
+            print(f"Warning: Thread ID sanitized from '{thread_id}' to '{safe_thread_id}'")
+        return self.storage_path / f"{safe_thread_id}.json"
 
     def load_token_count(self):
         """Load total token count from persistent storage"""
@@ -209,9 +238,6 @@ class MemoryStore:
                 json.dump({'total_tokens': self.total_tokens_used}, f)
         except Exception as e:
             print(f"Error saving token count: {e}")
-
-    def _get_thread_file(self, thread_id: str) -> Path:
-        return self.storage_path / f"{thread_id}.json"
 
     def _load_thread(self, thread_id: str) -> List[Dict]:
         file_path = self._get_thread_file(thread_id)
@@ -381,16 +407,25 @@ class MemoryStore:
         try:
             messages = self._load_thread(thread_id)
             
+            # Validate message format
+            if not isinstance(messages, list):
+                print(f"Invalid messages format for thread {thread_id}, initializing new list")
+                messages = []
+            
+            # Ensure each message has required fields
+            messages = [msg for msg in messages if isinstance(msg, dict) and 'content' in msg]
+            
             # For assistant responses containing code, cache them
             if role == 'assistant' and '```' in content:
                 # Find the corresponding user query
                 for i in range(len(messages) - 1, -1, -1):
-                    if messages[i]['role'] == 'user':
+                    if messages[i].get('role') == 'user':
                         self.cache_code_response(messages[i]['content'], content)
                         break
             
             # Check for duplicate content
-            if any(msg["content"] == content for msg in messages):
+            if any(msg.get('content') == content for msg in messages):
+                print(f"Duplicate message detected in thread {thread_id}, skipping")
                 return
             
             token_count = self._count_tokens(content)
@@ -410,7 +445,9 @@ class MemoryStore:
             self._verify_message_saved(thread_id, message)
             
         except Exception as e:
-            print(f"Error adding message: {e}")
+            print(f"Error adding message to thread {thread_id}: {e}")
+            import traceback
+            traceback.print_exc()
             raise
 
     def _verify_message_saved(self, thread_id: str, message: dict):
