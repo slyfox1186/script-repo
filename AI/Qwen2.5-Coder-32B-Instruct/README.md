@@ -30,9 +30,9 @@ A powerful local AI coding assistant that leverages dual LLMs for intelligent co
   - Efficient token usage tracking
   - Automatic context pruning
 
-## System Recommendations
+## System Information
 
-### Hardware Requirements
+### Recommended Hardware
 - **GPU**: NVIDIA GPU with 24GB+ VRAM
 - **RAM**: 32GB minimum recommended
 - **Storage**: 50GB+ free space for models and cache
@@ -43,38 +43,52 @@ A powerful local AI coding assistant that leverages dual LLMs for intelligent co
    - Name: Qwen2.5-Coder-32B-Instruct
    - Size: 32B parameters (Q5_K_L quantized)
    - VRAM Usage: ~16GB
-   - GPU Layers: 63 layers offloaded
-   - [Download Link](https://huggingface.co/bartowski/Qwen2.5-Coder-32B-Instruct-GGUF/blob/main/Qwen2.5-Coder-32B-Instruct-Q5_K_L.gguf)
+   - GPU Layers: 63 layers offloaded  
+   [Download Link](https://huggingface.co/bartowski/Qwen2.5-Coder-32B-Instruct-GGUF/blob/main/Qwen2.5-Coder-32B-Instruct-Q5_K_L.gguf)
 
 2. **Context Management Model**
    - Name: Qwen2.5-1.5B-Instruct
    - Size: 1.5B parameters (Q8_0 quantized)
    - VRAM Usage: ~2GB
-   - GPU Layers: 29 layers offloaded
-   - [Download Link](https://huggingface.co/bartowski/Qwen2.5-1.5B-Instruct-GGUF/blob/main/Qwen2.5-1.5B-Instruct-Q8_0.gguf)
+   - GPU Layers: 29 layers offloaded  
+   [Download Link](https://huggingface.co/bartowski/Qwen2.5-1.5B-Instruct-GGUF/blob/main/Qwen2.5-1.5B-Instruct-Q8_0.gguf)
 
 ## Quick Start
 
 1. **Clone the Repository**
+   ```bash
+   git clone https://github.com/yourusername/AI-Code-Assistant.git
+   cd AI-Code-Assistant
+   ```
 
-2. **Create Virtual Environment**   ```bash
+2. **Create a Virtual Environment**
+   ```bash
    python -m venv venv
    source venv/bin/activate  # Linux/Mac
    # or
-   .\venv\Scripts\activate  # Windows   ```
+   .\venv\Scripts\activate  # Windows
+   ```
 
-3. **Install Dependencies**   ```bash
-   pip install -r requirements.txt   ```
+3. **Install Dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-4. **Download Models**   ```bash
+4. **Download Models**
+   ```bash
    mkdir models
-   # Download models from the links above and place in models/ directory   ```
+   # Download models from the links provided above
+   # and place them in the models/ directory
+   ```
 
-5. **Run the Application**   ```bash
-   python app.py   ```
+5. **Run the Application**
+   ```bash
+   python app.py
+   ```
 
 6. **Access the Interface**
-   - Open your browser to `http://localhost:5000`
+   - Open your browser and go to:  
+     `http://localhost:5000`
 
 ## Technical Details
 
@@ -91,21 +105,20 @@ A powerful local AI coding assistant that leverages dual LLMs for intelligent co
 - Safari
 
 ### Security Notes
-- Runs locally - no data sent to external servers
+- Runs locally with no external data transfers
 - Models run entirely on your hardware
 - Conversation history stored locally
 
 ## Troubleshooting
 
-Common issues and solutions:
-- CUDA out of memory: Reduce layer offload in `persistent_memory.py`
-- Slow responses: Check GPU utilization and VRAM usage
-- Model loading errors: Verify model paths in `app.py`
+- **CUDA out of memory**: Reduce layer offload in `persistent_memory.py`
+- **Slow responses**: Check GPU utilization and VRAM usage
+- **Model loading errors**: Verify model paths in `app.py`
 
 ## Contributing
 
-Contributions are welcome! Please read our [Contributing Guidelines](CONTRIBUTING.md) first.
+Contributions are welcome! Please read our [Contributing Guidelines](CONTRIBUTING.md) before submitting a pull request.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
