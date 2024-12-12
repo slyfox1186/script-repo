@@ -6,8 +6,8 @@
 # Purpose: Build GNU GCC
 # GCC versions available: 10-14
 # Features: Automatically sources the latest release of each version.
-# Updated: 07.03.24
-# Script version: 1.4
+# Updated: 12.17.24
+# Script version: 1.5
 
 build_dir="/tmp/gcc-build-script"
 packages="$build_dir/packages"
