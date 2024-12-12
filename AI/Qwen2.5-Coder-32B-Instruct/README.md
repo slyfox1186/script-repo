@@ -1,6 +1,7 @@
 # AI Code Assistant
 
 ![AI Code Assistant Interface](https://i.imgur.com/CikPfBU.png)
+![AI Code Assistant Interface](https://i.imgur.com/NPKGpi8.png)
 
 A powerful local AI coding assistant that leverages dual LLMs for intelligent code generation, debugging, and technical discussions. Built with Python and Flask, it provides a responsive web interface for real-time interaction.
 
