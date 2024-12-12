@@ -37,13 +37,68 @@ def chat():
     context, token_stats = memory_store.get_context(thread_id, user_input)
     print(f"Token usage stats: {token_stats}")
     
-    # Determine if query is code-related
-    code_keywords = {'code', 'script', 'function', 'programming', 'git', 'install', 
-                    'compiler', 'debug', 'error', 'python', 'javascript', 'java', 'cpp'}
-    is_code_related = any(keyword in user_input.lower() for keyword in code_keywords)
+    # Use memory model to analyze query type and intent
+    query_analysis_prompt = (
+        "<|im_start|>system\n"
+        "You analyze user queries to determine:\n"
+        "1. If the query is code-related (requesting code, programming help, etc)\n"
+        "2. If they want fresh code generation instead of cached responses\n"
+        "Return ONLY in this format: 'code:true/false,fresh:true/false'\n"
+        "<|im_end|>\n"
+        "<|im_start|>user\n"
+        f"Analyze this request:\n\n{user_input}\n"
+        "<|im_end|>\n"
+        "<|im_start|>assistant\n"
+    )
     
-    # Check cache only for code-related queries
-    if is_code_related:
+    try:
+        analysis = model_manager.get_memory_model().create_completion(
+            query_analysis_prompt,
+            max_tokens=10,
+            temperature=0.1,
+            top_p=0.05,
+            top_k=2,
+            stream=False
+        )
+        
+        result = analysis['choices'][0]['text'].strip().lower()
+        code_part, fresh_part = result.split(',')
+        is_code_related = code_part.split(':')[1] == 'true'
+        skip_cache = fresh_part.split(':')[1] == 'true'
+        
+        print(f"Query analysis - Code related: {is_code_related}, Skip cache: {skip_cache}")
+    except Exception as e:
+        print(f"Analysis failed, defaulting to conservative values: {e}")
+        is_code_related = False
+        skip_cache = False
+    
+    # Define generation parameters for each model type
+    CODER_PARAMS = {
+        'max_tokens': None,
+        'temperature': 0.2,      # Low temperature for consistent outputs
+        'top_p': 0.10,           # Very focused sampling
+        'top_k': 20,             # Limited token selection
+        'repeat_penalty': 1.1,   # Slight penalty for repetition
+        'presence_penalty': 0,   # No presence penalty for code
+        'frequency_penalty': 0,  # No frequency penalty for code
+        'echo': False,
+        'stream': True
+    }
+    
+    MEMORY_PARAMS = {
+        'max_tokens': None,
+        'temperature': 0.8,       # Higher temperature for creativity
+        'top_p': 0.95,             # More diverse sampling
+        'top_k': 50,              # Broader token selection
+        'repeat_penalty': 1.15,   # Stronger repetition avoidance
+        'presence_penalty': 0.25, # Encourage topic exploration
+        'frequency_penalty': 0.3, # Encourage vocabulary diversity
+        'echo': False,
+        'stream': True
+    }
+    
+    # Check cache only for code-related queries and when not explicitly asked to skip
+    if is_code_related and not skip_cache:
         cached_response = memory_store.get_cached_code_response(user_input)
         if cached_response:
             print("Using cached code response")
@@ -63,9 +118,10 @@ def chat():
                 }
             )
     
-    # Select appropriate model and system prompt
+    # Select appropriate model, parameters, and system prompt
     if is_code_related:
         model = model_manager.get_main_model()
+        generation_params = CODER_PARAMS
         system_prompt = (
             "You are a code-focused AI assistant that writes clean, efficient code. "
             "IMPORTANT INSTRUCTIONS:\n"
@@ -80,11 +136,12 @@ def chat():
         )
     else:
         model = model_manager.get_memory_model()
+        generation_params = MEMORY_PARAMS
         system_prompt = (
             "You are a brilliant and helpful AI assistant that engages in general conversation.\n"
             "You should remember the flow of the conversation and maintain context.\n"
             "Format all responses in markdown.\n"
-            "You will receive conversation history as context and this is stictly to give you the ability to have a more natural conversation with the user.\n"
+            "You will receive conversation history as context and this is strictly to give you the ability to have a more natural conversation with the user.\n"
             "Always respond to the current query instead of the historical conversation context."
         )
     
@@ -102,22 +159,14 @@ def chat():
     prompt += f"<|im_start|>user\nCURRENT QUERY: {user_input}<|im_end|>\n"
     prompt += "<|im_start|>assistant\n"
     
-    print(f"Using {'Qwen Coder' if is_code_related else 'Replete'} model")
+    print(f"Using {'Qwen Coder' if is_code_related else 'Memory'} model with appropriate parameters")
     print(f"Full prompt:\n{prompt}\n")
     print("Starting generation...")
 
     def generate():
         try:
             print("Creating completion...")
-            response = model.create_completion(
-                prompt,
-                max_tokens=None,
-                temperature=0.1,
-                top_p=0.05,
-                top_k=7,
-                echo=False,
-                stream=True
-            )
+            response = model.create_completion(prompt, **generation_params)
             print("Got response object")
             
             full_response = ""
@@ -125,7 +174,7 @@ def chat():
                 print(f"Raw chunk: {chunk}")
                 if chunk and 'choices' in chunk and len(chunk['choices']) > 0:
                     text = chunk['choices'][0]['text']
-                    if text:  # Only process if we have text
+                    if text:
                         print(f"Token: '{text}'")
                         full_response += text
                         yield f"data: {json.dumps({'text': text})}\n\n"
