@@ -98,7 +98,6 @@ A powerful local AI coding assistant that leverages dual LLMs for intelligent co
 ## Technical Details
 
 ### Memory Management
-- Dynamic VRAM allocation
 - Main model: Maximum of 65 total layers
 - Memory model: Maximum of 29 total layers
 - Automatic context pruning
