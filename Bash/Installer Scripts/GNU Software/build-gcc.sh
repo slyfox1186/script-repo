@@ -6,7 +6,7 @@
 # GCC versions available: 10-14
 # Features: Automatically sources the latest release of each version.
 # Updated: 12.17.24
-# Script version: 1.6
+# Script version: 1.7
 
 build_dir="/tmp/gcc-build-script"
 packages="$build_dir/packages"
@@ -557,25 +557,51 @@ install_deps() {
 get_latest_version() {
     local version=$1
     local cache_file="$build_dir/.version_cache"
-    local cache_age=3600  # 1 hour
+    local cache_age=3600  # Cache for 1 hour
 
-    if [[ -f "$cache_file" ]] && [[ $(( $(date +%s) - $(stat -c %Y "$cache_file") )) -lt $cache_age ]]; then
-        grep "^$version:" "$cache_file" | cut -d: -f2
-        return
+    # Create cache directory if it doesn't exist
+    mkdir -p "$build_dir"
+
+    # Check if cache exists and is fresh
+    if [[ -f "$cache_file" ]]; then
+        local cache_timestamp
+        cache_timestamp=$(stat -c %Y "$cache_file")
+        local current_time
+        current_time=$(date +%s)
+        local age=$((current_time - cache_timestamp))
+
+        if [[ $age -lt $cache_age ]]; then
+            # Use cached version if available
+            if cached_version=$(grep "^$version:" "$cache_file" | cut -d: -f2); then
+                if [[ -n "$cached_version" ]]; then
+                    echo "$cached_version"
+                    return 0
+                fi
+            fi
+        fi
     fi
 
+    # Fetch latest version from GNU FTP site
     local latest_version
-    if ! latest_version=$(curl -fsS --connect-timeout 10 --max-time 30 --retry 3 https://ftp.gnu.org/gnu/gcc/ | 
-                         grep -oP "gcc-\K$version[0-9.]+" |
-                         sort -ruV | head -n1); then
-        fail "Failed to fetch GCC versions. Check your internet connection."
-    fi
-    
+    latest_version=$(curl -fsS "https://ftp.gnu.org/gnu/gcc/" | \
+                    grep -oP "gcc-${version}[0-9.]+/" | \
+                    sed 's/gcc-//;s/\///' | \
+                    sort -V | \
+                    tail -n1)
+
     if [[ -n "$latest_version" ]]; then
+        # Update cache
         mkdir -p "$(dirname "$cache_file")"
+        if [[ -f "$cache_file" ]]; then
+            # Remove old entry for this version
+            sed -i "/^$version:/d" "$cache_file"
+        fi
         echo "$version:$latest_version" >> "$cache_file"
         echo "$latest_version"
+        return 0
     fi
+
+    return 1
 }
 
 post_build_tasks() {
@@ -751,20 +777,20 @@ install_autoconf() {
 }
 
 select_versions() {
+    local -a versions=(10 11 12 13 14)
     selected_versions=()
 
     echo -e "\n${GREEN}Select the GCC version(s) to install:${NC}\n"
     echo -e "${CYAN}1. Single version${NC}"
-    echo -e "${CYAN}2. All versions${NC}"
-    echo -e "${CYAN}3. Custom versions${NC}"
+    echo -e "${CYAN}2. Custom versions${NC}"
 
     echo
     while true; do
-        read -p "Enter your choice (1-3): " choice
-        if [[ "$choice" =~ ^[1-3]$ ]]; then
+        read -p "Enter your choice (1-2): " choice
+        if [[ "$choice" =~ ^[1-2]$ ]]; then
             break
         fi
-        echo -e "${RED}Invalid choice. Please enter 1, 2, or 3.${NC}"
+        echo -e "${RED}Invalid choice. Please enter 1 or 2.${NC}"
     done
 
     case "$choice" in
@@ -785,9 +811,6 @@ select_versions() {
             selected_versions+=("${versions[$((single_choice-1))]}")
             ;;
         2)
-            selected_versions=("${versions[@]}")
-            ;;
-        3)
             while true; do
                 read -p "Enter comma-separated versions or ranges (e.g., 11,14 or 11-14): " custom_choice
                 if [[ "$custom_choice" =~ ^[0-9,.-]+$ ]]; then
@@ -827,6 +850,15 @@ select_versions() {
     if [[ "${#selected_versions[@]}" -eq 0 ]]; then
         fail "No valid GCC versions were selected."
     fi
+
+    # Get latest version for each selected version and build
+    for version in "${selected_versions[@]}"; do
+        latest_version=$(get_latest_version "$version")
+        if [[ -z "$latest_version" ]]; then
+            fail "Failed to determine latest version for GCC $version"
+        fi
+        build_gcc "$latest_version"
+    done
 }
 
 build_state() {
@@ -875,8 +907,14 @@ build_gcc() {
         "--host=$pc_type"
         "--target=$pc_type"
         "--disable-assembly"
-        "--disable-isl-version-check"
+        "--disable-bootstrap"
+        "--disable-isl-version-check" 
+        "--disable-libada"
+        "--disable-libsanitizer"
+        "--disable-libssp"
+        "--disable-libvtv"
         "--disable-lto"
+        "--disable-multilib"
         "--disable-nls"
         "--disable-vtable-verify"
         "--disable-werror"
@@ -890,19 +928,28 @@ build_gcc() {
         "--enable-libstdcxx-time=yes"
         "--enable-linker-build-id"
         "--enable-multiarch"
+        "--enable-plugin"
+        "--enable-shared"
         "--enable-threads=posix"
         "--libdir=$install_dir/lib"
         "--libexecdir=$install_dir/libexec"
         "--program-prefix=$pc_type-"
         "--program-suffix=-$short_version"
         "--with-abi=m64"
+        "--with-arch-32=i686"
         "--with-default-libstdcxx-abi=new"
         "--with-gcc-major-version-only"
+        "--with-gnu-as"
+        "--with-gnu-ld"
         "--with-isl=/usr"
+        "--with-linker-hash-style=gnu"
         "--with-system-zlib"
         "--with-target-system-zlib=auto"
-        "$cuda_check"
+        "--with-tune=generic"
     )
+
+    # Add CUDA check option if CUDA is available
+    [[ -n "$cuda_check" ]] && common_options+=("$cuda_check")
 
     # Version-specific options
     case "$short_version" in
@@ -913,7 +960,13 @@ build_gcc() {
             configure_options=("${common_options[@]}" "--with-link-serialization=2")
             ;;
         13|14) 
-            configure_options=("${common_options[@]}" "--disable-vtable-verify" "--enable-cet" "--enable-link-serialization=2" "--enable-host-pie")
+            configure_options=(
+                "${common_options[@]}"
+                "--disable-vtable-verify"
+                "--enable-cet"
+                "--enable-link-serialization=2"
+                "--enable-host-pie"
+            )
             ;;
         *)  
             fail "GCC version not found. Line: $LINENO"
@@ -929,94 +982,33 @@ build_gcc() {
     log "INFO" "Starting build process for GCC $version"
     log "INFO" "Configuring GCC $version..."
 
-    # Configure
+    # Configure with proper array expansion
     if ! verbose_logging ../configure "${configure_options[@]}"; then
         fail "Configure failed. Check the output above for errors."
     fi
     log "INFO" "Configuration completed successfully"
 
-    # Build with better progress indication
-    log "INFO" "Building GCC $version (this may take a while)..."
-    local start_time=$(date +%s)
-    
-    if [[ "$debug_mode" -eq 1 ]]; then
-        # Full output in debug mode
-        if ! make -j"$threads"; then
-            log "WARNING" "Parallel make failed, trying single-threaded"
-            if ! make; then
-                fail "GCC build failed"
-            fi
-        fi
-    else
-        # Show filtered progress updates
-        if ! make -j"$threads" 2>&1 | while read -r line; do
-            # Filter out duplicate recipe warnings and only show unique messages
-            case "$line" in
-                *"Entering directory"*)
-                    echo -e "\n${GREEN}[BUILD]${NC} Starting: ${line##* }"
-                    ;;
-                *"Leaving directory"*)
-                    echo -e "${GREEN}[BUILD]${NC} Completed: ${line##* }"
-                    ;;
-                *"error:"*)
-                    echo -e "${RED}[ERROR]${NC} ${line##*: error: }"
-                    return 1
-                    ;;
-                *"Making all in"*)
-                    echo -e "${GREEN}[BUILD]${NC} ${line}"
-                    ;;
-                *"warning:"*)
-                    # Only show non-recipe warnings
-                    if [[ ! "$line" =~ "recipe for target" ]]; then
-                        echo -e "${YELLOW}[WARNING]${NC} ${line##*: warning: }"
-                    fi
-                    ;;
-            esac
-            
-            # Show periodic time updates
-            local current_time=$(date +%s)
-            local elapsed=$((current_time - start_time))
-            if ((elapsed % 300 == 0 && elapsed > 0)); then  # Every 5 minutes
-                echo -e "\n${GREEN}[INFO]${NC} Build in progress - $((elapsed/60)) minutes elapsed"
-            fi
-        done; then
-            log "WARNING" "Parallel make failed, trying single-threaded"
-            if ! make 2>&1 | while read -r line; do
-                case "$line" in
-                    *"Making"*|*"make["*"]"*)
-                        echo -e "${GREEN}[BUILD]${NC} ${line}"
-                        ;;
-                    *"error:"*)
-                        echo -e "${RED}[ERROR]${NC} ${line##*: error: }"
-                        ;;
-                    *"warning:"*)
-                        # Only show non-recipe warnings
-                        if [[ ! "$line" =~ "recipe for target" ]]; then
-                            echo -e "${YELLOW}[WARNING]${NC} ${line##*: warning: }"
-                        fi
-                        ;;
-                esac
-            done; then
-                fail "GCC build failed"
-            fi
-        fi
+    # Build GCC
+    log "INFO" "Building GCC $version..."
+    if ! make_gcc; then
+        fail "Build failed. Check the output above for errors."
     fi
+    log "INFO" "Build completed successfully"
 
-    local end_time=$(date +%s)
-    local duration=$((end_time - start_time))
-    log "INFO" "Build completed in $((duration/60)) minutes and $((duration%60)) seconds"
-
-    # Installation
+    # Install GCC
     log "INFO" "Installing GCC $version..."
-    if ! verbose_logging sudo make install-strip; then
-        fail "Make install failed. Check the output above for errors."
+    if ! install_gcc; then
+        fail "Installation failed. Check the output above for errors."
     fi
     log "INFO" "Installation completed successfully"
 
-    # Post-install steps
-    log "INFO" "Performing post-installation tasks..."
-    [[ "$save_binaries" -eq 1 ]] && save_static_binaries "$version"
-    log "INFO" "GCC $version build and installation completed successfully"
+    # Post-installation tasks
+    post_build_tasks "$version"
+    ld_linker_path "$version"
+    create_additional_soft_links "$install_dir"
+    trim_binaries "$version"
+    save_static_binaries "$version"
+    build_done "gcc" "$version"
 }
 
 check_dependencies() {
