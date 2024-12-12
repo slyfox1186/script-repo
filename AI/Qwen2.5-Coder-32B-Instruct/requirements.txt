@@ -1,0 +1,19 @@
+flask
+llama-cpp-python # recommended you use my install script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Misc/Conda/llama-cpp-python_installer.sh
+torch
+torchaudio
+torchvision
+numpy==1.24.3
+psutil
+bs4
+tqdm
+python-dotenv
+werkzeug
+jinja2
+itsdangerous
+click
+markupsafe
+typing-extensions
+filelock
+sympy
+networkx
