@@ -56,11 +56,7 @@ A powerful local AI coding assistant that leverages dual LLMs for intelligent co
 
 ## Quick Start
 
-1. **Clone the Repository**
-   ```bash
-   git clone https://github.com/yourusername/AI-Code-Assistant.git
-   cd AI-Code-Assistant
-   ```
+1. **Setup file structure**
 
 2. **Create a Virtual Environment**
    ```bash
@@ -84,7 +80,7 @@ A powerful local AI coding assistant that leverages dual LLMs for intelligent co
 
 5. **Run the Application**
    ```bash
-   python app.py
+   python3 app.py
    ```
 
 6. **Access the Interface**
