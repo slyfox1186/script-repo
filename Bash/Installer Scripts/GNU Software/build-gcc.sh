@@ -410,8 +410,9 @@ install_deps() {
     pkgs=(
         autoconf autoconf-archive automake binutils bison
         build-essential ccache curl flex gawk gcc gnat libc6-dev
-        libisl-dev libtool make m4 patch texinfo zlib1g-dev libzstd-dev
-        libc6-dev libc6-dev-i386 linux-libc-dev linux-libc-dev:i386
+        libisl-dev libtool libtool-bin make m4 patch texinfo
+        zlib1g-dev libzstd-dev libc6-dev libc6-dev-i386 linux-libc-dev
+        linux-libc-dev:i386
     )
 
     if [[ "$dry_run" -eq 0 ]]; then
@@ -470,7 +471,16 @@ build_gcc() {
     version=$1
     install_dir="/usr/local/programs/gcc-$version"
 
-    pc_type=$(gcc -dumpmachine) || fail "Failed to determine machine type."
+    if type -P gcc &>/dev/null; then
+        pc_type=$(gcc -dumpmachine)
+    else
+        sudo apt update
+        if ! sudo apt -y install gcc g++; then
+            fail "Failed to install gcc and thus was unable to determine the machine type."
+        else
+            pc_type=$(gcc -dumpmachine)
+        fi
+    fi
 
     log "Begin building GCC $version"
 
@@ -692,7 +702,7 @@ ld_linker_path() {
         [[ -d "$install_dir/lib" ]] && echo "$install_dir/lib" | sudo tee -a "/etc/ld.so.conf.d/custom_gcc-$version.conf" >/dev/null
         sudo ldconfig
     else
-        log "Dry run: would update ld.so.conf and run ldconfig"
+        log "Dry run: Would now create the \"/etc/ld.so.conf/\" config files."
     fi
 }
 
@@ -721,7 +731,7 @@ main() {
     parse_args "$@"
 
     if [[ "$EUID" -eq 0 ]]; then
-        echo "This script must be run without root or with sudo."
+        echo "This script must be run without root or sudo."
         exit 1
     fi
 
@@ -748,7 +758,7 @@ main() {
     summary
 
     log "Build completed successfully!"
-    echo -e "\\n${GREEN}Make sure to star this repository to show your support!${NC}"
+    echo -e "\\nMake sure to ${YELLOW}star${NC} this repository to show your ${GREEN}support${NC}!"
     echo "https://github.com/slyfox1186/script-repo"
 }
 
