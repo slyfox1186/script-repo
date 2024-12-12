@@ -123,7 +123,7 @@ def chat():
         model = model_manager.get_main_model()
         generation_params = CODER_PARAMS
         system_prompt = (
-            "You are a code-focused AI assistant that writes clean, efficient code. "
+            "You are a code-focused AI assistant that writes clean, efficient code.\n"
             "IMPORTANT INSTRUCTIONS:\n"
             "1. Provide ONLY the code implementation unless explicitly asked for explanations or other supporting information\n"
             "2. Use markdown code blocks with appropriate language tags and file paths\n"
