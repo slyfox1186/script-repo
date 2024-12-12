@@ -25,7 +25,7 @@ conda install -y bs4 markdown2 nltk psutil pytest-asyncio pytest python-dotenv \
 
 # Install pip packages
 printf "\n%s\n\n" "Installing pip packages."
-pip install accelerate bitsandbytes cloud-tpu-client fake_useragent langdetect "numpy<2.1.0,>=2.0.0" tiktoken
+pip install accelerate bitsandbytes cloud-tpu-client fake_useragent flask langdetect "numpy<2.1.0,>=2.0.0" tiktoken
 
 # Install llama-cpp-python with verbose output for debugging
 CMAKE_ARGS="-DGGML_CUDA=ON \
