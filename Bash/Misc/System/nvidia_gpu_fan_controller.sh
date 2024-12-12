@@ -22,6 +22,11 @@
 #   -r, --reset     Attempt to reset fan control to automatic mode using nvidia-settings
 ###############################################################################
 
+if [[ "$EUID" -ne 0 ]]; then
+    echo "You must run this script with root or sudo."
+    exit 1
+fi
+
 set -euo pipefail
 IFS=$'\n\t'
 
