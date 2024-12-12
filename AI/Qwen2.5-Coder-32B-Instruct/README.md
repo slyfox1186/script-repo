@@ -102,8 +102,8 @@ A powerful local AI coding assistant that leverages dual LLMs for intelligent co
 
 ### Memory Management
 - Dynamic VRAM allocation
-- Main model: 49 layers GPU-offloaded
-- Memory model: 24 layers GPU-offloaded
+- Main model: Maximum of 65 total layers
+- Memory model: Maximum of 29 total layers
 - Automatic context pruning
 - Token usage optimization
 
