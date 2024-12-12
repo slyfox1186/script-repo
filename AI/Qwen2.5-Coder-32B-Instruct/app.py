@@ -88,7 +88,7 @@ def chat():
     MEMORY_PARAMS = {
         'max_tokens': None,
         'temperature': 0.8,       # Higher temperature for creativity
-        'top_p': 0.95,             # More diverse sampling
+        'top_p': 0.95,            # More diverse sampling
         'top_k': 50,              # Broader token selection
         'repeat_penalty': 1.15,   # Stronger repetition avoidance
         'presence_penalty': 0.25, # Encourage topic exploration
