@@ -90,6 +90,14 @@ A powerful local AI coding assistant that leverages dual LLMs for intelligent co
    - Open your browser and go to:  
      `http://localhost:5000`
 
+7. **Tune the script to your VRAM limits**
+   - These options are located in the `persistent_memory.py` script
+   ```bash
+   # Set these according to the amount of VRAM you have available
+   GPU_LAYERS_CODER = 63
+   GPU_LAYERS_FAST = 29
+   ```
+
 ## Technical Details
 
 ### Memory Management
