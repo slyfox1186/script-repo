@@ -100,8 +100,8 @@ A powerful local AI coding assistant that leverages dual LLMs for intelligent co
 - Token usage optimization
 
 ### Browser Compatibility
-- Chrome/Edge (Recommended)
-- Firefox
+- Firefox (Recommended)
+- Chrome/Edge
 - Safari
 
 ### Security Notes
