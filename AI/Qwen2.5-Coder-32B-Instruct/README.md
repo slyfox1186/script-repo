@@ -1,9 +1,14 @@
 # AI Code Assistant
+ - A powerful local AI coding assistant that leverages dual LLMs for intelligent code generation, debugging, and technical discussions. Built with Python and Flask, it provides a responsive web interface for real-time interaction.
 
-![AI Code Assistant Interface](https://i.imgur.com/CikPfBU.png)
-![AI Code Assistant Interface](https://i.imgur.com/NPKGpi8.png)
+## Examples
 
-A powerful local AI coding assistant that leverages dual LLMs for intelligent code generation, debugging, and technical discussions. Built with Python and Flask, it provides a responsive web interface for real-time interaction.
+#### General
+![General Example 1](https://i.imgur.com/CikPfBU.png)
+![General Example 2](https://i.imgur.com/NPKGpi8.png)
+
+#### Assistant Memory
+![AI Memory Example](https://i.imgur.com/HlYnU38.png)
 
 ## Features
 
