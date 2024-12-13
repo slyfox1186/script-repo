@@ -8,6 +8,8 @@ document.addEventListener('DOMContentLoaded', function() {
     let partialBackticks = '';
     let isUserScrolling = false;
     let shouldAutoScroll = true;
+    let headerBuffer = '';
+    let isProcessingHeader = false;
     
     messagesContainer.addEventListener('wheel', function() {
         isUserScrolling = true;
@@ -29,6 +31,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${isUser ? 'user-message' : 'assistant-message'}`;
         
+        // Create container for message content
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'message-content';
+        contentDiv.style.textAlign = 'left';  // Left align text inside bubble
+        
         if (isUser) {
             const assistantMessages = document.getElementsByClassName('assistant-message');
             if (assistantMessages.length > 0) {
@@ -37,12 +44,19 @@ document.addEventListener('DOMContentLoaded', function() {
                     lastAssistant.remove();
                 }
             }
-            messageDiv.style.whiteSpace = 'pre-wrap';
-            messageDiv.textContent = content;
+            contentDiv.style.whiteSpace = 'pre-wrap';
+            contentDiv.textContent = content;
             shouldAutoScroll = true;
         } else {
-            messageDiv.innerHTML = content;
+            contentDiv.innerHTML = content;
         }
+        
+        // Add content to message container
+        messageDiv.appendChild(contentDiv);
+        messageDiv.style.margin = '0 auto';  // Center the message bubble
+        messageDiv.style.display = 'flex';   // Use flexbox for alignment
+        messageDiv.style.justifyContent = 'center'; // Center horizontally
+        messageDiv.style.width = '100%';     // Full width for proper centering
         
         messagesContainer.appendChild(messageDiv);
         scrollToBottom();
@@ -59,29 +73,48 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        // If we're waiting for language identifier and get it, skip it
-        if (partialBackticks === '```' && (text === 'bash' || /^[a-z]+$/.test(text))) {
+        // Handle code block start
+        if (text === '```') {
+            if (!isProcessingCode) {
+                // Start new code block
+                isProcessingCode = true;
+                currentResponse += '<pre><code>';
+                partialBackticks = '```';
+                headerBuffer = '';  // Reset header buffer
+            } else {
+                // End current code block
+                isProcessingCode = false;
+                currentResponse += '</code></pre>';
+                partialBackticks = '';
+            }
             return;
         }
         
-        // If we get backticks, store them and wait
-        if (text === '```' && !isProcessingCode) {
-            isProcessingCode = true;
-            currentResponse += '<pre><code>';
-            partialBackticks = '```';
-            return;
+        // Buffer the header parts until we have a complete filename
+        if (partialBackticks === '```') {
+            headerBuffer += text;
+            
+            // Check if we have a complete header (ends with file extension)
+            if (headerBuffer.endsWith('.py') || headerBuffer.endsWith('.js') || headerBuffer.endsWith('.html')) {
+                if (headerBuffer.includes(':')) {
+                    const [lang, filename] = headerBuffer.split(':');
+                    currentResponse = currentResponse.replace('<code>', `<code class="language-${lang}"># ${filename}\n`);
+                } else {
+                    currentResponse = currentResponse.replace('<code>', `<code class="language-${headerBuffer}">`);
+                }
+                partialBackticks = '';
+                headerBuffer = '';
+                return;
+            }
+            return;  // Keep buffering until header is complete
         }
         
-        // If we get closing backticks, handle them
+        // Handle nested backticks inside code block
         if (isProcessingCode && text.includes('```')) {
-            isProcessingCode = false;
-            currentResponse += '</code></pre>';
-            text = text.replace('```', '');
-            partialBackticks = '';
-            return;
+            text = text.replace(/```/g, '\\`\\`\\`');
         }
         
-        // Process normal text
+        // Process text content
         if (isProcessingCode) {
             currentResponse += text
                 .replace(/</g, '&lt;')
@@ -93,14 +126,30 @@ document.addEventListener('DOMContentLoaded', function() {
                 .replace(/\n/g, '<br>');
         }
         
-        partialBackticks = '';
+        updateAssistantMessage(currentResponse);
     }
 
     function updateAssistantMessage(content) {
         let assistantMessages = document.getElementsByClassName('assistant-message');
         if (assistantMessages.length > 0) {
             const lastMessage = assistantMessages[assistantMessages.length - 1];
-            lastMessage.innerHTML = content;
+            
+            // Create or update content container
+            let contentDiv = lastMessage.querySelector('.message-content');
+            if (!contentDiv) {
+                contentDiv = document.createElement('div');
+                contentDiv.className = 'message-content';
+                contentDiv.style.textAlign = 'left';
+                lastMessage.appendChild(contentDiv);
+            }
+            
+            contentDiv.innerHTML = content;
+            
+            // Ensure message container is centered
+            lastMessage.style.margin = '0 auto';
+            lastMessage.style.display = 'flex';
+            lastMessage.style.justifyContent = 'center';
+            lastMessage.style.width = '100%';
             
             lastMessage.querySelectorAll('pre code').forEach((block) => {
                 hljs.highlightElement(block);
