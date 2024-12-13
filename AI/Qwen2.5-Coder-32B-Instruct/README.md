@@ -56,7 +56,11 @@ A powerful local AI coding assistant that leverages dual LLMs for intelligent co
 
 ## Quick Start
 
-1. **Setup file structure**
+1. **Clone the Repository**
+   ```bash
+   git clone https://github.com/yourusername/AI-Code-Assistant.git
+   cd AI-Code-Assistant
+   ```
 
 2. **Create a Virtual Environment**
    ```bash
@@ -78,7 +82,16 @@ A powerful local AI coding assistant that leverages dual LLMs for intelligent co
    # and place them in the models/ directory
    ```
 
-5. **Tune the script to your VRAM limits**
+5. **Run the Application**
+   ```bash
+   python app.py
+   ```
+
+6. **Access the Interface**
+   - Open your browser and go to:  
+     `http://localhost:5000`
+
+7. **Tune the script to your VRAM limits**
    - These options are located in the `persistent_memory.py` script
    ```bash
    # Set these according to the amount of VRAM you have available
@@ -86,18 +99,10 @@ A powerful local AI coding assistant that leverages dual LLMs for intelligent co
    GPU_LAYERS_FAST = 29
    ```
 
-6. **Run the Application**
-   ```bash
-   python3 app.py
-   ```
-
-7. **Access the Interface**
-   - Open your browser and go to:  
-     `http://localhost:5000`
-
 ## Technical Details
 
 ### Memory Management
+- Dynamic VRAM allocation
 - Main model: Maximum of 65 total layers
 - Memory model: Maximum of 29 total layers
 - Automatic context pruning
@@ -126,3 +131,4 @@ Contributions are welcome! Please read our [Contributing Guidelines](CONTRIBUTIN
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
+

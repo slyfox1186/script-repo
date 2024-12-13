@@ -1,64 +1,25 @@
 import json
 import os
 import threading
+import tiktoken
 import torch
 from datetime import datetime
 from llama_cpp import Llama
 from pathlib import Path
-from typing import (
-    Any,
-    Dict,
-    List,
-    Optional,
-    Tuple
-)
+from typing import Dict, List, Optional, Tuple
+import re
 
-# Set these according to the amount of VRAM you have available
-GPU_LAYERS_CODER = 63
-GPU_LAYERS_FAST = 29
+# Configuration settings
+CODER_GPU_LAYERS = 54       # Reduced from 45 to save VRAM
+FAST_GPU_LAYERS = 37        # Reduced from 32 to save VRAM
 
-class InMemoryStore:
-    """Simple in-memory store for semantic memory"""
-    def __init__(self):
-        self._store: Dict[str, Any] = {}
-        self._lock = threading.Lock()
-    
-    def set(self, key: str, value: Any) -> None:
-        with self._lock:
-            self._store[key] = value
-    
-    def get(self, key: str) -> Optional[Any]:
-        with self._lock:
-            return self._store.get(key)
-    
-    def clear(self) -> None:
-        with self._lock:
-            self._store.clear()
-
-class GPUManager:
-    def __init__(self):
-        # VRAM Configuration (23GB for models)
-        self.total_vram = 23 * 1024  # 23,552 MB
-        
-        # Layer allocation based on actual VRAM usage
-        self.qwen_layers = GPU_LAYERS_CODER    # Main model (Qwen 32B)
-        self.replete_layers = GPU_LAYERS_FAST  # Memory model (Qwen 1.5B - Can allocate more layers since it's smaller)
-        
-        print(f"\nGPU Memory Allocation:")
-        print(f"Total VRAM for models: {self.total_vram:,}MB")
-        print(f"Qwen layers: {self.qwen_layers} (using {self.qwen_layers * 330:,}MB)")
-        print(f"Replete layers: {self.replete_layers} (using {self.replete_layers * 110:,}MB)")  # Smaller per-layer size
-        print(f"Total GPU Memory Used: {(self.qwen_layers * 330) + (self.replete_layers * 110):,}MB\n")
-        
-        # Configure VRAM usage
-        torch.cuda.set_per_process_memory_fraction(0.95)  # Leave some headroom
-        os.environ['MALLOC_TRIM_THRESHOLD_'] = '65536'
-        
-    def setup_for_main_model(self):
-        torch.cuda.empty_cache()
-        
-    def setup_for_memory_model(self):
-        torch.cuda.empty_cache()
+# Memory settings
+MAX_MEMORIES = 50           # Max messages to keep per thread
+MAX_CONTEXT_TOKENS = 16384  # Model's context window
+MAX_ANALYSIS_TOKENS = 50
+MIN_ANALYSIS_TOKENS = 5
+ANALYSIS_TRUNCATE_PERCENT = 0.1  # 10%
+FALLBACK_CHAR_LIMIT = 100
 
 class ModelManager:
     _instance = None
@@ -72,577 +33,559 @@ class ModelManager:
             return cls._instance
 
     def _initialize(self):
-        self.gpu_manager = GPUManager()
+        """Initialize model manager"""
+        self._memory_model = None
+        self._main_model = None
+        self._active_model = None
         
-        # Initialize Replete model (7B version)
-        self.gpu_manager.setup_for_memory_model()
-        self.memory_model = Llama(
-            model_path="./models/Qwen2.5-1.5B-Instruct-Q8_0.gguf",
-            n_ctx=32768,
-            n_batch=512,
-            n_threads=os.cpu_count(),
-            n_gpu_layers=self.gpu_manager.replete_layers,
-            main_gpu=0,
-            offload_kqv=False,
-            flash_attn=True,
-            torch_dtype="auto",
-            attn_implementation="flash_attention_2",
-            use_mmap=True,
-            use_mlock=False,
-            seed=-1,
-            verbose=True,
-            rope_scaling={
-                "type": "yarn",
-                "factor": 4.0,
-                "original_max_position_embeddings": 32768
-            }
-        )
+        # Model paths
+        self.coder_model_path = "./models/Qwen2.5-Coder-32B-Instruct-Q5_K_L.gguf"
+        self.fast_model_path = "./models/Qwen2.5-3B-Instruct-Q6_K_L.gguf"
         
-        # Print model info
-        print(f"\nReplete Model Info:")
-        print(f"Context length: {self.memory_model.context_params.n_ctx}")
-        print(f"Model size: 7B parameters")
-        
-        # Initialize Qwen model
-        self.gpu_manager.setup_for_main_model()
-        self.main_model = Llama(
-            model_path="./models/Qwen2.5-Coder-32B-Instruct-Q5_K_L.gguf",
-            n_ctx=32768,
-            n_batch=512,
-            n_threads=os.cpu_count(),
-            n_gpu_layers=self.gpu_manager.qwen_layers,
-            main_gpu=0,
-            offload_kqv=False,
-            flash_attn=True,
-            torch_dtype="auto",
-            attn_implementation="flash_attention_2",
-            use_mmap=True,
-            use_mlock=False,
-            seed=-1,
-            verbose=True,
-            rope_scaling={
-                "type": "yarn",
-                "factor": 4.0,
-                "original_max_position_embeddings": 32768
-            }
-        )
-        
-        # Print model info
-        print(f"\nQwen Model Info:")
-        print(f"Context length: {self.main_model.context_params.n_ctx}")
-        print(f"Model size: 32B parameters")
-        print(f"RoPE scaling: YaRN (factor: 4.0)\n")
+        # Better VRAM management
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            torch.cuda.set_per_process_memory_fraction(0.70)  # Reduced from 0.75
+
+    def get_active_model_name(self) -> str:
+        """Get the name of the currently active model"""
+        if self._main_model:
+            return "Qwen Coder"
+        elif self._memory_model:
+            return "Memory"
+        return "No model loaded"
 
     def get_memory_model(self):
+        """Get the memory model"""
         with self._lock:
-            self.gpu_manager.setup_for_memory_model()
-            return self.memory_model
+            # Clean up main model if it exists
+            if self._main_model:
+                del self._main_model
+                self._main_model = None
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+            
+            self._active_model = "Memory"
+            # Load memory model if needed
+            if not self._memory_model:
+                self._memory_model = Llama(
+                    model_path=self.fast_model_path,
+                    n_ctx=MAX_CONTEXT_TOKENS,
+                    n_gpu_layers=FAST_GPU_LAYERS,
+                    main_gpu=0,
+                    offload_kqv=True  # Offload key/value cache to CPU
+                )
+            return self._memory_model
 
     def get_main_model(self):
+        """Get the main model"""
         with self._lock:
-            self.gpu_manager.setup_for_main_model()
-            return self.main_model
-
-class MemoryStore:
-    def __init__(self, 
-                 storage_path: str = "conversation_history",
-                 max_context_length: int = 32768):
-        # Create base storage directory
-        self.storage_path = Path(storage_path)
-        self.storage_path.mkdir(parents=True, exist_ok=True)
-        
-        # Define paths for all storage files
-        self.tokens_file = self.storage_path / "token_count.json"
-        self.code_cache_file = self.storage_path / "code_responses.json"
-        
-        # Handle migration of old chat history if it exists
-        self._migrate_old_chat_history()
-        
-        # Rest of initialization...
-        self.max_context_length = max_context_length
-        self.model_manager = ModelManager()
-        self.load_token_count()
-        self.semantic_store = InMemoryStore()
-        
-        # Ensure write permissions
-        if not os.access(self.storage_path, os.W_OK):
-            raise PermissionError(f"No write access to {self.storage_path}")
-        
-        # Initialize cache
-        self.cache_version = "1.0"
-        self.code_cache = self._load_code_cache()
-        self.similarity_threshold = 0.95
-
-    def _migrate_old_chat_history(self):
-        """Migrate old chat_history.json to thread-based system"""
-        old_chat_history = Path("chat_history.json")
-        if old_chat_history.exists():
-            try:
-                print("Found old chat_history.json, migrating to thread-based system...")
-                with open(old_chat_history, 'r') as f:
-                    old_messages = json.load(f)
-                
-                if isinstance(old_messages, list):
-                    # Create default thread file
-                    default_thread_file = self._get_thread_file('default')
-                    
-                    # Don't overwrite existing thread file
-                    if not default_thread_file.exists():
-                        print("Migrating messages to default thread")
-                        with open(default_thread_file, 'w') as f:
-                            json.dump(old_messages, f, indent=2)
-                        
-                        # Create backup of old file
-                        backup_file = old_chat_history.with_suffix('.json.bak')
-                        import shutil
-                        shutil.copy2(old_chat_history, backup_file)
-                        
-                        # Remove old file only if migration successful
-                        old_chat_history.unlink()
-                        print("Successfully migrated chat history to thread-based system")
-                    else:
-                        print("Default thread already exists, skipping migration")
-                else:
-                    print("Old chat history format not recognized, skipping migration")
-                    
-            except Exception as e:
-                print(f"Error migrating chat history: {e}")
-                # Don't delete original file if migration failed
-                print("Original chat_history.json preserved")
-
-    def _get_thread_file(self, thread_id: str) -> Path:
-        """Get path to thread file with validation"""
-        # Sanitize thread_id to prevent directory traversal
-        safe_thread_id = "".join(c for c in thread_id if c.isalnum() or c in ('-', '_'))
-        if safe_thread_id != thread_id:
-            print(f"Warning: Thread ID sanitized from '{thread_id}' to '{safe_thread_id}'")
-        return self.storage_path / f"{safe_thread_id}.json"
-
-    def load_token_count(self):
-        """Load total token count from persistent storage"""
-        if self.tokens_file.exists():
-            try:
-                with open(self.tokens_file, 'r') as f:
-                    data = json.load(f)
-                self.total_tokens_used = data.get('total_tokens', 0)
-            except Exception as e:
-                print(f"Error loading token count: {e}")
-                self.total_tokens_used = 0
-        else:
-            self.total_tokens_used = 0
-
-    def save_token_count(self):
-        """Save total token count to persistent storage"""
-        try:
-            with open(self.tokens_file, 'w') as f:
-                json.dump({'total_tokens': self.total_tokens_used}, f)
-        except Exception as e:
-            print(f"Error saving token count: {e}")
-
-    def _load_thread(self, thread_id: str) -> List[Dict]:
-        file_path = self._get_thread_file(thread_id)
-        if file_path.exists():
-            with open(file_path, 'r') as f:
-                return json.load(f)
-        return []
-
-    def _save_thread(self, thread_id: str, messages: List[Dict]):
-        """Save thread with backup and verification"""
-        file_path = self._get_thread_file(thread_id)
-        backup_path = file_path.with_suffix('.json.bak')
-        
-        # Create backup of existing file
-        if file_path.exists():
-            import shutil
-            shutil.copy2(file_path, backup_path)
-        
-        try:
-            # Write to temporary file first
-            temp_path = file_path.with_suffix('.json.tmp')
-            with open(temp_path, 'w') as f:
-                json.dump(messages, f, indent=2)
+            # Clean up memory model if it exists
+            if self._memory_model:
+                del self._memory_model
+                self._memory_model = None
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
             
-            # Verify the temporary file
-            with open(temp_path, 'r') as f:
-                verify_data = json.load(f)
-            if verify_data != messages:
-                raise Exception("Data verification failed")
-            
-            # Rename temporary file to actual file
-            os.replace(temp_path, file_path)
-            
-            # Remove backup if everything succeeded
-            if backup_path.exists():
-                backup_path.unlink()
-                
-        except Exception as e:
-            # Restore from backup if available
-            if backup_path.exists():
-                os.replace(backup_path, file_path)
-            print(f"Error saving thread: {e}")
-            raise
+            self._active_model = "Qwen Coder"
+            # Load main model if needed
+            if not self._main_model:
+                self._main_model = Llama(
+                    model_path=self.coder_model_path,
+                    n_ctx=MAX_CONTEXT_TOKENS,
+                    n_gpu_layers=CODER_GPU_LAYERS,
+                    main_gpu=0,
+                    offload_kqv=True  # Offload key/value cache to CPU
+                )
+            return self._main_model
 
-    def _count_tokens(self, text: str) -> int:
-        """Count tokens using the memory model's tokenizer"""
-        return len(self.model_manager.memory_model.tokenize(text.encode()))
-
-    def _load_code_cache(self) -> Dict[str, Dict]:
-        """Load cached code responses with version checking"""
-        if self.code_cache_file.exists():
-            try:
-                with open(self.code_cache_file, 'r') as f:
-                    cache_data = json.load(f)
-                
-                # Version check
-                if cache_data.get('version') != self.cache_version:
-                    print("Cache version mismatch, clearing cache")
-                    return {'version': self.cache_version, 'responses': {}}
-                
-                return cache_data.get('responses', {})
-            except Exception as e:
-                print(f"Error loading code cache: {e}")
-                return {'version': self.cache_version, 'responses': {}}
-        return {'version': self.cache_version, 'responses': {}}
-
-    def _save_code_cache(self):
-        """Save code cache to disk with versioning"""
-        try:
-            cache_data = {
-                'version': self.cache_version,
-                'responses': self.code_cache
-            }
-            with open(self.code_cache_file, 'w') as f:
-                json.dump(cache_data, f, indent=2)
-        except Exception as e:
-            print(f"Error saving code cache: {e}")
-
-    def _normalize_code_query(self, query: str) -> str:
-        """Normalize code query for consistent matching"""
-        # Remove whitespace and convert to lowercase
-        normalized = ' '.join(query.lower().split())
-        # Remove common variations in wording
-        replacements = {
-            'could you ': '',
-            'can you ': '',
-            'please ': '',
-            'help me ': '',
-            'i need ': '',
-            'write ': '',
-            'create ': '',
-            'generate ': '',
-            'code for ': '',
-            'script for ': '',
-        }
-        for old, new in replacements.items():
-            normalized = normalized.replace(old, new)
-        return normalized
-
-    def get_cached_code_response(self, query: str) -> Optional[str]:
-        """Get cached response for identical code query"""
-        normalized_query = self._normalize_code_query(query)
-        
-        # Check for exact match
-        if normalized_query in self.code_cache:
-            print(f"Found exact cache match for query: {query}")
-            return self.code_cache[normalized_query]['response']
-        
-        # Check for similar queries
-        for cached_query, data in self.code_cache.items():
-            if self._queries_are_similar(normalized_query, cached_query):
-                print(f"Found similar cache match for query: {query}")
-                return data['response']
-        
-        return None
-
-    def _queries_are_similar(self, query1: str, query2: str) -> bool:
-        """Check if two queries are semantically similar with stricter matching"""
-        # Remove common prefixes first
-        query1 = self._normalize_code_query(query1)
-        query2 = self._normalize_code_query(query2)
-        
-        # Split into words and filter out common words
-        common_words = {'the', 'a', 'an', 'in', 'on', 'at', 'to', 'for', 'of', 'with'}
-        words1 = {w for w in query1.split() if w not in common_words}
-        words2 = {w for w in query2.split() if w not in common_words}
-        
-        # Calculate Jaccard similarity
-        intersection = len(words1.intersection(words2))
-        union = len(words1.union(words2))
-        
-        if not union:
-            return False
-            
-        similarity = intersection / union
-        
-        # Require higher similarity for longer queries
-        length_factor = min(1.0, max(len(words1), len(words2)) / 5)
-        required_similarity = self.similarity_threshold - (length_factor * 0.05)
-        
-        return similarity > required_similarity
-
-    def cache_code_response(self, query: str, response: str):
-        """Cache a code response with validation"""
-        if '```' not in response:
-            return
-            
-        # Validate code blocks
-        code_blocks = [block for block in response.split('```') if block.strip()]
-        if not code_blocks:
-            return
-            
-        normalized_query = self._normalize_code_query(query)
-        
-        # Add metadata for better cache management
-        self.code_cache[normalized_query] = {
-            'response': response,
-            'timestamp': datetime.now().isoformat(),
-            'original_query': query,
-            'code_block_count': len(code_blocks),
-            'cache_version': self.cache_version
-        }
-        self._save_code_cache()
-
-    def add_message(self, thread_id: str, role: str, content: str):
-        """Add message with code response caching"""
-        try:
-            messages = self._load_thread(thread_id)
-            
-            # Validate message format
-            if not isinstance(messages, list):
-                print(f"Invalid messages format for thread {thread_id}, initializing new list")
-                messages = []
-            
-            # Ensure each message has required fields
-            messages = [msg for msg in messages if isinstance(msg, dict) and 'content' in msg]
-            
-            # For assistant responses containing code, cache them
-            if role == 'assistant' and '```' in content:
-                # Find the corresponding user query
-                for i in range(len(messages) - 1, -1, -1):
-                    if messages[i].get('role') == 'user':
-                        self.cache_code_response(messages[i]['content'], content)
-                        break
-            
-            # Check for duplicate content
-            if any(msg.get('content') == content for msg in messages):
-                print(f"Duplicate message detected in thread {thread_id}, skipping")
-                return
-            
-            token_count = self._count_tokens(content)
-            message = {
-                "role": role,
-                "content": content,
-                "timestamp": datetime.now().isoformat(),
-                "tokens": token_count,
-                "cumulative_tokens": self.total_tokens_used + token_count
-            }
-            
-            messages.append(message)
-            self._save_thread(thread_id, messages)
-            self.total_tokens_used += token_count
-            self.save_token_count()
-            
-            self._verify_message_saved(thread_id, message)
-            
-        except Exception as e:
-            print(f"Error adding message to thread {thread_id}: {e}")
-            import traceback
-            traceback.print_exc()
-            raise
-
-    def _verify_message_saved(self, thread_id: str, message: dict):
-        """Verify that a message was successfully saved"""
-        try:
-            messages = self._load_thread(thread_id)
-            if not any(
-                msg["content"] == message["content"] and 
-                msg["timestamp"] == message["timestamp"]
-                for msg in messages
-            ):
-                raise Exception("Message verification failed")
-        except Exception as e:
-            print(f"Message verification failed: {e}")
-            raise
-
-    def get_context(self, thread_id: str, current_query: str) -> Tuple[List[Dict], Dict[str, int]]:
-        """Get optimized context for the current conversation"""
-        messages = self._load_thread(thread_id)
-        if not messages:
-            return [], {"prompt_tokens": 0, "total_history_tokens": 0}
-
-        # Remove any incomplete or empty messages
-        messages = [msg for msg in messages if msg.get("content", "").strip()]
-        
-        # Ensure messages are in chronological order
-        messages.sort(key=lambda x: x.get("timestamp", ""))
-        
-        query_tokens = self._count_tokens(current_query)
-        available_tokens = self.max_context_length - query_tokens
-
-        # Process messages in chronological order
-        unique_messages = []
-        seen_content = set()
-        
-        for msg in messages:
-            content = msg["content"]
-            if content not in seen_content:
-                unique_messages.append(msg)
-                seen_content.add(content)
-        
-        # Keep only recent context
-        if len(unique_messages) > 5:
-            unique_messages = unique_messages[-5:]
-
-        # Generate conversation summary if context is getting long
-        if len(messages) > 10:
-            summary = self._generate_summary(messages[:-5])  # Summarize older messages
-            if summary:
-                unique_messages.insert(0, {
-                    "role": "system",
-                    "content": f"Previous conversation summary: {summary}",
-                    "tokens": self._count_tokens(summary)
-                })
-
-        context = []
-        total_tokens = 0
-
-        # Add messages while respecting token limit
-        for msg in unique_messages:
-            msg_tokens = msg["tokens"]
-            if total_tokens + msg_tokens > available_tokens:
-                break
-            
-            context.append({
-                "role": msg["role"],
-                "content": msg["content"]
-            })
-            total_tokens += msg_tokens
-
-        token_stats = {
-            "prompt_tokens": query_tokens + total_tokens,
-            "total_history_tokens": total_tokens,
-            "available_tokens": available_tokens,
-            "total_tokens_used": self.total_tokens_used
-        }
-
-        return context, token_stats
-
-    def _generate_summary(self, messages: List[Dict]) -> Optional[str]:
-        """Generate a summary of older messages using the memory model"""
-        if not messages:
-            return None
-            
-        try:
-            # Build prompt for summarization
-            summary_prompt = "<|im_start|>system\n"
-            summary_prompt += "Summarize the key points from this conversation:\n"
-            summary_prompt += "<|im_end|>\n"
-            
-            for msg in messages:
-                summary_prompt += f"<|im_start|>{msg['role']}\n{msg['content']}<|im_end|>\n"
-            
-            summary_prompt += "<|im_start|>assistant\n"
-            
-            # Generate summary using memory model
-            response = self.model_manager.get_memory_model().create_completion(
-                summary_prompt,
-                max_tokens=4096,
-                temperature=0.1,
-                top_p=0.1,
-                stop=["<|im_end|>"]
-            )
-            
-            if response and 'choices' in response:
-                return response['choices'][0]['text'].strip()
-                
-        except Exception as e:
-            print(f"Error generating summary: {e}")
-            return None
-
-    def get_thread_summary(self, thread_id: str) -> Optional[Dict]:
-        """Get thread summary with token statistics"""
-        messages = self._load_thread(thread_id)
-        if not messages:
-            return None
-
-        return {
-            'thread_id': thread_id,
-            'message_count': len(messages),
-            'total_tokens': sum(msg["tokens"] for msg in messages),
-            'has_summary': any(msg.get("is_summary") for msg in messages),
-            'last_updated': messages[-1]["timestamp"]
-        }
-
-    def get_token_stats(self, thread_id: str) -> Dict[str, int]:
-        """Get token usage statistics for thread"""
-        messages = self._load_thread(thread_id)
-        if not messages:
-            return {
-                "total_tokens": 0,
-                "prompt_tokens": 0,
-                "completion_tokens": 0,
-                "messages": 0
-            }
-
-        prompt_tokens = sum(
-            msg["tokens"] for msg in messages 
-            if msg["role"] == "user"
-        )
-        completion_tokens = sum(
-            msg["tokens"] for msg in messages 
-            if msg["role"] == "assistant"
-        )
-
-        return {
-            "total_tokens": prompt_tokens + completion_tokens,
-            "prompt_tokens": prompt_tokens,
-            "completion_tokens": completion_tokens,
-            "messages": len(messages),
-            "thread_id": thread_id
-        }
-
-    def clear_all(self):
-        """Clear all conversation threads and reset state"""
-        try:
-            print("\n=== Clearing All Conversations ===")
-            files_before = list(self.storage_path.glob("*.json"))
-            print(f"Files before clearing: {[f.name for f in files_before]}")
-            
-            if self.storage_path.exists():
-                for file in self.storage_path.glob("*.json"):
-                    try:
-                        print(f"Attempting to delete: {file}")
-                        file.unlink()
-                        print(f"Successfully deleted: {file}")
-                    except Exception as e:
-                        print(f"Error deleting {file}: {e}")
-            
-            # Clear semantic memory
-            self.semantic_store.clear()
-            print("Cleared semantic memory store")
-            
-            # Reset internal state
-            self.total_tokens_used = 0
-            print("Reset token counter")
-            
-            # Force garbage collection
-            import gc
-            gc.collect()
-            print("Ran garbage collection")
-            
-            # Clear GPU cache
+    def cleanup(self):
+        """Clean up model resources"""
+        with self._lock:
+            if self._memory_model:
+                del self._memory_model
+                self._memory_model = None
+            if self._main_model:
+                del self._main_model
+                self._main_model = None
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
-                print("Cleared GPU cache")
+            self._active_model = None
+
+class MemoryStore:
+    def __init__(self, model_manager=None):
+        self.storage_path = Path("conversation_history")
+        self.storage_path.mkdir(exist_ok=True)
+        self.messages = {}
+        self.model_manager = model_manager
+        self.personal_info = {'info': {}}
+        self._cleanup_temp_files()
+        
+        # Load existing messages from disk
+        self._load_from_disk()
+        
+        try:
+            self.encoder = tiktoken.get_encoding("cl100k_base")
+        except Exception as e:
+            print(f"Failed to initialize encoder: {e}")
+            self.encoder = None
+
+    def _cleanup_temp_files(self):
+        """Clean up any temporary files from previous runs"""
+        try:
+            for temp_file in self.storage_path.glob("*.tmp"):
+                try:
+                    temp_file.unlink()
+                except Exception as e:
+                    print(f"Error deleting temp file {temp_file}: {e}")
+        except Exception as e:
+            print(f"Error during temp file cleanup: {e}")
+
+    def _load_from_disk(self):
+        """Load messages and personal info from disk with error handling"""
+        try:
+            # Load messages.json
+            messages_file = self.storage_path / "messages.json"
+            if messages_file.exists():
+                try:
+                    with messages_file.open('r', encoding='utf-8') as f:
+                        self.messages = json.load(f)
+                        print(f"Loaded {len(self.messages)} threads from disk")
+                except Exception as e:
+                    print(f"Error loading messages.json: {e}")
+                    self.messages = {}
             
-            # Verify deletion
-            files_after = list(self.storage_path.glob("*.json"))
-            print(f"Files remaining after clearing: {[f.name for f in files_after]}")
+            # Load personal_info.json
+            personal_file = self.storage_path / "personal_info.json"
+            if personal_file.exists():
+                try:
+                    with personal_file.open('r', encoding='utf-8') as f:
+                        self.personal_info = json.load(f)
+                except Exception as e:
+                    print(f"Error loading personal_info.json: {e}")
+                    self.personal_info = {'info': {}}
+                    
+        except Exception as e:
+            print(f"Error in _load_from_disk: {e}")
+            self.messages = {}
+            self.personal_info = {'info': {}}
+
+    def _save_to_disk(self):
+        """Save messages and personal info to disk with error handling"""
+        try:
+            # Ensure directory exists
+            self.storage_path.mkdir(exist_ok=True)
             
-            success = len(files_after) == 0
-            print(f"Clear operation {'successful' if success else 'failed'}")
-            return success
+            # Save messages with atomic write using temporary file
+            messages_temp = self.storage_path / "messages.json.tmp"
+            messages_final = self.storage_path / "messages.json"
             
+            with messages_temp.open('w', encoding='utf-8') as f:
+                json.dump(self.messages, f, indent=2, ensure_ascii=False)
+            messages_temp.replace(messages_final)
+            
+            # Save personal info with atomic write
+            personal_temp = self.storage_path / "personal_info.json.tmp"
+            personal_final = self.storage_path / "personal_info.json"
+            
+            with personal_temp.open('w', encoding='utf-8') as f:
+                json.dump(self.personal_info, f, indent=2, ensure_ascii=False)
+            personal_temp.replace(personal_final)
+            
+            print(f"Saved {len(self.messages)} threads to disk")
+            
+        except Exception as e:
+            print(f"Error in _save_to_disk: {e}")
+            # Clean up temp files if they exist
+            self._cleanup_temp_files()
+
+    def analyze_query(self, query: str) -> str:
+        """Analyze query type with truncated text for efficiency"""
+        # Only truncate the query for analysis, not storage
+        analysis_text = query
+        if self.encoder:
+            try:
+                tokens = self.encoder.encode(query)
+                if len(tokens) > MAX_ANALYSIS_TOKENS:
+                    truncate_length = max(MIN_ANALYSIS_TOKENS, 
+                                        int(len(tokens) * ANALYSIS_TRUNCATE_PERCENT))
+                    analysis_text = self.encoder.decode(tokens[:truncate_length])
+            except Exception as e:
+                print(f"Token analysis failed: {e}")
+                analysis_text = query[:FALLBACK_CHAR_LIMIT]
+        
+        analysis_prompt = (
+            "<|im_start|>system\n"
+            "Rules:\n"
+            "You are an expert analyzer of user queries and return ONLY one of the approved single words in your reponse:\n\n"
+            "Approved Word List:\n"
+            "'personal' (for queries about user's personal info like name, family)\n"
+            "'code' (for programming/coding related queries)\n"
+            "'clear' (for requests to clear conversation)\n"
+            "'memory' (for queries about past conversations or stored information)\n"
+            "'chat' (for general conversation)\n\n"
+            "Examples:\n"
+            "- 'What did I say earlier about X?' -> 'memory'\n"
+            "- 'Show me our previous conversation' -> 'memory'\n"
+            "- 'What was my last question?' -> 'memory'\n"
+            "Return ONLY one of the single words allowed and nothing else.\n"
+            "<|im_end|>\n"
+            "<|im_start|>user\n"
+            f"Analyze this query: {analysis_text}\n"
+            "<|im_end|>\n"
+            "<|im_start|>assistant\n"
+        )
+        
+        try:
+            model = self.model_manager.get_memory_model()
+            result = model.create_completion(
+                analysis_prompt,
+                max_tokens=1,
+                temperature=0.1,
+                top_p=0.05,
+                top_k=2,
+                stream=False
+            )
+            query_type = result['choices'][0]['text'].strip().lower()
+            
+            if query_type == 'personal':
+                # Extract personal info
+                info = self._extract_personal_info(query)
+                if info:
+                    self.personal_info['info'].update(info)
+                    self._save_to_disk()
+            
+            return query_type
+        except Exception as e:
+            print(f"Analysis failed: {e}")
+            raise
+
+    def _extract_personal_info(self, query: str) -> Dict:
+        """Extract personal information from query with improved pattern matching"""
+        info = {}
+        query = query.lower()
+        
+        # Name extraction patterns
+        name_patterns = [
+            r"my name is (\w+)",
+            r"i am (\w+)",
+            r"call me (\w+)"
+        ]
+        
+        for pattern in name_patterns:
+            match = re.search(pattern, query)
+            if match:
+                name = match.group(1).strip().title()
+                info['user_name'] = [{
+                    'value': name,
+                    'timestamp': datetime.now().isoformat(),
+                    'context': query
+                }]
+                break
+        
+        # Attribute extraction patterns
+        attr_patterns = {
+            'height': r"(?:i am|i'm) (\d+'(?:\d+)?\"|\d+(?:\.\d+)? ?(?:feet|foot|ft))",
+            'eye_color': r"(?:i have|my eyes are) (blue|green|brown|hazel|grey|gray) eyes",
+            'hair_color': r"(?:i have|my hair is) (blonde|brown|black|red|gray|white) hair"
+        }
+        
+        attributes = []
+        for attr, pattern in attr_patterns.items():
+            match = re.search(pattern, query)
+            if match:
+                attributes.append({
+                    attr: match.group(1).strip(),
+                    'timestamp': datetime.now().isoformat(),
+                    'context': query
+                })
+        
+        if attributes:
+            info['user_attributes'] = [{
+                'value': attributes,
+                'timestamp': datetime.now().isoformat(),
+                'context': query
+            }]
+        
+        # Relationship extraction patterns
+        rel_patterns = {
+            'spouse': r"(?:my (?:wife|husband|spouse) is|i'm married to) (\w+)",
+            'child': r"my (?:son|daughter|child) is (\w+)",
+            'parent': r"my (?:mother|father|parent) is (\w+)"
+        }
+        
+        relationships = []
+        for rel, pattern in rel_patterns.items():
+            match = re.search(pattern, query)
+            if match:
+                relationships.append({
+                    rel: match.group(1).strip().title(),
+                    'timestamp': datetime.now().isoformat(),
+                    'context': query
+                })
+        
+        if relationships:
+            info['relationships'] = [{
+                'value': relationships,
+                'timestamp': datetime.now().isoformat(),
+                'context': query
+            }]
+        
+        return info
+
+    def add_message(self, thread_id: str, role: str, content: str, importance: float = 0.5) -> None:
+        """Add a message to a thread
+        
+        Args:
+            thread_id: ID of the conversation thread
+            role: Role of the message sender ('user' or 'assistant')
+            content: Content of the message
+            importance: Importance score of the message (0.0 to 1.0)
+        """
+        if thread_id not in self.messages:
+            self.messages[thread_id] = []
+            
+        # Clean markdown formatting before storage
+        cleaned_content = self._clean_markdown(content)
+            
+        message = {
+            'role': role,
+            'content': cleaned_content,
+            'timestamp': datetime.now().isoformat(),
+            'importance': importance,
+            'is_code': self._is_code_message(cleaned_content)
+        }
+        
+        self.messages[thread_id].append(message)
+        
+        # Trim to max messages
+        if len(self.messages[thread_id]) > MAX_MEMORIES:
+            # Sort by importance and recency before trimming
+            self.messages[thread_id].sort(
+                key=lambda x: (x.get('importance', 0.5), x['timestamp']), 
+                reverse=True
+            )
+            self.messages[thread_id] = self.messages[thread_id][:MAX_MEMORIES]
+
+        # Save after modifications
+        self._save_to_disk()
+
+    def _clean_markdown(self, content: str) -> str:
+        """Clean up markdown formatting"""
+        # Remove HTML tags
+        content = re.sub(r'<[^>]+>', '', content)
+        
+        # Clean up code blocks
+        content = re.sub(r'```\w*\n', '```\n', content)
+        
+        # Remove duplicate newlines
+        content = re.sub(r'\n\s*\n', '\n\n', content)
+        
+        return content.strip()
+
+    def _is_code_message(self, content: str) -> bool:
+        """Check if message contains code blocks"""
+        return '```' in content or any(
+            keyword in content.lower() for keyword in [
+                'def ', 'class ', 'function', 'return',
+                'import ', 'from ', '#include'
+            ]
+        )
+
+    def get_context(self, thread_id: str, current_query: str) -> List[Dict]:
+        """Get conversation context for a thread"""
+        # Start with simple instruction
+        context = [{
+            'role': 'system',
+            'content': (
+                "You are a helpful AI assistant. Be direct and natural in conversation.\n"
+                "Use the conversation history to answer questions accurately.\n"
+                "If you don't have certain information, simply say so.\n"
+            )
+        }]
+
+        # Add personal context if available
+        if self.personal_info['info']:
+            context.append({
+                'role': 'system',
+                'content': (
+                    "Personal Information:\n" +
+                    self._format_personal_context()
+                )
+            })
+        
+        # Add conversation history
+        if thread_id in self.messages:
+            messages = self.messages[thread_id]
+            context.extend([{'role': msg['role'], 'content': msg['content']} for msg in messages])
+        
+        return context
+
+    def _format_personal_context(self) -> str:
+        """Format personal info into natural context"""
+        if not self.personal_info['info']:
+            return ""
+            
+        context_parts = []
+        
+        # Format name
+        if 'user_name' in self.personal_info['info']:
+            name_entries = self.personal_info['info']['user_name']
+            if name_entries:
+                latest_name = max(name_entries, key=lambda x: x['timestamp'])
+                context_parts.append(f"Your name is {latest_name['value']}")
+        
+        # Format attributes
+        if 'user_attributes' in self.personal_info['info']:
+            attr_entries = self.personal_info['info']['user_attributes']
+            if attr_entries:
+                latest_attrs = max(attr_entries, key=lambda x: x['timestamp'])
+                if isinstance(latest_attrs['value'], list):
+                    for attr_dict in latest_attrs['value']:
+                        for key, value in attr_dict.items():
+                            if key != 'timestamp' and key != 'context':
+                                context_parts.append(f"Your {key.replace('_', ' ')} is {value}")
+        
+        # Format relationships
+        if 'relationships' in self.personal_info['info']:
+            rel_entries = self.personal_info['info']['relationships']
+            if rel_entries:
+                latest_rels = max(rel_entries, key=lambda x: x['timestamp'])
+                if isinstance(latest_rels['value'], list):
+                    for rel_dict in latest_rels['value']:
+                        for key, value in rel_dict.items():
+                            if key != 'timestamp' and key != 'context':
+                                context_parts.append(f"Your {key.replace('_', ' ')} is {value}")
+        
+        # Add any additional personal details
+        for key, values in self.personal_info['info'].items():
+            if key not in ['user_name', 'user_attributes', 'relationships'] and values:
+                if isinstance(values, list):
+                    latest = max(values, key=lambda x: x['timestamp'])
+                    if isinstance(latest['value'], str):
+                        context_parts.append(f"Your {key.replace('_', ' ')}: {latest['value']}")
+                    elif isinstance(latest['value'], list):
+                        for item in latest['value']:
+                            if isinstance(item, dict):
+                                for k, v in item.items():
+                                    if k != 'timestamp' and k != 'context':
+                                        context_parts.append(f"Your {k.replace('_', ' ')}: {v}")
+        
+        return "\n".join(context_parts)
+
+    def _format_for_display(self, content: str) -> str:
+        """Format message content for display"""
+        lines = content.split('\n')
+        formatted = []
+        
+        for line in lines:
+            # Format headers
+            if re.match(r'^[A-Z][^.!?]*:$', line):
+                formatted.append(f"**{line}**")
+            else:
+                formatted.append(line)
+        
+        return '\n'.join(formatted)
+
+    def clear_thread(self, thread_id: str) -> None:
+        """Clear a conversation thread and update storage"""
+        if thread_id in self.messages:
+            del self.messages[thread_id]
+            self._save_to_disk()
+
+    def clear_all(self) -> bool:
+        """Clear all threads and disk storage"""
+        try:
+            # Clear in-memory data first
+            self.messages = {}
+            self.personal_info = {'info': {}}
+            
+            # Clean up model resources
+            if self.model_manager:
+                self.model_manager.cleanup()
+            
+            # Clear disk storage
+            try:
+                if self.storage_path.exists():
+                    # Force remove all files
+                    for file_path in self.storage_path.glob("*"):
+                        try:
+                            if file_path.is_file():
+                                os.chmod(file_path, 0o666)  # Make file writable
+                                file_path.unlink()
+                                print(f"Deleted file: {file_path}")
+                        except Exception as e:
+                            print(f"Error deleting file {file_path}: {e}")
+                            return False
+                    
+                    # Only recreate storage files if we have data to save
+                    if self.messages or self.personal_info['info']:
+                        self._save_to_disk()
+                    
+                    return True
+            except Exception as e:
+                print(f"Error clearing storage directory: {e}")
+                return False
+                
         except Exception as e:
             print(f"Error in clear_all: {e}")
             return False
+
+    def get_thread_ids(self) -> List[str]:
+        """Get all thread IDs"""
+        return list(self.messages.keys())
+
+    def _get_personal_context(self) -> str:
+        """Get personal context - simplified to return empty for now"""
+        return ""
+
+    def get_cached_code_response(self, query: str) -> Optional[str]:
+        """Stub for compatibility - no caching in simplified version"""
+        return None
+
+    def get_token_stats(self, thread_id: str) -> Dict:
+        """Get token statistics for a thread"""
+        messages = self.messages.get(thread_id, [])
+        if not self.encoder:
+            return {'message_count': len(messages), 'token_count': 0}
+            
+        return {
+            'message_count': len(messages),
+            'token_count': sum(len(self.encoder.encode(msg['content'])) 
+                             for msg in messages)
+        }
+
+    def truncate_text(self, text: str, use_chars: bool = False) -> str:
+        """Truncate text for analysis using tokens or characters"""
+        if not use_chars and self.encoder:
+            try:
+                tokens = self.encoder.encode(text)
+                if len(tokens) > MAX_ANALYSIS_TOKENS:
+                    truncate_length = max(MIN_ANALYSIS_TOKENS, 
+                                        int(len(tokens) * ANALYSIS_TRUNCATE_PERCENT))
+                    return self.encoder.decode(tokens[:truncate_length])
+                return text
+            except Exception as e:
+                print(f"Token truncation failed: {e}")
+                use_chars = True
+        
+        # Fallback to character-based truncation
+        if use_chars:
+            return text[:FALLBACK_CHAR_LIMIT]
+        return text
+
+    def search_memories(self, thread_id: str, query: str) -> List[Dict]:
+        """Search through stored memories for relevant information"""
+        if thread_id not in self.messages:
+            return []
+            
+        # For memory queries, just return all messages - let the model naturally process them
+        return self.messages[thread_id]
+
+    def __del__(self):
+        """Cleanup when object is destroyed"""
+        try:
+            self._cleanup_temp_files()
+        except:
+            pass
+
