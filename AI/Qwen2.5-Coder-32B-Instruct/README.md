@@ -61,11 +61,7 @@
 
 ## Quick Start
 
-1. **Clone the Repository**
-   ```bash
-   git clone https://github.com/yourusername/AI-Code-Assistant.git
-   cd AI-Code-Assistant
-   ```
+1. **Setup file structure**
 
 2. **Create a Virtual Environment**
    ```bash
@@ -87,22 +83,22 @@
    # and place them in the models/ directory
    ```
 
-5. **Run the Application**
-   ```bash
-   python app.py
-   ```
-
-6. **Access the Interface**
-   - Open your browser and go to:  
-     `http://localhost:5000`
-
-7. **Tune the script to your VRAM limits**
+5. **Tune the script to your VRAM limits**
    - These options are located in the `persistent_memory.py` script
    ```bash
    # Set these according to the amount of VRAM you have available
    GPU_LAYERS_CODER = 63
    GPU_LAYERS_FAST = 29
    ```
+
+6. **Run the Application**
+   ```bash
+   python app.py
+   ```
+
+7. **Access the Interface**
+   - Open your browser and go to:  
+     `http://localhost:5000`
 
 ## Technical Details
 
