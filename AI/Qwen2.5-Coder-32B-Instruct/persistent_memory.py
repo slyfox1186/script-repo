@@ -61,7 +61,7 @@ class ModelManager:
         """Setup and validate model paths"""
         Path("./models").mkdir(exist_ok=True)
         self.coder_model_path = str(Path("./models/Qwen2.5-Coder-32B-Instruct-Q5_K_L.gguf").absolute())
-        self.fast_model_path = str(Path("./models/Replete-LLM-V2.5-Qwen-14b-Q5_K_S.gguf").absolute())
+        self.fast_model_path = str(Path("./models/Qwen2.5-3B-Instruct-Q6_K_L.gguf").absolute())
         
         if not Path(self.coder_model_path).exists():
             raise FileNotFoundError(f"Coder model not found: {self.coder_model_path}")
