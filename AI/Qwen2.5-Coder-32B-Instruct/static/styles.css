@@ -70,6 +70,11 @@ body {
     word-wrap: break-word;
     word-break: break-word;
     hyphens: auto;
+    transition: none !important;
+}
+
+.message-content * {
+    transition: none !important;
 }
 
 .user-message {
@@ -161,10 +166,11 @@ code {
     background-color: #cc3333;
     color: white;
     border: none;
-    padding: 8px 16px;
+    padding: 0.5rem 1rem;
     border-radius: 4px;
     cursor: pointer;
     font-size: 0.9rem;
+    margin-left: 1rem;
 }
 
 .clear-all-btn:hover {
@@ -182,6 +188,9 @@ code {
     display: flex;
     gap: 10px;
     z-index: 100;
+    padding: 10px;
+    border-top: 1px solid #ccc;
+    width: 100%;
 }
 
 .input-box {
@@ -229,5 +238,113 @@ code {
     display: block;
     padding: 1rem;
     text-align: left;
+}
+
+.input-wrapper {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+}
+
+#user-input {
+    flex-grow: 1;
+    min-height: 50px;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    resize: vertical;
+}
+
+.send-button {
+    padding: 10px 20px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    height: fit-content;
+    align-self: flex-start;
+}
+
+.markdown-block {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 4px;
+    margin: 1rem 0;
+}
+
+.markdown-block h1 {
+    margin-top: 0;
+}
+
+.markdown-block table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1rem 0;
+    background: #252525;
+}
+
+.markdown-block th,
+.markdown-block td {
+    border: 1px solid #404040;
+    padding: 0.5rem;
+    text-align: left;
+}
+
+.markdown-block th {
+    background: #2d2d2d;
+}
+
+.markdown-block strong {
+    color: #e0e0e0;
+    font-weight: bold;
+}
+
+pre code.highlighted {
+    display: block;
+    padding: 1rem;
+    text-align: left;
+}
+
+.markdown-body {
+    box-sizing: border-box;
+    min-width: 200px;
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 45px;
+    background: #0d1117;
+    color: #c9d1d9;
+}
+
+.markdown-body table {
+    display: block;
+    width: 100%;
+    overflow: auto;
+}
+
+.markdown-body table th {
+    font-weight: 600;
+    background-color: #161b22;
+}
+
+.markdown-body table tr {
+    background-color: #0d1117;
+    border-top: 1px solid #30363d;
+}
+
+.markdown-body table tr:nth-child(2n) {
+    background-color: #161b22;
+}
+
+.markdown-body table td,
+.markdown-body table th {
+    padding: 6px 13px;
+    border: 1px solid #30363d;
+}
+
+.header-controls {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
 }
  

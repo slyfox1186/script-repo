@@ -1,8 +1,35 @@
 document.addEventListener('DOMContentLoaded', function() {
-    const messagesContainer = document.getElementById('chat-messages');
-    const userInput = document.getElementById('user-input');
-    const sendButton = document.getElementById('send-btn');
-
+    console.log("=== DOM LOADED ===");
+    console.log("Searching for elements...");
+    
+    // Debug element search
+    const elements = {
+        chatWindow: document.querySelector('#chat-messages'),
+        userInput: document.querySelector('#user-input'),
+        sendButton: document.querySelector('#send-button'),
+        clearButton: document.querySelector('#clear-all-btn'),
+        allButtons: document.querySelectorAll('button')
+    };
+    
+    // Log what we found
+    console.log("Found elements:", {
+        chatWindow: !!elements.chatWindow,
+        userInput: !!elements.userInput,
+        sendButton: !!elements.sendButton,
+        clearButton: !!elements.clearButton,
+        numButtons: elements.allButtons.length
+    });
+    
+    // Log all buttons for debugging
+    elements.allButtons.forEach((btn, i) => {
+        console.log(`Button ${i}:`, {
+            id: btn.id,
+            class: btn.className,
+            text: btn.textContent
+        });
+    });
+    
+    let currentThreadId = 'default';
     let currentResponse = '';
     let isProcessingCode = false;
     let partialBackticks = '';
@@ -11,19 +38,21 @@ document.addEventListener('DOMContentLoaded', function() {
     let headerBuffer = '';
     let isProcessingHeader = false;
     
-    messagesContainer.addEventListener('wheel', function() {
-        isUserScrolling = true;
-        const isNearBottom = messagesContainer.scrollHeight - messagesContainer.scrollTop - messagesContainer.clientHeight < 50;
-        shouldAutoScroll = isNearBottom;
-    });
+    if (elements.chatWindow) {
+        elements.chatWindow.addEventListener('wheel', function() {
+            isUserScrolling = true;
+            const isNearBottom = elements.chatWindow.scrollHeight - elements.chatWindow.scrollTop - elements.chatWindow.clientHeight < 50;
+            shouldAutoScroll = isNearBottom;
+        });
+    }
     
-    messagesContainer.addEventListener('mouseleave', function() {
+    elements.chatWindow.addEventListener('mouseleave', function() {
         isUserScrolling = false;
     });
 
     function scrollToBottom() {
         if (shouldAutoScroll && !isUserScrolling) {
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            elements.chatWindow.scrollTop = elements.chatWindow.scrollHeight;
         }
     }
 
@@ -31,39 +60,45 @@ document.addEventListener('DOMContentLoaded', function() {
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${isUser ? 'user-message' : 'assistant-message'}`;
         
-        // Create container for message content
         const contentDiv = document.createElement('div');
         contentDiv.className = 'message-content';
-        contentDiv.style.textAlign = 'left';  // Left align text inside bubble
+        contentDiv.style.textAlign = 'left';
         
         if (isUser) {
-            const assistantMessages = document.getElementsByClassName('assistant-message');
-            if (assistantMessages.length > 0) {
-                const lastAssistant = assistantMessages[assistantMessages.length - 1];
-                if (!lastAssistant.textContent.trim()) {
-                    lastAssistant.remove();
-                }
-            }
-            contentDiv.style.whiteSpace = 'pre-wrap';
             contentDiv.textContent = content;
-            shouldAutoScroll = true;
+            messageDiv.appendChild(contentDiv);
+            elements.chatWindow.appendChild(messageDiv);
         } else {
-            contentDiv.innerHTML = content;
+            if (!content.trim()) return;
+            
+            try {
+                console.log("=== PROCESSING MESSAGE ===");
+                console.log("Raw content:", content);
+                const rendered = processMarkdown(content);
+                contentDiv.innerHTML = rendered;
+                
+                // Check if there's already an assistant message
+                const existingAssistant = elements.chatWindow.querySelector('.assistant-message');
+                if (existingAssistant) {
+                    existingAssistant.remove();
+                }
+                
+                messageDiv.appendChild(contentDiv);
+                elements.chatWindow.appendChild(messageDiv);
+            } catch (e) {
+                console.error("Markdown parsing failed:", e);
+                contentDiv.textContent = content;
+                messageDiv.appendChild(contentDiv);
+                elements.chatWindow.appendChild(messageDiv);
+            }
         }
         
-        // Add content to message container
-        messageDiv.appendChild(contentDiv);
-        messageDiv.style.margin = '0 auto';  // Center the message bubble
-        messageDiv.style.display = 'flex';   // Use flexbox for alignment
-        messageDiv.style.justifyContent = 'center'; // Center horizontally
-        messageDiv.style.width = '100%';     // Full width for proper centering
-        
-        messagesContainer.appendChild(messageDiv);
         scrollToBottom();
         
         if (!isUser) {
-            messageDiv.querySelectorAll('pre code').forEach((block) => {
+            messageDiv.querySelectorAll('pre code:not(.highlighted)').forEach((block) => {
                 hljs.highlightElement(block);
+                block.classList.add('highlighted');
             });
         }
     }
@@ -73,221 +108,281 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        // Handle code block start
+        // Handle code block start/end
         if (text === '```') {
             if (!isProcessingCode) {
                 // Start new code block
                 isProcessingCode = true;
-                currentResponse += '<pre><code>';
+                currentResponse += text;
                 partialBackticks = '```';
-                headerBuffer = '';  // Reset header buffer
+                headerBuffer = '';
             } else {
                 // End current code block
                 isProcessingCode = false;
-                currentResponse += '</code></pre>';
+                currentResponse += text;
                 partialBackticks = '';
             }
             return;
         }
         
-        // Buffer the header parts until we have a complete filename
+        // Handle code block headers
         if (partialBackticks === '```') {
             headerBuffer += text;
             
-            // Check if we have a complete header (ends with file extension)
-            if (headerBuffer.endsWith('.py') || headerBuffer.endsWith('.js') || headerBuffer.endsWith('.html')) {
-                if (headerBuffer.includes(':')) {
-                    const [lang, filename] = headerBuffer.split(':');
-                    currentResponse = currentResponse.replace('<code>', `<code class="language-${lang}"># ${filename}\n`);
-                } else {
-                    currentResponse = currentResponse.replace('<code>', `<code class="language-${headerBuffer}">`);
-                }
+            // Check if we have a complete language header
+            if (/^[\w-]+:?[\w\/./-]*$/i.test(headerBuffer)) {
+                currentResponse += headerBuffer + '\n';
                 partialBackticks = '';
                 headerBuffer = '';
                 return;
             }
-            return;  // Keep buffering until header is complete
+            return;  // Keep buffering header
         }
         
-        // Handle nested backticks inside code block
-        if (isProcessingCode && text.includes('```')) {
-            text = text.replace(/```/g, '\\`\\`\\`');
-        }
-        
-        // Process text content
-        if (isProcessingCode) {
-            currentResponse += text
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;');
-        } else {
-            currentResponse += text
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/\n/g, '<br>');
-        }
-        
+        // Add text to response
+        currentResponse += text;
         updateAssistantMessage(currentResponse);
+    }
+
+    function processMarkdown(content) {
+        // First pass: Process regular markdown outside of code blocks
+        let processedContent = content;
+        
+        // Handle code blocks specially to preserve formatting
+        const codeBlockRegex = /```([\w-]*:?[\w\/.-]*)\n([\s\S]*?)```/g;
+        processedContent = processedContent.replace(codeBlockRegex, (match, lang, code) => {
+            // Preserve exact whitespace and newlines in code
+            code = code.trimEnd();  // Only trim trailing whitespace
+            return `<pre><code class="language-${lang}">${code}</code></pre>`;
+        });
+        
+        // Process remaining markdown
+        processedContent = marked.parse(processedContent);
+        
+        return `<div class="markdown-body">${processedContent}</div>`;
     }
 
     function updateAssistantMessage(content) {
         let assistantMessages = document.getElementsByClassName('assistant-message');
-        if (assistantMessages.length > 0) {
-            const lastMessage = assistantMessages[assistantMessages.length - 1];
+        
+        if (assistantMessages.length === 0) {
+            // Create new message
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message assistant-message';
             
-            // Create or update content container
-            let contentDiv = lastMessage.querySelector('.message-content');
-            if (!contentDiv) {
-                contentDiv = document.createElement('div');
-                contentDiv.className = 'message-content';
-                contentDiv.style.textAlign = 'left';
-                lastMessage.appendChild(contentDiv);
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            contentDiv.style.textAlign = 'left';
+            
+            try {
+                console.log("=== PROCESSING CONTENT ===");
+                console.log("Raw content:", content);
+                const rendered = processMarkdown(content);
+                console.log("Processed content:", rendered);
+                contentDiv.innerHTML = rendered;
+                
+                // Apply syntax highlighting
+                contentDiv.querySelectorAll('pre code').forEach((block) => {
+                    hljs.highlightElement(block);
+                });
+                
+            } catch (e) {
+                console.error("Content processing failed:", e);
+                contentDiv.textContent = content;
             }
             
-            contentDiv.innerHTML = content;
+            messageDiv.appendChild(contentDiv);
             
-            // Ensure message container is centered
-            lastMessage.style.margin = '0 auto';
-            lastMessage.style.display = 'flex';
-            lastMessage.style.justifyContent = 'center';
-            lastMessage.style.width = '100%';
-            
-            lastMessage.querySelectorAll('pre code').forEach((block) => {
-                hljs.highlightElement(block);
-            });
-            
-            scrollToBottom();
+            // Simply append to chat window - no special insertion logic
+            elements.chatWindow.appendChild(messageDiv);
         } else {
-            addMessage(content, false);
+            // Update existing message
+            const lastMessage = assistantMessages[assistantMessages.length - 1];
+            const contentDiv = lastMessage.querySelector('.message-content');
+            if (contentDiv) {
+                try {
+                    console.log("=== UPDATING MARKDOWN ===");
+                    console.log("Updated content:", content);
+                    
+                    const newRendered = processMarkdown(content);
+                    if (contentDiv.innerHTML !== newRendered) {
+                        contentDiv.innerHTML = newRendered;
+                        
+                        // Re-apply syntax highlighting
+                        contentDiv.querySelectorAll('pre code').forEach((block) => {
+                            hljs.highlightElement(block);
+                        });
+                    }
+                } catch (e) {
+                    console.error("Markdown update failed:", e);
+                    contentDiv.textContent = content;
+                }
+            }
         }
+        
+        scrollToBottom();
     }
 
-    function sendMessage() {
-        const message = userInput.value.trim();
+    async function sendMessage() {
+        const message = elements.userInput.value.trim();
         if (!message) return;
-
-        console.log('\n=== Sending Message ===');
-        console.log('Message:', message);
-
-        currentResponse = '';
-        isProcessingCode = false;
-        partialBackticks = '';
-
-        addMessage(message, true);
-        userInput.value = '';
-
-        addMessage('', false);
-
-        fetch('/chat', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ message: message })
-        }).then(response => {
-            console.log('Got response:', response);
+        
+        // Clear input
+        elements.userInput.value = '';
+        
+        try {
+            // Add user message first
+            const userMessageDiv = document.createElement('div');
+            userMessageDiv.className = 'message user-message';
+            const userContentDiv = document.createElement('div');
+            userContentDiv.className = 'message-content';
+            userContentDiv.style.textAlign = 'left';
+            userContentDiv.textContent = message;
+            userMessageDiv.appendChild(userContentDiv);
+            elements.chatWindow.appendChild(userMessageDiv);
+            scrollToBottom();
+            
+            // Create a new assistant message container
+            const assistantMessageDiv = document.createElement('div');
+            assistantMessageDiv.className = 'message assistant-message';
+            const assistantContentDiv = document.createElement('div');
+            assistantContentDiv.className = 'message-content';
+            assistantContentDiv.style.textAlign = 'left';
+            assistantMessageDiv.appendChild(assistantContentDiv);
+            elements.chatWindow.appendChild(assistantMessageDiv);
+            
+            // Make API call
+            const response = await fetch('/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    message: message,
+                    thread_id: currentThreadId
+                })
+            });
+            
+            currentResponse = '';
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
-
-            function readStream() {
-                reader.read().then(({done, value}) => {
-                    if (done) {
-                        console.log('Stream complete');
-                        return;
-                    }
-
-                    const chunk = decoder.decode(value);
-                    console.log('Received chunk:', chunk);
-                    const lines = chunk.split('\n');
-                    
-                    lines.forEach(line => {
-                        if (line.startsWith('data: ')) {
-                            try {
-                                const data = JSON.parse(line.slice(6));
-                                console.log('Parsed data:', data);
-                                if (data.text) {
-                                    console.log('Processing text:', data.text);
-                                    processStreamingText(data.text);
-                                    updateAssistantMessage(currentResponse);
-                                }
-                            } catch (e) {
-                                console.error('Error processing chunk:', e);
-                                console.error('Raw line:', line);
+            let buffer = '';
+            
+            while (true) {
+                const {value, done} = await reader.read();
+                if (done) break;
+                
+                const chunk = decoder.decode(value, {stream: true});
+                buffer += chunk;
+                
+                const messages = buffer.split('\n\n');
+                buffer = messages.pop();
+                
+                for (const msg of messages) {
+                    if (msg.startsWith('data: ')) {
+                        try {
+                            const data = JSON.parse(msg.slice(6));
+                            
+                            if (data.text) {
+                                currentResponse += data.text;
+                                assistantContentDiv.innerHTML = processMarkdown(currentResponse);
+                                // Apply syntax highlighting to new code blocks
+                                assistantContentDiv.querySelectorAll('pre code:not(.highlighted)').forEach((block) => {
+                                    hljs.highlightElement(block);
+                                    block.classList.add('highlighted');
+                                });
+                                scrollToBottom();
                             }
+                        } catch (e) {
+                            console.error('Error processing message:', e);
                         }
-                    });
-
-                    readStream();
-                }).catch(error => {
-                    console.error('Stream read error:', error);
-                });
+                    }
+                }
             }
-
-            readStream();
-        }).catch(error => {
-            console.error('Fetch error:', error);
-        });
+            
+        } catch (error) {
+            console.error('Stream error:', error);
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'message system-message';
+            errorDiv.textContent = 'Error: Failed to get response';
+            elements.chatWindow.appendChild(errorDiv);
+        }
     }
 
     // Add clear all button listener
-    const clearAllBtn = document.getElementById('clear-all-btn');
-    clearAllBtn.addEventListener('click', function() {
-        // Show loading state
-        const originalText = clearAllBtn.textContent;
-        clearAllBtn.textContent = 'Clearing...';
-        clearAllBtn.disabled = true;
+    if (elements.clearButton) {
+        elements.clearButton.addEventListener('click', clearAllConversations);
+    } else {
+        console.error('Clear button not found');
+    }
 
-        fetch('/clear_all_threads', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
+    // Initialize event listeners after DOM is ready
+    if (elements.sendButton && elements.userInput) {
+        elements.sendButton.addEventListener('click', sendMessage);
+        elements.userInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
             }
-        })
-        .then(response => response.json())
-        .then(data => {
-            console.log('Clear response:', data);
-            if (data.status === 'success') {
-                // Clear UI messages
-                const messagesContainer = document.getElementById('chat-messages');
-                messagesContainer.innerHTML = '';
-                
-                // Reset state
-                currentResponse = '';
-                isProcessingCode = false;
-                partialBackticks = '';
-                
-                // Clear input
-                document.getElementById('user-input').value = '';
-                
-                // Show success message
-                clearAllBtn.textContent = 'Cleared!';
-                setTimeout(() => {
-                    clearAllBtn.textContent = originalText;
-                }, 2000);
-            } else {
-                console.error('Failed to clear conversations:', data.message);
-                clearAllBtn.textContent = 'Error!';
-                setTimeout(() => {
-                    clearAllBtn.textContent = originalText;
-                }, 2000);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            clearAllBtn.textContent = 'Error!';
-            setTimeout(() => {
-                clearAllBtn.textContent = originalText;
-            }, 2000);
-        })
-        .finally(() => {
-            clearAllBtn.disabled = false;
         });
-    });
-
-    sendButton.addEventListener('click', sendMessage);
-    userInput.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendMessage();
-        }
-    });
+    } else {
+        console.error('Required chat elements not found:', {
+            sendButton: !!elements.sendButton,
+            userInput: !!elements.userInput,
+            html: document.body.innerHTML
+        });
+    }
 });
+
+function clearAllConversations() {
+    // Show loading state
+    const clearButton = document.querySelector('#clear-all-btn');
+    const originalText = clearButton.textContent;
+    clearButton.textContent = 'Clearing...';
+    clearButton.disabled = true;
+    
+    fetch('/clear_all_threads', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Clear response:', data);
+        if (data.status === 'success') {
+            // Clear UI messages
+            document.querySelector('#chat-messages').innerHTML = '';
+            
+            // Reset state
+            currentResponse = '';
+            isProcessingCode = false;
+            partialBackticks = '';
+            
+            // Clear input
+            document.querySelector('#user-input').value = '';
+            
+            // Show success message
+            clearButton.textContent = 'Cleared!';
+            setTimeout(() => {
+                clearButton.textContent = originalText;
+            }, 2000);
+        } else {
+            console.error('Failed to clear conversations:', data.message);
+            clearButton.textContent = 'Error!';
+            setTimeout(() => {
+                clearButton.textContent = originalText;
+            }, 2000);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        clearButton.textContent = 'Error!';
+        setTimeout(() => {
+            clearButton.textContent = originalText;
+        }, 2000);
+    })
+    .finally(() => {
+        clearButton.disabled = false;
+    });
+}
