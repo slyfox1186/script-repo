@@ -44,8 +44,8 @@ A simple web interface for the FLUX.1-schnell image generation model. This appli
 
 1. Clone this repository:
    ```bash
-   git clone [repository-url]
-   cd [repository-name]
+   git clone https://github.com/slyfox1186/script-repo
+   cd script-repo/AI/flux-image-creator
    ```
 
 2. Install the required packages:
