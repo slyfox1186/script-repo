@@ -56,7 +56,15 @@ def sanitize_filename(prompt):
     filename = prompt.strip()
     filename = re.sub(r'[^\w\s-]', '', filename)
     filename = re.sub(r'[-\s]+', '_', filename)
-    return filename
+    
+    # Truncate the filename to a reasonable length (e.g., 100 characters)
+    # Add a hash of the full prompt to ensure uniqueness
+    if len(filename) > 100:
+        # Get first 90 characters and add hash of full prompt
+        prompt_hash = hex(hash(prompt))[-8:]  # Last 8 chars of hash
+        filename = f"{filename[:90]}_{prompt_hash}"
+    
+    return filename + ".png"
 
 def generate_image(prompt, width, height, steps, guidance_scale=0.0, sequence_length=256, seed=-1, save_image=True):
     try:
