@@ -11,11 +11,21 @@ A simple web interface for the FLUX.1-schnell image generation model. This appli
 - Adjustable image settings:
   - Width and height
   - Number of inference steps (1-4)
-  - Guidance scale for creativity vs accuracy
+  - Guidance scale for creativity vs accuracy (0.0-1.5)
   - Random seed control
   - Option to save generated images
-- Common aspect ratio presets
-- Local image saving toggle
+- Smart aspect ratio handling:
+  - Common presets (1:1, 4:3, 16:9, 2:3, 3:2)
+  - Automatic dimension adjustments while maintaining ratios
+  - Values automatically adjust when manually changing width/height
+- Realistic Mode:
+  - Enhanced prompts with realistic details
+  - Optimized settings for photorealism
+- Local storage for user preferences
+- Improved file handling:
+  - Automatic filename truncation for long prompts
+  - Unique hash suffixes for similar prompts
+  - Organized output directory structure
 
 ## Requirements
 
@@ -61,26 +71,39 @@ A simple web interface for the FLUX.1-schnell image generation model. This appli
    - Enter your prompt in the text area
    - Adjust settings as needed:
      - Image dimensions (width/height)
+     - Select an aspect ratio preset or use custom dimensions
      - Number of steps (1-4)
-     - Guidance scale (lower = more accurate, higher = more creative)
+     - Guidance scale (0.0-1.5, lower = more creative, higher = more accurate)
      - Random seed (-1 for random, or specify a number for reproducible results)
    - Toggle "Save Generated Images" if you want to save the images locally
+   - Enable "Realistic Mode" for enhanced photorealistic results
    - Click "Generate Image" to create your image
 
-4. Generated images (if saving is enabled) will be stored in the `output_images` directory.
+4. Generated images (if saving is enabled) will be stored in the `output` directory.
 
 ## Environment Variables
 
 - `MODEL_ID`: The Hugging Face model ID (default: "black-forest-labs/FLUX.1-schnell")
 - `HF_HUB_ENABLE_HF_TRANSFER`: Enabled by default for faster downloads
 
+## Recent Updates
+
+- Added intelligent aspect ratio maintenance while editing dimensions
+- Implemented Realistic Mode for enhanced photorealistic outputs
+- Improved filename handling for long prompts
+- Changed output directory from 'output_images' to 'output'
+- Added local storage for user preferences
+- Enhanced error handling and logging
+- Added progress tracking with Server-Sent Events
+
 ## Notes
 
 - The FLUX model is optimized for speed and can generate images in just a few steps
 - Image generation time depends on your GPU capabilities
 - The progress bar shows real-time progress through the generation steps
-- The interface automatically maintains aspect ratios when using presets
+- User preferences are saved locally and persist between sessions
+- Long prompts are automatically truncated in filenames while maintaining uniqueness
 
 ## License
 
-This project uses the FLUX model which is subject to its own license terms. Please refer to the [FLUX model card](https://huggingface.co/black-forest-labs/FLUX.1-schnell) for more information. 
+This project uses the FLUX model which is subject to its own license terms. Please refer to the [FLUX model card](https://huggingface.co/black-forest-labs/FLUX.1-schnell) for more information. assets/5672402b-6297-4c45-98ba-669ab4295b41)
