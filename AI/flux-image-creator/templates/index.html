@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FLUX Schnell Image Generator</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>FLUX Schnell Image Generator</h1>
+        
+        <div class="input-group">
+            <label for="prompt">Prompt:</label>
+            <textarea id="prompt" placeholder="Enter your prompt here..."></textarea>
+        </div>
+
+        <div class="settings-grid">
+            <div class="input-group">
+                <label for="width">Width:</label>
+                <input type="number" id="width" value="768" min="128" max="2048" step="64">
+            </div>
+
+            <div class="input-group">
+                <label for="height">Height:</label>
+                <input type="number" id="height" value="768" min="128" max="2048" step="64">
+            </div>
+
+            <div class="input-group">
+                <label for="steps">Steps (1-4):</label>
+                <input type="number" id="steps" value="4" min="1" max="4">
+            </div>
+
+            <div class="input-group">
+                <label for="aspect-ratio">Aspect Ratio:</label>
+                <select id="aspect-ratio">
+                    <option value="custom">Custom</option>
+                    <option value="1:1">1:1 Square</option>
+                    <option value="4:3">4:3 Standard</option>
+                    <option value="16:9">16:9 Widescreen</option>
+                    <option value="2:3">2:3 Portrait</option>
+                    <option value="3:2">3:2 Landscape</option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label for="guidance-scale" title="Lower = Strict adherence, Higher = More creative">Accuracy: vs Creativity:</label>
+                <input type="range" id="guidance-scale" min="1" max="15" value="7.5" step="0.5">
+                <span id="guidance-value">7.5</span>
+            </div>
+
+            <div class="input-group">
+                <label for="seed" title="Set a specific seed for reproducible results">Random Seed:</label>
+                <input type="number" id="seed" value="-1" min="-1" max="2147483647">
+                <small>(-1 for random)</small>
+            </div>
+
+            <div class="input-group checkbox-group">
+                <label for="save-images">
+                    <input type="checkbox" id="save-images" checked>
+                    Save Generated Images
+                </label>
+                <small>When checked, images will be saved to the output folder</small>
+            </div>
+        </div>
+
+        <button id="generate-btn">Generate Image</button>
+        <button id="reset-btn" class="secondary-button">Reset All Settings</button>
+
+        <div id="result" class="result-container">
+            <img id="generated-image" style="display: none;">
+            <div id="loading" style="display: none;">
+                <div class="progress-container">
+                    <div class="progress-bar" id="progress-bar"></div>
+                </div>
+                <div id="progress-text">Generating... 0%</div>
+            </div>
+            <div id="error" class="error" style="display: none;"></div>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html> 
