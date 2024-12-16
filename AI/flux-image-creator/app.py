@@ -42,7 +42,7 @@ if not os.path.exists(MODEL_PATH):
 
 app = Flask(__name__)
 
-OUTPUT_DIR = "output_images"
+OUTPUT_DIR = "output"
 
 # Create output directory if it doesn't exist
 os.makedirs(OUTPUT_DIR, exist_ok=True)
