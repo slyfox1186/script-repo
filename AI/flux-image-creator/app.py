@@ -65,6 +65,7 @@ def generate_image(prompt, width, height, steps, guidance_scale=0.0, sequence_le
         
         # Initialize model if needed
         if pipe is None:
+            logger.info("Initializing FLUX pipeline...")
             pipe = FluxPipeline.from_pretrained(
                 MODEL_ID,
                 torch_dtype=torch.bfloat16,
@@ -73,20 +74,27 @@ def generate_image(prompt, width, height, steps, guidance_scale=0.0, sequence_le
             pipe.enable_sequential_cpu_offload()
             pipe.enable_attention_slicing(1)
             torch.cuda.empty_cache()
+            logger.info("Pipeline initialized successfully")
         
         # Generate the image
         logger.info("Starting image generation process...")
+        logger.info("=" * 50)
+        logger.info("GUIDANCE SCALE VERIFICATION:")
+        logger.info(f"1. Received value: {guidance_scale}")
+        logger.info(f"2. Type: {type(guidance_scale)}")
+        logger.info(f"3. Range check: 0.0 <= {guidance_scale} <= 1.5: {0.0 <= guidance_scale <= 1.5}")
+        logger.info("=" * 50)
+
         with torch.inference_mode():
             def callback_fn(pipe, i, t, latents):
                 global generation_progress
-                # Calculate progress based on current step
                 generation_progress = int(((i + 1) / steps) * 100)
-                logger.info(f"Generation step {i + 1}/{steps} completed - {generation_progress}%")
+                logger.info(f"Step {i + 1}/{steps} - Using guidance_scale={guidance_scale}")
                 return latents
 
             generation_params = {
                 "prompt": prompt,
-                "guidance_scale": guidance_scale,
+                "guidance_scale": float(guidance_scale),  # Ensure it's float
                 "num_inference_steps": steps,
                 "max_sequence_length": sequence_length,
                 "height": height,
@@ -95,7 +103,16 @@ def generate_image(prompt, width, height, steps, guidance_scale=0.0, sequence_le
                 "callback_on_step_end_tensor_inputs": ["latents"]
             }
             
+            # Log the exact parameters being sent to FLUX
+            logger.info("=" * 50)
+            logger.info("FLUX PARAMETERS:")
+            for key, value in generation_params.items():
+                if key != "callback_on_step_end" and key != "callback_on_step_end_tensor_inputs":
+                    logger.info(f"{key}: {value} (type: {type(value)})")
+            logger.info("=" * 50)
+            
             image = pipe(**generation_params).images[0]
+            logger.info("Image generation completed successfully")
         
         # Save if requested
         if save_image:
@@ -140,7 +157,7 @@ def generate():
         width = int(data.get('width', 768))
         height = int(data.get('height', 768))
         steps = min(max(int(data.get('steps', 4)), 1), 4)
-        guidance_scale = float(data.get('guidance_scale', 0.0))
+        guidance_scale = min(max(0.0, float(data.get('guidance_scale', 0.8))), 1.5)
         seed = int(data.get('seed', -1))
         save_image = data.get('save_image', False)
         
