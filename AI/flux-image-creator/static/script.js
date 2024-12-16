@@ -75,22 +75,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const preset = aspectRatios[ratio];
         if (preset) {
             const currentWidth = parseInt(widthInput.value);
-            const currentHeight = parseInt(heightInput.value);
-            
-            // Determine which dimension to keep based on which is larger
-            if (currentWidth >= currentHeight) {
-                // Keep width, calculate new height
-                let newHeight = Math.round(currentWidth / preset.ratio);
-                // Clamp height to valid range
-                newHeight = Math.min(Math.max(newHeight, 128), 2048);
-                heightInput.value = newHeight;
-            } else {
-                // Keep height, calculate new width
-                let newWidth = Math.round(currentHeight * preset.ratio);
-                // Clamp width to valid range
-                newWidth = Math.min(Math.max(newWidth, 128), 2048);
-                widthInput.value = newWidth;
-            }
+            // Keep width, calculate new height
+            let newHeight = Math.round(currentWidth / preset.ratio);
+            // Clamp height to valid range
+            newHeight = Math.min(Math.max(newHeight, 128), 2048);
+            heightInput.value = newHeight;
             
             saveValue(widthInput);
             saveValue(heightInput);
@@ -98,18 +87,22 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Function to maintain aspect ratio when width/height changes
-    function maintainAspectRatio(changedInput, otherInput) {
+    function maintainAspectRatio(changedInput) {
         const selectedRatio = aspectRatioSelect.value;
         if (selectedRatio !== 'custom') {
-            const ratio = aspectRatios[selectedRatio];
+            const ratio = aspectRatios[selectedRatio].ratio;
+            const changedValue = parseInt(changedInput.value);
+            
             if (changedInput === widthInput) {
-                let newHeight = Math.round(parseInt(widthInput.value) / ratio.ratio);
+                // Width changed, update height
+                let newHeight = Math.round(changedValue / ratio);
                 // Clamp height to valid range
                 newHeight = Math.min(Math.max(newHeight, 128), 2048);
                 heightInput.value = newHeight;
                 saveValue(heightInput);
             } else {
-                let newWidth = Math.round(parseInt(heightInput.value) * ratio.ratio);
+                // Height changed, update width
+                let newWidth = Math.round(changedValue * ratio);
                 // Clamp width to valid range
                 newWidth = Math.min(Math.max(newWidth, 128), 2048);
                 widthInput.value = newWidth;
@@ -120,28 +113,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Update width/height when inputs change
     widthInput.addEventListener('input', function() {
-        if (aspectRatioSelect.value !== 'custom') {
-            maintainAspectRatio(widthInput, heightInput);
-        }
+        maintainAspectRatio(widthInput);
     });
 
     heightInput.addEventListener('input', function() {
-        if (aspectRatioSelect.value !== 'custom') {
-            maintainAspectRatio(heightInput, widthInput);
-        }
-    });
-
-    // Only switch to custom when user explicitly changes both values
-    widthInput.addEventListener('change', function() {
-        if (this.value !== aspectRatios[aspectRatioSelect.value]?.width) {
-            aspectRatioSelect.value = 'custom';
-        }
-    });
-
-    heightInput.addEventListener('change', function() {
-        if (this.value !== aspectRatios[aspectRatioSelect.value]?.height) {
-            aspectRatioSelect.value = 'custom';
-        }
+        maintainAspectRatio(heightInput);
     });
 
     // Function to enhance prompt for realism
