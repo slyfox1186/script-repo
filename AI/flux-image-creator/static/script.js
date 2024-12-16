@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', function() {
     widthInput.value = loadSavedValue(widthInput, '768');
     heightInput.value = loadSavedValue(heightInput, '768');
     stepsInput.value = loadSavedValue(stepsInput, '4');
-    guidanceScaleInput.value = loadSavedValue(guidanceScaleInput, '7.5');
+    guidanceScaleInput.value = loadSavedValue(guidanceScaleInput, '0.8');
     guidanceValue.textContent = guidanceScaleInput.value;
     seedInput.value = loadSavedValue(seedInput, '-1');
     saveImagesInput.checked = localStorage.getItem('save-images') !== 'false'; // default to true
@@ -54,14 +54,14 @@ document.addEventListener('DOMContentLoaded', function() {
         saveValue(this);
     });
 
-    // Aspect ratio presets with common resolutions
+    // Aspect ratio presets with ratios instead of fixed dimensions
     const aspectRatios = {
         'custom': null,
-        '1:1': { width: 768, height: 768 },
-        '4:3': { width: 1024, height: 768 },
-        '16:9': { width: 1024, height: 576 },
-        '2:3': { width: 512, height: 768 },
-        '3:2': { width: 768, height: 512 }
+        '1:1': { ratio: 1 / 1 },
+        '4:3': { ratio: 4 / 3 },
+        '16:9': { ratio: 16 / 9 },
+        '2:3': { ratio: 2 / 3 },
+        '3:2': { ratio: 3 / 2 }
     };
 
     // Handle aspect ratio selection
@@ -69,28 +69,48 @@ document.addEventListener('DOMContentLoaded', function() {
         const ratio = this.value;
         if (ratio === 'custom') return;
 
-        // Get preset dimensions for the selected ratio
+        // Get the aspect ratio
         const preset = aspectRatios[ratio];
         if (preset) {
-            widthInput.value = preset.width;
-            heightInput.value = preset.height;
+            const currentWidth = parseInt(widthInput.value);
+            const currentHeight = parseInt(heightInput.value);
+            
+            // Determine which dimension to keep based on which is larger
+            if (currentWidth >= currentHeight) {
+                // Keep width, calculate new height
+                let newHeight = Math.round(currentWidth / preset.ratio);
+                // Clamp height to valid range
+                newHeight = Math.min(Math.max(newHeight, 128), 2048);
+                heightInput.value = newHeight;
+            } else {
+                // Keep height, calculate new width
+                let newWidth = Math.round(currentHeight * preset.ratio);
+                // Clamp width to valid range
+                newWidth = Math.min(Math.max(newWidth, 128), 2048);
+                widthInput.value = newWidth;
+            }
+            
             saveValue(widthInput);
             saveValue(heightInput);
         }
     });
 
-    // Function to maintain aspect ratio
+    // Function to maintain aspect ratio when width/height changes
     function maintainAspectRatio(changedInput, otherInput) {
         const selectedRatio = aspectRatioSelect.value;
         if (selectedRatio !== 'custom') {
             const ratio = aspectRatios[selectedRatio];
-            const aspectRatio = ratio.width / ratio.height;
-            
             if (changedInput === widthInput) {
-                heightInput.value = Math.round(parseInt(widthInput.value) / aspectRatio);
+                let newHeight = Math.round(parseInt(widthInput.value) / ratio.ratio);
+                // Clamp height to valid range
+                newHeight = Math.min(Math.max(newHeight, 128), 2048);
+                heightInput.value = newHeight;
                 saveValue(heightInput);
             } else {
-                widthInput.value = Math.round(parseInt(heightInput.value) * aspectRatio);
+                let newWidth = Math.round(parseInt(heightInput.value) * ratio.ratio);
+                // Clamp width to valid range
+                newWidth = Math.min(Math.max(newWidth, 128), 2048);
+                widthInput.value = newWidth;
                 saveValue(widthInput);
             }
         }
@@ -144,7 +164,7 @@ document.addEventListener('DOMContentLoaded', function() {
             width: parseInt(widthInput.value),
             height: parseInt(heightInput.value),
             steps: parseInt(stepsInput.value),
-            guidance_scale: 15 - parseFloat(guidanceScaleInput.value),
+            guidance_scale: parseFloat(guidanceScaleInput.value),
             seed: parseInt(seedInput.value),
             save_image: saveImagesInput.checked
         };
@@ -158,19 +178,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const progress = JSON.parse(event.data);
                 const percent = progress.percent;
                 progressBar.style.width = `${percent}%`;
-                
-                // Update progress text based on generation phases
-                if (percent <= 10) {
-                    progressText.textContent = 'Loading model...';
-                } else if (percent <= 20) {
-                    progressText.textContent = 'Optimizing memory...';
-                } else if (percent < 100) {
-                    const totalSteps = parseInt(stepsInput.value);
-                    const currentStep = Math.ceil(((percent - 20) / 80) * totalSteps);
-                    progressText.textContent = `Generation step ${currentStep}/${totalSteps}...`;
-                } else {
-                    progressText.textContent = 'Generation Complete!';
-                }
+                progressText.textContent = `Generating... ${percent}%`;
             };
             
             eventSource.onerror = function() {
@@ -191,18 +199,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (data.status === 'success') {
                 generatedImage.src = `data:image/png;base64,${data.image}`;
-                generatedImage.style.display = 'block';
                 progressBar.style.width = '100%';
                 progressText.textContent = 'Generation Complete!';
+                generatedImage.style.display = 'block';
+                loading.style.display = 'none';
             } else {
                 showError(data.message);
+                loading.style.display = 'none';
             }
         } catch (err) {
             console.error('Error during fetch:', err);
             showError('An error occurred while generating the image');
-        } finally {
             loading.style.display = 'none';
+        } finally {
             generateBtn.disabled = false;
+            eventSource.close();
         }
     });
 
