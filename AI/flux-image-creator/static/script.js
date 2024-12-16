@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const resetBtn = document.getElementById('reset-btn');
     const progressBar = document.getElementById('progress-bar');
     const progressText = document.getElementById('progress-text');
+    const realisticModeInput = document.getElementById('realistic-mode');
 
     // Load saved values from localStorage or use defaults
     function loadSavedValue(inputElement, defaultValue) {
@@ -30,6 +31,7 @@ document.addEventListener('DOMContentLoaded', function() {
     guidanceValue.textContent = guidanceScaleInput.value;
     seedInput.value = loadSavedValue(seedInput, '-1');
     saveImagesInput.checked = localStorage.getItem('save-images') !== 'false'; // default to true
+    realisticModeInput.checked = localStorage.getItem('realistic-mode') === 'true'; // default to false
     aspectRatioSelect.value = loadSavedValue(aspectRatioSelect, 'custom');
     promptInput.value = loadSavedValue(promptInput, '');
 
@@ -44,7 +46,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Add save functionality to all inputs
     [widthInput, heightInput, stepsInput, guidanceScaleInput, seedInput, 
-     saveImagesInput, aspectRatioSelect, promptInput].forEach(element => {
+     saveImagesInput, realisticModeInput, aspectRatioSelect, promptInput].forEach(element => {
         element.addEventListener('change', () => saveValue(element));
     });
 
@@ -142,13 +144,51 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // Function to enhance prompt for realism
+    function enhancePromptForRealism(originalPrompt) {
+        const realisticTerms = [
+            "photorealistic",
+            "highly detailed",
+            "professional photography",
+            "8k uhd",
+            "realistic lighting",
+            "natural colors"
+        ];
+        
+        // Only add terms if they're not already in the prompt
+        const enhancedTerms = realisticTerms.filter(term => 
+            !originalPrompt.toLowerCase().includes(term.toLowerCase())
+        );
+        
+        if (enhancedTerms.length > 0) {
+            return `${originalPrompt}, ${enhancedTerms.join(", ")}`;
+        }
+        return originalPrompt;
+    }
+
+    // Handle realistic mode toggle
+    realisticModeInput.addEventListener('change', function() {
+        if (this.checked) {
+            // When realistic mode is enabled, adjust guidance scale
+            guidanceScaleInput.value = "1.2";  // Higher guidance for more accurate prompt following
+            guidanceValue.textContent = guidanceScaleInput.value;
+            saveValue(guidanceScaleInput);
+        }
+    });
+
     generateBtn.addEventListener('click', async function() {
         console.log('Generate button clicked');
-        const prompt = promptInput.value.trim();
+        let prompt = promptInput.value.trim();
         
         if (!prompt) {
             showError('Please enter a prompt');
             return;
+        }
+
+        // Enhance prompt if realistic mode is enabled
+        if (realisticModeInput.checked) {
+            prompt = enhancePromptForRealism(prompt);
+            console.log('Enhanced prompt:', prompt);
         }
 
         // Show loading state and reset progress
