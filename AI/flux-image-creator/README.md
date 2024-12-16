@@ -2,7 +2,7 @@
 
 A simple web interface for the FLUX.1-schnell image generation model. This application provides a user-friendly GUI to generate images using the FLUX model from Black Forest Labs.
 
-![Example Interface](https://github.com/user-attachments/assets/1d091009-fc11-43cd-be1f-f10c1be0ab53)
+![image](https://github.com/user-attachments/assets/5672402b-6297-4c45-98ba-669ab4295b41)
 
 ## Features
 
