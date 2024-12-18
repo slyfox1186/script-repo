@@ -1,9 +1,64 @@
-document.addEventListener('DOMContentLoaded', function() {
-    console.log("=== DOM LOADED ===");
-    console.log("Searching for elements...");
-    
-    // Debug element search
-    const elements = {
+const DEBUG = true;
+
+const HIGHLIGHT_OPTIONS = {
+    theme: 'dracula',
+    ignoreIllegals: true
+};
+
+function log(...args) {
+    if (DEBUG) {
+        console.log(`[${new Date().toISOString()}]`, ...args);
+    }
+}
+
+// Global variables and configuration
+const scrollDebounceTime = 100;  // ms
+let scrollTimeout = null;
+let lastScrollHeight = 0;
+let userScrolledUp = false;
+
+// Global state and utilities
+const state = {
+    currentResponseController: null,
+    isProcessing: false,
+    elements: null,
+    currentThreadId: 'default',
+    streamBuffer: {
+        raw: '',           
+        content: '',       
+        isStreaming: false,
+        isProcessingCode: false,
+        codeBlockDepth: 0,  
+        contentParts: {
+            text: [],      
+            math: [],      
+            code: [],      
+            list: []       
+        },
+        partial: {
+            math: '',
+            code: '',
+            list: ''
+        },
+        messageElement: null
+    },
+    streaming: {
+        active: false,
+        softTransition: false,
+        interruptedBy: null,
+        allowInterruption: true
+    },
+    requests: {
+        current: null,
+        pending: null,
+        processingCount: 0,
+        maxConcurrent: 1
+    }
+};
+
+// Initialize elements after DOM load
+function initializeElements() {
+    state.elements = {
         chatWindow: document.querySelector('#chat-messages'),
         userInput: document.querySelector('#user-input'),
         sendButton: document.querySelector('#send-button'),
@@ -11,315 +66,326 @@ document.addEventListener('DOMContentLoaded', function() {
         allButtons: document.querySelectorAll('button')
     };
     
-    // Log what we found
+    // Debug element search
     console.log("Found elements:", {
-        chatWindow: !!elements.chatWindow,
-        userInput: !!elements.userInput,
-        sendButton: !!elements.sendButton,
-        clearButton: !!elements.clearButton,
-        numButtons: elements.allButtons.length
+        chatWindow: !!state.elements.chatWindow,
+        userInput: !!state.elements.userInput,
+        sendButton: !!state.elements.sendButton,
+        clearButton: !!state.elements.clearButton,
+        numButtons: state.elements.allButtons.length
     });
-    
-    // Log all buttons for debugging
-    elements.allButtons.forEach((btn, i) => {
-        console.log(`Button ${i}:`, {
-            id: btn.id,
-            class: btn.className,
-            text: btn.textContent
-        });
-    });
-    
-    let currentThreadId = 'default';
-    let currentResponse = '';
-    let isProcessingCode = false;
-    let partialBackticks = '';
-    let isUserScrolling = false;
-    let shouldAutoScroll = true;
-    let headerBuffer = '';
-    let isProcessingHeader = false;
-    
-    if (elements.chatWindow) {
-        elements.chatWindow.addEventListener('wheel', function() {
-            isUserScrolling = true;
-            const isNearBottom = elements.chatWindow.scrollHeight - elements.chatWindow.scrollTop - elements.chatWindow.clientHeight < 50;
-            shouldAutoScroll = isNearBottom;
-        });
-    }
-    
-    elements.chatWindow.addEventListener('mouseleave', function() {
-        isUserScrolling = false;
-    });
+}
 
-    function scrollToBottom() {
-        if (shouldAutoScroll && !isUserScrolling) {
-            elements.chatWindow.scrollTop = elements.chatWindow.scrollHeight;
-        }
+// Add FlowLogger before DOMContentLoaded
+const FlowLogger = {
+    depth: 0,
+    log(message, type = 'info') {
+        const indent = '  '.repeat(this.depth);
+        const timestamp = new Date().toISOString();
+        console.log(`${timestamp} [${type.toUpperCase()}] ${indent}${message}`);
+    },
+    start(message) {
+        this.log(`⮕ START: ${message}`);
+        this.depth++;
+    },
+    end(message) {
+        this.depth--;
+        this.log(`⮜ END: ${message}`);
+    },
+    error(message, error) {
+        this.log(`❌ ERROR: ${message} - ${error.message}`, 'error');
+        console.error(error);
     }
+};
 
-    function addMessage(content, isUser) {
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `message ${isUser ? 'user-message' : 'assistant-message'}`;
+// Add processMarkdown before DOMContentLoaded
+async function processMarkdown(content) {
+    try {
+        if (!content) return '';
+
+        // First process any math expressions
+        const processed = await MathProcessor.processText(content);
         
-        const contentDiv = document.createElement('div');
-        contentDiv.className = 'message-content';
-        contentDiv.style.textAlign = 'left';
-        
-        if (isUser) {
-            contentDiv.textContent = content;
-            messageDiv.appendChild(contentDiv);
-            elements.chatWindow.appendChild(messageDiv);
-        } else {
-            if (!content.trim()) return;
-            
-            try {
-                console.log("=== PROCESSING MESSAGE ===");
-                console.log("Raw content:", content);
-                const rendered = processMarkdown(content);
-                contentDiv.innerHTML = rendered;
-                
-                // Check if there's already an assistant message
-                const existingAssistant = elements.chatWindow.querySelector('.assistant-message');
-                if (existingAssistant) {
-                    existingAssistant.remove();
-                }
-                
-                messageDiv.appendChild(contentDiv);
-                elements.chatWindow.appendChild(messageDiv);
-            } catch (e) {
-                console.error("Markdown parsing failed:", e);
-                contentDiv.textContent = content;
-                messageDiv.appendChild(contentDiv);
-                elements.chatWindow.appendChild(messageDiv);
-            }
+        // Process markdown with marked
+        if (processed && marked) {
+            return marked.parse(processed);
         }
         
-        scrollToBottom();
+        return content;
+    } catch (e) {
+        console.error('Error in processMarkdown:', e);
+        return content || '';
+    }
+}
+
+// Add MathProcessor before DOMContentLoaded
+const MathProcessor = {
+    placeholders: new Map(),
+    counter: 0,
+
+    async processText(text) {
+        FlowLogger.start('MathProcessor.processText');
         
-        if (!isUser) {
-            messageDiv.querySelectorAll('pre code:not(.highlighted)').forEach((block) => {
-                hljs.highlightElement(block);
-                block.classList.add('highlighted');
+        if (!text) return '';
+        
+        // First protect all math expressions
+        const mathRegex = /(\$\$[\s\S]*?\$\$|\$[^\$\n]*?\$|\\\[[\s\S]*?\\\]|\\\([^\)]*?\\\))/g;
+        let protectedText = text;
+        const expressions = [];
+        
+        // Find all math expressions and replace with placeholders
+        let match;
+        while ((match = mathRegex.exec(text)) !== null) {
+            const id = `MATH_${this.counter++}`;
+            const expr = match[0];
+            expressions.push({
+                id,
+                expression: expr,
+                isBlock: expr.startsWith('$$') || expr.startsWith('\\['),
+                index: match.index
             });
-        }
-    }
-
-    function processStreamingText(text) {
-        if (text.includes('Token:') || text.includes('Raw chunk:')) {
-            return;
-        }
-        
-        // Handle code block start/end
-        if (text === '```') {
-            if (!isProcessingCode) {
-                // Start new code block
-                isProcessingCode = true;
-                currentResponse += text;
-                partialBackticks = '```';
-                headerBuffer = '';
-            } else {
-                // End current code block
-                isProcessingCode = false;
-                currentResponse += text;
-                partialBackticks = '';
-            }
-            return;
+            // Create a placeholder that won't be affected by markdown processing
+            protectedText = protectedText.slice(0, match.index) + 
+                          `@@MATH_PLACEHOLDER_${id}@@` + 
+                          protectedText.slice(match.index + expr.length);
+            mathRegex.lastIndex = match.index + `@@MATH_PLACEHOLDER_${id}@@`.length;
         }
         
-        // Handle code block headers
-        if (partialBackticks === '```') {
-            headerBuffer += text;
-            
-            // Check if we have a complete language header
-            if (/^[\w-]+:?[\w\/./-]*$/i.test(headerBuffer)) {
-                currentResponse += headerBuffer + '\n';
-                partialBackticks = '';
-                headerBuffer = '';
-                return;
-            }
-            return;  // Keep buffering header
+        // Process markdown with protected math expressions
+        let processed = marked.parse(protectedText);
+        
+        // Restore math expressions in order
+        for (const {id, expression, isBlock} of expressions) {
+            const placeholder = `@@MATH_PLACEHOLDER_${id}@@`;
+            const rendered = await this.renderMathExpression(expression, isBlock);
+            processed = processed.replace(placeholder, rendered);
         }
         
-        // Add text to response
-        currentResponse += text;
-        updateAssistantMessage(currentResponse);
-    }
-
-    function processMarkdown(content) {
-        // First pass: Process regular markdown outside of code blocks
-        let processedContent = content;
-        
-        // Handle code blocks specially to preserve formatting
-        const codeBlockRegex = /```([\w-]*:?[\w\/.-]*)\n([\s\S]*?)```/g;
-        processedContent = processedContent.replace(codeBlockRegex, (match, lang, code) => {
-            // Preserve exact whitespace and newlines in code
-            code = code.trimEnd();  // Only trim trailing whitespace
-            return `<pre><code class="language-${lang}">${code}</code></pre>`;
+        // Apply syntax highlighting to code blocks
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = processed;
+        tempDiv.querySelectorAll('pre code').forEach((block) => {
+            hljs.highlightElement(block);
         });
         
-        // Process remaining markdown
-        processedContent = marked.parse(processedContent);
-        
-        return `<div class="markdown-body">${processedContent}</div>`;
-    }
+        FlowLogger.end('MathProcessor.processText');
+        return tempDiv.innerHTML;
+    },
 
-    function updateAssistantMessage(content) {
-        let assistantMessages = document.getElementsByClassName('assistant-message');
-        
-        if (assistantMessages.length === 0) {
-            // Create new message
-            const messageDiv = document.createElement('div');
-            messageDiv.className = 'message assistant-message';
-            
-            const contentDiv = document.createElement('div');
-            contentDiv.className = 'message-content';
-            contentDiv.style.textAlign = 'left';
-            
-            try {
-                console.log("=== PROCESSING CONTENT ===");
-                console.log("Raw content:", content);
-                const rendered = processMarkdown(content);
-                console.log("Processed content:", rendered);
-                contentDiv.innerHTML = rendered;
-                
-                // Apply syntax highlighting
-                contentDiv.querySelectorAll('pre code').forEach((block) => {
-                    hljs.highlightElement(block);
-                });
-                
-            } catch (e) {
-                console.error("Content processing failed:", e);
-                contentDiv.textContent = content;
-            }
-            
-            messageDiv.appendChild(contentDiv);
-            
-            // Simply append to chat window - no special insertion logic
-            elements.chatWindow.appendChild(messageDiv);
-        } else {
-            // Update existing message
-            const lastMessage = assistantMessages[assistantMessages.length - 1];
-            const contentDiv = lastMessage.querySelector('.message-content');
-            if (contentDiv) {
-                try {
-                    console.log("=== UPDATING MARKDOWN ===");
-                    console.log("Updated content:", content);
-                    
-                    const newRendered = processMarkdown(content);
-                    if (contentDiv.innerHTML !== newRendered) {
-                        contentDiv.innerHTML = newRendered;
-                        
-                        // Re-apply syntax highlighting
-                        contentDiv.querySelectorAll('pre code').forEach((block) => {
-                            hljs.highlightElement(block);
-                        });
-                    }
-                } catch (e) {
-                    console.error("Markdown update failed:", e);
-                    contentDiv.textContent = content;
-                }
-            }
-        }
-        
-        scrollToBottom();
-    }
-
-    async function sendMessage() {
-        const message = elements.userInput.value.trim();
-        if (!message) return;
-        
-        // Clear input
-        elements.userInput.value = '';
+    async renderMathExpression(mathExpr, isBlock) {
+        const tempDiv = document.createElement('div');
+        tempDiv.style.visibility = 'hidden';
+        document.body.appendChild(tempDiv);
         
         try {
-            // Add user message first
-            const userMessageDiv = document.createElement('div');
-            userMessageDiv.className = 'message user-message';
-            const userContentDiv = document.createElement('div');
-            userContentDiv.className = 'message-content';
-            userContentDiv.style.textAlign = 'left';
-            userContentDiv.textContent = message;
-            userMessageDiv.appendChild(userContentDiv);
-            elements.chatWindow.appendChild(userMessageDiv);
-            scrollToBottom();
-            
-            // Create a new assistant message container
-            const assistantMessageDiv = document.createElement('div');
-            assistantMessageDiv.className = 'message assistant-message';
-            const assistantContentDiv = document.createElement('div');
-            assistantContentDiv.className = 'message-content';
-            assistantContentDiv.style.textAlign = 'left';
-            assistantMessageDiv.appendChild(assistantContentDiv);
-            elements.chatWindow.appendChild(assistantMessageDiv);
-            
-            // Make API call
-            const response = await fetch('/chat', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    message: message,
-                    thread_id: currentThreadId
-                })
-            });
-            
-            currentResponse = '';
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-            let buffer = '';
-            
-            while (true) {
-                const {value, done} = await reader.read();
-                if (done) break;
-                
-                const chunk = decoder.decode(value, {stream: true});
-                buffer += chunk;
-                
-                const messages = buffer.split('\n\n');
-                buffer = messages.pop();
-                
-                for (const msg of messages) {
-                    if (msg.startsWith('data: ')) {
-                        try {
-                            const data = JSON.parse(msg.slice(6));
-                            
-                            if (data.text) {
-                                currentResponse += data.text;
-                                assistantContentDiv.innerHTML = processMarkdown(currentResponse);
-                                // Apply syntax highlighting to new code blocks
-                                assistantContentDiv.querySelectorAll('pre code:not(.highlighted)').forEach((block) => {
-                                    hljs.highlightElement(block);
-                                    block.classList.add('highlighted');
-                                });
-                                scrollToBottom();
-                            }
-                        } catch (e) {
-                            console.error('Error processing message:', e);
-                        }
-                    }
-                }
+            // Clean up the math expression
+            let cleanMath = mathExpr.trim();
+            if (cleanMath.startsWith('$') && cleanMath.endsWith('$')) {
+                cleanMath = cleanMath.slice(1, -1);
+            } else if (cleanMath.startsWith('$$') && cleanMath.endsWith('$$')) {
+                cleanMath = cleanMath.slice(2, -2);
+            } else if (cleanMath.startsWith('\\[') && cleanMath.endsWith('\\]')) {
+                cleanMath = cleanMath.slice(2, -2);
+            } else if (cleanMath.startsWith('\\(') && cleanMath.endsWith('\\)')) {
+                cleanMath = cleanMath.slice(2, -2);
+            }
+
+            // Add proper delimiters back with correct wrapper
+            if (isBlock) {
+                tempDiv.innerHTML = `<div class="display-math">\\[${cleanMath}\\]</div>`;
+            } else {
+                tempDiv.innerHTML = `<span class="inline-math">\\(${cleanMath}\\)</span>`;
             }
             
-        } catch (error) {
-            console.error('Stream error:', error);
-            const errorDiv = document.createElement('div');
-            errorDiv.className = 'message system-message';
-            errorDiv.textContent = 'Error: Failed to get response';
-            elements.chatWindow.appendChild(errorDiv);
+            // Render math
+            await MathJax.typesetPromise([tempDiv]);
+            
+            return tempDiv.innerHTML;
+        } finally {
+            document.body.removeChild(tempDiv);
         }
     }
+};
 
-    // Add clear all button listener
-    if (elements.clearButton) {
-        elements.clearButton.addEventListener('click', clearAllConversations);
-    } else {
-        console.error('Clear button not found');
+function smoothScrollToBottom() {
+    const chatWindow = document.querySelector('#chat-messages');
+    if (!chatWindow || userScrolledUp) return;
+
+    // Only scroll if content height changed
+    const newScrollHeight = chatWindow.scrollHeight;
+    if (newScrollHeight === lastScrollHeight) return;
+    lastScrollHeight = newScrollHeight;
+
+    // Clear existing timeout
+    if (scrollTimeout) clearTimeout(scrollTimeout);
+
+    // Debounce the scroll
+    scrollTimeout = setTimeout(() => {
+        const scrollTarget = chatWindow.scrollHeight - chatWindow.clientHeight;
+        chatWindow.scrollTo({
+            top: scrollTarget,
+            behavior: 'smooth'
+        });
+    }, scrollDebounceTime);
+}
+
+// Add scroll event listener outside DOMContentLoaded
+document.addEventListener('scroll', function(e) {
+    if (e.target.id === 'chat-messages') {
+        const chatWindow = e.target;
+        const isNearBottom = chatWindow.scrollHeight - chatWindow.scrollTop - chatWindow.clientHeight < 100;
+        const scrollingUp = chatWindow.lastScrollTop > chatWindow.scrollTop;
+        chatWindow.lastScrollTop = chatWindow.scrollTop;
+
+        if (scrollingUp) {
+            userScrolledUp = true;
+        } else if (isNearBottom) {
+            userScrolledUp = false;
+        }
+    }
+}, true);
+
+// Update sendMessage to handle interruptions gracefully
+async function sendMessage() {
+    FlowLogger.start('sendMessage()');
+    const message = state.elements.userInput.value.trim();
+    
+    if (!message) {
+        FlowLogger.log('Empty message, returning');
+        FlowLogger.end('sendMessage()');
+        return;
     }
 
-    // Initialize event listeners after DOM is ready
-    if (elements.sendButton && elements.userInput) {
-        elements.sendButton.addEventListener('click', sendMessage);
-        elements.userInput.addEventListener('keypress', function(e) {
+    // If already processing, handle as interruption
+    if (state.streaming.active) {
+        FlowLogger.log('Interrupting current stream');
+        state.streaming.interruptedBy = message;
+        state.streaming.softTransition = true;
+        
+        if (state.currentResponseController) {
+            state.currentResponseController.abort();
+        }
+        
+        // Clear input immediately
+        state.elements.userInput.value = '';
+        return;
+    }
+
+    // Start new request
+    try {
+        state.streaming.active = true;
+        state.currentResponseController = new AbortController();
+        state.isProcessing = true;
+
+        // Add user message to UI
+        await addMessage(message, true);
+        
+        // Initialize or reset stream buffer
+        state.streamBuffer.content = '';
+        state.streamBuffer.raw = '';
+        state.streamBuffer.isProcessingCode = false;
+        state.streamBuffer.codeBlockDepth = 0;
+        state.streamBuffer.messageElement = null;
+        state.streamBuffer.isStreaming = true;
+
+        // Process request
+        const response = await fetch('/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                message: message,
+                thread_id: state.currentThreadId
+            }),
+            signal: state.currentResponseController.signal
+        });
+
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        
+        const messageDiv = await addMessage('', false);
+        state.streamBuffer.messageElement = messageDiv.querySelector('.message-content');
+        
+        const reader = response.body.getReader();
+        
+        while (state.streamBuffer.isStreaming) {
+            const {done, value} = await reader.read();
+            
+            if (done || state.streaming.softTransition) {
+                FlowLogger.log('Stream ending: ' + (done ? 'complete' : 'interrupted'));
+                break;
+            }
+
+            const chunk = new TextDecoder().decode(value);
+            await processStreamingContent(chunk);
+        }
+
+    } catch (error) {
+        if (error.name === 'AbortError') {
+            FlowLogger.log('Stream interrupted by new request');
+        } else {
+            FlowLogger.error('Message processing failed', error);
+            await addMessage('Error: Failed to send message', false);
+        }
+    } finally {
+        // Cleanup
+        state.isProcessing = false;
+        state.currentResponseController = null;
+        state.streamBuffer.isStreaming = false;
+        state.streaming.active = false;
+
+        // Handle any interrupting message
+        if (state.streaming.interruptedBy) {
+            const nextMessage = state.streaming.interruptedBy;
+            state.streaming.interruptedBy = null;
+            state.streaming.softTransition = false;
+            
+            // Process interrupting message after brief delay
+            setTimeout(() => {
+                state.elements.userInput.value = nextMessage;
+                sendMessage();
+            }, 50);
+        }
+    }
+    
+    FlowLogger.end('sendMessage()');
+}
+
+// Update addMessage to use state.elements
+async function addMessage(content, isUser) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${isUser ? 'user-message' : 'assistant-message'}`;
+    
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'message-content markdown-body';
+    contentDiv.style.textAlign = 'left';
+    
+    if (isUser) {
+        contentDiv.textContent = content;
+    } else {
+        const processed = await processMarkdown(content);
+        contentDiv.innerHTML = processed;
+    }
+    
+    messageDiv.appendChild(contentDiv);
+    state.elements.chatWindow.appendChild(messageDiv);
+    smoothScrollToBottom();
+    
+    return messageDiv;
+}
+
+// Update DOMContentLoaded handler
+document.addEventListener('DOMContentLoaded', function() {
+    console.log("=== DOM LOADED ===");
+    
+    // Initialize elements
+    initializeElements();
+    
+    // Initialize event listeners
+    if (state.elements.sendButton && state.elements.userInput) {
+        // Send button click
+        state.elements.sendButton.addEventListener('click', () => sendMessage());
+        
+        // Enter key press (without shift)
+        state.elements.userInput.addEventListener('keypress', function(e) {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 sendMessage();
@@ -327,10 +393,16 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     } else {
         console.error('Required chat elements not found:', {
-            sendButton: !!elements.sendButton,
-            userInput: !!elements.userInput,
-            html: document.body.innerHTML
+            sendButton: !!state.elements.sendButton,
+            userInput: !!state.elements.userInput
         });
+    }
+    
+    // Add clear all button listener
+    if (state.elements.clearButton) {
+        state.elements.clearButton.addEventListener('click', clearAllConversations);
+    } else {
+        console.error('Clear button not found');
     }
 });
 
@@ -350,14 +422,25 @@ function clearAllConversations() {
     .then(response => response.json())
     .then(data => {
         console.log('Clear response:', data);
-        if (data.status === 'success') {
+        if (data.success) {
             // Clear UI messages
             document.querySelector('#chat-messages').innerHTML = '';
             
             // Reset state
-            currentResponse = '';
-            isProcessingCode = false;
-            partialBackticks = '';
+            state.currentThreadId = 'default';
+            if (state.streamBuffer) {
+                state.streamBuffer.content = '';
+                state.streamBuffer.raw = '';
+                state.streamBuffer.isProcessingCode = false;
+                state.streamBuffer.codeBlockDepth = 0;
+                state.streamBuffer.contentParts.text = [];
+                state.streamBuffer.contentParts.code = [];
+                state.streamBuffer.contentParts.math = [];
+                state.streamBuffer.contentParts.list = [];
+                state.streamBuffer.partial.math = '';
+                state.streamBuffer.partial.code = '';
+                state.streamBuffer.partial.list = '';
+            }
             
             // Clear input
             document.querySelector('#user-input').value = '';
@@ -366,12 +449,14 @@ function clearAllConversations() {
             clearButton.textContent = 'Cleared!';
             setTimeout(() => {
                 clearButton.textContent = originalText;
+                clearButton.disabled = false;
             }, 2000);
         } else {
             console.error('Failed to clear conversations:', data.message);
             clearButton.textContent = 'Error!';
             setTimeout(() => {
                 clearButton.textContent = originalText;
+                clearButton.disabled = false;
             }, 2000);
         }
     })
@@ -380,9 +465,447 @@ function clearAllConversations() {
         clearButton.textContent = 'Error!';
         setTimeout(() => {
             clearButton.textContent = originalText;
+            clearButton.disabled = false;
         }, 2000);
-    })
-    .finally(() => {
-        clearButton.disabled = false;
     });
 }
+
+function repr(str) {
+    return JSON.stringify(str);
+}
+
+function processMathContent(text) {
+    log("Processing math content:", repr(text));
+    
+    // Queue the math content
+    mathQueue.push(text);
+    
+    // If we're not currently processing, start processing the queue
+    if (!isMathProcessing) {
+        processMathQueue();
+    }
+}
+
+async function processMathQueue() {
+    if (isMathProcessing || mathQueue.length === 0) return;
+    
+    isMathProcessing = true;
+    log("Processing math queue of length:", mathQueue.length);
+    
+    try {
+        const content = mathQueue.join('');
+        log("Combined math content:", repr(content));
+        
+        // Check for complete math expression
+        if (isCompleteMathExpression(content)) {
+            log("Complete math expression found");
+            currentResponse += content;
+            mathQueue = [];
+            
+            // Update display and render math
+            const element = updateAssistantMessage(currentResponse);
+            if (element) {
+                await renderMathInElement(element);
+            }
+        }
+    } catch (e) {
+        log("Math processing error:", e);
+    } finally {
+        isMathProcessing = false;
+        
+        // If there's more in the queue, process it
+        if (mathQueue.length > 0) {
+            processMathQueue();
+        }
+    }
+}
+
+function isCompleteMathExpression(text) {
+    const pairs = {
+        '\\[': '\\]',
+        '\\(': '\\)',
+        '$$': '$$',
+        '$': '$'
+    };
+    
+    const stack = [];
+    let i = 0;
+    while (i < text.length) {
+        for (const [open, close] of Object.entries(pairs)) {
+            if (text.slice(i).startsWith(open)) {
+                stack.push(close);
+                i += open.length;
+                continue;
+            }
+            if (text.slice(i).startsWith(close)) {
+                if (stack.length === 0 || stack.pop() !== close) {
+                    return false;
+                }
+                i += close.length;
+                continue;
+            }
+        }
+        i++;
+    }
+    return stack.length === 0;
+}
+
+function isCompleteCodeBlock(text) {
+    const matches = text.match(/```/g);
+    return matches && matches.length % 2 === 0;
+}
+
+function processCodeBlock(text) {
+    // Process code block with proper formatting
+    const lines = text.split('\n');
+    const lang = lines[0].slice(3);
+    const code = lines.slice(1, -1).join('\n');
+    return `<pre><code class="language-${lang}">${code}</code></pre>`;
+}
+
+function isCompleteContent(text) {
+    if (!text || typeof text !== 'string') return false;
+    
+    try {
+        // Check for incomplete headers
+        const headerLines = text.split('\n').filter(line => line.trim().startsWith('#'));
+        for (const line of headerLines) {
+            // Header should have space after #s and some content
+            const match = line.match(/^(#{1,6})\s*(.*)/);
+            if (!match || !match[2].trim()) {
+                return false;
+            }
+        }
+        
+        // Check for incomplete code blocks
+        const codeMatches = text.match(/```/g);
+        if (codeMatches) {
+            // Must have even number of backticks
+            if (codeMatches.length % 2 !== 0) return false;
+            
+            // Check each code block is properly formed
+            const blocks = text.split('```');
+            // First and last elements should be non-code content
+            for (let i = 1; i < blocks.length; i += 2) {
+                // Each code block should have a language identifier
+                if (!blocks[i].trim()) return false;
+            }
+        }
+        
+        // Check for incomplete list items
+        const listLines = text.split('\n').filter(line => /^[\s]*[-*+]/.test(line) || /^[\s]*\d+\./.test(line));
+        for (const line of listLines) {
+            // List items should have content after the marker
+            if (!line.match(/^[\s]*[-*+]\s+\S+/) && !line.match(/^[\s]*\d+\.\s+\S+/)) {
+                return false;
+            }
+        }
+        
+        return true;
+    } catch (e) {
+        console.error('Error checking content completeness:', e);
+        return false;
+    }
+}
+
+// Add cleanup flag to prevent multiple cleanups
+let isCleaningUp = false;
+
+// Update event listeners for cleanup
+window.addEventListener('beforeunload', cleanup_handler);
+window.addEventListener('unload', cleanup_handler);
+
+function handleStreamedResponse(response) {
+    const reader = response.body.getReader();
+    let accumulatedText = '';
+    let messageDiv = null;
+    
+    return new Promise((resolve, reject) => {
+        function processText({ done, value }) {
+            if (done) {
+                console.log("Stream complete, final text:", accumulatedText);
+                resolve(accumulatedText);
+                return;
+            }
+            
+            // Convert the chunk to text
+            const chunk = new TextDecoder().decode(value);
+            console.log("Received chunk:", chunk);  // Debug log
+            
+            const lines = chunk.split('\n');
+            
+            // Process each line
+            lines.forEach(line => {
+                if (line.startsWith('data: ')) {
+                    const data = line.slice(5);
+                    if (data === '[DONE]') {
+                        console.log("Received DONE signal");
+                        resolve(accumulatedText);
+                        return;
+                    }
+                    try {
+                        const parsed = JSON.parse(data);
+                        if (parsed.text) {
+                            accumulatedText += parsed.text;
+                            // Create or update message div
+                            if (!messageDiv) {
+                                messageDiv = createAssistantMessage(accumulatedText);
+                            } else {
+                                messageDiv.textContent = accumulatedText;
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Error parsing chunk:', e, 'Line:', line);
+                    }
+                }
+            });
+            
+            return reader.read().then(processText);
+        }
+        
+        reader.read().then(processText);
+    });
+}
+
+// Add queue for math processing
+const mathQueue = {
+    pending: [],
+    processing: false
+};
+
+function queueMathProcessing(text, contentDiv) {
+    return new Promise((resolve) => {
+        if (text.includes('$') || text.includes('\\[') || text.includes('\\(')) {
+            // Queue this chunk for MathJax processing
+            mathQueue.pending.push({
+                element: contentDiv,
+                text: text,
+                resolve: resolve
+            });
+            processMathQueue();
+        } else {
+            resolve(text);
+        }
+    });
+}
+
+async function processMathQueue() {
+    if (mathQueue.processing || mathQueue.pending.length === 0) return;
+    
+    mathQueue.processing = true;
+    
+    try {
+        const item = mathQueue.pending.shift();
+        if (window.MathJax && window.MathJax.typesetPromise) {
+            await window.MathJax.typesetPromise([item.element]);
+            item.resolve();
+        }
+    } finally {
+        mathQueue.processing = false;
+        if (mathQueue.pending.length > 0) {
+            processMathQueue();
+        }
+    }
+}
+
+// Update processStreamingContent to handle interruptions
+async function processStreamingContent(chunk) {
+    if (!state.streamBuffer.isStreaming || state.streaming.softTransition) {
+        return;
+    }
+
+    try {
+        state.streamBuffer.raw += chunk;
+        const messages = state.streamBuffer.raw.split('\n\n');
+        state.streamBuffer.raw = messages.pop();
+        
+        for (const msg of messages) {
+            // Check for interruption after each message
+            if (!state.streamBuffer.isStreaming || state.streaming.softTransition) {
+                return;
+            }
+
+            if (!msg.startsWith('data: ')) continue;
+            
+            try {
+                const jsonStr = msg.slice(6).trim();
+                if (!jsonStr || jsonStr === '[DONE]') {
+                    if (state.streamBuffer.content) {
+                        const processed = await MathProcessor.processText(state.streamBuffer.content);
+                        if (state.streamBuffer.messageElement) {
+                            state.streamBuffer.messageElement.innerHTML = processed;
+                        }
+                    }
+                    if (jsonStr === '[DONE]') {
+                        state.streamBuffer.isStreaming = false;
+                    }
+                    continue;
+                }
+                
+                const data = JSON.parse(jsonStr);
+                if (!data?.text) continue;
+                
+                // Track code block state
+                if (data.text.includes('```')) {
+                    state.streamBuffer.isProcessingCode = !state.streamBuffer.isProcessingCode;
+                    state.streamBuffer.codeBlockDepth += state.streamBuffer.isProcessingCode ? 1 : -1;
+                }
+                
+                state.streamBuffer.content += data.text;
+                
+                if (!state.streamBuffer.messageElement) {
+                    const newMessage = document.createElement('div');
+                    newMessage.className = 'message assistant-message';
+                    const contentDiv = document.createElement('div');
+                    contentDiv.className = 'message-content markdown-body';
+                    newMessage.appendChild(contentDiv);
+                    state.elements.chatWindow.appendChild(newMessage);
+                    state.streamBuffer.messageElement = contentDiv;
+                }
+
+                // Process content immediately, even during code block streaming
+                const processed = await MathProcessor.processText(state.streamBuffer.content);
+                state.streamBuffer.messageElement.innerHTML = processed;
+                
+                smoothScrollToBottom();
+                
+            } catch (e) {
+                FlowLogger.error('Message processing error', e);
+            }
+        }
+    } catch (e) {
+        FlowLogger.error('Stream processing error', e);
+    }
+}
+
+// New unified rendering function
+async function renderContent(content) {
+    // First protect math expressions
+    const { text: protectedText, expressions } = await MathProcessor.processText(content);
+    
+    // Process markdown
+    let processed = marked.parse(protectedText);
+    
+    // Restore and render math expressions
+    for (const { id, expression, isBlock } of expressions) {
+        const placeholder = `@@MATH_PLACEHOLDER_${id}@@`;
+        const rendered = await renderMathExpression(expression, isBlock);
+        processed = processed.replace(placeholder, rendered);
+    }
+    
+    // Apply syntax highlighting to code blocks
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = processed;
+    tempDiv.querySelectorAll('pre code').forEach((block) => {
+        hljs.highlightElement(block);
+    });
+    
+    return tempDiv.innerHTML;
+}
+
+// Add helper function to check for complete math expressions
+function hasCompleteMathExpressions(text) {
+    // Check for complete block math
+    const blockRegex = /(\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\])/g;
+    let modifiedText = text;
+    
+    // Remove complete block math expressions
+    modifiedText = modifiedText.replace(blockRegex, '');
+    
+    // Check remaining inline math
+    const inlineRegex = /(\$[^\$\n]*?\$|\\\([^\)]*?\\\))/g;
+    const matches = modifiedText.match(/[\$\\]/g) || [];
+    
+    // If we have an odd number of delimiters, we have incomplete expressions
+    return matches.length % 2 === 0;
+}
+
+// Add renderMathExpression function
+async function renderMathExpression(mathExpr, isBlock) {
+    const tempDiv = document.createElement('div');
+    tempDiv.style.visibility = 'hidden';
+    document.body.appendChild(tempDiv);
+    
+    try {
+        // Clean up the math expression
+        let cleanMath = mathExpr.trim();
+        if (cleanMath.startsWith('$') && cleanMath.endsWith('$')) {
+            cleanMath = cleanMath.slice(1, -1);
+        } else if (cleanMath.startsWith('$$') && cleanMath.endsWith('$$')) {
+            cleanMath = cleanMath.slice(2, -2);
+        } else if (cleanMath.startsWith('\\[') && cleanMath.endsWith('\\]')) {
+            cleanMath = cleanMath.slice(2, -2);
+        } else if (cleanMath.startsWith('\\(') && cleanMath.endsWith('\\)')) {
+            cleanMath = cleanMath.slice(2, -2);
+        }
+
+        // Add proper delimiters back with correct wrapper
+        if (isBlock) {
+            tempDiv.innerHTML = `<div class="display-math">\\[${cleanMath}\\]</div>`;
+        } else {
+            tempDiv.innerHTML = `<span class="inline-math">\\(${cleanMath}\\)</span>`;
+        }
+        
+        // Render math
+        await MathJax.typesetPromise([tempDiv]);
+        
+        return tempDiv.innerHTML;
+    } finally {
+        document.body.removeChild(tempDiv);
+    }
+}
+
+// Add cleanup handler
+function cleanup_handler(event) {
+    if (state.isCleaningUp) return;
+    
+    state.isCleaningUp = true;
+    console.log("Starting graceful shutdown");
+    
+    try {
+        // Cancel any ongoing request
+        if (state.currentResponseController) {
+            state.currentResponseController.abort();
+            state.currentResponseController = null;
+        }
+        
+        state.isProcessing = false;
+
+        // Clear any remaining timeouts
+        if (scrollTimeout) {
+            clearTimeout(scrollTimeout);
+            scrollTimeout = null;
+        }
+
+        // Reset stream buffer
+        if (state.streamBuffer) {
+            state.streamBuffer.isStreaming = false;
+            state.streamBuffer.content = '';
+            state.streamBuffer.raw = '';
+            state.streamBuffer.messageElement = null;
+            state.streamBuffer.isProcessingCode = false;
+            state.streamBuffer.codeBlockDepth = 0;
+        }
+
+        // Clear math queue
+        if (typeof mathQueue !== 'undefined' && mathQueue) {
+            mathQueue.pending = [];
+            mathQueue.processing = false;
+        }
+        
+        // Clear chat window
+        if (state.elements?.chatWindow) {
+            state.elements.chatWindow.innerHTML = '';
+        }
+        
+    } catch (e) {
+        console.error("Cleanup error:", e);
+    } finally {
+        console.log("Shutdown complete");
+        state.isCleaningUp = false;
+    }
+}
+
+// Add event listeners for cleanup
+window.addEventListener('beforeunload', cleanup_handler);
+window.addEventListener('unload', cleanup_handler);
