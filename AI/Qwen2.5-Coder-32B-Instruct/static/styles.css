@@ -7,128 +7,166 @@
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
     line-height: 1.6;
-    background-color: #141414;
-    color: #d0d0d0;
+    background-color: #282a36;
+    color: #f8f8f2;
     min-height: 100vh;
     margin: 0;
     padding: 0;
 }
 
 .chat-container {
-    background-color: #1a1a1a;
+    background-color: #282a36;
     min-height: 100vh;
     display: flex;
     flex-direction: column;
 }
 
 .chat-header {
-    background-color: #202020;
+    background-color: #44475a;
     padding: 1rem;
     text-align: left;
-    border-bottom: 1px solid #333333;
+    border-bottom: 1px solid #6272a4;
     display: flex;
     justify-content: space-between;
     align-items: center;
-}
-
-.chat-header h1 {
-    margin: 0;
-    color: #e0e0e0;
-    font-size: 1.2rem;
-    font-weight: 500;
+    position: sticky;
+    top: 0;
+    z-index: 100;
 }
 
 .chat-messages {
     flex: 1;
     overflow-y: auto;
     padding: 1rem;
-    padding-bottom: 100px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1rem;
-    width: 50%;
+    padding-bottom: calc(10vh + 80px);
+    display: block;
+    max-width: 50%;
     margin: 0 auto;
+    width: 100%;
+    scroll-behavior: smooth;
+    overflow-anchor: auto;
+    scroll-padding-bottom: calc(10vh + 80px);
+    overflow-x: hidden;
 }
 
 .message {
-    padding: 0.75rem;
-    border-radius: 4px;
-    max-width: 100%;
-    min-width: 50px;
-    width: 100%;
-    margin: 0.5rem auto;
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
+    padding: 1rem;
+    margin: 0.5rem 0;
+    border-radius: 8px;
+    max-width: none;
+    min-width: 100%;
+    width: auto;
+    display: inline-block;
+    transition: background-color 0.2s ease;
 }
 
 .message-content {
+    color: #f8f8f2;
+    font-size: 14px;
+    line-height: 1.6;
     text-align: left;
     width: 100%;
+    max-width: 100%;
     overflow-wrap: break-word;
     word-wrap: break-word;
     word-break: break-word;
-    hyphens: auto;
-    transition: none !important;
+    overflow-x: hidden;
+    visibility: visible !important;
 }
 
-.message-content * {
-    transition: none !important;
+.message-content.markdown-body {
+    background: none !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
 }
+
+.message-content pre {
+    margin: 1rem 0 !important;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    white-space: pre-wrap;
+}
+
+.message-content code:not(pre code) {
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.user-message .message-content {
+    color: #c9d1d9;
+    font-family: 'Fira Code', Consolas, monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+    padding: 0;
+}
+
+.user-message .message-content .hljs-string { color: #a8ff60; }
+.user-message .message-content .hljs-keyword { color: #66d9ef; }
+.user-message .message-content .hljs-comment { color: #88846f; }
+.user-message .message-content .hljs-number { color: #ff73fd; }
+.user-message .message-content .hljs-operator { color: #ff73fd; }
+.user-message .message-content .hljs-punctuation { color: #c9d1d9; }
 
 .user-message {
-    background-color: #2d2d2d;
-    align-self: center;
-    margin-left: auto;
-    margin-right: auto;
+    background-color: #313442;
+    border-left: 3px solid #bd93f9;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .assistant-message {
-    background-color: #252525;
-    align-self: center;
-    margin-left: auto;
-    margin-right: auto;
-    font-size: 14px;
-    line-height: 1.5;
-    animation: fadeIn 0.3s ease-out;
+    background-color: #3b3d54;
+    border-left: 3px solid #50fa7b;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.chat-input {
+.input-container {
     padding: 1rem;
-    background-color: #1a1a1a;
-    border-top: 1px solid #333333;
+    background-color: #282a36;
+    border-top: 1px solid #6272a4;
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    overflow: visible;
+    z-index: 100;
+    height: auto;
+    min-height: 80px;
+    max-height: 200px;
+    transition: height 0.2s ease;
+}
+
+.input-wrapper {
     display: flex;
     gap: 0.5rem;
+    max-width: 70%;
+    margin: 0 auto;
+    width: 100%;
+    position: relative;
+    align-items: flex-start;
 }
 
 textarea {
     flex: 1;
     padding: 0.75rem;
-    border: 1px solid #333333;
+    border: 1px solid #6272a4;
     border-radius: 4px;
-    background-color: #141414;
-    color: #d0d0d0;
+    background-color: #44475a;
+    color: #f8f8f2;
     resize: none;
     min-height: 20px;
     max-height: 150px;
     font-family: inherit;
-}
-
-textarea:focus {
-    outline: none;
-    border-color: #005999;
+    min-width: 300px;
+    width: fit-content;
+    box-sizing: border-box;
+    overflow-x: hidden;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    transition: height 0.2s ease;
+    line-height: 1.5;
 }
 
 button {
@@ -139,212 +177,1034 @@ button {
     border-radius: 4px;
     cursor: pointer;
     transition: background-color 0.2s;
-    font-weight: 500;
-}
-
-button:hover {
-    background-color: #004880;
 }
 
 pre {
-    background-color: #141414;
-    padding: 0.75rem;
+    background-color: #282a36 !important;
+    padding: 1rem;
     border-radius: 4px;
-    white-space: pre;
     overflow-x: auto;
     margin: 0.5rem 0;
-    border: 1px solid #333333;
 }
 
 code {
-    font-family: 'Fira Code', Consolas, monospace;
+    font-family: 'Fira Code', ui-monospace, 'Source Code Pro', 'Menlo', 'Consolas', 'DejaVu Sans Mono', monospace;
     font-size: 13px;
     tab-size: 4;
 }
 
-.clear-all-btn {
-    background-color: #cc3333;
-    color: white;
-    border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.9rem;
-    margin-left: 1rem;
+.markdown-body {
+    background-color: transparent !important;
+    color: #e6edf3 !important;
+    padding: 0 !important;
+    margin: 0 !important;
 }
 
-.clear-all-btn:hover {
-    background-color: #aa2222;
-}
-
-.input-container {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    padding: 20px;
-    background: #1e1e1e;
-    border-top: 1px solid #333;
-    display: flex;
-    gap: 10px;
-    z-index: 100;
-    padding: 10px;
-    border-top: 1px solid #ccc;
-    width: 100%;
-}
-
-.input-box {
-    flex-grow: 1;
-    background: #2d2d2d;
-    border: 1px solid #404040;
-    color: #d4d4d4;
-    padding: 12px;
+.highlight, .code-block {
+    margin: 1em 0;
+    background: #0d1117;
     border-radius: 6px;
-    font-family: inherit;
-    font-size: 14px;
-    resize: none;
-    min-height: 44px;
-    max-height: 200px;
-    overflow-y: auto;
-    line-height: 1.4;
-    transition: height 0.1s ease-out;
+    overflow: hidden;
 }
 
-.input-box:focus {
-    outline: none;
-    border-color: #007acc;
+.filepath {
+    padding: 12px 16px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+    font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
 }
 
-.input-box::-webkit-scrollbar {
-    width: 8px;
+.filepath-name {
+    color: var(--text-secondary);
+    font-size: 13px;
+    padding-bottom: 4px;
 }
 
-.input-box::-webkit-scrollbar-track {
+.filepath-separator {
+    color: var(--border-color);
+    font-size: 13px;
+    line-height: 1;
+    padding-bottom: 8px;
+    font-family: monospace;
+    white-space: pre;
+}
+
+.highlight pre, .code-block pre {
+    margin: 0;
+    padding: 16px;
+    overflow: auto;
+    font-size: 85%;
+    line-height: 1.45;
+    background-color: #0d1117;
+}
+
+.highlight pre code, .code-block pre code {
+    padding: 0;
+    margin: 0;
+    font-size: 100%;
+    word-break: normal;
+    white-space: pre;
     background: transparent;
+    border: 0;
 }
 
-.input-box::-webkit-scrollbar-thumb {
-    background-color: #555;
-    border-radius: 4px;
+.code-block.streaming {
+    opacity: 0.8;
+    border-left: 2px solid #0088ff;
 }
 
-.message-content pre {
+.code-block.streaming code {
+    min-height: 1.5em;
+}
+
+/* Remove @font-face declarations and use system fonts directly */
+pre code {
+    font-family: 'Fira Code', ui-monospace, 'Source Code Pro', 'Menlo', 'Consolas', 'DejaVu Sans Mono', monospace;
+    font-feature-settings: "liga" 1;
+    text-rendering: optimizeLegibility;
+}
+
+.assistant-identifier {
+    font-size: 0.8em;
+    color: #888;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    text-align: left;
     width: 100%;
+}
+
+/* GitHub Dark theme syntax colors */
+.hljs-doctag,
+.hljs-keyword,
+.hljs-meta .hljs-keyword,
+.hljs-template-tag,
+.hljs-template-variable,
+.hljs-type,
+.hljs-variable.language_ { color: #ff7b72; }
+
+.hljs-title,
+.hljs-title.class_,
+.hljs-title.class_.inherited__,
+.hljs-title.function_ { color: #d2a8ff; }
+
+.hljs-attr,
+.hljs-attribute,
+.hljs-literal,
+.hljs-meta,
+.hljs-number,
+.hljs-operator,
+.hljs-variable,
+.hljs-selector-attr,
+.hljs-selector-class,
+.hljs-selector-id { color: #79c0ff; }
+
+.hljs-regexp,
+.hljs-string,
+.hljs-meta .hljs-string { color: #a5d6ff; }
+
+.hljs-built_in,
+.hljs-symbol { color: #ffa657; }
+
+.hljs-comment,
+.hljs-code,
+.hljs-formula { color: #8b949e; }
+
+.hljs-name,
+.hljs-quote,
+.hljs-selector-tag,
+.hljs-selector-pseudo { color: #7ee787; }
+
+.hljs-subst { color: #c9d1d9; }
+
+.hljs-section { color: #1f6feb; font-weight: bold; }
+
+.hljs-bullet { color: #f2cc60; }
+
+.hljs-emphasis { color: #c9d1d9; font-style: italic; }
+.hljs-strong { color: #c9d1d9; font-weight: bold; }
+
+.hljs-addition { color: #aff5b4; background-color: #033a16; }
+.hljs-deletion { color: #ffdcd7; background-color: #67060c; }
+
+/* GitHub Dark theme markdown overrides */
+.markdown-body {
+    background-color: transparent !important;
+    color: #e6edf3 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+.message-content {
+    color: #e6edf3;
+}
+
+/* Ensure code blocks in markdown have proper dark theme */
+.markdown-body pre {
+    background-color: #0d1117 !important;
+    border: 1px solid #30363d !important;
+}
+
+.markdown-body code {
+    background-color: rgba(110,118,129,0.4) !important;
+    color: #e6edf3 !important;
+}
+
+/* Ensure inline code has proper styling */
+.markdown-body :not(pre) > code {
+    padding: 0.2em 0.4em !important;
+    border-radius: 6px !important;
+}
+
+/* Style links in markdown */
+.markdown-body a {
+    color: #58a6ff !important;
+}
+
+/* Style blockquotes */
+.markdown-body blockquote {
+    color: #8b949e !important;
+    border-left: 0.25em solid #30363d !important;
+}
+
+/* Base theme colors */
+:root {
+    --bg-primary: #282a36;
+    --bg-secondary: #44475a;
+    --text-primary: #f8f8f2;
+    --text-secondary: #6272a4;
+    --accent-red: #ff5555;
+    --accent-blue: #005999;
+    --border-color: #6272a4;
+}
+
+/* Code block container */
+.code-block {
+    margin: 1em 0;
+    background: #282a36 !important;  /* Dracula theme background */
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    overflow: visible;
+    width: auto;
+    min-width: 100%;
+}
+
+/* Code content wrapper */
+.code-block pre {
+    margin: 0;
+    padding: 16px;
+    background-color: #282a36 !important;  /* Dracula theme background */
+    overflow: visible;
+    white-space: pre;
+    width: auto;
+}
+
+.code-block pre code {
+    font-family: 'Fira Code', ui-monospace, 'Source Code Pro', 'Menlo', 'Consolas', 'DejaVu Sans Mono', monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    display: inline-block;
+    width: auto;
+    background: transparent !important;
+}
+
+/* Streaming state with smooth transitions */
+.code-block.streaming {
+    opacity: 0.9;
+    border-left: 2px solid var(--streaming-indicator);
+    transition: all 0.2s ease-out;
+    height: auto;
+}
+
+.code-block.streaming pre {
+    transition: height 0.2s ease-out;
+}
+
+.code-block.streaming code {
+    min-height: 1.5em;
+    height: auto;
+}
+
+/* Ensure proper container sizing */
+.message {
+    padding: 1rem;
     margin: 0.5rem 0;
+    border-radius: 8px;
+    max-width: none;
+    min-width: 100%;
+    width: auto;
+    display: inline-block;
+}
+
+.user-message {
+    background-color: #313442;
+    border-left: 3px solid #bd93f9;
+}
+
+.assistant-message {
+    background-color: #3b3d54;
+    border-left: 3px solid #50fa7b;
+}
+
+.message-content {
+    color: var(--text-primary);
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+/* Ensure proper spacing */
+.message-content > *:first-child { margin-top: 0; }
+.message-content > *:last-child { margin-bottom: 0; }
+
+/* Inline code */
+.markdown-body :not(pre) > code {
+    padding: 0.2em 0.4em;
+    background-color: rgba(110,118,129,0.4);
+    border-radius: 6px;
+    font-family: 'Fira Code', ui-monospace, 'Source Code Pro', 'Menlo', 'Consolas', 'DejaVu Sans Mono', monospace;
+    font-size: 85%;
+}
+
+/* File path header styling */
+.filepath {
+    padding: 12px 16px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+    font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
+}
+
+.filepath-name {
+    color: var(--text-secondary);
+    font-size: 12px;
+}
+
+.filepath-separator {
+    color: var(--border-color);
+    font-size: 12px;
+    margin-top: 4px;
+    font-family: monospace;
+    line-height: 1;
+}
+
+/* GitHub Dark theme code blocks */
+.code-block .markdown-body {
+    background-color: var(--bg-primary) !important;
+    color: var(--text-primary) !important;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.code-block .markdown-body pre {
+    margin: 0 !important;
+    background-color: var(--bg-primary) !important;
+}
+
+.code-block .markdown-body code {
+    color: var(--text-primary) !important;
+    background-color: transparent !important;
+}
+
+/* Ensure proper GitHub dark theme colors */
+.github-dark {
+    color-scheme: unset;
+}
+
+/* Override GitHub markdown dark theme text color */
+.markdown-body {
+    color: #e6edf3 !important;  /* Brighter text color */
+}
+
+.markdown-body pre {
+    background-color: #0d1117 !important;  /* Dark background for code blocks */
+}
+
+.markdown-body code {
+    color: #e6edf3 !important;  /* Brighter text for code */
+}
+
+/* Ensure inline code has proper contrast */
+.markdown-body :not(pre) > code {
+    background-color: #1f2428 !important;
+    color: #e6edf3 !important;
+}
+
+/* Code block styling */
+pre {
+    background-color: #282a36 !important;
+}
+
+.code-block {
+    background-color: #282a36 !important;
+}
+
+.code-block pre {
+    background-color: #282a36 !important;
+}
+
+/* Override any other background colors */
+.markdown-body pre {
+    background-color: #282a36 !important;
+}
+
+.highlight pre, .code-block pre {
+    background-color: #282a36 !important;
+}
+
+/* Remove conflicting styles */
+.message-content code {
+    background-color: transparent !important;
+}
+
+/* Remove GitHub theme overrides */
+.github-dark {
+    color-scheme: unset;
+}
+
+/* Let Dracula theme handle syntax colors */
+.hljs {
+    background: #282a36 !important;
+    color: #f8f8f2 !important;
+    padding: 1em !important;
+    border-radius: 6px !important;
+}
+
+/* Dracula theme colors */
+.hljs-keyword { color: #ff79c6 !important; }
+.hljs-built_in { color: #8be9fd !important; }
+.hljs-type { color: #8be9fd !important; }
+.hljs-literal { color: #bd93f9 !important; }
+.hljs-number { color: #bd93f9 !important; }
+.hljs-string { color: #f1fa8c !important; }
+.hljs-comment { color: #6272a4 !important; }
+.hljs-operator { color: #ff79c6 !important; }
+.hljs-function { color: #50fa7b !important; }
+
+/* Add spacing for explanation text */
+.message-content p {
+    margin: 1em 0;
+}
+
+/* Improve list item spacing */
+.message-content ul,
+.message-content ol {
+    margin: 1em 0;
+    padding-left: 2em;
+}
+
+.message-content li {
+    margin: 0.5em 0;
+    line-height: 1.5;
+}
+
+/* Add specific styling for nested lists */
+.message-content li > ul,
+.message-content li > ol {
+    margin: 0.5em 0 0.5em 1em;  /* Top, right, bottom, left margins */
+}
+
+.message-content li > ul > li,
+.message-content li > ol > li {
+    margin: 0.7em 0;  /* Increased vertical spacing for nested items */
+    padding-left: 0.5em;  /* Indent nested items */
+}
+
+/* Ensure proper bullet/number alignment */
+.message-content ol {
+    list-style-position: outside;
+}
+
+/* MathJax styling */
+.MathJax {
+    font-size: 1.1em !important;
+}
+
+/* Inline math */
+.markdown-body :not(pre) > .MathJax {
+    background-color: transparent !important;
+    padding: 0 0.2em !important;
+}
+
+/* Display math */
+.markdown-body .MathJax-Display {
+    margin: 1em 0 !important;
+    padding: 1em !important;
+    background-color: rgba(68, 71, 90, 0.3) !important;
+    border-radius: 6px !important;
+    overflow-x: auto !important;
+}
+
+/* MathJax error messages */
+.MathJax_Error {
+    color: #ff5555 !important;
+    border: 1px solid #ff5555 !important;
+    padding: 0.5em !important;
+    margin: 0.5em 0 !important;
+    border-radius: 4px !important;
+    background-color: rgba(255, 85, 85, 0.1) !important;
+}
+
+/* MathJax styling improvements */
+.math {
+    overflow-x: auto;
+    max-width: 100%;
+    padding: 0.5em 0;
+}
+
+/* Inline math */
+.math-inline {
+    display: inline-block;
+    vertical-align: middle;
+    margin: 0 0.2em;
+}
+
+/* Display math */
+.math-display {
+    display: block;
+    margin: 1em 0;
+    text-align: center;
+}
+
+/* Ensure proper spacing around math in text */
+p .math {
+    vertical-align: middle;
+}
+
+/* Prevent math from breaking layout */
+.message-content .math {
+    overflow-x: auto;
+    overflow-y: hidden;
+    max-width: 100%;
+}
+
+/* Improve list handling with math */
+.markdown-body ol {
+    counter-reset: list;
+    list-style-type: decimal;  /* Restore default numbering */
+    padding-left: 2em;
+    margin-bottom: 1em;
+}
+
+.markdown-body ol li {
+    position: relative;
+    margin: 0.5em 0;
+    padding: 0.25em 0;
+    display: list-item;  /* Ensure list numbers show */
+}
+
+/* Special handling for list items with math */
+.markdown-body ol li.with-math {
+    display: block;  /* Changed from flex to block */
+    margin-bottom: 1em;
+}
+
+/* Add spacing after math in list items */
+.markdown-body ol li.with-math .math {
+    display: block;
+    margin: 0.5em 0 1em 0;
     overflow-x: auto;
 }
 
-.message-content pre code {
+/* Ensure text after lists has proper spacing */
+.markdown-body ol + p {
+    margin-top: 1em;
+}
+
+/* Improve math expression flow */
+.markdown-body .math {
+    display: inline-block;
+    vertical-align: middle;
+    margin: 0;
+    padding: 0;
+}
+
+/* Ensure text flows naturally after math */
+.markdown-body p {
+    margin: 1em 0;
+    line-height: 1.5;
+}
+
+/* Keep colons tight with math */
+.markdown-body p:has(> .math) {
+    display: inline;
+}
+
+/* Math expression handling */
+.message-content .math {
+    display: inline-block;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    vertical-align: middle;
+    white-space: nowrap;
+    padding: 0.25em 0;
+}
+
+/* Long equation scrolling */
+.message-content .math-display {
     display: block;
-    padding: 1rem;
+    max-width: 100%;
+    overflow-x: auto;
+    margin: 1em 0;
+    padding: 0.5em 0;
     text-align: left;
 }
 
+/* Ensure proper text wrapping around math */
+.message-content p {
+    margin: 1em 0;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    hyphens: auto;
+}
+
+/* Prevent math from breaking layout */
+.message-content .MathJax_Display {
+    max-width: 100%;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+}
+
+/* Scroll to bottom button */
+.scroll-bottom-btn {
+    position: fixed;
+    bottom: 100px;  /* Above input area */
+    right: 20px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #44475a;
+    color: #f8f8f2;
+    border: none;
+    cursor: pointer;
+    font-size: 20px;
+    z-index: 1000;
+    opacity: 0.8;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.scroll-bottom-btn:hover {
+    opacity: 1;
+    transform: translateY(-2px);
+}
+
+/* Update chat messages container width */
+.chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+    padding-bottom: 120px;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    max-width: 70%;
+    margin: 0 auto;
+    width: 100%;
+    scroll-behavior: smooth;
+    overflow-anchor: auto;
+    scroll-padding-bottom: 120px;
+    overflow-x: hidden;
+}
+
+/* Update input wrapper to match chat width */
 .input-wrapper {
     display: flex;
-    gap: 10px;
+    gap: 0.5rem;
+    max-width: 70%;
+    margin: 0 auto;
     width: 100%;
+    position: relative;
+    align-items: flex-start;
 }
 
-#user-input {
-    flex-grow: 1;
-    min-height: 50px;
-    padding: 10px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    resize: vertical;
-}
-
+/* Add this to ensure the send button stays at a fixed width */
 .send-button {
-    padding: 10px 20px;
-    background-color: #007bff;
+    flex: 0 0 80px;
+    height: fit-content;
+}
+
+/* Add this JavaScript to handle the dynamic resizing */
+
+/* Add media queries for responsiveness */
+@media screen and (max-width: 1200px) {
+    .chat-messages,
+    .input-wrapper {
+        max-width: 80%;
+    }
+}
+
+@media screen and (max-width: 768px) {
+    .chat-messages,
+    .input-wrapper {
+        max-width: 90%;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    .chat-messages,
+    .input-wrapper {
+        max-width: 95%;
+        padding: 0.5rem;
+    }
+    
+    .message {
+        padding: 0.75rem;
+    }
+}
+
+.code-wrapper {
+    margin: 1em 0;
+    background: #282a36;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.markdown-body li .code-wrapper pre {
+    margin: 0;
+    padding: 1em;
+}
+
+.markdown-body li {
+    margin: 0.5em 0;
+}
+
+.markdown-body li pre code {
+    background-color: transparent !important;
+}
+
+/* Add/update header controls styling */
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.clear-all-btn {
+    padding: 0.5rem 1rem;
+    background-color: #ff5555;  /* Dracula red */
     color: white;
     border: none;
     border-radius: 4px;
     cursor: pointer;
-    height: fit-content;
-    align-self: flex-start;
+    transition: background-color 0.2s;
 }
 
-.markdown-block {
-    background: #f8f9fa;
-    padding: 1rem;
+.clear-all-btn:hover {
+    background-color: #ff6e6e;
+}
+
+.clear-all-btn:active {
+    background-color: #e64747;
+}
+
+.send-button {
+    padding: 0.75rem 1rem;
+    background-color: #005999;
+    color: white;
+    border: none;
     border-radius: 4px;
-    margin: 1rem 0;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    min-width: 80px;
+    font-weight: 500;
 }
 
-.markdown-block h1 {
-    margin-top: 0;
+.send-button:hover {
+    background-color: #0077cc;
 }
 
-.markdown-block table {
-    border-collapse: collapse;
-    width: 100%;
-    margin: 1rem 0;
-    background: #252525;
+.send-button:active {
+    background-color: #004477;
 }
 
-.markdown-block th,
-.markdown-block td {
-    border: 1px solid #404040;
-    padding: 0.5rem;
-    text-align: left;
+.send-button:disabled {
+    background-color: #666;
+    cursor: not-allowed;
 }
 
-.markdown-block th {
+.clear-all-btn {
+    padding: 0.5rem 1rem;
+    background-color: #ff5555;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    min-width: 100px;
+    font-weight: 500;
+}
+
+.clear-all-btn:hover {
+    background-color: #ff6e6e;
+}
+
+.clear-all-btn:active {
+    background-color: #e64747;
+}
+
+.code-file-path {
     background: #2d2d2d;
+    color: #ccc;
+    padding: 4px 8px;
+    border-bottom: 1px solid #444;
+    border-radius: 4px 4px 0 0;
+    font-family: monospace;
+    font-size: 0.9em;
 }
 
-.markdown-block strong {
-    color: #e0e0e0;
-    font-weight: bold;
+/* Add a gradient fade effect at the bottom */
+.chat-container::after {
+    content: '';
+    position: fixed;
+    bottom: 80px; /* Match new min-height */
+    left: 0;
+    right: 0;
+    height: 10vh;
+    background: linear-gradient(to bottom, transparent, #282a36);
+    pointer-events: none;
+    z-index: 99;
 }
 
-pre code.highlighted {
-    display: block;
-    padding: 1rem;
-    text-align: left;
-}
-
-.markdown-body {
-    box-sizing: border-box;
-    min-width: 200px;
-    max-width: 980px;
-    margin: 0 auto;
-    padding: 45px;
-    background: #0d1117;
-    color: #c9d1d9;
-}
-
-.markdown-body table {
-    display: block;
-    width: 100%;
-    overflow: auto;
-}
-
-.markdown-body table th {
-    font-weight: 600;
-    background-color: #161b22;
-}
-
-.markdown-body table tr {
-    background-color: #0d1117;
-    border-top: 1px solid #30363d;
-}
-
-.markdown-body table tr:nth-child(2n) {
-    background-color: #161b22;
-}
-
-.markdown-body table td,
-.markdown-body table th {
-    padding: 6px 13px;
-    border: 1px solid #30363d;
-}
-
-.header-controls {
+/* Add these styles */
+.conversation-controls {
     display: flex;
     gap: 1rem;
-    align-items: center;
 }
- 
+
+.action-btn {
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+#start-convo-btn {
+    background-color: #50fa7b;
+    color: #282a36;
+}
+
+#stop-convo-btn {
+    background-color: #ff5555;
+    color: white;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.7);
+    z-index: 1000;
+}
+
+.modal-content {
+    position: relative;
+    background-color: #282a36;
+    margin: 15% auto;
+    padding: 2rem;
+    border-radius: 8px;
+    width: 80%;
+    max-width: 500px;
+}
+
+.modal-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.modal-form label {
+    color: #f8f8f2;
+    font-weight: 500;
+}
+
+.modal-form input {
+    padding: 0.5rem;
+    border-radius: 4px;
+    border: 1px solid #6272a4;
+    background-color: #44475a;
+    color: #f8f8f2;
+}
+
+.modal-buttons {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    margin-top: 1rem;
+}
+
+.modal-buttons button {
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+#start-conversation {
+    background-color: #50fa7b;
+    color: #282a36;
+}
+
+#cancel-conversation {
+    background-color: #6272a4;
+    color: white;
+}
+
+/* Add container for assistant messages */
+.assistant-container {
+    display: block;
+    width: 100%;
+    background-color: #3b3d54;
+    border-radius: 8px;
+    margin: 0.5rem 0;
+    padding: 1rem;
+    white-space: normal;
+    border-left: 3px solid #50fa7b;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.display-math {
+    display: flex;
+    justify-content: center;
+    margin: 1em 0;
+    overflow-x: auto;
+}
+
+.display-math {
+    overflow-x: auto;
+    margin: 1em 0;
+    text-align: center;
+}
+
+.math-placeholder {
+    display: inline-block;
+    min-height: 1em;
+    opacity: 1;
+}
+
+.display-math {
+    margin: 1em 0;
+    min-height: 2em;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 1;
+}
+
+/* Remove loading transitions as they're causing the disappearing effect */
+.math-placeholder.loading,
+.display-math.loading {
+    display: inline-block;
+}
+
+/* Ensure MathJax content stays visible */
+.mjx-chtml {
+    display: inline-block !important;
+    opacity: 1 !important;
+    overflow-x: auto;
+    overflow-y: hidden;
+    max-width: 100%;
+}
+
+.mjx-chtml.MJXc-display {
+    display: block !important;
+    margin: 1em 0;
+    padding: 0;
+    text-align: center;
+}
+
+/* Add specific styling for display math containers */
+.message-content .display-math {
+    width: 100%;
+    overflow-x: auto;
+    background: rgba(40, 42, 54, 0.8);  /* Darker background using Dracula theme color */
+    border-radius: 4px;
+    padding: 1em;
+    border: 1px solid rgba(98, 114, 164, 0.2);  /* Subtle border using Dracula comment color */
+}
+
+/* Ensure proper alignment for inline math */
+.message-content p .math-placeholder {
+    vertical-align: middle;
+    background: rgba(40, 42, 54, 0.6);  /* Slightly lighter for inline math */
+    padding: 0.1em 0.3em;
+    border-radius: 3px;
+}
+
+/* Ensure MathJax content is properly visible */
+.mjx-chtml {
+    display: inline-block !important;
+    opacity: 1 !important;
+    overflow-x: auto;
+    overflow-y: hidden;
+    max-width: 100%;
+    color: #f8f8f2 !important;  /* Dracula foreground color */
+}
+
+.mjx-chtml.MJXc-display {
+    display: block !important;
+    margin: 1em 0;
+    padding: 0;
+    text-align: center;
+}
+
+/* Default monospace fallback until Fira Code loads */
+pre code {
+    font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+}
+
+/* Apply Fira Code when available */
+.fonts-loaded pre code {
+    font-family: 'Fira Code', monospace;
+}
+
+/* Optional: Add ligature support when Fira Code is loaded */
+.fonts-loaded pre code {
+    font-feature-settings: "calt" 1;  /* Enable ligatures */
+    font-variant-ligatures: contextual;
+}
+
+/* Ensure proper font sizes and line heights */
+pre code {
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.code-block {
+    position: relative;
+    margin: 1em 0;
+}
+
+.code-block-nested {
+    margin-left: 1em;
+    border-left: 2px solid #666;
+    padding-left: 1em;
+}
+
+.code-file-path {
+    font-family: monospace;
+    color: #666;
+    font-size: 0.9em;
+    margin-bottom: 0.5em;
+}
+
+.code-comment {
+    color: #6a9955;
+    font-style: italic;
+    margin: 0.5em 0;
+}
+
+.system-message {
+    margin: 8px 0;
+    padding: 8px 12px;
+    background-color: rgba(65, 105, 225, 0.1);
+    border-left: 3px solid royalblue;
+    font-style: italic;
+    color: #789;
+}
+
+.system-message .message-content {
+    font-size: 0.9em;
+}
