@@ -1,1347 +1,2125 @@
+# persistent_memory.py
+
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    ParamSpec,
+    Tuple,
+    TypeVar,
+    Union,
+    TYPE_CHECKING,
+    Annotated,
+    TypedDict
+)
+from pathlib import Path
+import threading
+import torch
+import gc
 import json
 import os
-import threading
-import tiktoken
-import torch
-from datetime import datetime
-from llama_cpp import Llama
-from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Iterator
-import re
-import traceback
 import time
+import logging
+import queue
+from copy import deepcopy
+from llama_cpp import Llama
+from datetime import datetime, timedelta
+import torch.cuda.memory
+from contextlib import contextmanager
+import math
+import hashlib
+import re
+from collections import defaultdict
+import atexit
+import signal
+import sys
+import psutil
+from operator import add
+import traceback
+from functools import wraps
+import weakref
+import uuid
+from dataclasses import dataclass, field
 
-# Configuration settings
-CODER_GPU_LAYERS = 55       # Reduced from 45 to save VRAM
-FAST_GPU_LAYERS = 37        # Reduced from 32 to save VRAM
+# LangGraph imports
+from langgraph.checkpoint.memory import MemorySaver
+from langgraph.graph import StateGraph
+from langgraph.store.memory import InMemoryStore
 
-# Memory settings
-MAX_MEMORIES = 50           # Max messages to keep per thread
-MAX_CONTEXT_TOKENS = 32768  # Model's context window
-MAX_ANALYSIS_TOKENS = 1000
-MIN_ANALYSIS_TOKENS = 100
-ANALYSIS_TRUNCATE_PERCENT = 0.1  # 10%
-FALLBACK_CHAR_LIMIT = 1000
+# Local imports
+from prompts import (
+    GPU_LAYERS,
+    MAX_CONTEXT_TOKENS_LARGE,
+    MAX_CONTEXT_TOKENS_SMALL,
+    LM_SMALL_SYSTEM_PROMPT,
+    LM_LARGE_SYSTEM_PROMPT,
+    MAX_MEMORIES_ALLOWED,
+    ROUTER_PROMPT,
+    MATH_DETECTOR_PROMPT,
+    CONTENT_CLASSIFIER_PROMPT,
+    MAX_GENERATION_TOKENS
+)
 
-class ModelManager:
-    _instance = None
-    _lock = threading.Lock()
+# Setup logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
-    def __new__(cls):
-        with cls._lock:
-            if cls._instance is None:
-                cls._instance = super(ModelManager, cls).__new__(cls)
-                cls._instance._initialize()
-            return cls._instance
+# Add a handler if none exists
+if not logger.handlers:
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(message)s'))
+    logger.addHandler(handler)
 
-    def _initialize(self):
-        """Initialize model manager"""
-        self._current_model = None
-        self._model_type = None
+# Type hints
+T = TypeVar('T')
+P = ParamSpec('P')
+
+# Add forward references to avoid circular imports
+if TYPE_CHECKING:
+    from .model_manager import ModelManager
+    from .conversation_manager import ConversationManager
+
+class MessageMemory:
+    """Enhanced message memory with code context tracking"""
+    def __init__(self):
+        self._recent_contexts = {}
+        self._messages = {}
+        self._code_history = {}  # Add code history tracking
+        self._max_memories = MAX_MEMORIES_ALLOWED
         self._lock = threading.Lock()
         
-        # Calculate GPU memory and layers
-        if torch.cuda.is_available():
-            self.gpu_memory = torch.cuda.get_device_properties(0).total_memory / (1024**3)
-            print(f"Total GPU memory: {self.gpu_memory:.2f}GB")
-            
-            available_memory = (self.gpu_memory - 2) * 0.9
-            self.coder_gpu_layers = min(CODER_GPU_LAYERS, int(available_memory / 0.35))
-            self.fast_gpu_layers = min(FAST_GPU_LAYERS, int(available_memory / 0.2))
-            
-            print(f"Adjusted GPU layers - Coder: {self.coder_gpu_layers}, Fast: {self.fast_gpu_layers}")
-        else:
-            self.coder_gpu_layers = 0
-            self.fast_gpu_layers = 0
+    def add_code_context(self, thread_id: str, code_context: Dict):
+        """Store code context for a thread"""
+        logger.info("\n=== ADD_CODE_CONTEXT: DETAILED DEBUG ===")
+        logger.info(f"[CODE_CTX] Thread ID: {thread_id}")
+        logger.info(f"[CODE_CTX] Raw input context: {code_context}")
         
-        self._setup_model_paths()
-        # Don't load model here - let it be loaded on first request
-
-    def _setup_model_paths(self):
-        """Setup and validate model paths"""
-        Path("./models").mkdir(exist_ok=True)
-        self.coder_model_path = str(Path("./models/Qwen2.5-Coder-32B-Instruct-Q5_K_L.gguf").absolute())
-        self.fast_model_path = str(Path("./models/Qwen2.5-3B-Instruct-Q6_K_L.gguf").absolute())
-        
-        if not Path(self.coder_model_path).exists():
-            raise FileNotFoundError(f"Coder model not found: {self.coder_model_path}")
-        if not Path(self.fast_model_path).exists():
-            raise FileNotFoundError(f"Fast model not found: {self.fast_model_path}")
-
-    def _unload_current_model(self):
-        """Single source of truth for model cleanup"""
-        try:
-            if self._current_model:
-                print(f"Unloading {self._model_type} model...")
-                del self._current_model
-                self._current_model = None
-                self._model_type = None
-                
-                if torch.cuda.is_available():
-                    torch.cuda.synchronize()
-                    torch.cuda.empty_cache()
-                    import gc
-                    gc.collect()
-                    torch.cuda.synchronize()
-                    
-                    allocated = torch.cuda.memory_allocated()/1024**3
-                    reserved = torch.cuda.memory_reserved()/1024**3
-                    print(f"CUDA memory after cleanup: {allocated:.2f}GB allocated, {reserved:.2f}GB reserved")
-                
-                time.sleep(2)
-        except Exception as e:
-            print(f"Error during model unload: {e}")
-            if self._current_model:
-                del self._current_model
-                self._current_model = None
-                self._model_type = None
-                if torch.cuda.is_available():
-                    torch.cuda.empty_cache()
-                    torch.cuda.synchronize()
-
-    def get_coder_model(self) -> Llama:
-        """Get the coder model, ensuring proper cleanup of memory model"""
-        with self._lock:
-            try:
-                if self._model_type == "Main":
-                    return self._current_model
-                
-                print("Switching to coder model...")
-                print(f"Initial CUDA memory: {torch.cuda.memory_allocated()/1024**3:.2f}GB")
-                
-                # Unload current model and clean memory
-                self._unload_current_model()
-                
-                # Load coder model with adjusted layers
-                print(f"Loading coder model with {self.coder_gpu_layers} GPU layers")
-                self._current_model = Llama(
-                    model_path=self.coder_model_path,
-                    n_ctx=MAX_CONTEXT_TOKENS,
-                    n_threads=os.cpu_count(),
-                    n_gpu_layers=self.coder_gpu_layers,
-                    main_gpu=0,
-                    use_mmap=True,
-                    use_mlock=False,
-                    vocab_only=False,
-                    attention_type=2,  # Enable Flash Attention 2
-                    dtype='bfloat16'  # Required for Flash Attention 2
-                )
-                self._model_type = "Main"
-                print(f"Final CUDA memory: {torch.cuda.memory_allocated()/1024**3:.2f}GB")
-                return self._current_model
-                
-            except Exception as e:
-                print(f"Error getting coder model: {e}")
-                raise
-
-    def get_memory_model(self) -> Llama:
-        """Get the memory model, ensuring proper cleanup of coder model"""
-        with self._lock:
-            try:
-                if self._model_type == "Memory":
-                    return self._current_model
-                
-                print("Switching to memory model...")
-                print(f"Initial CUDA memory: {torch.cuda.memory_allocated()/1024**3:.2f}GB")
-                
-                # Explicitly unload current model and clean memory
-                self._unload_current_model()
-                
-                print(f"Loading memory model with {self.fast_gpu_layers} GPU layers")
-                self._current_model = Llama(
-                    model_path=self.fast_model_path,
-                    n_ctx=MAX_CONTEXT_TOKENS,
-                    n_threads=os.cpu_count(),
-                    n_gpu_layers=self.fast_gpu_layers,  # Use calculated layers
-                    main_gpu=0,
-                    use_mmap=True,
-                    use_mlock=False,
-                    vocab_only=False,
-                    attention_type=2,  # Enable Flash Attention 2
-                    dtype='bfloat16'  # Required for Flash Attention 2
-                )
-                self._model_type = "Memory"
-                print(f"Final CUDA memory: {torch.cuda.memory_allocated()/1024**3:.2f}GB")
-                return self._current_model
-                
-            except Exception as e:
-                print(f"Error getting memory model: {e}")
-                raise
-
-    def _ensure_model_cleanup(self):
-        """Ensure proper cleanup of current model"""
-        if self._current_model:
-            print(f"Cleaning up {self._model_type} model...")
-            try:
-                del self._current_model
-                self._current_model = None
-                if torch.cuda.is_available():
-                    torch.cuda.empty_cache()
-                    torch.cuda.synchronize()
-                    print("CUDA memory cleared")
-            except Exception as e:
-                print(f"Error during model cleanup: {e}")
-
-    def get_active_model_name(self) -> str:
-        """Get the name of the currently active model"""
-        if self._model_type == "Main":
-            return "Qwen Coder"
-        elif self._model_type == "Memory":
-            return "Memory"
-        return "No model loaded"
-
-    def cleanup(self):
-        """Clean up model resources with proper memory management"""
-        with self._lock:
-            try:
-                if self._current_model:
-                    # Force CUDA synchronization before deletion
-                    if torch.cuda.is_available():
-                        torch.cuda.synchronize()
-                    
-                    # Proper cleanup sequence
-                    self._current_model = None
-                    torch.cuda.empty_cache()
-                    
-                    # Reset state
-                    self._model_type = None
-                    print("Model cleanup complete")
-                    
-            except Exception as e:
-                print(f"Error during model cleanup: {e}")
-            finally:
-                # Ensure CUDA cache is cleared
-                if torch.cuda.is_available():
-                    torch.cuda.empty_cache()
-
-    def __del__(self):
-        """Ensure cleanup on deletion"""
-        if self._current_model:
-            del self._current_model
-            self._current_model = None
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
-
-    def _clean_markdown(self, content: str) -> str:
-        """Clean markdown content while preserving code blocks"""
-        try:
-            # Split content into code and non-code segments
-            segments = []
-            code_block_pattern = r'(```[\s\S]*?```|`[^`]+`)'
-            
-            # Split by code blocks and process each segment
-            parts = re.split(code_block_pattern, content)
-            
-            for i, part in enumerate(parts):
-                if part and (part.startswith('```') or (part.startswith('`') and part.endswith('`'))):
-                    # Code block - preserve exactly as is
-                    segments.append(part)
-                else:
-                    # Non-code text - clean normally
-                    cleaned = part
-                    # Clean only non-code segments
-                    cleaned = re.sub(r'\s+', ' ', cleaned)  # Normalize whitespace
-                    cleaned = cleaned.strip()
-                    segments.append(cleaned)
-            
-            # Rejoin preserving original code blocks
-            return ''.join(segments)
-            
-        except Exception as e:
-            print(f"Error cleaning markdown: {e}")
-            return content
-
-class MemoryStore:
-    def __init__(self, model_manager=None):
-        self.storage_path = Path("conversation_history")
-        self.storage_path.mkdir(parents=True, exist_ok=True)
-        
-        self.messages = {}
-        self.model_manager = model_manager  # Just store the reference
-        self.personal_info = {'info': {}}
-        
-        # Initialize files if needed
-        for filename, default in [
-            ("messages.json", '{}'),
-            ("personal_info.json", '{"info": {}}')
-        ]:
-            path = self.storage_path / filename
-            if not path.exists():
-                path.write_text(default, encoding='utf-8')
-        
-        self._load_from_disk()
-        
-        try:
-            self.encoder = tiktoken.get_encoding("cl100k_base")
-        except Exception as e:
-            print(f"Failed to initialize encoder: {e}")
-            self.encoder = None
-
-    def _cleanup_temp_files(self):
-        """Clean up temporary files with proper error handling"""
-        try:
-            # Clean up temp files
-            for pattern in ["*.tmp", "*.bak", "*.old"]:
-                for temp_file in self.storage_path.glob(pattern):
-                    try:
-                        if temp_file.is_file():
-                            temp_file.unlink()
-                            print(f"Cleaned up: {temp_file}")
-                    except Exception as e:
-                        print(f"Error deleting {temp_file}: {e}")
-                        
-            # Clean up empty directories
-            for dir_path in self.storage_path.glob("**/"):
-                try:
-                    if dir_path.is_dir() and not any(dir_path.iterdir()):
-                        dir_path.rmdir()
-                        print(f"Removed empty directory: {dir_path}")
-                except Exception as e:
-                    print(f"Error cleaning directory {dir_path}: {e}")
-                    
-        except Exception as e:
-            print(f"Error during temp file cleanup: {e}")
-
-    def _load_from_disk(self):
-        """Load messages and personal info from disk with better error handling"""
-        try:
-            messages_file = self.storage_path / "messages.json"
-            personal_file = self.storage_path / "personal_info.json"
-            
-            if messages_file.exists():
-                try:
-                    with messages_file.open('r', encoding='utf-8') as f:
-                        self.messages = json.load(f)
-                    print(f"Loaded {len(self.messages)} conversation threads")
-                except json.JSONDecodeError as e:
-                    print(f"Error decoding messages.json: {e}")
-                    self.messages = {}
-                except Exception as e:
-                    print(f"Error loading messages: {e}")
-                    self.messages = {}
-            
-            if personal_file.exists():
-                try:
-                    with personal_file.open('r', encoding='utf-8') as f:
-                        self.personal_info = json.load(f)
-                    print("Loaded personal information")
-                except json.JSONDecodeError as e:
-                    print(f"Error decoding personal_info.json: {e}")
-                    self.personal_info = {'info': {}}
-                except Exception as e:
-                    print(f"Error loading personal info: {e}")
-                    self.personal_info = {'info': {}}
-                
-        except Exception as e:
-            print(f"Error in _load_from_disk: {e}")
-            self.messages = {}
-            self.personal_info = {'info': {}}
-
-    def _save_to_disk(self) -> bool:
-        """Save messages and personal info with proper error handling"""
-        try:
-            # Ensure directory exists
-            self.storage_path.mkdir(parents=True, exist_ok=True)
-            
-            # Save messages
-            messages_file = self.storage_path / "messages.json"
-            temp_messages = messages_file.with_suffix('.tmp')
-            
-            try:
-                with temp_messages.open('w', encoding='utf-8') as f:
-                    json.dump(self.messages, f, indent=2, default=str)
-                temp_messages.replace(messages_file)
-                print("Messages saved successfully")
-            except Exception as e:
-                print(f"Error saving messages: {e}")
-                if temp_messages.exists():
-                    temp_messages.unlink()
-                return False
-            
-            # Save personal info
-            personal_file = self.storage_path / "personal_info.json"
-            temp_personal = personal_file.with_suffix('.tmp')
-            
-            try:
-                with temp_personal.open('w', encoding='utf-8') as f:
-                    json.dump(self.personal_info, f, indent=2, default=str)
-                temp_personal.replace(personal_file)
-                print("Personal info saved successfully")
-            except Exception as e:
-                print(f"Error saving personal info: {e}")
-                if temp_personal.exists():
-                    temp_personal.unlink()
-                return False
-            
-            return True
-            
-        except Exception as e:
-            print(f"Error in _save_to_disk: {e}")
+        # Input validation
+        if not isinstance(code_context, dict):
+            logger.error(f"[CODE_CTX] Invalid context type: {type(code_context)}")
             return False
-
-    def _analyze_with_model(self, prompt: str, max_tokens: int = 10) -> str:
-        """Use memory model for analysis with better token management"""
-        try:
-            print("\n=== MODEL ANALYSIS ===")
-            print(f"Max tokens: {max_tokens}")
             
-            if not self.memory_model:
-                print("Getting new memory model...")
-                try:
-                    self.memory_model = self.model_manager.get_memory_model()
-                    self.current_tokens = 0
-                except Exception as e:
-                    print(f"Error getting memory model: {str(e)}")
-                    return ""
+        # Check for empty/invalid values
+        if not any([code_context.get('file_path'), code_context.get('language'), code_context.get('code')]):
+            logger.warning("[CODE_CTX] Context contains only empty values - skipping")
+            return False
             
-            # Token estimation
-            if self.encoder:
-                prompt_tokens = len(self.encoder.encode(prompt))
-                print(f"Estimated prompt tokens: {prompt_tokens}")
-            else:
-                words = prompt.split()
-                prompt_tokens = sum(len(word) // 2 for word in words)
-                print(f"Fallback token estimation: {prompt_tokens}")
-            
-            # Check token threshold
-            if self.current_tokens + prompt_tokens > self.token_threshold - max_tokens:
-                print(f"\nToken threshold warning:")
-                print(f"Current tokens: {self.current_tokens}")
-                print(f"Threshold: {self.token_threshold}")
-                print("Refreshing model to prevent context overflow")
-                self.cleanup_model()
-                self.memory_model = self.model_manager.get_memory_model()
-                self.current_tokens = 0
-            
-            print("\n=== GENERATING COMPLETION ===")
-            result = self.memory_model.create_completion(
-                prompt,
-                max_tokens=max_tokens,
-                temperature=0.1,
-                top_p=0.1,
-                stream=False
-            )
-            
-            # Token counting
-            completion = result['choices'][0]['text']
-            if self.encoder:
-                completion_tokens = len(self.encoder.encode(completion))
-            else:
-                words = completion.split()
-                completion_tokens = sum(len(word) // 2 for word in words)
-            
-            self.current_tokens += prompt_tokens + completion_tokens
-            print(f"\nCompletion tokens: {completion_tokens}")
-            print(f"New total tokens: {self.current_tokens}")
-            
-            return completion.strip()
-            
-        except Exception as e:
-            print(f"\n=== ERROR ===")
-            print(f"Error in model analysis: {str(e)}")
-            self.cleanup_model()  # Cleanup on error
-            return ""
-
-    def analyze_query(self, query: str) -> str:
-        """Analyze query type with model validation"""
-        try:
-            print("\n=== QUERY ANALYSIS ===")
-            print(f"Input query: {query[:100]}...")
-            print(f"Current model: {self.model_manager.get_active_model_name()}")
-            
-            # Validate model state before using
-            if not self._validate_model_state():
-                print("Model validation failed, using fallback analysis")
-                return "chat"  # Safe fallback
-            
-            # Quick check for code indicators
-            code_indicators = ['code', 'script', 'function', 'optimize', 'programming']
-            if any(indicator in query.lower() for indicator in code_indicators):
-                print("Code indicators found in query")
-                return "code"
-            
-            # Create analysis prompt
-            prompt = "<|im_start|>system\n"
-            prompt += "Analyze if this is a code-related query. Respond with 'code' or 'chat'.\n"
-            prompt += "<|im_end|>\n"
-            prompt += f"<|im_start|>user\n{query}<|im_end|>\n"
-            prompt += "<|im_start|>assistant\n"
-            
-            print("\n=== MODEL INPUT ===")
-            print(f"Analysis prompt:\n{prompt}")
-            
-            # Use shared model instance
-            response = self._analyze_with_model(prompt)
-            print(f"\n=== MODEL OUTPUT ===")
-            print(f"Raw response: {response}")
-            print(f"Final analysis: {'code' if 'code' in response.lower() else 'chat'}")
-            
-            return "code" if "code" in response.lower() else "chat"
-            
-        except Exception as e:
-            print(f"\n=== ERROR ===")
-            print(f"Error in query analysis: {str(e)}")
-            return "chat"
-
-    def _get_current_identity(self) -> str:
-        """Get the current primary identity"""
-        try:
-            if 'identity' in self.personal_info['info']:
-                identity_entries = self.personal_info['info']['identity']
-                if identity_entries:
-                    # Get most recent identity entry
-                    latest = max(identity_entries, key=lambda x: x['timestamp'])
-                    return latest['name']  # We store it as 'name' not 'person'
-            return 'Unknown'
-        except Exception as e:
-            print(f"Error getting current identity: {e}")
-            return 'Unknown'
-
-    def _extract_personal_info(self, query: str) -> Dict:
-        try:
-            print("\n=== MEMORY DEBUG ===")
-            print(f"Input query: {query}")
-            print(f"Current personal_info state: {json.dumps(self.personal_info, indent=2)}")
-            
-            # Use double curly braces to escape JSON examples in the prompt
-            prompt = """<|im_start|>system
-You are an AI that extracts personal information from text. Return ONLY valid JSON.
-
-For user identity statements like:
-"My name is John"
-Return: {{"identity":{{"name":"John"}}}}
-
-For relationship statements with details like:
-"My wife is Rose or Rosemary and she is 34"
-Return: {{"relationships":[{{"type":"wife","person":"Rose","details":{{"age":34,"alias":"Rosemary"}}}}]}}
-
-For multiple relationships like:
-"My parents are Cheryl and Eric"
-Return: {{"relationships":[{{"type":"mother","person":"Cheryl"}},{{"type":"father","person":"Eric"}}]}}
-
-Return ONLY the JSON object, no additional text.
-<|im_end|>
-<|im_start|>user
-{0}
-<|im_end|>
-<|im_start|>assistant
-""".format(query)
-
-            print("\n=== MODEL INPUT ===")
-            print(f"Extraction prompt:\n{prompt}")
-            
-            result = self.memory_model.create_completion(
-                prompt,
-                max_tokens=500,
-                temperature=0.1,
-                top_p=0.05,
-                stream=False
-            )
-            
-            print("\n=== MODEL OUTPUT ===")
-            print(f"Raw model result: {json.dumps(result, indent=2)}")
-            
-            # Get and clean response
-            response = result['choices'][0]['text'].strip()
-            print(f"Extracted response: {response}")
-            
-            # Ensure we have valid JSON
-            response = re.sub(r'^[^{]*({.*})[^}]*$', r'\1', response)
-            response = re.sub(r'\s+', '', response)
-            print(f"Cleaned response: {response}")
-            
+        with self._lock:
             try:
-                info = json.loads(response)
-                print("\n=== PARSED INFO ===")
-                print(f"Parsed JSON: {json.dumps(info, indent=2)}")
+                # Initialize code history
+                if thread_id not in self._code_history:
+                    logger.info(f"[CODE_CTX] Creating new code history for thread {thread_id}")
+                    self._code_history[thread_id] = []
                 
-                # Initialize storage with correct structure
-                if 'info' not in self.personal_info:
-                    self.personal_info['info'] = {}
-                if 'identity' not in self.personal_info['info']:
-                    self.personal_info['info']['identity'] = []
-                if 'relationships' not in self.personal_info['info']:
-                    self.personal_info['info']['relationships'] = []
+                # Deep copy and clean context
+                cleaned_context = self._clean_code_context(code_context)
+                if not cleaned_context:
+                    logger.error("[CODE_CTX] Failed to clean context")
+                    return False
                 
-                print("\n=== STORAGE UPDATES ===")
+                # Add to history
+                self._code_history[thread_id].append(cleaned_context)
+                logger.info(f"[CODE_CTX] Added context successfully")
+                logger.info(f"[CODE_CTX] Current history size: {len(self._code_history[thread_id])}")
+                logger.info("[CODE_CTX] Added entry details:")
+                logger.info(f"[CODE_CTX] - File: '{cleaned_context['file_path']}'")
+                logger.info(f"[CODE_CTX] - Language: '{cleaned_context['language']}'")
+                logger.info(f"[CODE_CTX] - Code length: {len(cleaned_context['code'])}")
+                logger.info(f"[CODE_CTX] - Code preview: {cleaned_context['code'][:100]}...")
                 
-                # Store identity
-                if 'identity' in info:
-                    identity_entry = {
-                        'type': 'identity',
-                        'name': info['identity']['name'],
-                        'timestamp': datetime.now().isoformat()
-                    }
-                    self.personal_info['info']['identity'].append(identity_entry)
-                    print(f"Added identity: {json.dumps(identity_entry, indent=2)}")
+                # Cleanup if needed
+                if len(self._code_history[thread_id]) > self._max_memories:
+                    removed = self._code_history[thread_id].pop(0)
+                    logger.info(f"[CODE_CTX] Removed oldest entry: {removed.get('timestamp')}")
                 
-                # Store relationships as list entries
-                if 'relationships' in info:
-                    for rel in info['relationships']:
-                        rel['timestamp'] = datetime.now().isoformat()
-                        self.personal_info['info']['relationships'].append(rel)
-                        print(f"Added relationship: {json.dumps(rel, indent=2)}")
+                return True
                 
-                # Save changes
-                success = self._save_to_disk()
-                print(f"\nSave result: {success}")
-                
-                if success:
-                    print("\n=== VERIFICATION ===")
-                    print(f"Final personal_info state: {json.dumps(self.personal_info, indent=2)}")
-                    return info
-                else:
-                    print("\n=== ERROR ===")
-                    print("Failed to save personal info to disk")
-                    return {}
-                
-            except json.JSONDecodeError as e:
-                print(f"JSON decode error: {e}")
-                return {}
-                
-        except Exception as e:
-            print("\n=== ERROR ===")
-            print(f"Error extracting personal info: {str(e)}")
-            print("Stack trace:", traceback.format_exc())
-            return {}
-
-    def _update_identity(self, identity_info: Dict):
-        """Update identity information"""
-        if 'identity' not in self.personal_info['info']:
-            self.personal_info['info']['identity'] = []
+            except Exception as e:
+                logger.error(f"[CODE_CTX] Error adding context: {e}")
+                logger.error(f"[CODE_CTX] Traceback: {traceback.format_exc()}")
+                return False
+    
+    def _clean_code_context(self, context: Dict) -> Optional[Dict]:
+        """Clean and validate code context"""
+        logger.info("[CODE_CTX] Cleaning context...")
         
-        if identity_info.get('is_speaking'):
-            self.personal_info['info']['identity'].append({
-                'value': identity_info,
-                'timestamp': datetime.now().isoformat(),
-                'confidence': 'explicit'
-            })
-            self._save_to_disk()
-
-    def _update_relationships(self, relationships: Dict):
-        """Update relationships maintaining bidirectional connections"""
-        if 'relationships' not in self.personal_info['info']:
-            self.personal_info['info']['relationships'] = {}
-        
-        for rel_type, details in relationships.items():
-            # Store forward relationship
-            if rel_type not in self.personal_info['info']['relationships']:
-                self.personal_info['info']['relationships'][rel_type] = []
-            
-            self.personal_info['info']['relationships'][rel_type].append({
-                'value': details,
-                'timestamp': datetime.now().isoformat(),
-                'confidence': 'explicit'
-            })
-            
-            # Store bidirectional relationship if present
-            if 'bidirectional' in details:
-                bidir = details['bidirectional']
-                bidir_type = bidir['type']
-                
-                if bidir_type not in self.personal_info['info']['relationships']:
-                    self.personal_info['info']['relationships'][bidir_type] = []
-                
-                self.personal_info['info']['relationships'][bidir_type].append({
-                    'value': {
-                        'person': bidir['person'],
-                        'details': {},
-                        'bidirectional': {
-                            'type': rel_type,
-                            'person': details['person']
-                        }
-                    },
-                    'timestamp': datetime.now().isoformat(),
-                    'confidence': 'implicit'
-                })
-        
-        self._save_to_disk()
-
-    def get_context(self, thread_id: str, current_message: str = None) -> str:
-        """Get conversation context as a single string"""
         try:
-            context_parts = []
+            # Ensure all required fields exist
+            required_fields = {'file_path', 'language', 'code', 'type'}
+            if missing := required_fields - set(context.keys()):
+                logger.error(f"[CODE_CTX] Missing required fields: {missing}")
+                return None
             
-            # Get identity and relationships context
-            identity = self._get_current_identity()
-            if identity != 'Unknown':
-                # Add relationships if available
-                if 'relationships' in self.personal_info['info']:
-                    relationships = [
-                        rel for rel in self.personal_info['info']['relationships']
-                        if not rel.get('type') == 'identity'
-                    ]
-                    
-                    if relationships:
-                        # Format relationships in tree structure
-                        rel_tree = [f"# Family Tree for {identity}"]
-                        for rel in relationships:
-                            rel_str = self._format_relationship(rel)
-                            if rel_str:
-                                # Add proper indentation for tree structure
-                                rel_tree.append(f"    {rel_str}")
-                    
-                        if len(rel_tree) > 1:  # Only add if we have relationships
-                            context_parts.append(
-                                f"<|im_start|>system\n"
-                                f"{chr(10).join(rel_tree)}\n"
-                                f"<|im_end|>"
-                            )
-            
-            # Add message history
-            if thread_id in self.messages:
-                messages = self.messages[thread_id][-5:]  # Get last 5 messages
-                for msg in messages:
-                    role = msg.get('role', '')
-                    content = msg.get('content', '')
-                    if content:
-                        if role == 'user':
-                            context_parts.append(f"<|im_start|>user\n{content}<|im_end|>")
-                        elif role == 'assistant':
-                            context_parts.append(f"<|im_start|>assistant\n{content}<|im_end|>")
-            
-            # Join all context parts with newlines
-            return "\n".join(context_parts)
-            
-        except Exception as e:
-            print(f"Error getting context: {e}")
-            return ""
-
-    def _get_relevant_relationships(self, query: str) -> Dict:
-        """Get relationships relevant to current query"""
-        try:
-            # Create relevance checking prompt
-            prompt = """<|im_start|>system
-Determine which relationships are relevant to this query.
-Return JSON array of relationship types that should be included in context.
-<|im_end|>
-<|im_start|>user
-Known relationships:
-{relationships}
-
-Query: {query}
-<|im_end|>
-<|im_start|>assistant
-"""
-            result = self.memory_model.create_completion(
-                prompt.format(
-                    relationships=self._format_known_relationships(),
-                    query=query
-                ),
-                max_tokens=100,
-                temperature=0.1,
-                stream=False
-            )
-            
-            relevant_types = json.loads(result['choices'][0]['text'])
-            
-            # Filter relationships
-            relevant = {}
-            for rel_type in relevant_types:
-                if rel_type in self.personal_info['info']:
-                    relevant[rel_type] = self.personal_info['info'][rel_type]
-            
-            return relevant
-            
-        except Exception as e:
-            print(f"Error getting relevant relationships: {e}")
-            return {}
-
-    def _get_relevant_message_window(
-        self,
-        messages: List[Dict],
-        current_query: str,
-        max_messages: int = 5
-    ) -> List[Dict]:
-        """Get relevant message window based on query"""
-        try:
-            # Sort by timestamp
-            sorted_msgs = sorted(messages, key=lambda x: x['timestamp'])
-            
-            # If few messages, return all
-            if len(sorted_msgs) <= max_messages:
-                return sorted_msgs
-            
-            # Create relevance scoring prompt
-            prompt = """<|im_start|>system
-Score how relevant each message is to the current query (0-10).
-Return only the score number.
-<|im_end|>
-<|im_start|>user
-Query: {query}
-Message: {message}
-<|im_end|>
-<|im_start|>assistant
-"""
-            
-            # Score messages
-            scored_messages = []
-            for msg in sorted_msgs[-10:]:  # Only score recent messages
-                result = self.memory_model.create_completion(
-                    prompt.format(
-                        query=current_query,
-                        message=msg['content']
-                    ),
-                    max_tokens=10,
-                    temperature=0.1,
-                    stream=False
-                )
-                
-                try:
-                    score = float(result['choices'][0]['text'].strip())
-                    scored_messages.append((score, msg))
-                except ValueError:
-                    scored_messages.append((0, msg))
-            
-            # Sort by score and get top messages
-            scored_messages.sort(key=lambda x: (-x[0], x[1]['timestamp']))
-            return [msg for _, msg in scored_messages[:max_messages]]
-            
-        except Exception as e:
-            print(f"Error getting relevant messages: {e}")
-            return sorted_msgs[-max_messages:]  # Fallback to recent messages
-
-    def add_message(self, thread_id: str, role: str, content: str, timestamp: Optional[str] = None) -> None:
-        """Add message with proper timestamp and info extraction"""
-        try:
-            if not content or not content.strip():
-                print("Skipping empty message")
-                return
-            
-            if role not in {'user', 'assistant', 'system'}:
-                print(f"Invalid role: {role}")
-                return
-            
-            thread_id = self._validate_thread_id(thread_id)
-            
-            # Use provided timestamp or create new one
-            msg_timestamp = timestamp or datetime.now().isoformat()
-            
-            # Clean content and extract info from user messages
-            cleaned_content = self._clean_markdown(content)
-            if role == 'user':
-                personal_info = self._extract_personal_info(cleaned_content)
-                if personal_info:
-                    print(f"Extracted personal info: {json.dumps(personal_info, indent=2)}")
-                    # Update identity and relationships
-                    if 'identity' in personal_info:
-                        self._update_identity(personal_info['identity'])
-                    if 'relationships' in personal_info:
-                        self._update_relationships(personal_info['relationships'])
-            
-            # Create message with timestamp
-            message = {
-                'role': role,
-                'content': cleaned_content,
-                'timestamp': msg_timestamp,
-                'importance': 0.5  # Default importance
+            # Clean and validate each field
+            cleaned = {
+                'file_path': str(context['file_path']).strip(),
+                'language': str(context['language']).strip().lower(),
+                'code': str(context['code']).strip(),
+                'type': str(context['type']).strip(),
+                'timestamp': context.get('timestamp', time.time())
             }
             
-            if thread_id not in self.messages:
-                self.messages[thread_id] = []
+            # Additional validation
+            if not cleaned['code']:
+                logger.error("[CODE_CTX] Empty code content")
+                return None
+                
+            if not cleaned['language']:
+                logger.warning("[CODE_CTX] Empty language field")
+                cleaned['language'] = 'unknown'
+                
+            if not cleaned['file_path']:
+                logger.warning("[CODE_CTX] Empty file path")
+                cleaned['file_path'] = 'unknown'
             
-            self.messages[thread_id].append(message)
-            
-            # Save after each message to ensure persistence
-            self._save_to_disk()
-            
-            print(f"Added {role} message to thread {thread_id}")
-            if role == 'user':
-                print(f"Current identity: {self._get_current_identity()}")
-                print(f"Known relationships: {self._format_known_relationships()}")
+            logger.info("[CODE_CTX] Context cleaned successfully")
+            logger.info(f"[CODE_CTX] Cleaned context: {cleaned}")
+            return cleaned
             
         except Exception as e:
-            print(f"Error adding message: {str(e)}")
-
-    def _is_code_message(self, content: str) -> bool:
-        """Check if message contains code blocks"""
-        return '```' in content or any(
-            keyword in content.lower() for keyword in [
-                'def ', 'class ', 'function', 'return',
-                'import ', 'from ', '#include'
-            ]
-        )
-
-    def _is_code_query(self, content: str, model: Optional[Llama] = None) -> bool:
-        """Analyze content using provided or new model instance"""
-        try:
-            # Use provided model or get new one
-            if model is None:
-                model = self.model_manager.get_memory_model()
-            
-            # Calculate initial chunk size (10% of content)
-            chunk_size = max(100, len(content) // 10)
-            chunks = []
-            
-            # Split content into chunks
-            for i in range(0, len(content), chunk_size):
-                chunks.append(content[i:i + chunk_size])
-            
-            print(f"\n=== Progressive Content Analysis ===")
-            print(f"Content length: {len(content)} chars")
-            print(f"Split into {len(chunks)} chunks of ~{chunk_size} chars")
-            
-            # Analyze first chunk
-            first_chunk = chunks[0]
-            
-            # Create focused prompt for code detection
-            prompt = """<|im_start|>system
-Analyze if this content is code-related. If uncertain, respond 'more'. Otherwise respond only 'code' or 'not_code'.
-<|im_end|>
-<|im_start|>user
-{content}
-<|im_end|>
-<|im_start|>assistant
-"""
-            # First pass with initial chunk
-            result = model.create_completion(
-                prompt.format(content=first_chunk),
-                max_tokens=5,
-                temperature=0.1,
-                top_p=0.1,
-                stream=False
-            )
-            
-            response = result['choices'][0]['text'].strip().lower()
-            print(f"Initial chunk analysis: {response}")
-            
-            # If model is certain, return result (keep model loaded for next query)
-            if response in ['code', 'not_code']:
-                return response == 'code'
-            
-            # If model needs more context, analyze additional chunks with same model instance
-            for i, chunk in enumerate(chunks[1:], 1):
-                print(f"\nAnalyzing chunk {i + 1}/{len(chunks)}")
-                
-                result = model.create_completion(
-                    prompt.format(content=chunk),
-                    max_tokens=5,
-                    temperature=0.1,
-                    top_p=0.1,
-                    stream=False
-                )
-                
-                response = result['choices'][0]['text'].strip().lower()
-                print(f"Chunk {i + 1} analysis: {response}")
-                
-                # If model is certain, return result
-                if response in ['code', 'not_code']:
-                    return response == 'code'
-                
-                # Limit number of chunks analyzed
-                if i >= 4:  # Only analyze up to 5 chunks total
-                    print("Reached maximum chunks limit")
-                    break
-            
-            # Make final decision based on last response
-            print("Making final decision based on analyzed chunks")
-            return 'code' in response
-            
-        except Exception as e:
-            print(f"Model-based code detection failed: {str(e)}")
-            # Model cleanup happens in ModelManager
-            raise
-
-    def _format_personal_context(self) -> str:
-        """Format personal info into natural context"""
-        if not self.personal_info['info']:
-            return ""
-            
-        context_parts = []
+            logger.error(f"[CODE_CTX] Error cleaning context: {e}")
+            logger.error(f"[CODE_CTX] Traceback: {traceback.format_exc()}")
+            return None
+    
+    def get_code_history(self, thread_id: str, limit: int = 5) -> List[Dict]:
+        """Get recent code context history"""
+        logger.info("\n=== GET_CODE_HISTORY: DETAILED ENTRY ===")
+        logger.info(f"[CODE_HIST] Thread ID: {thread_id}")
+        logger.info(f"[CODE_HIST] Requested limit: {limit}")
         
-        # Format name
-        if 'user_name' in self.personal_info['info']:
-            name_entries = self.personal_info['info']['user_name']
-            if name_entries:
-                latest_name = max(name_entries, key=lambda x: x['timestamp'])
-                context_parts.append(f"Your name is {latest_name['value']}")
-        
-        # Format attributes
-        if 'user_attributes' in self.personal_info['info']:
-            attr_entries = self.personal_info['info']['user_attributes']
-            if attr_entries:
-                latest_attrs = max(attr_entries, key=lambda x: x['timestamp'])
-                if isinstance(latest_attrs['value'], list):
-                    for attr_dict in latest_attrs['value']:
-                        for key, value in attr_dict.items():
-                            if key != 'timestamp' and key != 'context':
-                                context_parts.append(f"Your {key.replace('_', ' ')} is {value}")
-        
-        # Format relationships
-        if 'relationships' in self.personal_info['info']:
-            rel_entries = self.personal_info['info']['relationships']
-            if rel_entries:
-                latest_rels = max(rel_entries, key=lambda x: x['timestamp'])
-                if isinstance(latest_rels['value'], list):
-                    for rel_dict in latest_rels['value']:
-                        for key, value in rel_dict.items():
-                            if key != 'timestamp' and key != 'context':
-                                context_parts.append(f"Your {key.replace('_', ' ')} is {value}")
-        
-        # Add any additional personal details
-        for key, values in self.personal_info['info'].items():
-            if key not in ['user_name', 'user_attributes', 'relationships'] and values:
-                if isinstance(values, list):
-                    latest = max(values, key=lambda x: x['timestamp'])
-                    if isinstance(latest['value'], str):
-                        context_parts.append(f"Your {key.replace('_', ' ')}: {latest['value']}")
-                    elif isinstance(latest['value'], list):
-                        for item in latest['value']:
-                            if isinstance(item, dict):
-                                for k, v in item.items():
-                                    if k != 'timestamp' and k != 'context':
-                                        context_parts.append(f"Your {k.replace('_', ' ')}: {v}")
-        
-        return "\n".join(context_parts)
-
-    def _format_for_display(self, content: str) -> str:
-        """Format message content for display"""
-        lines = content.split('\n')
-        formatted = []
-        
-        for line in lines:
-            # Format headers
-            if re.match(r'^[A-Z][^.!?]*:$', line):
-                formatted.append(f"**{line}**")
-            else:
-                formatted.append(line)
-        
-        return '\n'.join(formatted)
-
-    def clear_thread(self, thread_id: str) -> bool:
-        """Clear a specific conversation thread"""
-        try:
-            thread_id = self._validate_thread_id(thread_id)
-            if thread_id in self.messages:
-                del self.messages[thread_id]
-            return True
-        except Exception as e:
-            print(f"Error clearing thread {thread_id}: {str(e)}")
-            return False
-
-    def clear_all(self) -> bool:
-        """Clear all conversation threads"""
-        try:
-            self.messages = {}
-            self.memory_model = None  # This line is causing the error
-            return True
-        except Exception as e:
-            print(f"Error clearing all threads: {str(e)}")
-            return False
-
-    def get_thread_ids(self) -> List[str]:
-        """Get all thread IDs"""
-        return list(self.messages.keys())
-
-    def _get_personal_context(self) -> str:
-        """Get personal context - simplified to return empty for now"""
-        return ""
-
-    def get_cached_code_response(self, query: str) -> Optional[str]:
-        """Stub for compatibility - no caching in simplified version"""
-        return None
-
-    def get_token_stats(self, thread_id: str) -> Dict:
-        """Get token statistics for a thread"""
-        messages = self.messages.get(thread_id, [])
-        if not self.encoder:
-            return {'message_count': len(messages), 'token_count': 0}
+        with self._lock:
+            history = self._code_history.get(thread_id, [])
+            logger.info(f"[CODE_HIST] Found {len(history)} total entries")
             
-        return {
-            'message_count': len(messages),
-            'token_count': sum(len(self.encoder.encode(msg['content'])) 
-                             for msg in messages)
-        }
-
-    def truncate_text(self, text: str, use_chars: bool = False) -> str:
-        """Truncate text for analysis using tokens or characters"""
-        if not use_chars and self.encoder:
-            try:
-                tokens = self.encoder.encode(text)
-                if len(tokens) > MAX_ANALYSIS_TOKENS:
-                    truncate_length = max(MIN_ANALYSIS_TOKENS, 
-                                        int(len(tokens) * ANALYSIS_TRUNCATE_PERCENT))
-                    return self.encoder.decode(tokens[:truncate_length])
-                return text
-            except Exception as e:
-                print(f"Token truncation failed: {e}")
-                use_chars = True
-        
-        # Fallback to character-based truncation
-        if use_chars:
-            return text[:FALLBACK_CHAR_LIMIT]
-        return text
-
-    def search_memories(self, thread_id: str, query: str) -> List[Dict]:
-        """Search through stored memories for relevant information"""
-        if thread_id not in self.messages:
-            return []
-            
-        # For memory queries, just return all messages - let the model naturally process them
-        return self.messages[thread_id]
-
-    def __del__(self):
-        """Cleanup when object is destroyed"""
-        try:
-            # Clean up temp files
-            self._cleanup_temp_files()
-            
-            # Clean up model resources
-            if hasattr(self, 'memory_model') and self.memory_model:
-                try:
-                    del self.memory_model
-                    self.memory_model = None
-                except:
-                    pass
-                
-            # Clean up model manager
-            if hasattr(self, 'model_manager') and self.model_manager:
-                try:
-                    self.model_manager.cleanup()
-                except:
-                    pass
-                
-            # Clean up encoder
-            if hasattr(self, 'encoder'):
-                try:
-                    del self.encoder
-                except:
-                    pass
-                
-        except Exception as e:
-            print(f"Error during cleanup: {e}")
-
-    def analyze_messages(self, thread_id: str, current_query: str) -> List[Dict]:
-        """Analyze messages for relevance using a single model instance"""
-        try:
-            # Load model once for all analysis
-            model = self.model_manager.get_memory_model()
-            
-            # Process current query first
-            is_code = self._is_code_query(current_query, model)
-            print(f"\nMessage type: {'code' if is_code else 'general'}")
-            
-            # Get thread messages
-            messages = self.messages.get(thread_id, [])
-            if not messages:
+            if not history:
+                logger.info("[CODE_HIST] No history found for thread")
                 return []
             
-            relevant_messages = []
-            for msg in messages:
-                # Reuse same model instance for each message
-                msg_is_code = self._is_code_query(msg['content'], model)
-                if msg_is_code == is_code:
-                    relevant_messages.append(msg)
-                
-            return relevant_messages[-MAX_MEMORIES:]
+            # Sort by timestamp and limit
+            sorted_history = sorted(history, key=lambda x: x['timestamp'], reverse=True)[:limit]
+            logger.info(f"[CODE_HIST] Returning {len(sorted_history)} most recent entries")
             
-        except Exception as e:
-            print(f"Error analyzing messages: {str(e)}")
-            return []
-
-    def get_model_response(self, thread_id: str, message: str) -> Iterator[str]:
-        """Get streaming response with thread safety"""
-        model = None
-        try:
-            with self._lock:  # Add thread lock
-                if not message.strip():
-                    yield "Error: Empty message"
-                    return
-                
-                thread_id = self._validate_thread_id(thread_id)
-                
-                context = self.get_context(thread_id, message)
-                if not context:
-                    yield "Error: Failed to get conversation context"
-                    return
-
-                try:
-                    model = self.model_manager.get_main_model()
-                except Exception as e:
-                    print(f"Error getting model: {e}")
-                    yield f"Error: Failed to load model - {str(e)}"
-                    return
-
-                prompt = self._format_prompt(context, message)
-                
-                try:
-                    response = model.create_completion(
-                        prompt,
-                        max_tokens=2048,
-                        temperature=0.7,
-                        top_p=0.95,
-                        stream=True
-                    )
-                    
-                    for chunk in response:
-                        if chunk and 'choices' in chunk:
-                            text = chunk['choices'][0].get('text', '')
-                            if text:
-                                yield text
-                                
-                except Exception as e:
-                    print(f"Error during generation: {e}")
-                    yield f"Error during generation: {str(e)}"
-                    
-        except Exception as e:
-            print(f"Error in get_model_response: {str(e)}")
-            yield f"Error: {str(e)}"
-        finally:
-            # Ensure model is cleaned up
-            if model:
-                try:
-                    del model
-                    if torch.cuda.is_available():
-                        torch.cuda.empty_cache()
-                except:
-                    pass
-
-    def cleanup_model(self):
-        """Reset model and token count"""
-        try:
-            if self.memory_model:
-                self.memory_model = self.model_manager.get_memory_model()
-                self.current_tokens = 0
-                print("Memory model refreshed and token count reset")
-        except Exception as e:
-            print(f"Error cleaning up model: {str(e)}")
-
-    def _format_prompt(self, context: List[Dict], message: str) -> str:
-        """Format context and message into a proper prompt"""
-        try:
-            prompt = ""
-            for item in context:
-                if isinstance(item, dict) and 'role' in item and 'content' in item:
-                    prompt += f"<|im_start|>{item['role']}\n{item['content']}<|im_end|>\n"
+            # Log detailed entry information
+            for idx, entry in enumerate(sorted_history):
+                logger.info(f"[CODE_HIST] Entry {idx + 1} details:")
+                logger.info(f"[CODE_HIST] - Timestamp: {entry.get('timestamp')}")
+                logger.info(f"[CODE_HIST] - File: {entry.get('file_path', 'unknown')}")
+                logger.info(f"[CODE_HIST] - Language: {entry.get('language', 'unknown')}")
+                logger.info(f"[CODE_HIST] - Code length: {len(entry.get('code', ''))}")
+                logger.info(f"[CODE_HIST] - Code preview: {entry.get('code', '')[:100]}...")
             
-            prompt += f"<|im_start|>user\n{message}<|im_end|>\n"
-            prompt += "<|im_start|>assistant\n"
-            return prompt
-        except Exception as e:
-            print(f"Error formatting prompt: {str(e)}")
-            return f"<|im_start|>user\n{message}<|im_end|>\n<|im_start|>assistant\n"
+            # Return a deep copy to prevent modifications
+            return deepcopy(sorted_history)
 
-    def _validate_model_state(self) -> bool:
-        """Validate model state and reinitialize if needed"""
+    def clear_all(self) -> bool:
+        """Clear all memory data"""
+        logger.info("[MEMORY] Clearing all memory data")
         try:
-            if not self.memory_model:
-                print("Model not initialized, attempting to load")
-                self.memory_model = self.model_manager.get_memory_model()
-                self.current_tokens = 0
-                return bool(self.memory_model)
-            
-            try:
-                # Test model with simple prompt
-                test_prompt = "<|im_start|>user\ntest<|im_end|>\n<|im_start|>assistant\n"
-                result = self.memory_model.create_completion(
-                    test_prompt,
-                    max_tokens=1,
-                    temperature=0.1,
-                    stream=False
-                )
-                return bool(result and 'choices' in result)
-            except Exception as e:
-                print(f"Model test failed: {e}")
-                # Try to reinitialize model
-                self.memory_model = self.model_manager.get_memory_model()
-                return bool(self.memory_model)
-            
+            with self._lock:
+                self._recent_contexts.clear()
+                self._messages.clear()
+                self._code_history.clear()
+            logger.info("[MEMORY] Memory cleared successfully")
+            return True
         except Exception as e:
-            print(f"Model validation failed: {str(e)}")
+            logger.error(f"[MEMORY] Error clearing memory: {e}")
             return False
 
-    def _validate_message(self, message: Dict) -> bool:
-        """Validate message structure"""
-        required_fields = {'role', 'content', 'timestamp'}
-        return (
-            isinstance(message, dict) and
-            all(field in message for field in required_fields) and
-            isinstance(message['content'], str) and
-            message['content'].strip() and
-            message['role'] in {'user', 'assistant', 'system'}
-        )
-
-    def _validate_thread_id(self, thread_id: str) -> str:
-        """Validate and normalize thread ID"""
-        if not thread_id:
-            return 'default'
+    def _get_thread_history(self, thread_id: str) -> str:
+        """Get conversation history with proper formatting"""
+        logger.info("\n=== MESSAGE_MEMORY_HISTORY [EXTREME VERBOSE] ===")
+        logger.info(f"[MEM_HIST] Thread ID: {thread_id}")
+        logger.info(f"[MEM_HIST] Recent contexts: {self._recent_contexts}")
+        logger.info(f"[MEM_HIST] Messages structure: {type(self._messages)}")
         
-        # Remove invalid characters
-        thread_id = re.sub(r'[^a-zA-Z0-9_-]', '', thread_id)
-        
-        # Ensure reasonable length
-        if len(thread_id) > 64:
-            thread_id = thread_id[:64]
-        
-        return thread_id or 'default'
-
-    def _format_known_relationships(self) -> str:
-        """Format known relationships into a readable string"""
         try:
-            if not self.personal_info['info'].get('relationships'):
-                return "No known relationships"
-            
-            relationships = []
-            identity = self._get_current_identity()
-            
-            for rel_type, entries in self.personal_info['info']['relationships'].items():
-                if entries:
-                    # Get most recent entry
-                    latest = max(entries, key=lambda x: x['timestamp'])
-                    details = latest['value']
-                    
-                    # Format relationship details
-                    rel_str = f"{rel_type}: {details['person']}"
-                    if 'details' in details and details['details']:
-                        extra = []
-                        if 'age' in details['details']:
-                            extra.append(f"age {details['details']['age']}")
-                        if 'alias' in details['details']:
-                            extra.append(f"also known as {details['details']['alias']}")
-                        if extra:
-                            rel_str += f" ({', '.join(extra)})"
-                    
-                    relationships.append(rel_str)
-            
-            return "\n".join(relationships)
-            
-        except Exception as e:
-            print(f"Error formatting relationships: {e}")
-            return "Error retrieving relationships"
-
-    def _format_relationship(self, rel: Dict) -> str:
-        """Helper to format a relationship entry in tree structure"""
-        try:
-            # Start with indentation for tree structure
-            rel_str = "└── "  # Use tree branch character
-            
-            if 'type' in rel:
-                rel_str += f"{rel['type']}: "
-            if 'person' in rel:
-                rel_str += rel['person']
-            
-            # Add details in parentheses if present
-            if 'details' in rel:
-                details = []
-                if 'age' in rel['details']:
-                    details.append(f"age {rel['details']['age']}")
-                if 'alias' in rel['details']:
-                    details.append(f"also known as {rel['details']['alias']}")
-                if details:
-                    rel_str += f" ({', '.join(details)})"
+            with self._lock:
+                messages = self._messages.get(thread_id, [])
+                logger.info(f"[MEM_HIST] Raw messages: {messages}")
                 
-            return rel_str
+                formatted = []
+                for msg in messages:
+                    logger.info(f"[MEM_HIST] Processing message: {msg}")
+                    if isinstance(msg, dict):
+                        role = msg.get('role', 'user')
+                        content = msg.get('content', '').strip()
+                        formatted.append(f"<rewritten_message><rewritten_role>{role}</rewritten_role>\n{content}</rewritten_message>")
+                        logger.info(f"[MEM_HIST] Formatted message: {formatted[-1]}")
+                
+                result = "\n".join(formatted)
+                logger.info(f"[MEM_HIST] Final formatted history: {result}")
+                return result
+                
         except Exception as e:
-            print(f"Error formatting relationship: {e}")
+            logger.error(f"[MEM_HIST] Error: {e}")
+            logger.error(f"[MEM_HIST] Error type: {type(e)}")
+            logger.error(f"[MEM_HIST] Error args: {e.args}")
+            logger.error(f"[MEM_HIST] Traceback: {traceback.format_exc()}")
             return ""
 
-    def _clean_markdown(self, text):
-        """Clean markdown formatting from text for better context handling"""
-        # Remove code blocks
-        text = re.sub(r'```[\s\S]*?```', '', text)
-        # Remove markdown links
-        text = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', text)
-        # Remove other markdown formatting
-        text = re.sub(r'[*_`#]', '', text)
-        return text.strip()
+@dataclass
+class ModelConfig:
+    """Model configuration settings"""
+    n_gpu_layers: int
+    n_ctx: int
+    n_gpu_layers: int
+    n_batch: int
+    torch_dtype: str = "auto"
+    offload_kqv: bool = False
+    use_mmap: bool = True
+    use_mlock: bool = True
+    verbose: bool = True
+    n_threads: int = os.cpu_count()
 
+@dataclass
+class ThreadStats:
+    active: int = 0
+    completed: int = 0
+    errors: int = 0
+    last_error: str = ''
+    last_activity: float = field(default_factory=time.time)
+
+class ThreadSafeCounter:
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._count = 0
+    
+    def increment(self) -> int:
+        with self._lock:
+            self._count += 1
+            return self._count
+    
+    def decrement(self) -> int:
+        with self._lock:
+            self._count = max(0, self._count - 1)
+            return self._count
+
+def rate_limit(calls: int, period: float):
+    def decorator(func: Callable[P, T]) -> Callable[P, T]:
+        last_reset = time.time()
+        calls_made = ThreadSafeCounter()
+        lock = threading.Lock()
+        
+        @wraps(func)
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+            nonlocal last_reset
+            with lock:
+                now = time.time()
+                if now - last_reset > period:
+                    calls_made._count = 0
+                    last_reset = now
+                if calls_made._count >= calls:
+                    sleep_time = period - (now - last_reset)
+                    if sleep_time > 0:
+                        time.sleep(sleep_time)
+                    calls_made._count = 0
+                    last_reset = time.time()
+                calls_made.increment()
+            return func(*args, **kwargs)
+        return wrapper
+    return decorator
+
+class PersistentState(TypedDict):
+    """Strongly typed state definition"""
+    messages: list[dict]
+    metadata: dict
+    context: Annotated[list[str], add]
+    last_modified: str
+
+class UnifiedState:
+    """Single source of truth for application state"""
+    def __init__(self, storage_path: Path):
+        self._storage_path = storage_path
+        self._lock = threading.Lock()
+        
+        # Initialize state
+        self._state = {
+            'messages': {},  # thread_id -> List[Message]
+            'metadata': {
+                'created_at': datetime.now().isoformat(),
+                'version': '1.0'
+            },
+            'last_modified': datetime.now().isoformat()
+        }
+        
+        # Initialize disk manager
+        self.disk_manager = DiskManager(storage_path)
+        
+        # Load existing state if available
+        try:
+            loaded_state = self.disk_manager.load_state()
+            if loaded_state:
+                self._state.update(loaded_state)
+        except Exception as e:
+            logger.error(f"[STATE] Error loading state: {e}")
+            logger.error(traceback.format_exc())
+        
+        # Initialize components
+        self.model_manager = None
+        self.conversation_manager = None
+        logger.info("[STATE] UnifiedState initialized")
+
+    @property
+    def storage_path(self) -> Path:
+        """Get storage path"""
+        return self._storage_path
+
+    def add_message(self, thread_id: str, message: Dict) -> bool:
+        """Add message to state with proper locking"""
+        with self._lock:
+            try:
+                # Initialize thread if needed
+                if thread_id not in self._state['messages']:
+                    self._state['messages'][thread_id] = []
+                
+                # Add message
+                self._state['messages'][thread_id].append(message)
+                self._state['last_modified'] = datetime.now().isoformat()
+                
+                # Persist state
+                return self._persist_state()
+            except Exception as e:
+                logger.error(f"[STATE] Error adding message: {e}")
+                logger.error(traceback.format_exc())
+                return False
+
+    def get_thread_history(self, thread_id: str) -> List[Dict]:
+        """Get thread history from state"""
+        with self._lock:
+            return deepcopy(self._state['messages'].get(thread_id, []))
+
+    def _persist_state(self) -> bool:
+        """Persist state to disk"""
+        try:
+            return self.disk_manager.save_state(self._state)
+        except Exception as e:
+            logger.error(f"[STATE] Error persisting state: {e}")
+            logger.error(traceback.format_exc())
+            return False
+
+    def clear_thread(self, thread_id: str) -> bool:
+        """Clear thread history"""
+        with self._lock:
+            try:
+                if thread_id in self._state['messages']:
+                    self._state['messages'][thread_id] = []
+                    self._state['last_modified'] = datetime.now().isoformat()
+                    return self._persist_state()
+                return True
+            except Exception as e:
+                logger.error(f"[STATE] Error clearing thread: {e}")
+                logger.error(traceback.format_exc())
+                return False
+
+    def clear_all(self) -> bool:
+        """Clear all state"""
+        with self._lock:
+            try:
+                self._state['messages'] = {}
+                self._state['last_modified'] = datetime.now().isoformat()
+                return self._persist_state()
+            except Exception as e:
+                logger.error(f"[STATE] Error clearing state: {e}")
+                logger.error(traceback.format_exc())
+                return False
+
+    def set_memory(self, memory: 'MessageMemory'):
+        """Set the memory component"""
+        logger.info("[STATE] Setting memory component")
+        self.memory = memory
+
+    def set_model_manager(self, model_manager: 'ModelManager'):
+        """Set the model manager component"""
+        logger.info("[STATE] Setting model manager component")
+        self.model_manager = model_manager
+
+    def set_conversation_manager(self, conversation_manager: 'ConversationManager'):
+        """Set the conversation manager component"""
+        logger.info("[STATE] Setting conversation manager component")
+        self.conversation_manager = conversation_manager
+
+    def verify_initialization(self):
+        """Verify all required components are initialized"""
+        logger.info("[STATE] Verifying component initialization")
+        if not all([self.memory, self.model_manager, self.conversation_manager]):
+            missing = []
+            if not self.memory:
+                missing.append("memory")
+            if not self.model_manager:
+                missing.append("model_manager")
+            if not self.conversation_manager:
+                missing.append("conversation_manager")
+            raise RuntimeError(f"Missing required components: {', '.join(missing)}")
+        logger.info("[STATE] All components verified")
+
+    def save_conversations(self, conversations: Dict, history: Dict):
+        """Save conversations with disk persistence"""
+        logger.info("\n=== SAVE_CONVERSATIONS [EXTREME VERBOSE] ===")
+        logger.info(f"[STATE_SAVE] Input conversations type: {type(conversations)}")
+        logger.info(f"[STATE_SAVE] Input history type: {type(history)}")
+        logger.info(f"[STATE_SAVE] Current state type: {type(self._state)}")
+        
+        with self._lock:
+            try:
+                logger.info("[STATE_SAVE] Conversations data:")
+                for thread_id, conv in conversations.items():
+                    logger.info(f"[STATE_SAVE] Thread {thread_id}:")
+                    logger.info(f"[STATE_SAVE] - Messages: {conv.get('messages', [])}")
+                    logger.info(f"[STATE_SAVE] - Metadata: {conv.get('metadata', {})}")
+                
+                logger.info("[STATE_SAVE] History data:")
+                for thread_id, msgs in history.items():
+                    logger.info(f"[STATE_SAVE] Thread {thread_id} messages:")
+                    for msg in msgs:
+                        logger.info(f"[STATE_SAVE] - Message: {msg}")
+                
+                self._state['conversations'] = deepcopy(conversations)
+                self._state['conversation_history'] = deepcopy(history)
+                self._state['last_modified'] = datetime.now().isoformat()
+                
+                success = self.disk_manager.save_state(self._state)
+                logger.info(f"[STATE_SAVE] Save result: {success}")
+                
+                return success
+                
+            except Exception as e:
+                logger.error(f"[STATE_SAVE] Error: {e}")
+                logger.error(f"[STATE_SAVE] Error type: {type(e)}")
+                logger.error(f"[STATE_SAVE] Error args: {e.args}")
+                logger.error(f"[STATE_SAVE] Traceback: {traceback.format_exc()}")
+                return False
+
+    def load_conversations(self) -> Tuple[Dict, Dict]:
+        """Load conversations from disk"""
+        logger.info("\n=== LOAD_CONVERSATIONS: EXTREME VERBOSE ===")
+        logger.info(f"[LOAD_CONV] Current state: {self._state}")
+        logger.info(f"[LOAD_CONV] Lock state: {self._lock}")
+        
+        try:
+            # Load fresh state from disk
+            logger.info("[LOAD_CONV] Loading state from disk...")
+            state = self.disk_manager.load_state()
+            logger.info(f"[LOAD_CONV] Loaded state: {state}")
+            
+            # Update internal state
+            logger.info("[LOAD_CONV] Updating internal state...")
+            with self._lock:
+                self._state = state
+                conversations = deepcopy(state.get('conversations', {}))
+                history = deepcopy(state.get('conversation_history', {}))
+            
+            logger.info(f"[LOAD_CONV] Loaded conversations: {conversations}")
+            logger.info(f"[LOAD_CONV] Loaded history: {history}")
+            return conversations, history
+            
+        except Exception as e:
+            logger.error(f"[LOAD_CONV] CRITICAL ERROR: {e}")
+            logger.error(f"[LOAD_CONV] Error type: {type(e)}")
+            logger.error(f"[LOAD_CONV] Error args: {e.args}")
+            logger.error(f"[LOAD_CONV] Traceback: {traceback.format_exc()}")
+            logger.error(f"[LOAD_CONV] State dump: {vars(self)}")
+            return {}, {}
+
+    def build_context(self, thread_id: str, message: str) -> str:
+        """Build context with proper prompt formatting"""
+        try:
+            # Get system prompt
+            system_prompt = self._get_system_prompt()
+            
+            # Build context with proper tags
+            context = f"<|im_start|>system\n{system_prompt}<|im_end|>\n"  # Single newline
+            
+            # Get history
+            history = self._get_thread_history(thread_id)
+            if history:
+                context += f"{history}\n"  # Single newline
+            
+            # Add current message
+            context += f"<|im_start|>user\n{message}<|im_end|>\n"  # Single newline
+            context += "<|im_start|>assistant\n"  # No newline after assistant tag
+            
+            return context
+            
+        except Exception as e:
+            logger.error(f"[CTX_BUILD] Error: {e}")
+            return f"<|im_start|>system\n{self._get_system_prompt()}<|im_end|>\n<|im_start|>user\n{message}<|im_end|>\n<|im_start|>assistant\n"
+
+    def save_memory(self, user_id: str, memory: Dict):
+        """Save long-term memory for a user"""
+        namespace = (user_id, "memories") 
+        self.store.put(namespace, str(uuid.uuid4()), memory)
+
+    def get_memories(self, user_id: str) -> List[Dict]:
+        """Get all memories for a user"""
+        namespace = (user_id, "memories")
+        return self.store.search(namespace)
+
+class DiskManager:
+    """Manages disk operations for conversation persistence and prompt injection"""
+    def __init__(self, storage_path: Path):
+        # If storage_path points to a file, use its parent directory
+        if storage_path.suffix:  # If path has an extension (is a file)
+            self.storage_path = storage_path.parent
+            self.conversation_file = storage_path
+        else:  # If path is a directory
+            self.storage_path = storage_path
+            self.conversation_file = storage_path / "unified_state.json"
+            
+        # Create directory if it doesn't exist
+        self.storage_path.mkdir(parents=True, exist_ok=True)
+        self._lock = threading.Lock()
+        
+        logger.info(f"[DISK] Initialized with storage path: {self.storage_path}")
+        logger.info(f"[DISK] Using conversation file: {self.conversation_file}")
+
+    def save_state(self, state: Dict) -> bool:
+        """Save state to disk with proper locking"""
+        logger.info("\n=== DISK_SAVE [EXTREME VERBOSE] ===")
+        logger.info(f"[DISK] State type: {type(state)}")
+        logger.info(f"[DISK] State keys: {state.keys()}")
+        logger.info(f"[DISK] Storage path: {self.storage_path}")
+        logger.info(f"[DISK] Conversation file: {self.conversation_file}")
+        
+        with self._lock:
+            try:
+                # Create backup
+                if self.conversation_file.exists():
+                    backup_path = self.storage_path / f"unified_state.backup.{int(time.time())}.json"
+                    logger.info(f"[DISK] Creating backup at: {backup_path}")
+                    self.conversation_file.rename(backup_path)
+                
+                # Save new state
+                logger.info("[DISK] Writing state to disk...")
+                logger.info(f"[DISK] Conversations: {state.get('conversations', {})}")
+                logger.info(f"[DISK] History: {state.get('conversation_history', {})}")
+                
+                with open(self.conversation_file, 'w') as f:
+                    json.dump(state, f, indent=2, default=str)
+                
+                logger.info("[DISK] State saved successfully")
+                return True
+                
+            except Exception as e:
+                logger.error(f"[DISK] Save error: {e}")
+                logger.error(f"[DISK] Error type: {type(e)}")
+                logger.error(f"[DISK] Error args: {e.args}")
+                logger.error(f"[DISK] Traceback: {traceback.format_exc()}")
+                return False
+
+    def load_state(self) -> Dict:
+        """Load state from disk with fallback to defaults"""
+        logger.info("\n=== LOAD_STATE: EXTREME VERBOSE ===")
+        logger.info(f"[DISK_LOAD] Loading from {self.conversation_file}")
+        logger.info(f"[DISK_LOAD] File exists: {self.conversation_file.exists()}")
+        
+        try:
+            if self.conversation_file.exists():
+                logger.info("[DISK_LOAD] Reading existing state file...")
+                with open(self.conversation_file, 'r') as f:
+                    state = json.load(f)
+                logger.info(f"[DISK_LOAD] Loaded state: {state}")
+                return state
+            
+            # Create default state if file doesn't exist
+            logger.info("[DISK_LOAD] Creating default state...")
+            default_state = {
+                'version': '1.0',
+                'created_at': datetime.now().isoformat(),
+                'last_modified': datetime.now().isoformat(),
+                'conversations': {},
+                'conversation_history': {},
+                'settings': {
+                    'max_context_tokens_small': MAX_CONTEXT_TOKENS_SMALL,
+                    'max_context_tokens_large': MAX_CONTEXT_TOKENS_LARGE,
+                    'max_memories': MAX_MEMORIES_ALLOWED
+                }
+            }
+            logger.info(f"[DISK_LOAD] Default state created: {default_state}")
+            self.save_state(default_state)
+            return default_state
+            
+        except Exception as e:
+            logger.error(f"[DISK_LOAD] CRITICAL ERROR: {e}")
+            logger.error(f"[DISK_LOAD] Error type: {type(e)}")
+            logger.error(f"[DISK_LOAD] Error args: {e.args}")
+            logger.error(f"[DISK_LOAD] Traceback: {traceback.format_exc()}")
+            return self._create_default_state()
+
+    def inject_context(self, messages: List[Dict], system_prompt: str) -> str:
+        """Inject conversation history into system prompt"""
+        logger.info("[DISK] Injecting conversation context")
+        
+        try:
+            # Format conversation history
+            history = []
+            for msg in messages:
+                role = msg.get('role', 'user')
+                content = msg.get('content', '').strip()
+                history.append(f"<rewritten_message><rewritten_role>{role}</rewritten_role>\n{content}</rewritten_message>")
+            
+            # Combine system prompt with history
+            context = f"{system_prompt}\n\n"
+            if history:
+                context += "Previous conversation:\n" + "\n".join(history) + "\n\n"
+            
+            logger.info(f"[DISK] Created context with {len(history)} messages")
+            return context
+            
+        except Exception as e:
+            logger.error(f"[DISK] Error injecting context: {e}")
+            logger.error(traceback.format_exc())
+            return system_prompt
+
+    def get_recent_code_context(self, thread_id: str, limit: int = 3) -> str:
+        """Get recent code context for a thread"""
+        logger.info(f"[DISK] Getting code context for thread {thread_id}")
+        
+        try:
+            state = self.load_state()
+            history = state.get('conversation_history', {}).get(thread_id, [])
+            
+            # Extract code blocks from history
+            code_blocks = []
+            for msg in reversed(history):
+                content = msg.get('content', '')
+                # Find code blocks with ```language:path/to/file format
+                matches = re.finditer(r'```(\w+):([^\n]+)\n(.*?)```', content, re.DOTALL)
+                for match in matches:
+                    lang, path, code = match.groups()
+                    code_blocks.append(f"File: {path}\n```{lang}\n{code.strip()}\n```\n")
+                if len(code_blocks) >= limit:
+                    break
+            
+            if code_blocks:
+                context = "Recent code context:\n" + "\n".join(code_blocks)
+                logger.info(f"[DISK] Found {len(code_blocks)} code blocks")
+                return context
+            return ""
+            
+        except Exception as e:
+            logger.error(f"[DISK] Error getting code context: {e}")
+            logger.error(traceback.format_exc())
+            return ""
+
+class BaseManager:
+    """Base class for managers with common cleanup functionality"""
+    def __init__(self):
+        self._lock = threading.Lock()
+    
+    def cleanup(self):
+        """Base cleanup method"""
+        logger.info(f"Cleaning up {self.__class__.__name__}...")
+        with self._lock:
+            self._cleanup_impl()
+    
+    def _cleanup_impl(self):
+        """Implement in subclasses"""
+        pass
+
+class ModelManager(BaseManager):
+    """Manages model loading/unloading with clean CUDA memory cycles"""
+    _instance = None
+    _initialized = False
+    
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(ModelManager, cls).__new__(cls)
+        return cls._instance
+    
+    def __init__(self):
+        if self._initialized:
+            return
+            
+        super().__init__()
+        logger.info("=== INITIALIZING MODEL MANAGER ===")
+        
+        self._initialized = True
+        self._model_lock = threading.Lock()
+        self._current_model = None
+        self._cuda_initialized = False
+        self._loading = threading.Event()  # Add loading event
+        self.state = None
+        
+        # Initialize model paths
+        self.models_dir = Path("models").absolute()
+        self.model_files = {
+            'LM_SMALL': 'Qwen2.5-Coder-14B-Instruct-Q6_K_L.gguf',
+            'LM_LARGE': 'Qwen2.5-Coder-32B-Instruct-Q6_K_L.gguf'
+        }
+        
+        # Load default model (LM_SMALL)
+        try:
+            logger.info("Loading default model (LM_SMALL)")
+            self._loading.set()  # Set loading flag
+            self._current_model = self._load_model('LM_SMALL')
+            if not self._current_model:
+                raise RuntimeError("Failed to load default model")
+            logger.info("Default model loaded successfully")
+        except Exception as e:
+            logger.error(f"Failed to load default model: {e}")
+            logger.error(traceback.format_exc())
+            raise
+        finally:
+            self._loading.clear()  # Clear loading flag
+
+    def set_state(self, state: UnifiedState):
+        """Set the state object"""
+        self.state = state
+
+    def _initialize_cuda(self):
+        """Initialize CUDA once"""
+        if self._cuda_initialized:
+            return
+            
+        if torch.cuda.is_available():
+            try:
+                torch.cuda.init()
+                torch.cuda.set_device(0)
+                device_props = torch.cuda.get_device_properties(0)
+                logger.info(f"CUDA Device: {device_props.name}")
+                logger.info(f"Total GPU Memory: {device_props.total_memory / 1024**3:.2f} GB")
+                self._cuda_initialized = True
+                
+                # Set environment variables once
+                os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+                os.environ['GGML_CUDA_NO_PINNED'] = '1'
+                os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
+            except Exception as e:
+                logger.error(f"CUDA initialization error: {e}")
+                raise
+
+    def _unload_current_model(self):
+        """Fully unload current model and clear CUDA memory"""
+        if self._current_model:
+            logger.info(f"Unloading model: {self._current_model.model_type}")
+            model_ref = weakref.ref(self._current_model)
+            del self._current_model
+            self._current_model = None
+            
+            if torch.cuda.is_available():
+                try:
+                    # Synchronize and clear CUDA memory
+                    torch.cuda.synchronize()
+                    gc.collect()
+                    torch.cuda.empty_cache()
+                    torch.cuda.synchronize()
+                    
+                    # Force Python garbage collection
+                    if model_ref() is not None:
+                        del model_ref
+                        gc.collect()
+                    
+                    # Log memory status
+                    free_memory = torch.cuda.get_device_properties(0).total_memory - torch.cuda.memory_allocated()
+                    logger.info(f"Available GPU memory after unload: {free_memory / 1024**3:.2f} GB")
+                    
+                except Exception as e:
+                    logger.error(f"CUDA cleanup error: {e}")
+                    raise
+
+    def _load_model(self, model_type: str) -> Optional[Llama]:
+        """Load model with proper CUDA initialization and ARM64 compatibility"""
+        logger.info(f"\n=== LOADING MODEL [VERBOSE] ===")
+        logger.info(f"Requested model type: {model_type}")
+        logger.info(f"Model path: {self.models_dir / self.model_files[model_type]}")
+        logger.info(f"Current CUDA state: {torch.cuda.is_available()}")
+        
+        if torch.cuda.is_available():
+            try:
+                logger.info("Preparing CUDA environment...")
+                torch.cuda.synchronize()
+                torch.cuda.empty_cache()
+                gc.collect()
+                
+                free_memory = torch.cuda.get_device_properties(0).total_memory - torch.cuda.memory_allocated()
+                logger.info(f"Available GPU memory before load: {free_memory / 1024**3:.2f} GB")
+                
+            except Exception as e:
+                logger.error(f"CUDA preparation error: {e}")
+                raise
+
+        config = {
+            'model_path': str(self.models_dir / self.model_files[model_type]),
+            'n_batch': 512,
+            'n_threads': os.cpu_count(),
+            'n_ctx': 16384,
+            'n_gpu_layers': -1,
+            'offload_kqv': False,
+            'use_mmap': True,
+            'use_mlock': False,
+            'vocab_only': False,
+            'tensor_split': None,
+            'rope_scaling': None,
+            'embedding_only': False,
+            'logits_all': False,
+            'use_float32': False
+        }
+        
+        logger.info(f"Model configuration: {config}")
+        
+        try:
+            logger.info("Starting model load with timeout protection...")
+            q = queue.Queue()
+            
+            def load_with_timeout():
+                try:
+                    logger.info("Initializing model...")
+                    model = Llama(**config)
+                    model.model_type = model_type
+                    logger.info(f"Model initialized with type: {model_type}")
+                    return model
+                except Exception as e:
+                    logger.error(f"Model initialization error: {e}")
+                    raise
+            
+            def wrapper():
+                try:
+                    model = load_with_timeout()
+                    q.put(('success', model))
+                except Exception as e:
+                    q.put(('error', e))
+            
+            thread = threading.Thread(target=wrapper)
+            thread.daemon = True
+            thread.start()
+            
+            logger.info("Waiting for model load completion...")
+            result = q.get(timeout=300)
+            
+            if result[0] == 'error':
+                logger.error(f"Model load failed: {result[1]}")
+                raise result[1]
+            
+            model = result[1]
+            logger.info(f"Model {model_type} loaded successfully")
+            return model
+            
+        except Exception as e:
+            logger.error(f"CRITICAL ERROR in _load_model: {e}")
+            logger.error(traceback.format_exc())
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+                torch.cuda.synchronize()
+            gc.collect()
+            raise
+
+    def switch_model(self, model_type: str) -> Tuple[bool, str]:
+        """Switch models with complete memory cleanup"""
+        logger.info(f"\n=== ATTEMPTING MODEL SWITCH TO {model_type} ===")
+        logger.info(f"[SWITCH] Current model: {self._current_model.model_type if self._current_model else 'None'}")
+        logger.info(f"[SWITCH] Lock state: {self._model_lock}")
+        
+        with self._model_lock:
+            try:
+                memory_cleared = False
+                
+                # 1. Clear all state before switching
+                if self.state:
+                    if self.state.memory:
+                        logger.info("[SWITCH] Clearing message memory...")
+                        self.state.memory.clear_all()
+                        memory_cleared = True
+                    
+                    if self.state.conversation_manager:
+                        logger.info("[SWITCH] Clearing conversation history...")
+                        self.state.conversation_manager.clear_all_threads()  # This already saves to file
+                        memory_cleared = True
+                        
+                    # Clear context manager state and caches
+                    if hasattr(self.state, 'context_manager') and self.state.context_manager:
+                        logger.info("[SWITCH] Clearing context manager state...")
+                        self.state.context_manager._contexts.clear()
+                        self.state.context_manager._history.clear()
+                        self.state.context_manager._cache.cleanup()
+                        self.state.context_manager._token_count_cache.cleanup()
+                        memory_cleared = True
+                    
+                    # Removed persistence call since clear_all_threads handles it
+                
+                # 2. Unload current model and clear CUDA memory
+                logger.info("[SWITCH] Unloading current model...")
+                if self._current_model:
+                    logger.info(f"[SWITCH] Unloading {self._current_model.model_type}")
+                    self._unload_current_model()
+                
+                # 3. Force CUDA memory cleanup
+                logger.info("[SWITCH] Clearing CUDA memory...")
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                    torch.cuda.synchronize()
+                    free_memory = torch.cuda.get_device_properties(0).total_memory - torch.cuda.memory_allocated()
+                    logger.info(f"[SWITCH] Available GPU memory after cleanup: {free_memory / 1024**3:.2f} GB")
+                
+                # 4. Load new model
+                logger.info(f"[SWITCH] Loading new model {model_type}")
+                self._current_model = self._load_model(model_type)
+                
+                if not self._current_model:
+                    raise RuntimeError(f"Failed to load {model_type}")
+                
+                # 5. Reset model state
+                if hasattr(self._current_model, 'reset'):
+                    self._current_model.reset()
+                
+                success_message = ""
+                if memory_cleared:
+                    success_message = f"Switched to {model_type}. Memory and conversation history cleared."
+                else:
+                    success_message = f"Switched to {model_type}."
+                
+                logger.info(f"[SWITCH] Successfully switched to {model_type}")
+                return True, success_message
+                
+            except Exception as e:
+                logger.error(f"[SWITCH] Model switch failed: {e}")
+                logger.error(f"[SWITCH] Traceback: {traceback.format_exc()}")
+                return False, f"Failed to switch model: {str(e)}"
+
+    def determine_model_type(self, message: str, has_code: bool = False) -> Tuple[bool, str]:
+        """Determine which model to use based on message"""
+        logger.info("\n=== DETERMINE MODEL TYPE ===")
+        
+        message_lower = message.lower().strip()
+        current_type = self._current_model.model_type if self._current_model else None
+        
+        logger.info(f"Current model: {current_type}")
+        logger.info(f"Input message: '{message_lower}'")
+        
+        # Check for exact model requests
+        if message_lower == '@nutonic':  # Only match exact '@nutonic'
+            logger.info("Request for Nutonic (LM_LARGE)")
+            success = self.switch_model('LM_LARGE')[0]
+            return success, "Switching to Nutonic (LM_LARGE)"
+        elif message_lower == '@charlotte' or message_lower == '@lotte':  # Match exact '@charlotte' or '@lotte'
+            logger.info("Request for Charlotte (LM_SMALL)")
+            success = self.switch_model('LM_SMALL')[0]
+            return success, "Switching to Charlotte (LM_SMALL)"
+        
+        # Keep current model for all other cases
+        logger.info(f"Keeping current model: {current_type}")
+        return True, ""
+
+    def get_current_model(self) -> Optional[Llama]:
+        """Get current model without auto-loading"""
+        logger.info("\n=== GET_CURRENT_MODEL [EXTREME VERBOSE] ===")
+        logger.info(f"[MODEL] Loading state: {self._loading.is_set()}")
+        logger.info(f"[MODEL] Lock state: {self._model_lock}")
+        logger.info(f"[MODEL] Current model: {self._current_model}")
+        
+        if self._loading.is_set():
+            logger.warning("[MODEL] Model load in progress")
+            return None
+        
+        with self._model_lock:
+            if not self._current_model:
+                logger.info("[MODEL] No model currently loaded")
+                return None
+            logger.info(f"[MODEL] Returning model type: {self._current_model.model_type}")
+            return self._current_model
+
+    def create_completion(self, *args, **kwargs):
+        """Create completion with proper prompt handling"""
+        try:
+            model = self.get_current_model()
+            if model is None:
+                raise RuntimeError("No model available")
+            
+            # Set proper streaming parameters
+            if kwargs.get('stream', False):
+                kwargs['stream_tokens'] = True  # Stream by tokens instead of chars
+            
+            # Use standard stop tokens
+            if 'stop' not in kwargs:
+                kwargs['stop'] = ["<|im_end|>"]
+            elif "<|im_end|>" not in kwargs['stop']:
+                kwargs['stop'].append("<|im_end|>")
+            
+            return model.create_completion(*args, **kwargs)
+            
+        except Exception as e:
+            logger.error(f"[COMPLETE] Error: {e}")
+            raise
+
+    def create_completion_with_retry(self, *args, **kwargs):
+        """Create completion with retries on failure"""
+        logger.info("\n=== CREATE COMPLETION WITH RETRY [VERBOSE] ===")
+        logger.info(f"Args: {args}")
+        logger.info(f"Kwargs: {kwargs}")
+        
+        max_retries = 3
+        retry_delay = 1.0
+        is_streaming = kwargs.get('stream', False)
+        
+        for attempt in range(max_retries):
+            try:
+                logger.info(f"Attempt {attempt + 1} of {max_retries}")
+                
+                # Get current model
+                model = self.get_current_model()
+                if model is None:
+                    raise RuntimeError("No model available")
+                    
+                logger.info(f"Using model type: {model.model_type}")
+                
+                # Create completion
+                response = model.create_completion(*args, **kwargs)
+                
+                # For streaming responses, return the iterator directly
+                if is_streaming:
+                    return response
+                    
+                # For non-streaming, validate the response
+                if not response or 'choices' not in response:
+                    raise RuntimeError("Invalid response from model")
+                    
+                logger.info("Completion successful")
+                return response
+                
+            except Exception as e:
+                logger.error(f"Attempt {attempt + 1} failed: {e}")
+                logger.error(traceback.format_exc())
+                
+                if attempt < max_retries - 1:
+                    logger.info(f"Retrying in {retry_delay} seconds...")
+                    time.sleep(retry_delay)
+                    retry_delay *= 2  # Exponential backoff
+                    
+                    # Force cleanup before retry
+                    if torch.cuda.is_available():
+                        torch.cuda.empty_cache()
+                        torch.cuda.synchronize()
+                    gc.collect()
+                else:
+                    logger.error("All retry attempts failed")
+                    raise
+
+    def get_current_model_type(self) -> str:
+        """Get the type of currently loaded model"""
+        logger.info("[MODEL] Getting current model type")
+        try:
+            with self._model_lock:
+                if not self._current_model:
+                    logger.info("[MODEL] No model currently loaded")
+                    return "none"
+                return self._current_model.model_type
+        except Exception as e:
+            logger.error(f"[MODEL] Error getting model type: {e}")
+            return "unknown"
+
+    def set_active_model(self, model_type: str) -> bool:
+        """Set the active model type"""
+        logger.info(f"[MODEL] Setting active model to: {model_type}")
+        try:
+            if model_type == "memory":
+                return self.switch_model("LM_SMALL")
+            elif model_type == "coder":
+                return self.switch_model("LM_LARGE")
+            else:
+                logger.error(f"[MODEL] Invalid model type: {model_type}")
+                return False
+        except Exception as e:
+            logger.error(f"[MODEL] Error setting active model: {e}")
+            return False
+
+class MessageQueue:
+    """Thread-safe message queue with validation"""
+    def __init__(self, max_size: int = 1000):
+        self._queue = queue.Queue(maxsize=max_size)
+        self._dead_letter = queue.Queue()
+        self._processing = set()
+        self._lock = threading.Lock()
+        self._shutdown = threading.Event()
+        self._stats = ThreadStats()
+        self.MAX_RETRIES = 3
+        self.RETRY_DELAY = 1.0
+        self._message_counter = 0
+
+    def add(self, message: dict) -> bool:
+        if not self._validate_message(message):
+            logger.error("Invalid message format")
+            return False
+
+        with self._lock:
+            try:
+                self._message_counter += 1
+                message['id'] = self._message_counter
+                message['timestamp'] = time.time()
+                message['retries'] = 0
+                self._queue.put((message.get('thread_id', 'default'), message))
+                self._stats.active += 1
+                self._stats.last_activity = time.time()
+                return True
+            except queue.Full:
+                logger.error("Message queue full")
+                return False
+
+    def get(self, timeout: float = 1.0) -> Optional[Tuple[str, dict]]:
+        try:
+            thread_id, message = self._queue.get(timeout=timeout)
+            with self._lock:
+                self._processing.add(message['id'])
+            return thread_id, message
+        except queue.Empty:
+            return None
+
+    def complete(self, message_id: int):
+        with self._lock:
+            self._processing.discard(message_id)
+            self._stats.active -= 1
+            self._queue.task_done()
+
+    def fail(self, message: dict):
+        with self._lock:
+            self._processing.discard(message['id'])
+            self._stats.active -= 1
+            if message.get('retries', 0) < self.MAX_RETRIES:
+                message['retries'] = message.get('retries', 0) + 1
+                self._queue.put((message.get('thread_id', 'default'), message))
+            else:
+                self._dead_letter.put(message)
+
+    def _validate_message(self, message: dict) -> bool:
+        required = {'thread_id', 'content', 'role'}
+        return all(k in message for k in required)
+
+    def stop(self):
+        """Stop queue processing"""
+        self._shutdown.set()
+        with self._lock:
+            while not self._queue.empty():
+                try:
+                    self._queue.get_nowait()
+                    self._queue.task_done()
+                except queue.Empty:
+                    break
+
+    def clear(self):
+        """Clear all queues immediately"""
+        with self._lock:
+            while not self._queue.empty():
+                try:
+                    self._queue.get_nowait()
+                    self._queue.task_done()
+                except queue.Empty:
+                    break
+            while not self._dead_letter.empty():
+                try:
+                    self._dead_letter.get_nowait()
+                except queue.Empty:
+                    break
+            self._processing.clear()
+
+class DuplicateDetector:
+    """Detects duplicate or near-duplicate messages using content hashing and semantic similarity"""
+    def __init__(self, ttl: int = 3600):
+        self._hash_cache: Dict[str, float] = {}  # hash -> timestamp
+        self._ttl = ttl
+        self._lock = threading.Lock()
+
+    def _clean_content(self, content: str) -> str:
+        """Normalize content for comparison"""
+        # Convert to lowercase and normalize whitespace
+        content = re.sub(r'\s+', ' ', content.lower().strip())
+        # Remove common punctuation variations
+        content = re.sub(r'[,.!?;:"\']', '', content)
+        # Remove timestamps and dates
+        content = re.sub(r'\d{1,2}:\d{2}(:\d{2})?', '', content)
+        content = re.sub(r'\d{4}-\d{2}-\d{2}', '', content)
+        return content
+
+    def _compute_hash(self, content: str) -> str:
+        """Compute stable hash of normalized content"""
+        cleaned = self._clean_content(content)
+        return hashlib.blake2b(cleaned.encode(), digest_size=16).hexdigest()
+
+    def _clean_expired(self) -> None:
+        """Remove expired hashes"""
+        now = time.time()
+        with self._lock:
+            self._hash_cache = {
+                h: ts for h, ts in self._hash_cache.items()
+                if now - ts < self._ttl
+            }
+
+    def is_duplicate(self, content: str, thread_id: str) -> bool:
+        """Check if content is a duplicate"""
+        if not content:
+            return False
+
+        self._clean_expired()
+        
+        # Compute content hash
+        content_hash = self._compute_hash(content)
+        
+        with self._lock:
+            # Check for exact match
+            if content_hash in self._hash_cache:
+                return True
+                
+            # Store new hash
+            self._hash_cache[content_hash] = time.time()
+            return False
+
+class MessageManager(BaseManager):
+    """Manages conversation messages and threads"""
+    def __init__(self):
+        super().__init__()
+        self._messages = defaultdict(list)  # thread_id -> list of messages
+        self._lock = threading.Lock()
+        
+    def add_message(self, message: dict) -> bool:
+        """Add a message to a thread"""
+        try:
+            thread_id = message.get('thread_id', 'default')
+            with self._lock:
+                self._messages[thread_id].append(message)
+            return True
+        except Exception as e:
+            logger.error(f"Error adding message: {e}")
+            return False
+            
+    def get_thread_messages(self, thread_id: str) -> List[dict]:
+        """Get all messages for a thread"""
+        with self._lock:
+            return self._messages.get(thread_id, []).copy()
+            
+    def clear_thread(self, thread_id: str) -> bool:
+        """Clear messages for a specific thread"""
+        try:
+            with self._lock:
+                if thread_id in self._messages:
+                    del self._messages[thread_id]
+            return True
+        except Exception as e:
+            logger.error(f"Error clearing thread {thread_id}: {e}")
+            return False
+            
+    def clear_all_threads(self) -> bool:
+        """Clear all conversation threads"""
+        try:
+            with self._lock:
+                self._messages.clear()
+            logger.info("All conversation threads cleared")
+            return True
+        except Exception as e:
+            logger.error(f"Error clearing all threads: {e}")
+            return False
+            
+    def _cleanup_impl(self):
+        """Cleanup implementation"""
+        with self._lock:
+            self._messages.clear()
+
+class ContextManager(BaseManager):
+    """Enhanced context management with smart selection and compression"""
+    def __init__(self, state: UnifiedState):
+        super().__init__()
+        self._cache = ExpiringCache(max_size=1000, ttl=300)
+        self.state = state
+        self._token_tracker = TokenTracker(safety_margin=50)  # Changed from 200 to 50
+        self._importance_weights = {
+            'user_mention': 2.0,
+            'question': 1.5,
+            'recent': 1.3,
+            'code': 1.2,
+            'base': 1.0,
+            'error': 1.8,  # Higher weight for error messages
+            'continuation': 1.4  # For conversation flow
+        }
+        self._max_context_lengths = {
+            'LM_SMALL': MAX_CONTEXT_TOKENS_SMALL,
+            'LM_LARGE': MAX_CONTEXT_TOKENS_LARGE
+        }
+        self._token_count_cache = ExpiringCache(max_size=10000, ttl=3600)
+        self._contexts = {}
+        self._history = {}
+        logger.info("[CONTEXT] ContextManager initialized")
+
+    def _count_tokens_accurately(self, text: str) -> int:
+        """More accurate token counting using model's tokenizer"""
+        cache_key = hashlib.md5(text.encode()).hexdigest()
+        
+        if cached := self._token_count_cache.get(cache_key):
+            return cached
+        
+        try:
+            # Get the current model through the model manager
+            model_manager = self.state.model_manager
+            if not model_manager:
+                # Fallback to simple estimation if no model manager
+                count = len(re.findall(r'\w+|[^\w\s]', text))
+                self._token_count_cache.set(cache_key, count)
+                return count
+                
+            model = model_manager.get_current_model()
+            if not model:
+                # Fallback to simple estimation if no model
+                count = len(re.findall(r'\w+|[^\w\s]', text))
+                self._token_count_cache.set(cache_key, count)
+                return count
+            
+            # Use actual model tokenizer
+            token_count = len(model.tokenize(text.encode()))
+            self._token_count_cache.set(cache_key, token_count)
+            return token_count
+            
+        except Exception as e:
+            logger.error(f"Token counting error: {e}")
+            # Fallback to simple estimation
+            count = len(re.findall(r'\w+|[^\w\s]', text))
+            self._token_count_cache.set(cache_key, count)
+            return count
+
+    def _score_message(self, message: Dict, current_time: float) -> float:
+        """Enhanced message scoring with more factors"""
+        score = self._importance_weights['base']
+        content = message.get('content', '').lower()
+        
+        # Time decay factor (exponential decay over 1 hour)
+        time_diff = current_time - message.get('timestamp', current_time)
+        time_factor = math.exp(-time_diff / 3600)
+        
+        # Enhanced importance factors
+        if '@' in content or 'you' in content.split():
+            score *= self._importance_weights['user_mention']
+        if '?' in content:
+            score *= self._importance_weights['question']
+        if any(indicator in content for indicator in ['code', 'function', 'error', 'bug']):
+            score *= self._importance_weights['code']
+        if any(error_term in content for error_term in ['error', 'exception', 'failed', 'crash']):
+            score *= self._importance_weights['error']
+        
+        # Conversation flow scoring
+        if message.get('in_response_to') or message.get('addressing'):
+            score *= self._importance_weights['continuation']
+        
+        # Recent message bonus
+        if time_diff < 300:  # Last 5 minutes
+            score *= 1.5
+        
+        score *= time_factor
+        return score
+
+    def _select_context_messages(self, messages: List[Dict], limit: int) -> List[Dict]:
+        """Select most relevant messages for context"""
+        logger.info("\n=== SELECT_CONTEXT_MESSAGES: ENTRY POINT ===")
+        logger.info(f"[SELECT] Total messages: {len(messages)}")
+        logger.info(f"[SELECT] Requested limit: {limit}")
+        
+        current_time = time.time()
+        logger.info(f"[SELECT] Current time: {current_time}")
+        
+        # Score and log each message
+        scored_messages = []
+        for idx, msg in enumerate(messages):
+            score = self._score_message(msg, current_time)
+            scored_messages.append((score, msg))
+            
+            logger.info(f"[SELECT] Message {idx + 1}:")
+            logger.info(f"[SELECT] - Role: {msg.get('role', 'unknown')}")
+            logger.info(f"[SELECT] - Time diff: {current_time - msg.get('timestamp', current_time):.2f}s")
+            logger.info(f"[SELECT] - Score: {score:.4f}")
+            logger.info(f"[SELECT] - Content preview: {msg.get('content', '')[:100]}...")
+        
+        # Sort and select top messages
+        scored_messages.sort(reverse=True, key=lambda x: x[0])
+        selected = [msg for _, msg in scored_messages[:limit]]
+        
+        logger.info(f"[SELECT] Selected {len(selected)} messages")
+        logger.info("[SELECT] Selected messages preview:")
+        for idx, msg in enumerate(selected):
+            logger.info(f"[SELECT] {idx + 1}. {msg.get('role', 'unknown')}: {msg.get('content', '')[:100]}...")
+        
+        return selected
+
+    def _compress_context(self, context: str, model_type: str) -> str:
+        """Improved context compression with token awareness"""
+        max_tokens = self._max_context_lengths.get(model_type, MAX_CONTEXT_TOKENS_SMALL)
+        current_tokens = self._count_tokens_accurately(context)
+        
+        if current_tokens <= max_tokens:
+            return context
+
+        sections = re.split(r'(<rewritten_message><rewritten_role>.*?</rewritten_message>)', context, flags=re.DOTALL)
+        sections = [s for s in sections if s.strip()]
+        
+        # Always keep system prompt and last message
+        system_prompt = next((s for s in sections if '<rewritten_message><rewritten_role>system' in s), sections[0])
+        last_message = sections[-1]
+        
+        # Calculate available tokens more accurately
+        used_tokens = (
+            self._count_tokens_accurately(system_prompt) +
+            self._count_tokens_accurately(last_message)
+        )
+        available_tokens = max_tokens - used_tokens
+        
+        middle_sections = [s for s in sections[1:-1] if s not in (system_prompt, last_message)]
+        if not middle_sections:
+            return system_prompt + last_message
+            
+        tokens_per_section = available_tokens // len(middle_sections)
+        
+        compressed_sections = []
+        for section in middle_sections:
+            section_tokens = self._count_tokens_accurately(section)
+            if section_tokens > tokens_per_section:
+                words = re.findall(r'\w+|[^\w\s]', section)
+                keep_count = tokens_per_section // 2
+                compressed = ' '.join(words[:keep_count] + ['...'] + words[-keep_count:])
+                # Verify compressed section token count
+                while self._count_tokens_accurately(compressed) > tokens_per_section:
+                    keep_count = int(keep_count * 0.9)  # Reduce by 10%
+                    compressed = ' '.join(words[:keep_count] + ['...'] + words[-keep_count:])
+                compressed_sections.append(compressed)
+            else:
+                compressed_sections.append(section)
+                
+        return system_prompt + ''.join(compressed_sections) + last_message
+
+    def build_context(self, thread_id: str, message: str) -> str:
+        """Build context with token tracking"""
+        logger.info("\n=== BUILD_CONTEXT WITH TOKEN TRACKING ===")
+        try:
+            # 1. Get model type and initialize
+            model = self.state.model_manager.get_current_model()
+            if not model:
+                raise RuntimeError("No model available")
+            model_type = model.model_type
+            
+            # 2. Reset token counters at start
+            self._token_tracker.reset_counts()
+            logger.info("[CTX] Token counters reset")
+            
+            # 3. Process system prompt
+            system_prompt = self._get_system_prompt()
+            prompt_tokens = self._count_tokens_accurately(system_prompt)
+            
+            # 4. Check system prompt against limit
+            if self._token_tracker.would_exceed_limit(model_type, prompt_tokens):
+                logger.warning(f"[CTX] System prompt ({prompt_tokens} tokens) would exceed limit")
+                return self._build_minimal_context(message)
+            
+            # 5. Start building context
+            context = f"<|im_start|>system\n{system_prompt}<|im_end|>\n"
+            self._token_tracker.add_tokens(prompt_tokens)
+            logger.info(f"[CTX] System prompt added: {prompt_tokens} tokens")
+            
+            # 6. Process history with token awareness
+            history = self._get_thread_history(thread_id)
+            if history:
+                history_tokens = self._count_tokens_accurately(history)
+                remaining_tokens = self._token_tracker.get_remaining_tokens(model_type)
+                
+                if history_tokens > remaining_tokens:
+                    logger.warning(f"[CTX] History ({history_tokens} tokens) exceeds remaining space ({remaining_tokens} tokens)")
+                    history = self._truncate_history(history, remaining_tokens)
+                    history_tokens = self._count_tokens_accurately(history)
+                
+                context += f"{history}\n"
+                self._token_tracker.add_tokens(history_tokens)
+                logger.info(f"[CTX] History added: {history_tokens} tokens")
+            
+            # 7. Process current message
+            message_tokens = self._count_tokens_accurately(message)
+            remaining_tokens = self._token_tracker.get_remaining_tokens(model_type)
+            
+            if message_tokens > remaining_tokens:
+                logger.warning(f"[CTX] Message ({message_tokens} tokens) exceeds remaining space ({remaining_tokens} tokens)")
+                message = self._truncate_message(message, remaining_tokens)
+                message_tokens = self._count_tokens_accurately(message)
+            
+            # 8. Add message and assistant tag
+            context += f"<|im_start|>user\n{message}<|im_end|>\n<|im_start|>assistant\n"
+            self._token_tracker.add_tokens(message_tokens)
+            
+            # 9. Log final token counts
+            total_tokens = self._token_tracker.current_tokens
+            remaining = self._token_tracker.get_remaining_tokens(model_type)
+            generation_remaining = MAX_GENERATION_TOKENS
+            
+            logger.info(f"[CTX] === Token Usage Summary ===")
+            logger.info(f"[CTX] Total context tokens: {total_tokens}")
+            logger.info(f"[CTX] Remaining context space: {remaining}")
+            logger.info(f"[CTX] Available for generation: {generation_remaining}")
+            logger.info(f"[CTX] Safety margin: {self._token_tracker.safety_margin}")
+            
+            return context
+            
+        except Exception as e:
+            logger.error(f"[CTX_BUILD] Error: {e}")
+            logger.error(traceback.format_exc())
+            return self._build_minimal_context(message)
+
+    def _build_minimal_context(self, message: str) -> str:
+        """Build minimal context when token limits are exceeded"""
+        return f"<|im_start|>system\n{self._get_system_prompt()}<|im_end|>\n<|im_start|>user\n{message}<|im_end|>\n<|im_start|>assistant\n"
+
+    def _truncate_history(self, history: str, max_tokens: int) -> str:
+        """Truncate history to fit within token limit"""
+        if self._count_tokens_accurately(history) <= max_tokens:
+            return history
+            
+        messages = history.split("<|im_end|>")
+        truncated = []
+        current_tokens = 0
+        
+        for msg in reversed(messages):  # Start from most recent
+            msg_tokens = self._count_tokens_accurately(msg)
+            if current_tokens + msg_tokens <= max_tokens:
+                truncated.insert(0, msg)
+                current_tokens += msg_tokens
+            else:
+                break
+                
+        return "<|im_end|>".join(truncated)
+
+    def _truncate_message(self, message: str, max_tokens: int) -> str:
+        """Truncate message to fit within token limit"""
+        if self._count_tokens_accurately(message) <= max_tokens:
+            return message
+            
+        words = message.split()
+        truncated = []
+        current_tokens = 0
+        
+        for word in words:
+            word_tokens = self._count_tokens_accurately(word + ' ')
+            if current_tokens + word_tokens <= max_tokens:
+                truncated.append(word)
+                current_tokens += word_tokens
+            else:
+                break
+                
+        return ' '.join(truncated) + '...'
+
+    def _get_system_prompt(self) -> str:
+        """Get appropriate system prompt based on active model"""
+        logger.info("\n=== GETTING SYSTEM PROMPT [VERBOSE] ===")
+        try:
+            # Access model_manager directly as an attribute
+            model_manager = self.state.model_manager
+            logger.info(f"Retrieved model_manager: {model_manager}")
+            
+            if not model_manager:
+                logger.info("No model manager found, defaulting to LM_SMALL")
+                return LM_SMALL_SYSTEM_PROMPT
+            
+            current_model = model_manager.get_current_model()
+            logger.info(f"Retrieved current_model: {current_model}")
+            
+            if not current_model:
+                logger.info("No current model, defaulting to LM_SMALL")
+                return LM_SMALL_SYSTEM_PROMPT
+            
+            model_type = current_model.model_type
+            logger.info(f"Current model type: {model_type}")
+            
+            prompt = LM_LARGE_SYSTEM_PROMPT if model_type == 'LM_LARGE' else LM_SMALL_SYSTEM_PROMPT
+            logger.info(f"Selected prompt for {model_type}: {prompt[:100]}...")
+            return prompt
+            
+        except Exception as e:
+            logger.error(f"Error getting system prompt: {e}")
+            logger.error(traceback.format_exc())
+            logger.info("Falling back to LM_SMALL prompt")
+            return LM_SMALL_SYSTEM_PROMPT
+
+    def _cleanup_impl(self):
+        """Cleanup implementation"""
+        logger.info("Cleaning up context manager...")
+        try:
+            self._cache.cleanup()
+            self._token_count_cache.cleanup()
+            self._contexts.clear()
+            self._history.clear()
+            
+            # Force cache cleanup
+            gc.collect()
+        except Exception as e:
+            logger.error(f"Context cleanup error: {e}")
+        finally:
+            logger.info("Context cleanup complete")
+
+    def _get_thread_history(self, thread_id: str) -> str:
+        """Get conversation history with proper token formatting"""
+        logger.info("\n=== GET_THREAD_HISTORY: EXTREME VERBOSE ===")
+        logger.info(f"[HIST] Thread ID: {thread_id}")
+        
+        try:
+            # Get history from conversation manager
+            history = self.state.conversation_manager.get_thread_history(thread_id)
+            
+            # The history should already be properly formatted from ConversationManager
+            # Just log and return it
+            logger.info(f"[HIST] Retrieved history: {history}")
+            return history
+                
+        except Exception as e:
+            logger.error(f"[HIST] Error getting history: {e}")
+            logger.error(f"[HIST] Error type: {type(e)}")
+            logger.error(f"[HIST] Error args: {e.args}")
+            logger.error(f"[HIST] Traceback: {traceback.format_exc()}")
+            return ""
+
+    def clear_caches(self):
+        """Explicitly clear all caches"""
+        with self._lock:
+            self._cache.cleanup()
+            self._token_count_cache.cleanup()
+            self._contexts.clear()
+            self._history.clear()
+            gc.collect()
+
+class ExpiringCache:
+    """Thread-safe cache with TTL and size limits"""
+    def __init__(self, max_size: int, ttl: int):
+        self._cache = {}
+        self._max_size = max_size
+        self._ttl = ttl
+        self._lock = threading.Lock()
+        self._shutdown = threading.Event()
+        self._start_cleanup()
+
+    def _start_cleanup(self):
+        """Start background cleanup thread"""
+        def cleanup_loop():
+            while not self._shutdown.is_set():
+                try:
+                    with self._lock:
+                        current_time = time.time()
+                        expired = [
+                            key for key, item in self._cache.items()
+                            if current_time - item['timestamp'] > self._ttl
+                        ]
+                        for key in expired:
+                            del self._cache[key]
+                except Exception as e:
+                    logger.error(f"Cache cleanup error: {e}")
+                finally:
+                    time.sleep(60)  # Run cleanup every minute
+
+        threading.Thread(target=cleanup_loop, daemon=True).start()
+
+    def cleanup(self):
+        """Stop cleanup thread and clear cache"""
+        self._shutdown.set()
+        with self._lock:
+            self._cache.clear()
+
+    def get(self, key: str) -> Optional[Any]:
+        with self._lock:
+            if key not in self._cache:
+                return None
+            item = self._cache[key]
+            if time.time() - item['timestamp'] > self._ttl:
+                del self._cache[key]
+                return None
+            return item['value']
+
+    def set(self, key: str, value: Any):
+        with self._lock:
+            self._cache[key] = {
+                'value': value,
+                'timestamp': time.time()
+            }
+            if len(self._cache) > self._max_size:
+                self._evict_oldest()
+
+    def _evict_oldest(self):
+        if not self._cache:
+            return
+        oldest = min(self._cache.items(), key=lambda x: x[1]['timestamp'])[0]
+        del self._cache[oldest]
+
+class Application:
+    """Main application class"""
+    _instance = None
+    
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(Application, cls).__new__(cls)
+        return cls._instance
+    
+    def __init__(self):
+        if hasattr(self, '_initialized'):
+            return
+            
+        logger.info("\n=== INITIALIZING APPLICATION ===")
+        
+        try:
+            # Initialize storage path
+            self.storage_dir = Path("conversation_history").absolute()
+            self.storage_dir.mkdir(parents=True, exist_ok=True)
+            logger.info(f"Initializing storage at: {self.storage_dir}")
+            
+            # Initialize state
+            state_file = self.storage_dir / 'unified_state.json'
+            self.state = UnifiedState(state_file)
+            
+            # Initialize components in correct order
+            self.memory = MessageMemory()
+            self.state.set_memory(self.memory)
+            
+            self.model_manager = ModelManager()
+            self.state.set_model_manager(self.model_manager)
+            self.model_manager.set_state(self.state)
+            
+            # Pass storage_dir instead of state to ConversationManager
+            self.conversation_manager = ConversationManager(self.storage_dir)
+            self.state.set_conversation_manager(self.conversation_manager)
+            
+            self.message_manager = MessageManager()
+            self.context_manager = ContextManager(self.state)
+            
+            # Verify initialization
+            self.state.verify_initialization()
+            
+            self._initialized = True
+            logger.info("Application initialized successfully")
+            
+        except Exception as e:
+            logger.error(f"Application initialization failed: {e}")
+            logger.error(traceback.format_exc())
+            raise RuntimeError(f"Failed to initialize application: {e}")
+
+    def process_message(self, message: str, thread_id: str = 'default') -> str:
+        """Process incoming message and return response"""
+        logger.info("\n=== PROCESS_MESSAGE: EXTREME VERBOSE ===")
+        logger.info(f"[PROCESS] Input message: '{message}'")
+        logger.info(f"[PROCESS] Thread ID: {thread_id}")
+        logger.info(f"[PROCESS] Current state: {vars(self)}")
+        
+        try:
+            # Initialize thread if needed
+            logger.info("[PROCESS] Checking thread initialization...")
+            if thread_id not in self.conversation_manager._conversations:
+                logger.info("[PROCESS] Creating new conversation thread")
+                self.conversation_manager.create_thread(thread_id)
+            
+            logger.info("[PROCESS] Thread state after initialization:")
+            logger.info(f"[PROCESS] - Conversations: {self.conversation_manager._conversations}")
+            logger.info(f"[PROCESS] - History: {self.conversation_manager._history}")
+            
+            # Build context
+            logger.info("[PROCESS] Building context...")
+            context = self.context_manager.build_context(thread_id, message)
+            logger.info(f"[PROCESS] Context built, length: {len(context)}")
+            logger.info(f"[PROCESS] Context preview: {context[:500]}")
+            
+            # Get model and generate response
+            logger.info("[PROCESS] Getting model for response...")
+            model = self.model_manager.get_current_model()
+            if not model:
+                logger.error("[PROCESS] No model available!")
+                raise RuntimeError("No model available")
+            
+            logger.info(f"[PROCESS] Generating response with {model.model_type}")
+            response = model.create_completion(
+                context,
+                max_tokens=1024,
+                stop=["<|im_end|>"],
+                echo=False
+            )
+            
+            # Get the response text
+            response_text = response['choices'][0]['text']
+            logger.info("[PROCESS] Response generated successfully")
+            
+            # Store assistant response in history
+            logger.info("[PROCESS] Storing assistant response in history")
+            assistant_message = {
+                'role': 'assistant',
+                'content': response_text,
+                'timestamp': time.time(),
+                'thread_id': thread_id,
+                'model_type': model.model_type
+            }
+            success = self.conversation_manager.add_message(thread_id, assistant_message)
+            logger.info(f"[PROCESS] Assistant message added: {success}")
+            
+            # Verify history was updated
+            history = self.conversation_manager.get_thread_history(thread_id)
+            logger.info(f"[PROCESS] Final history size: {len(history)} messages")
+            logger.info("[PROCESS] Current conversation history:")
+            for idx, msg in enumerate(history):
+                logger.info(f"[PROCESS] Message {idx + 1}:")
+                logger.info(f"[PROCESS] - Role: {msg.get('role')}")
+                logger.info(f"[PROCESS] - Content: {msg.get('content')[:100]}...")
+            
+            # Force state persistence
+            self.conversation_manager._persist_state()
+            logger.info("[PROCESS] Conversation state persisted")
+            
+            return response_text
+            
+        except Exception as e:
+            logger.error(f"[PROCESS] CRITICAL ERROR: {e}")
+            logger.error(f"[PROCESS] Error type: {type(e)}")
+            logger.error(f"[PROCESS] Error args: {e.args}")
+            logger.error(f"[PROCESS] Traceback: {traceback.format_exc()}")
+            logger.error(f"[PROCESS] State dump: {vars(self)}")
+            return "I apologize, but I encountered an error processing your message."
+
+    def cleanup(self):
+        """Simple cleanup logging"""
+        logger.info("Application cleanup complete")
+
+    def signal_handler(self, signum, frame):
+        """Handle shutdown signals"""
+        logger.info(f"\n=== RECEIVED SIGNAL {signum} ===")
+        sys.exit(0)
+
+@dataclass
+class MessageValidationResult:
+    """Result of message validation"""
+    is_valid: bool
+    errors: List[str]
+    warnings: List[str]
+
+class MessageValidator:
+    """Validates message structure and content"""
+    def __init__(self):
+        self.required_fields = {'content', 'role', 'thread_id'}
+        self.valid_roles = {'user', 'assistant', 'system'}
+        self.max_content_length = MAX_CONTEXT_TOKENS_LARGE  # Largest possible context
+        
+    def validate(self, message: Dict) -> MessageValidationResult:
+        errors = []
+        warnings = []
+        
+        # Check required fields
+        missing_fields = self.required_fields - set(message.keys())
+        if missing_fields:
+            errors.append(f"Missing required fields: {missing_fields}")
+            
+        # Validate role
+        role = message.get('role')
+        if role and role not in self.valid_roles:
+            errors.append(f"Invalid role: {role}")
+            
+        # Validate content
+        content = message.get('content', '')
+        if not content:
+            errors.append("Empty content")
+        elif len(content) > self.max_content_length:
+            errors.append(f"Content exceeds max length of {self.max_content_length}")
+            
+        # Check thread_id format
+        thread_id = message.get('thread_id', '')
+        if not thread_id or not isinstance(thread_id, str):
+            errors.append("Invalid thread_id")
+            
+        # Additional validations
+        if 'timestamp' not in message:
+            warnings.append("Missing timestamp")
+        if role == 'assistant' and 'model_type' not in message:
+            warnings.append("Assistant message missing model_type")
+            
+        return MessageValidationResult(
+            is_valid=len(errors) == 0,
+            errors=errors,
+            warnings=warnings
+        )
+
+@contextmanager
+def state_transaction(state: UnifiedState):
+    """Provides transaction-like behavior for state updates"""
+    snapshot = deepcopy(state._state)
+    try:
+        yield
+    except Exception as e:
+        logger.error(f"Transaction failed: {e}")
+        state._state = snapshot
+        raise
+    finally:
+        if state._state != snapshot:
+            logger.info("State changed, triggering save")
+            state.update('last_save', time.time())
+
+def _check_technical_content(self, content: str) -> bool:
+    """Check if content contains complex technical discussions"""
+    technical_indicators = [
+        r'\b(?:theorem|proof|equation|algorithm|implementation|architecture)\b',
+        r'[∀∃∈∉∋∌∩∪⊂⊃⊆⊇≈≠≡≢]',
+        r'\b(?:physics|chemistry|engineering|computer science)\b',
+        r'(?:class|function|method|interface)\s+\w+\s*[({]'
+    ]
+    
+    return any(re.search(pattern, content, re.IGNORECASE) for pattern in technical_indicators)
+
+def check_gpu_memory():
+    """Check current GPU memory usage"""
+    if torch.cuda.is_available():
+        for i in range(torch.cuda.device_count()):
+            total = torch.cuda.get_device_properties(i).total_memory / 1024**3
+            used = torch.cuda.memory_allocated(i) / 1024**3
+            cached = torch.cuda.memory_reserved(i) / 1024**3
+            logger.info(f"GPU {i}: Total {total:.2f}GB, Used {used:.2f}GB, Cached {cached:.2f}GB")
+
+class ConversationManager:
+    def __init__(self, storage_path: Path):
+        self.storage_path = storage_path
+        self.storage_path.mkdir(parents=True, exist_ok=True)
+        self.conversations_file = self.storage_path / "conversations.json"
+        self.conversations = self._load_conversations()
+        self._lock = threading.Lock()
+        self.max_history = 5  # Keep last 5 messages
+        self.max_duplicates = 2  # Allow up to 2 duplicates
+
+    def _load_conversations(self) -> dict:
+        """Load conversations from JSON file"""
+        if self.conversations_file.exists():
+            try:
+                with open(self.conversations_file, 'r') as f:
+                    return json.load(f)
+            except Exception as e:
+                logger.error(f"Error loading conversations: {e}")
+                return {}
+        return {}
+
+    def _save_conversations(self):
+        """Save conversations to JSON file"""
+        try:
+            with open(self.conversations_file, 'w') as f:
+                json.dump(self.conversations, f, indent=2)
+        except Exception as e:
+            logger.error(f"Error saving conversations: {e}")
+
+    def add_message(self, thread_id: str, message: dict):
+        """Add a message to conversation history with deduplication"""
+        with self._lock:
+            if thread_id not in self.conversations:
+                self.conversations[thread_id] = []
+            
+            # Check for empty content
+            content = message.get('content', '').strip()
+            if not content:
+                return
+            
+            # Get existing messages for this thread
+            thread_messages = self.conversations[thread_id]
+            
+            # Count recent duplicates (only check last 5 messages)
+            recent_duplicates = sum(
+                1 for msg in thread_messages[-5:]
+                if msg.get('role') == message.get('role') and 
+                msg.get('content', '').strip() == content
+            )
+            
+            # Skip if too many duplicates
+            if recent_duplicates >= self.max_duplicates:
+                logger.info(f"[CONV] Too many duplicates of message: {content}")
+                return
+            
+            # Add message and trim history
+            self.conversations[thread_id].append(message)
+            self.conversations[thread_id] = self.conversations[thread_id][-self.max_history:]
+            self._save_conversations()
+
+    def get_thread_history(self, thread_id: str) -> str:
+        """Get conversation history for prompt context"""
+        messages = self.conversations.get(thread_id, [])
+        if not messages:
+            return ""
+        
+        # Format messages with proper tags
+        formatted = []
+        for msg in messages:
+            role = msg.get('role', 'user')
+            content = msg.get('content', '').strip()
+            if content:  # Only include non-empty messages
+                formatted.append(f"<|im_start|>{role}\n{content}<|im_end|>")
+        
+        # Join with single newlines
+        return "\n".join(formatted)
+
+    def save_response(self, response_buffer: List[str], thread_id: str, model_type: str = None):
+        """Save assistant response"""
+        try:
+            # Combine response buffer into single text
+            response_text = ''.join(response_buffer).strip()
+            if not response_text:
+                return
+            
+            # Create message object
+            message = {
+                'role': 'assistant',
+                'content': response_text,
+                'timestamp': time.time(),
+                'thread_id': thread_id,
+                'model_type': model_type or 'unknown'
+            }
+            
+            # Add message using standard add_message method
+            self.add_message(thread_id, message)
+            
+        except Exception as e:
+            logger.error(f"Error saving response: {e}")
+            logger.error(traceback.format_exc())
+
+    def clear_all(self):
+        """Clear all conversations"""
+        self.conversations.clear()
+        self._save_conversations()
+
+    # Add clear_all_threads method
+    def clear_all_threads(self) -> bool:
+        """Clear all conversation threads"""
+        try:
+            with self._lock:
+                self.conversations.clear()
+                self._save_conversations()
+            logger.info("All conversation threads cleared")
+            return True
+        except Exception as e:
+            logger.error(f"Error clearing all threads: {e}")
+            return False
+
+# Initialize memory saver
+memory = MemorySaver()
+
+# Add after the imports
+class TokenTracker:
+    """Tracks token usage and ensures we stay within limits"""
+    def __init__(self, safety_margin: int = 50):  # Changed from 200 to 50
+        self._lock = threading.Lock()
+        self.safety_margin = safety_margin
+        self.reset_counts()
+
+    def reset_counts(self):
+        """Reset token counters"""
+        with self._lock:
+            self.current_tokens = 0
+            self.max_seen = 0
+            self.generation_tokens = 0  # Add tracking for generation tokens
+
+    def add_tokens(self, count: int, is_generation: bool = False) -> bool:
+        """Add tokens and check if we're approaching limits"""
+        with self._lock:
+            if is_generation:
+                self.generation_tokens += count
+                return self.generation_tokens <= MAX_GENERATION_TOKENS
+            else:
+                self.current_tokens += count
+                self.max_seen = max(self.max_seen, self.current_tokens)
+                return self.current_tokens
+
+    def would_exceed_limit(self, model_type: str, additional_tokens: int, is_generation: bool = False) -> bool:
+        """Check if adding tokens would exceed limit"""
+        if is_generation:
+            return (self.generation_tokens + additional_tokens) > MAX_GENERATION_TOKENS
+            
+        max_tokens = MAX_CONTEXT_TOKENS_LARGE if model_type == 'LM_LARGE' else MAX_CONTEXT_TOKENS_SMALL
+        safe_limit = max_tokens - self.safety_margin
+        return (self.current_tokens + additional_tokens) > safe_limit
+
+    def get_remaining_tokens(self, model_type: str, for_generation: bool = False) -> int:
+        """Get remaining available tokens"""
+        if for_generation:
+            return MAX_GENERATION_TOKENS - self.generation_tokens
+            
+        max_tokens = MAX_CONTEXT_TOKENS_LARGE if model_type == 'LM_LARGE' else MAX_CONTEXT_TOKENS_SMALL
+        return max_tokens - self.safety_margin - self.current_tokens
