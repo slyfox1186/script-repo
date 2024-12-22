@@ -3,113 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Code Assistant</title>
-    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
-    
-    <!-- CSS Dependencies - Load these first -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/styles/base16/dracula.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <title>AI Chat Interface</title>
+    <link rel="icon" type="image/x-icon" href="data:image/x-icon;base64,">
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-    
-    <!-- Core JavaScript Dependencies -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/15.0.3/marked.min.js"></script>
-    
-    <!-- Highlight.js Languages -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/languages/python.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/languages/javascript.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/languages/typescript.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/languages/bash.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/languages/json.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/languages/xml.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/languages/css.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/languages/markdown.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/languages/diff.min.js"></script>
-    
-    <!-- MathJax Configuration -->
-    <script>
-    window.MathJax = {
-        tex: {
-            inlineMath: [['$', '$']],
-            displayMath: [['$$', '$$'], ['\\[', '\\]']],
-            processEscapes: true,
-            processEnvironments: true
-        },
-        options: {
-            skipHtmlTags: ['pre', 'code', 'script', 'noscript', 'style', 'textarea'],
-            ignoreHtmlClass: 'language-*',
-            processHtmlClass: 'math'
-        },
-        startup: {
-            pageReady: () => {
-                console.log("MathJax is ready");
-                return MathJax.startup.defaultPageReady();
-            }
-        }
-    };
-    </script>
-    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-    
-    <!-- DOMPurify for Sanitization -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/2.4.0/purify.min.js" integrity="sha512-XOjtWm4WW8nupch2W0CWRycnFtgmmGpmmJ53AaF0Ud6UxFhB9q8jfU7tVVtEJKyV68nDejh1sZL+Ib3hM/JbVg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.0/styles/base16/dracula.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.0/highlight.min.js" integrity="sha512-6QBAC6Sxc4IF04SvIg0k78l5rP5YgVjmHX2NeArelbxM3JGj4imMqfNzEta3n+mi7iG3nupdLnl3QrbfjdXyTg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/15.0.4/marked.min.js" integrity="sha512-VmLxPVdDGeR+F0DzUHVqzHwaR4ZSSh1g/7aYXwKT1PAGVxunOEcysta+4H5Utvmpr2xExEPybZ8q+iM9F1tGdw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 </head>
-
 <body>
-    <div class="container">
-        <div class="chat-container">
-            <div class="chat-header">
-                <h1>Code Assistant</h1>
-                <div class="header-controls">
-                    <button id="clear-all-btn" class="clear-all-btn">Clear All Conversations</button>
-                    <div class="conversation-controls">
-                        <button id="start-convo-btn" class="action-btn">Start AI Conversation</button>
-                        <button id="stop-convo-btn" class="action-btn" style="display: none;">Stop Conversation</button>
-                    </div>
-                </div>
-            </div>
-            <div id="chat-messages" class="chat-messages">
-                <!-- Messages will be added here -->
-            </div>
-            <div class="input-container">
-                <div class="input-wrapper">
-                    <textarea 
-                        id="user-input" 
-                        placeholder="Type your message..." 
-                        rows="1" 
-                        autofocus
-                    ></textarea>
-                    <button 
-                        id="send-button" 
-                        class="send-button"
-                        title="Send message (Enter)"
-                    >Send</button>
-                </div>
-            </div>
+    <div class="chat-container">
+        <div class="chat-messages" id="chat-messages"></div>
+        <div class="chat-input-container">
+            <textarea id="user-input" placeholder="Type your message..." rows="1"></textarea>
+            <button id="send-button">Send</button>
         </div>
     </div>
-    
-    <!-- Conversation Modal -->
-    <div id="conversation-modal" class="modal">
-        <div class="modal-content">
-            <h2>Start AI Conversation</h2>
-            <div class="modal-form">
-                <label for="conversation-topic">Topic:</label>
-                <input type="text" id="conversation-topic" placeholder="Enter conversation topic">
-                
-                <label for="conversation-turns">Number of turns:</label>
-                <input type="number" id="conversation-turns" value="10" min="2" max="20">
-                
-                <label for="conversation-delay">Delay between responses (seconds):</label>
-                <input type="number" id="conversation-delay" value="2" min="1" max="10" step="0.5">
-                
-                <div class="modal-buttons">
-                    <button id="start-conversation">Start</button>
-                    <button id="cancel-conversation">Cancel</button>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Custom JavaScript -->
-    <script src="{{ url_for('static', filename='script.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
-</html>
+</html> 
