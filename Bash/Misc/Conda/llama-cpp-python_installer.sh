@@ -21,7 +21,8 @@ echo "PATH is set to: $PATH"
 # Install conda packages
 printf "\n%s\n\n" "Installing conda packages."
 conda install -y bs4 markdown2 nltk psutil pytest-asyncio pytest python-dotenv \
-                 scikit-learn sentencepiece spacy textblob tqdm transformers unidecode
+                 scikit-learn sentencepiece spacy textblob tqdm transformers unidecode \
+                 peft apscheduler redis
 
 # Install pip packages
 printf "\n%s\n\n" "Installing pip packages."
