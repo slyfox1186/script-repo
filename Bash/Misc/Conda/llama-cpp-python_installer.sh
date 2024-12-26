@@ -28,14 +28,21 @@ conda install -y bs4 markdown2 nltk psutil pytest-asyncio pytest python-dotenv \
 printf "\n%s\n\n" "Installing pip packages."
 pip install accelerate bitsandbytes cloud-tpu-client fake_useragent flask langdetect "numpy<2.1.0,>=2.0.0" tiktoken
 
-# Install llama-cpp-python with verbose output for debugging
+# Clone and install llama-cpp-python
+printf "\n%s\n\n" "Cloning and installing llama-cpp-python."
+[[ -d 'llama-cpp-python' ]] && rm -fr llama-cpp-python
+git clone 'https://github.com/abetlen/llama-cpp-python.git'
+cd llama-cpp-python || exit 1
+git submodule update --init --recursive
+
+# Install with CUDA support in editable mode
 CMAKE_ARGS="-DGGML_CUDA=ON \
            -DCMAKE_CUDA_ARCHITECTURES=native \
            -DCMAKE_LIBRARY_PATH=$CUDA_HOME/lib64:/usr/lib/x86_64-linux-gnu \
            -DCMAKE_CUDA_HOST_COMPILER=$(type -P gcc-12)" \
 CUDACXX="$CUDA_HOME/bin/nvcc" \
 CUDA_PATH="$CUDA_HOME" \
-pip install llama-cpp-python --force-reinstall --no-cache-dir --upgrade --verbose || (
+pip install -e . || (
     echo "Failed to install llama-cpp-python. Exiting..."
     exit 1
 )
