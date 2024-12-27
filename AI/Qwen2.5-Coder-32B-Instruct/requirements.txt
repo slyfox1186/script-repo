@@ -9,7 +9,7 @@ requests==2.32.2
 tqdm==4.66.3
 python-dotenv==1.0.0
 werkzeug==3.0.6
-jinja2==3.1.4
+jinja2==3.1.5
 itsdangerous==2.1.2
 click==8.1.7
 markupsafe==2.1.3
