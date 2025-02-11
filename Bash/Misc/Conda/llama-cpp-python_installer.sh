@@ -18,16 +18,17 @@ echo "CUDA_HOME is set to: $CUDA_HOME"
 echo "LD_LIBRARY_PATH is set to: $LD_LIBRARY_PATH"
 echo "PATH is set to: $PATH"
 
-# Install required pip packages
-printf "\n%s\n\n" "Installing required pip packages."
-pip install apscheduler redis flask
+# Install conda packages
+printf "\n%s\n\n" "Installing conda packages."
+conda install bs4 markdown2 nltk psutil pytest python-dotenv \
+                 sentencepiece spacy textblob tqdm unidecode \
+                 peft apscheduler redis -y
 
-# Clone and install llama-cpp-python
-printf "\n%s\n\n" "Cloning and installing llama-cpp-python."
-[[ -d 'llama-cpp-python' ]] && rm -fr llama-cpp-python
-git clone 'https://github.com/abetlen/llama-cpp-python.git'
-cd llama-cpp-python || exit 1
-git submodule update --init --recursive
+conda install -c pytorch pytorch torchvision torchaudio -y
+
+# Install pip packages
+printf "\n%s\n\n" "Installing pip packages."
+pip install fake_useragent flask flask_cors langdetect "numpy<2.0.0,>=1.25.0"
 
 # Install with CUDA support in editable mode
 CMAKE_ARGS="-DGGML_CUDA=ON \
@@ -36,7 +37,7 @@ CMAKE_ARGS="-DGGML_CUDA=ON \
            -DCMAKE_CUDA_HOST_COMPILER=$(type -P gcc-12)" \
 CUDACXX="$CUDA_HOME/bin/nvcc" \
 CUDA_PATH="$CUDA_HOME" \
-pip install . --force-reinstall --no-cache-dir --upgrade --verbose || (
+pip install llama-cpp-python --force-reinstall --no-cache-dir --upgrade --verbose || (
     echo "Failed to install llama-cpp-python. Exiting..."
     exit 1
 )
