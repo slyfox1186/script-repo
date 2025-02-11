@@ -22,7 +22,8 @@ echo "PATH is set to: $PATH"
 printf "\n%s\n\n" "Installing conda packages."
 conda install bs4 markdown2 nltk psutil pytest python-dotenv \
                  sentencepiece spacy textblob tqdm unidecode \
-                 peft apscheduler redis -y
+                 peft apscheduler redis pandas_datareader yfinance \
+                 -y
 
 conda install -c pytorch pytorch torchvision torchaudio -y
 
