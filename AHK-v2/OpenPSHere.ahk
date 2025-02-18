@@ -39,8 +39,8 @@ OpenPowerShellHere()
         if (pwd)
         {
             pwd := StrReplace(pwd, "'", "''")
-            pwd := '"' pwd '"'
-            Run(pshell ' -NoExit -C "Set-Location -Path ' pwd '"',, "Max", &pshellPID)
+            pwd := pwd
+            Run(pshell ' -NoExit -C "Set-Location -Path \"' pwd '\""',, "Max", &pshellPID)
             if WinWait(win " ahk_pid " pshellPID,, 1)
                 WinActivate(win)
             else
