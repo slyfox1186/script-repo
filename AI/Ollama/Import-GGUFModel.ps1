@@ -369,7 +369,7 @@ function Get-AvailableTemplateFormats {
                 $addedModelFamilies = @{}
                 
                 # Check for specific model families in the installed models
-                if ($ollamaModels -match "Mistral-Small-24B-Instruct" -and -not $addedModelFamilies.ContainsKey("mistral-small")) {
+                if (($ollamaModels -match "Mistral-Small-24B-Instruct" -or $ollamaModels -match "msai") -and -not $addedModelFamilies.ContainsKey("mistral-small")) {
                     $templates += @{
                         Name = "Mistral-Small-24B-Instruct"; 
                         Value = "{{ if .System }}<s>[SYSTEM_PROMPT]{{.System}}[/SYSTEM_PROMPT]{{ end }}{{ if .Prompt }}[INST]{{.Prompt}}[/INST]{{ end }}"
@@ -377,7 +377,7 @@ function Get-AvailableTemplateFormats {
                     $addedModelFamilies["mistral-small"] = $true
                 }
                 
-                if (($ollamaModels -match "deepseek-r1" -or $ollamaModels -match "DeepSeek-R1") -and -not $addedModelFamilies.ContainsKey("deepseek")) {
+                if (($ollamaModels -match "deepseek-r1" -or $ollamaModels -match "DeepSeek-R1" -or $ollamaModels -match "dsr1") -and -not $addedModelFamilies.ContainsKey("deepseek")) {
                     $templates += @{
                         Name = "DeepSeek-R1"; 
                         Value = "{{ if .System }}<|im_start|>system
@@ -501,9 +501,11 @@ function Get-ModelType {
         [string]$ModelPath,
         [string]$ModelDir
     )
-    if ($ModelPath -match "Mistral-Small-24B-Instruct" -or ($ModelDir -and $ModelDir -match "Mistral-Small-24B-Instruct")) {
+    if ($ModelPath -match "Mistral-Small-24B-Instruct" -or ($ModelDir -and $ModelDir -match "Mistral-Small-24B-Instruct") -or 
+        $ModelPath -match "msai" -or ($ModelDir -and $ModelDir -match "msai")) {
         return "mistral-small-24b"
-    } elseif ($ModelPath -match "deepseek-r1" -or $ModelPath -match "DeepSeek-R1" -or ($ModelDir -and $ModelDir -match "deepseek-r1")) {
+    } elseif ($ModelPath -match "deepseek-r1" -or $ModelPath -match "DeepSeek-R1" -or ($ModelDir -and $ModelDir -match "deepseek-r1") -or
+              $ModelPath -match "dsr1" -or ($ModelDir -and $ModelDir -match "dsr1")) {
         return "deepseek-r1"
     }
     return "generic"
@@ -714,7 +716,7 @@ switch ($pathOption) {
             }
         }
         # Special handling for DeepSeek-R1 if still not found
-        if (( $modelDir -match "deepseek-r1" -or $modelDir -match "DeepSeek-R1" ) -and -not $modelPath) {
+        if (( $modelDir -match "deepseek-r1" -or $modelDir -match "DeepSeek-R1" -or $modelDir -match "dsr1" ) -and -not $modelPath) {
             Write-ColorOutput "Detected DeepSeek-R1 model, searching for specific blob..." "Cyan"
             $manifestFiles = Get-ChildItem -Path $modelDir -File
             foreach ($file in $manifestFiles) {
@@ -818,7 +820,7 @@ Write-Output ""
 $useDefaultSettings = $false
 switch ($modelType) {
     "mistral-small-24b" {
-        Write-ColorOutput "Recommended default settings for Mistral-Small-24B-Instruct:" "Cyan"
+        Write-ColorOutput "Recommended default settings for Mistral-Small-24B-Instruct (msai):" "Cyan"
         Write-ColorOutput "- Temperature: 0.15" "Red"
         Write-ColorOutput "- Top-p: 0.95" "Blue"
         Write-ColorOutput "- Top-k: 40" "Blue"
@@ -830,7 +832,7 @@ switch ($modelType) {
         $useDefaultSettings = Get-YesNoInput -Prompt "Use these default settings?" -Default:$true
     }
     "deepseek-r1" {
-        Write-ColorOutput "Recommended default settings for DeepSeek-R1:" "Cyan"
+        Write-ColorOutput "Recommended default settings for DeepSeek-R1 (dsr1):" "Cyan"
         Write-ColorOutput "- Temperature: 0.2" "Red"
         Write-ColorOutput "- Top-p: 0.95" "Blue"
         Write-ColorOutput "- Top-k: 40" "Blue"
@@ -861,7 +863,7 @@ switch ($modelType) {
 switch ($modelType) {
     "mistral-small-24b" {
         if ($useDefaultSettings) {
-            Write-ColorOutput "Using Mistral-Small-24B-Instruct default settings." "Green"
+            Write-ColorOutput "Using Mistral-Small-24B-Instruct (msai) default settings." "Green"
             $temperature   = 0.15
             $top_p         = 0.95
             $top_k         = 40
@@ -874,7 +876,7 @@ switch ($modelType) {
     }
     "deepseek-r1" {
         if ($useDefaultSettings) {
-            Write-ColorOutput "Using DeepSeek-R1 default settings." "Green"
+            Write-ColorOutput "Using DeepSeek-R1 (dsr1) default settings." "Green"
             $temperature   = 0.2
             $top_p         = 0.95
             $top_k         = 40
