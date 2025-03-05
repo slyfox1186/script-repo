@@ -370,7 +370,11 @@ switch ($modelType) {
         Write-ColorOutput "- Top-k: 40" "Blue"
         Write-ColorOutput "- Context size: 13000" "Yellow"
         Write-ColorOutput "- System prompt: Optimized for step-by-step reasoning" "Magenta"
-        Write-ColorOutput "- Template: {{ if .System }}<|im_start|>system`n{{ .System }}<|im_end|>`n{{ end }}{{ if .Prompt }}<|im_start|>user`n{{ .Prompt }}<|im_end|>`n{{ end }}<|im_start|>assistant" "White"
+        Write-ColorOutput "- Template: {{ if .System }}<|im_start|>system
+{{ .System }}<|im_end|>
+{{ end }}{{ if .Prompt }}<|im_start|>user
+{{ .Prompt }}<|im_end|>
+{{ end }}<|im_start|>assistant" "White"
         Write-ColorOutput "- Repeat penalty: 1.0" "Blue"
         Write-ColorOutput "- Stop tokens: <|im_end|>, <|im_start|>" "Red"
         $useDefaultSettings = Get-YesNoInput -Prompt "Use these default settings?" -Default:$true
@@ -410,7 +414,11 @@ switch ($modelType) {
             $top_k         = 40
             $contextSize   = 10000
             $systemPrompt  = $deepSeekSystemPrompt
-            $templateFormat = "{{ if .System }}<|im_start|>system`n{{ .System }}<|im_end|>`n{{ end }}{{ if .Prompt }}<|im_start|>user`n{{ .Prompt }}<|im_end|>`n{{ end }}<|im_start|>assistant"
+            $templateFormat = "{{ if .System }}<|im_start|>system
+{{ .System }}<|im_end|>
+{{ end }}{{ if .Prompt }}<|im_start|>user
+{{ .Prompt }}<|im_end|>
+{{ end }}<|im_start|>assistant"
             $repeat_penalty = 1.0
             $stop_sequences = @("<|im_end|>", "<|im_start|>")
         }
@@ -423,7 +431,9 @@ switch ($modelType) {
             $top_k         = 40
             $contextSize   = 8096
             $systemPrompt  = $mistralSystemPrompt
-            $templateFormat = "{{ if .System }}{{.System}}`n`n{{ end }}{{ if .Prompt }}User: {{.Prompt}}{{ end }}"
+            $templateFormat = "{{ if .System }}{{.System}}
+
+{{ end }}{{ if .Prompt }}User: {{.Prompt}}{{ end }}"
             $repeat_penalty = 1.0
             $stop_sequences = @()
         }
@@ -490,7 +500,11 @@ if (-not $useDefaultSettings) {
             "4" { $templateFormat = "llama3" }
             "5" { $templateFormat = "chatml" }
             "6" { $templateFormat = "{{ if .System }}<s>[SYSTEM_PROMPT]{{.System}}[/SYSTEM_PROMPT]{{ end }}{{ if .Prompt }}[INST]{{.Prompt}}[/INST]{{ end }}" }
-            "7" { $templateFormat = "{{ if .System }}<|im_start|>system`n{{ .System }}<|im_end|>`n{{ end }}{{ if .Prompt }}<|im_start|>user`n{{ .Prompt }}<|im_end|>`n{{ end }}<|im_start|>assistant" }
+            "7" { $templateFormat = "{{ if .System }}<|im_start|>system
+{{ .System }}<|im_end|>
+{{ end }}{{ if .Prompt }}<|im_start|>user
+{{ .Prompt }}<|im_end|>
+{{ end }}<|im_start|>assistant" }
             "8" {
                 Write-ColorOutput "Enter custom template (use {{.System}}, {{.Prompt}}, {{.Response}} placeholders):" "Cyan"
                 $lines = @()
@@ -585,39 +599,11 @@ try {
         $modelfileContent | Out-File -FilePath $configPath -Encoding utf8
         Write-ColorOutput "Model configuration saved to: $configPath" "Cyan"
 
-        if (Get-YesNoInput -Prompt "Do you want to test the model with structured outputs?" -Default:$true) {
-            Write-ColorOutput "Testing model with structured outputs..." "Cyan"
-            Write-Output ""
-            $scriptPath = Join-Path -Path (Get-Location) -ChildPath "simple_structured_output.py"
-            if (-not (Test-Path -Path $scriptPath)) {
-                Write-ColorOutput "Warning: simple_structured_output.py not found in the current directory." "Yellow"
-                Write-ColorOutput "Please ensure it is available before testing." "Yellow"
-            } else {
-                Write-ColorOutput "Select a schema type for testing:" "Cyan"
-                Write-ColorOutput "1. Friends list (simplest)" "White"
-                Write-ColorOutput "2. Movies list" "White"
-                Write-ColorOutput "3. Recipe (most complex)" "White"
-                $schemaChoice = Read-Host "Enter your choice (1-3)"
-                $schemaType = switch ($schemaChoice) {
-                    "2" { "movies" }
-                    "3" { "recipe" }
-                    default { "friends" }
-                }
-                $testTemp = Get-NumericInput -Prompt "Temperature for generation (0.0-1.0, lower is more deterministic)" -Default 0.2 -Min 0.0 -Max 1.0
-                try {
-                    Write-ColorOutput "Running structured output test..." "Cyan"
-                    & python3 simple_structured_output.py $modelName $schemaType --temperature $testTemp
-                    if ($?) {
-                        Write-ColorOutput "Test completed successfully!" "Green"
-                    } else {
-                        Write-ColorOutput "Test encountered issues. See output above for details." "Yellow"
-                    }
-                } catch {
-                    Write-ColorOutput "Error running the test: $_" "Red"
-                    Write-ColorOutput "Ensure Python and required packages are installed." "Yellow"
-                }
-            }
-        }
+        # Automatically run the model
+        Write-ColorOutput "Starting the model. Press Ctrl+C to exit when done." "Yellow"
+        Write-Output ""
+        & Clear-Host; ollama run $modelName
+
     } else {
         Write-Output ""
         Write-ColorOutput "ERROR: Failed to import the model." "Red"
