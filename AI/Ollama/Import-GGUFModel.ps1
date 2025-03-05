@@ -395,7 +395,7 @@ switch ($modelType) {
             $temperature   = 0.15
             $top_p         = 0.95
             $top_k         = 40
-            $contextSize   = 20000
+            $contextSize   = 10000
             $systemPrompt  = $mistralSystemPrompt
             $templateFormat = "{{ if .System }}<s>[SYSTEM_PROMPT]{{.System}}[/SYSTEM_PROMPT]{{ end }}{{ if .Prompt }}[INST]{{.Prompt}}[/INST]{{ end }}"
             $repeat_penalty = 1.0
@@ -408,7 +408,7 @@ switch ($modelType) {
             $temperature   = 0.2
             $top_p         = 0.95
             $top_k         = 40
-            $contextSize   = 20000
+            $contextSize   = 10000
             $systemPrompt  = $deepSeekSystemPrompt
             $templateFormat = "{{ if .System }}<|im_start|>system`n{{ .System }}<|im_end|>`n{{ end }}{{ if .Prompt }}<|im_start|>user`n{{ .Prompt }}<|im_end|>`n{{ end }}<|im_start|>assistant"
             $repeat_penalty = 1.0
