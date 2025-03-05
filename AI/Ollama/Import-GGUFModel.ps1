@@ -578,27 +578,88 @@ switch ($pathOption) {
             Write-ColorOutput "Manifests directory not found: $manifestsDir" "Red"
             exit 1
         }
-        $manifestFolders = Get-ChildItem -Path $manifestsDir -Directory -Recurse
-        if ($manifestFolders.Count -eq 0) {
-            Write-ColorOutput "No models found in the manifests directory." "Yellow"
-            exit 1
-        }
-        Write-ColorOutput "Available models in manifests directory:" "Cyan"
-        for ($i = 0; $i -lt $manifestFolders.Count; $i++) {
-            Write-ColorOutput "$($i+1). $($manifestFolders[$i].FullName)" "White"
-        }
-        $manifestChoice = Read-Host "Select a model (number)"
+        
+        # Get list of currently installed models from ollama list
         try {
-            $index = [int]$manifestChoice - 1
-            if ($index -lt 0 -or $index -ge $manifestFolders.Count) {
-                Write-ColorOutput "Invalid selection." "Red"
+            $ollamaOutput = & ollama list 2>$null
+            $installedModels = @()
+            
+            if ($ollamaOutput -and $ollamaOutput.Count -gt 0) {
+                $headerSkipped = $false
+                foreach ($line in $ollamaOutput) {
+                    if (-not $headerSkipped) {
+                        $headerSkipped = $true
+                        continue
+                    }
+                    if (-not [string]::IsNullOrWhiteSpace($line)) {
+                        $modelInfo = $line -split '\s+'
+                        if ($modelInfo.Count -ge 1) {
+                            $modelName = $modelInfo[0]
+                            $installedModels += @{
+                                Name = $modelName
+                                Directory = Join-Path -Path $manifestsDir -ChildPath "registry.ollama.ai\library\$($modelName.Split(':')[0])"
+                            }
+                        }
+                    }
+                }
+            }
+            
+            if ($installedModels.Count -eq 0) {
+                Write-ColorOutput "No models found in Ollama. Please install a model first or use option 1 to import a new model." "Yellow"
                 exit 1
             }
-            $modelDir = $manifestFolders[$index].FullName
-            Write-ColorOutput "Selected model directory: $modelDir" "Green"
+            
+            # Display models with numbers
+            Write-ColorOutput "Available models:" "Cyan"
+            for ($i = 0; $i -lt $installedModels.Count; $i++) {
+                Write-ColorOutput "$($i+1). $($installedModels[$i].Name)" "White"
+            }
+            
+            $manifestChoice = Read-Host "Select a model (number)"
+            try {
+                $index = [int]$manifestChoice - 1
+                if ($index -lt 0 -or $index -ge $installedModels.Count) {
+                    Write-ColorOutput "Invalid selection." "Red"
+                    exit 1
+                }
+                $modelDir = $installedModels[$index].Directory
+                $modelName = $installedModels[$index].Name.Split(':')[0]
+                Write-ColorOutput "Selected model: $modelName" "Green"
+                Write-ColorOutput "Model directory: $modelDir" "Green"
+            } catch {
+                Write-ColorOutput "Invalid input. Please enter a valid number." "Red"
+                exit 1
+            }
         } catch {
-            Write-ColorOutput "Invalid input. Please enter a valid number." "Red"
-            exit 1
+            Write-ColorOutput "Error retrieving models: $_" "Red"
+            
+            # Fallback to directory listing if model retrieval fails
+            Write-ColorOutput "Falling back to directory listing..." "Yellow"
+            $manifestFolders = Get-ChildItem -Path (Join-Path -Path $manifestsDir -ChildPath "registry.ollama.ai\library") -Directory -ErrorAction SilentlyContinue
+            
+            if (-not $manifestFolders -or $manifestFolders.Count -eq 0) {
+                Write-ColorOutput "No models found in the manifests directory." "Yellow"
+                exit 1
+            }
+            
+            Write-ColorOutput "Available models in manifests directory:" "Cyan"
+            for ($i = 0; $i -lt $manifestFolders.Count; $i++) {
+                Write-ColorOutput "$($i+1). $($manifestFolders[$i].Name)" "White"
+            }
+            
+            $manifestChoice = Read-Host "Select a model (number)"
+            try {
+                $index = [int]$manifestChoice - 1
+                if ($index -lt 0 -or $index -ge $manifestFolders.Count) {
+                    Write-ColorOutput "Invalid selection." "Red"
+                    exit 1
+                }
+                $modelDir = $manifestFolders[$index].FullName
+                Write-ColorOutput "Selected model directory: $modelDir" "Green"
+            } catch {
+                Write-ColorOutput "Invalid input. Please enter a valid number." "Red"
+                exit 1
+            }
         }
         
         # Locate model file from blobs
