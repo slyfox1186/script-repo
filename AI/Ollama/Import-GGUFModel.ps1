@@ -380,9 +380,7 @@ function Get-AvailableTemplateFormats {
                 if (($ollamaModels -match "deepseek-r1" -or $ollamaModels -match "DeepSeek-R1" -or $ollamaModels -match "dsr1") -and -not $addedModelFamilies.ContainsKey("deepseek")) {
                     $templates += @{
                         Name = "DeepSeek-R1"; 
-                        Value = "{{ if .System }}<|im_start|>system
-{{ .System }}<|im_end|>
-{{ end }}{{ if .Prompt }}<|im_start|>user
+                        Value = "{{ if .Prompt }}<|im_start|>user
 {{ .Prompt }}<|im_end|>
 {{ end }}<|im_start|>assistant"
                     }
@@ -824,7 +822,7 @@ switch ($modelType) {
         Write-ColorOutput "- Temperature: 0.15" "Red"
         Write-ColorOutput "- Top-p: 0.95" "Blue"
         Write-ColorOutput "- Top-k: 40" "Blue"
-        Write-ColorOutput "- Context size: 13000" "Yellow"
+        Write-ColorOutput "- Context size: 10000" "Yellow"
         Write-ColorOutput "- System prompt: (predefined)" "Magenta"
         Write-ColorOutput "- Template: {{ if .System }}<s>[SYSTEM_PROMPT]{{.System}}[/SYSTEM_PROMPT]{{ end }}{{ if .Prompt }}[INST]{{.Prompt}}[/INST]{{ end }}" "White"
         Write-ColorOutput "- Repeat penalty: 1.0" "Blue"
@@ -833,14 +831,12 @@ switch ($modelType) {
     }
     "deepseek-r1" {
         Write-ColorOutput "Recommended default settings for DeepSeek-R1 (dsr1):" "Cyan"
-        Write-ColorOutput "- Temperature: 0.2" "Red"
+        Write-ColorOutput "- Temperature: 0.6" "Red"
         Write-ColorOutput "- Top-p: 0.95" "Blue"
         Write-ColorOutput "- Top-k: 40" "Blue"
-        Write-ColorOutput "- Context size: 13000" "Yellow"
+        Write-ColorOutput "- Context size: 10000" "Yellow"
         Write-ColorOutput "- System prompt: Optimized for step-by-step reasoning" "Magenta"
-        Write-ColorOutput "- Template: {{ if .System }}<|im_start|>system
-{{ .System }}<|im_end|>
-{{ end }}{{ if .Prompt }}<|im_start|>user
+        Write-ColorOutput "- Template: {{ if .Prompt }}<|im_start|>user
 {{ .Prompt }}<|im_end|>
 {{ end }}<|im_start|>assistant" "White"
         Write-ColorOutput "- Repeat penalty: 1.0" "Blue"
@@ -877,14 +873,12 @@ switch ($modelType) {
     "deepseek-r1" {
         if ($useDefaultSettings) {
             Write-ColorOutput "Using DeepSeek-R1 (dsr1) default settings." "Green"
-            $temperature   = 0.2
+            $temperature   = 0.6
             $top_p         = 0.95
             $top_k         = 40
             $contextSize   = 10000
             $systemPrompt  = $deepSeekSystemPrompt
-            $templateFormat = "{{ if .System }}<|im_start|>system
-{{ .System }}<|im_end|>
-{{ end }}{{ if .Prompt }}<|im_start|>user
+            $templateFormat = "{{ if .Prompt }}<|im_start|>user
 {{ .Prompt }}<|im_end|>
 {{ end }}<|im_start|>assistant"
             $repeat_penalty = 1.0
@@ -897,7 +891,7 @@ switch ($modelType) {
             $temperature   = 0.3
             $top_p         = 0.95
             $top_k         = 40
-            $contextSize   = 8096
+            $contextSize   = 8192
             $systemPrompt  = $mistralSystemPrompt
             $templateFormat = "{{ if .System }}{{.System}}
 
