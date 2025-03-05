@@ -1,6 +1,3 @@
-#!/usr/bin/env pwsh
-#Requires -Version 5.0
-
 <#
 .SYNOPSIS
     Imports a GGUF model into Ollama on Windows with extensive configuration options.
@@ -45,6 +42,398 @@ function Write-ColorOutput {
     $host.UI.RawUI.ForegroundColor = $ForegroundColor
     Write-Output $Message
     $host.UI.RawUI.ForegroundColor = $originalColor
+}
+
+function Remove-OllamaModels {
+    [CmdletBinding()]
+    param()
+    
+    # Check if Ollama is installed
+    if (-not (Test-Command -Command "ollama")) {
+        Write-ColorOutput "ERROR: Ollama is not installed or not in your PATH." "Red"
+        return
+    }
+    
+    Write-ColorOutput "What would you like to do?" "Cyan"
+    Write-ColorOutput "1. Delete installed models" "White"
+    Write-ColorOutput "2. Clean orphaned manifest directories" "White"
+    Write-ColorOutput "3. Return to main menu" "White"
+    $cleanupOption = Read-Host "Choose option (1-3)"
+    
+    switch ($cleanupOption) {
+        "1" {
+            # Delete models - original functionality
+            try {
+                $ollamaOutput = & ollama list 2>$null
+                if (-not $ollamaOutput -or $ollamaOutput.Count -eq 0) {
+                    Write-ColorOutput "No models found in Ollama." "Yellow"
+                    return
+                }
+                
+                # Parse model names from output
+                $models = @()
+                $headerSkipped = $false
+                
+                foreach ($line in $ollamaOutput) {
+                    if (-not $headerSkipped) {
+                        $headerSkipped = $true
+                        continue
+                    }
+                    
+                    if (-not [string]::IsNullOrWhiteSpace($line)) {
+                        $modelName = ($line -split '\s+')[0]
+                        if (-not [string]::IsNullOrWhiteSpace($modelName)) {
+                            $models += $modelName
+                        }
+                    }
+                }
+                
+                if ($models.Count -eq 0) {
+                    Write-ColorOutput "No models found in Ollama." "Yellow"
+                    return
+                }
+                
+                # Display models with numbers
+                Write-ColorOutput "Installed models:" "Cyan"
+                for ($i = 0; $i -lt $models.Count; $i++) {
+                    Write-ColorOutput "$($i+1). $($models[$i])" "White"
+                }
+                
+                # Get user input for models to delete
+                Write-ColorOutput "Enter the numbers of models to delete (comma-separated, e.g., 1,3,5) or 'q' to cancel:" "Yellow"
+                $userInput = Read-Host
+                
+                if ($userInput -eq 'q') {
+                    Write-ColorOutput "Operation cancelled." "Yellow"
+                    return
+                }
+                
+                # Parse input and delete models
+                $modelNumbers = $userInput -split ',' | ForEach-Object { $_.Trim() }
+                $modelsToDelete = @()
+                
+                foreach ($num in $modelNumbers) {
+                    try {
+                        $index = [int]$num - 1
+                        if ($index -ge 0 -and $index -lt $models.Count) {
+                            $modelsToDelete += $models[$index]
+                        } else {
+                            Write-ColorOutput "Invalid model number: $num. Skipping." "Red"
+                        }
+                    } catch {
+                        Write-ColorOutput "Invalid input: $num. Skipping." "Red"
+                    }
+                }
+                
+                if ($modelsToDelete.Count -eq 0) {
+                    Write-ColorOutput "No valid models selected for deletion." "Yellow"
+                    return
+                }
+                
+                # Confirm deletion
+                Write-ColorOutput "The following models will be deleted:" "Red"
+                foreach ($model in $modelsToDelete) {
+                    Write-ColorOutput "- $model" "White"
+                }
+                
+                if (-not (Get-YesNoInput -Prompt "Are you sure you want to delete these models?" -Default:$false)) {
+                    Write-ColorOutput "Operation cancelled." "Yellow"
+                    return
+                }
+                
+                # Delete models
+                foreach ($model in $modelsToDelete) {
+                    Write-ColorOutput "Deleting model: $model..." "Yellow"
+                    & ollama rm $model
+                    if ($LASTEXITCODE -eq 0) {
+                        Write-ColorOutput "Successfully deleted model: $model" "Green"
+                    } else {
+                        Write-ColorOutput "Failed to delete model: $model" "Red"
+                    }
+                }
+                
+                # Ask if user wants to clean orphaned manifests
+                if (Get-YesNoInput -Prompt "Would you like to clean orphaned manifest directories?" -Default:$true) {
+                    Remove-OllamaOrphanedManifests
+                }
+                
+            } catch {
+                Write-ColorOutput "Error: $_" "Red"
+            }
+        }
+        "2" {
+            # Clean orphaned manifests
+            Remove-OllamaOrphanedManifests
+        }
+        "3" {
+            # Return to main menu
+            return
+        }
+        default {
+            Write-ColorOutput "Invalid option. Returning to main menu." "Yellow"
+            return
+        }
+    }
+}
+
+function Remove-OllamaOrphanedManifests {
+    [CmdletBinding()]
+    param()
+    
+    # Check if Ollama is installed
+    if (-not (Test-Command -Command "ollama")) {
+        Write-ColorOutput "ERROR: Ollama is not installed or not in your PATH." "Red"
+        return
+    }
+    
+    # Get the model storage location
+    $modelLocation = Get-OllamaModelLocation
+    $manifestsDir = Join-Path -Path $modelLocation -ChildPath "manifests"
+    
+    if (-not (Test-Path -Path $manifestsDir)) {
+        Write-ColorOutput "Manifests directory not found: $manifestsDir" "Red"
+        return
+    }
+    
+    # Get list of currently installed models from ollama list
+    try {
+        $ollamaOutput = & ollama list 2>$null
+        if (-not $ollamaOutput -or $ollamaOutput.Count -eq 0) {
+            Write-ColorOutput "No models found in Ollama." "Yellow"
+            return
+        }
+        
+        # Parse model names from output
+        $installedModels = @()
+        $headerSkipped = $false
+        
+        foreach ($line in $ollamaOutput) {
+            if (-not $headerSkipped) {
+                $headerSkipped = $true
+                continue
+            }
+            
+            if (-not [string]::IsNullOrWhiteSpace($line)) {
+                $modelName = ($line -split '\s+')[0]
+                if (-not [string]::IsNullOrWhiteSpace($modelName)) {
+                    # Extract base model name (before the colon)
+                    if ($modelName -match "^([^:]+)") {
+                        $baseModelName = $matches[1]
+                        $installedModels += $baseModelName.ToLower()
+                    } else {
+                        $installedModels += $modelName.ToLower()
+                    }
+                }
+            }
+        }
+        
+        # Get all model directories in the manifests folder
+        $manifestFolders = Get-ChildItem -Path $manifestsDir -Directory -Recurse | Where-Object {
+            # Only include leaf directories that might contain model files
+            $_.GetDirectories().Count -eq 0 -or 
+            $_.GetFiles().Count -gt 0 -or 
+            $_.FullName -match "library\\[^\\]+$"
+        }
+        
+        if ($manifestFolders.Count -eq 0) {
+            Write-ColorOutput "No model directories found in the manifests directory." "Yellow"
+            return
+        }
+        
+        # Find directories that don't correspond to installed models
+        $orphanedDirs = @()
+        foreach ($dir in $manifestFolders) {
+            $dirName = $dir.Name.ToLower()
+            $isOrphaned = $true
+            
+            # Check if this directory corresponds to an installed model
+            foreach ($model in $installedModels) {
+                if ($dirName -eq $model -or $dir.FullName -match "\\$model$") {
+                    $isOrphaned = $false
+                    break
+                }
+            }
+            
+            # Special case for registry.ollama.ai/library directories
+            if ($dir.FullName -match "registry\.ollama\.ai\\library$") {
+                $isOrphaned = $false
+            }
+            
+            # Skip the registry.ollama.ai directory itself
+            if ($dir.FullName -match "registry\.ollama\.ai$") {
+                $isOrphaned = $false
+            }
+            
+            if ($isOrphaned) {
+                $orphanedDirs += $dir
+            }
+        }
+        
+        if ($orphanedDirs.Count -eq 0) {
+            Write-ColorOutput "No orphaned model directories found." "Green"
+            return
+        }
+        
+        # Display orphaned directories with numbers
+        Write-ColorOutput "Found the following orphaned model directories:" "Cyan"
+        for ($i = 0; $i -lt $orphanedDirs.Count; $i++) {
+            Write-ColorOutput "$($i+1). $($orphanedDirs[$i].FullName)" "White"
+        }
+        
+        # Get user input for directories to delete
+        Write-ColorOutput "Enter the numbers of directories to delete (comma-separated, e.g., 1,3,5), 'all' to delete all, or 'q' to cancel:" "Yellow"
+        $userInput = Read-Host
+        
+        if ($userInput -eq 'q') {
+            Write-ColorOutput "Operation cancelled." "Yellow"
+            return
+        }
+        
+        $dirsToDelete = @()
+        
+        if ($userInput.ToLower() -eq 'all') {
+            $dirsToDelete = $orphanedDirs
+        } else {
+            # Parse input and select directories
+            $dirNumbers = $userInput -split ',' | ForEach-Object { $_.Trim() }
+            
+            foreach ($num in $dirNumbers) {
+                try {
+                    $index = [int]$num - 1
+                    if ($index -ge 0 -and $index -lt $orphanedDirs.Count) {
+                        $dirsToDelete += $orphanedDirs[$index]
+                    } else {
+                        Write-ColorOutput "Invalid directory number: $num. Skipping." "Red"
+                    }
+                } catch {
+                    Write-ColorOutput "Invalid input: $num. Skipping." "Red"
+                }
+            }
+        }
+        
+        if ($dirsToDelete.Count -eq 0) {
+            Write-ColorOutput "No valid directories selected for deletion." "Yellow"
+            return
+        }
+        
+        # Confirm deletion
+        Write-ColorOutput "The following directories will be deleted:" "Red"
+        foreach ($dir in $dirsToDelete) {
+            Write-ColorOutput "- $($dir.FullName)" "White"
+        }
+        
+        if (-not (Get-YesNoInput -Prompt "Are you sure you want to delete these directories?" -Default:$false)) {
+            Write-ColorOutput "Operation cancelled." "Yellow"
+            return
+        }
+        
+        # Delete directories
+        foreach ($dir in $dirsToDelete) {
+            Write-ColorOutput "Deleting directory: $($dir.FullName)..." "Yellow"
+            try {
+                Remove-Item -Path $dir.FullName -Recurse -Force
+                Write-ColorOutput "Successfully deleted directory: $($dir.FullName)" "Green"
+            } catch {
+                Write-ColorOutput "Failed to delete directory: $($dir.FullName)" "Red"
+                Write-ColorOutput "Error: $_" "Red"
+            }
+        }
+        
+    } catch {
+        Write-ColorOutput "Error: $_" "Red"
+    }
+}
+
+function Get-AvailableTemplateFormats {
+    [CmdletBinding()]
+    param()
+    
+    # Initialize with standard templates that are always available
+    $templates = @(
+        @{Name = "Default (model-specific)"; Value = "default"},
+        @{Name = "Llama 2"; Value = "llama2"},
+        @{Name = "Mistral"; Value = "mistral"},
+        @{Name = "Llama 3"; Value = "llama3"},
+        @{Name = "ChatML"; Value = "chatml"}
+    )
+    
+    # Try to get installed models from Ollama
+    try {
+        # Check if Ollama is installed and running
+        if (Test-Command -Command "ollama") {
+            try {
+                $ollamaOutput = & ollama list 2>$null
+                $ollamaModels = $ollamaOutput -join "`n"
+                
+                # Create a hashtable to track which model families we've already added
+                $addedModelFamilies = @{}
+                
+                # Check for specific model families in the installed models
+                if ($ollamaModels -match "Mistral-Small-24B-Instruct" -and -not $addedModelFamilies.ContainsKey("mistral-small")) {
+                    $templates += @{
+                        Name = "Mistral-Small-24B-Instruct"; 
+                        Value = "{{ if .System }}<s>[SYSTEM_PROMPT]{{.System}}[/SYSTEM_PROMPT]{{ end }}{{ if .Prompt }}[INST]{{.Prompt}}[/INST]{{ end }}"
+                    }
+                    $addedModelFamilies["mistral-small"] = $true
+                }
+                
+                if (($ollamaModels -match "deepseek-r1" -or $ollamaModels -match "DeepSeek-R1") -and -not $addedModelFamilies.ContainsKey("deepseek")) {
+                    $templates += @{
+                        Name = "DeepSeek-R1"; 
+                        Value = "{{ if .System }}<|im_start|>system
+{{ .System }}<|im_end|>
+{{ end }}{{ if .Prompt }}<|im_start|>user
+{{ .Prompt }}<|im_end|>
+{{ end }}<|im_start|>assistant"
+                    }
+                    $addedModelFamilies["deepseek"] = $true
+                }
+                
+                # Add other model-specific templates based on installed models
+                if ($ollamaModels -match "llama3\.2" -and -not $addedModelFamilies.ContainsKey("llama3.2")) {
+                    $templates += @{Name = "Llama 3.2"; Value = "llama3.2"}
+                    $addedModelFamilies["llama3.2"] = $true
+                }
+                
+                if ($ollamaModels -match "mistral:7b-instruct" -and -not $addedModelFamilies.ContainsKey("mistral-instruct")) {
+                    $templates += @{Name = "Mistral 7B Instruct"; Value = "mistral-instruct"}
+                    $addedModelFamilies["mistral-instruct"] = $true
+                }
+                
+                # Look for other potential model families
+                if ($ollamaModels -match "phi" -and -not $addedModelFamilies.ContainsKey("phi")) {
+                    $templates += @{Name = "Phi"; Value = "phi"}
+                    $addedModelFamilies["phi"] = $true
+                }
+                
+                if ($ollamaModels -match "qwen" -and -not $addedModelFamilies.ContainsKey("qwen")) {
+                    $templates += @{Name = "Qwen"; Value = "qwen"}
+                    $addedModelFamilies["qwen"] = $true
+                }
+                
+                if ($ollamaModels -match "gemma" -and -not $addedModelFamilies.ContainsKey("gemma")) {
+                    $templates += @{Name = "Gemma"; Value = "gemma"}
+                    $addedModelFamilies["gemma"] = $true
+                }
+                
+                if ($ollamaModels -match "claude" -and -not $addedModelFamilies.ContainsKey("claude")) {
+                    $templates += @{Name = "Claude"; Value = "claude"}
+                    $addedModelFamilies["claude"] = $true
+                }
+            } catch {
+                Write-ColorOutput "Warning: Error retrieving installed models: $_" "Yellow"
+            }
+        } else {
+            Write-ColorOutput "Warning: Ollama command not found. Using standard templates only." "Yellow"
+        }
+    } catch {
+        Write-ColorOutput "Warning: Error checking for Ollama: $_" "Yellow"
+    }
+    
+    # Always add custom option at the end
+    $templates += @{Name = "Custom"; Value = "custom"}
+    
+    return $templates
 }
 
 function Get-OllamaModelLocation {
@@ -105,7 +494,7 @@ function Get-NumericInput {
     }
 }
 
-function Detect-ModelType {
+function Get-ModelType {
     [CmdletBinding()]
     param (
         [Parameter(Mandatory = $true)]
@@ -156,12 +545,28 @@ Write-Output ""
 Write-ColorOutput "TIP: You can change this location by setting the OLLAMA_MODELS environment variable." "Gray"
 Write-Output ""
 
-# --- Model Selection ---
-
-Write-ColorOutput "You can either:" "Cyan"
-Write-ColorOutput "1. Enter the full path to a GGUF file on your system" "White"
+# --- Main Menu ---
+Write-ColorOutput "What would you like to do?" "Cyan"
+Write-ColorOutput "1. Import a GGUF model" "White"
 Write-ColorOutput "2. Use an existing model from the Ollama manifests directory" "White"
-$pathOption = Read-Host "Choose option (1 or 2)"
+Write-ColorOutput "3. Delete existing models" "White"
+$mainOption = Read-Host "Choose option (1-3)"
+
+switch ($mainOption) {
+    "3" {
+        # Delete models
+        Remove-OllamaModels
+        exit 0
+    }
+    "2" {
+        # Use existing model from manifests
+        $pathOption = "2"
+    }
+    default {
+        # Import a new GGUF model
+        $pathOption = "1"
+    }
+}
 
 $modelDir = $null
 $fileSize = 0
@@ -310,7 +715,7 @@ switch ($pathOption) {
 }
 
 # Detect model type using both the file path and (if available) the manifest directory
-$modelType = Detect-ModelType -ModelPath $modelPath -ModelDir $modelDir
+$modelType = Get-ModelType -ModelPath $modelPath -ModelDir $modelDir
 if ($fileSize -gt 10) {
     Write-ColorOutput "WARNING: This is a large model. Make sure you have enough RAM to run it." "Yellow"
 }
@@ -479,42 +884,45 @@ if (-not $useDefaultSettings) {
         Write-ColorOutput "-------------------" "Cyan"
         $repeat_penalty = Get-NumericInput -Prompt "Repeat penalty (1.0-2.0, higher = less repetition)" -Default $repeat_penalty -Min 1.0 -Max 2.0
         if (Get-YesNoInput -Prompt "Set a random seed (for reproducible outputs)?" -Default:$false) {
-            $seed = Get-NumericInput -Prompt "Random seed (-1 = random, 0-10000000)" -Default -1 -Min -1 -Max 10000000
+            $seed = Get-NumericInput -Prompt "Random seed (-1 = random, 0-1337)" -Default -1 -Min -1 -Max 1337
         }
     }
     Write-Output ""
     if (Get-YesNoInput -Prompt "Configure the chat template format?" -Default:$false) {
+        $templateFormats = Get-AvailableTemplateFormats
+        
         Write-ColorOutput "Template Formats:" "Cyan"
-        Write-ColorOutput "1. Default (model-specific)" "White"
-        Write-ColorOutput "2. Llama 2" "White"
-        Write-ColorOutput "3. Mistral" "White"
-        Write-ColorOutput "4. Llama 3" "White"
-        Write-ColorOutput "5. ChatML" "White"
-        Write-ColorOutput "6. Mistral-Small-24B-Instruct-2501" "White"
-        Write-ColorOutput "7. DeepSeek-R1" "White"
-        Write-ColorOutput "8. Custom" "White"
-        $templateChoice = Read-Host "Select a template format (1-8)"
-        switch ($templateChoice) {
-            "2" { $templateFormat = "llama2" }
-            "3" { $templateFormat = "mistral" }
-            "4" { $templateFormat = "llama3" }
-            "5" { $templateFormat = "chatml" }
-            "6" { $templateFormat = "{{ if .System }}<s>[SYSTEM_PROMPT]{{.System}}[/SYSTEM_PROMPT]{{ end }}{{ if .Prompt }}[INST]{{.Prompt}}[/INST]{{ end }}" }
-            "7" { $templateFormat = "{{ if .System }}<|im_start|>system
-{{ .System }}<|im_end|>
-{{ end }}{{ if .Prompt }}<|im_start|>user
-{{ .Prompt }}<|im_end|>
-{{ end }}<|im_start|>assistant" }
-            "8" {
-                Write-ColorOutput "Enter custom template (use {{.System}}, {{.Prompt}}, {{.Response}} placeholders):" "Cyan"
-                $lines = @()
-                while ($true) {
-                    $line = Read-Host
-                    if ([string]::IsNullOrWhiteSpace($line)) { break }
-                    $lines += $line
+        for ($i = 0; $i -lt $templateFormats.Count; $i++) {
+            Write-ColorOutput "$($i+1). $($templateFormats[$i].Name)" "White"
+        }
+        
+        $maxChoice = $templateFormats.Count
+        $templateChoice = Read-Host "Select a template format (1-$maxChoice)"
+        
+        try {
+            $index = [int]$templateChoice - 1
+            if ($index -lt 0 -or $index -ge $templateFormats.Count) {
+                Write-ColorOutput "Invalid selection. Using default template." "Yellow"
+                $templateFormat = "default"
+            } else {
+                $selectedTemplate = $templateFormats[$index]
+                
+                if ($selectedTemplate.Value -eq "custom") {
+                    Write-ColorOutput "Enter custom template (use {{.System}}, {{.Prompt}}, {{.Response}} placeholders):" "Cyan"
+                    $lines = @()
+                    while ($true) {
+                        $line = Read-Host
+                        if ([string]::IsNullOrWhiteSpace($line)) { break }
+                        $lines += $line
+                    }
+                    $templateFormat = $lines -join "`n"
+                } else {
+                    $templateFormat = $selectedTemplate.Value
                 }
-                $templateFormat = $lines -join "`n"
             }
+        } catch {
+            Write-ColorOutput "Invalid input. Using default template." "Yellow"
+            $templateFormat = "default"
         }
     }
 }
@@ -539,9 +947,14 @@ if (-not [string]::IsNullOrWhiteSpace($systemPrompt)) {
 }
 
 if (-not [string]::IsNullOrWhiteSpace($templateFormat)) {
-    if ($templateFormat -in @("llama2", "mistral", "llama3", "chatml")) {
+    # Handle the template format based on its value
+    if ($templateFormat -eq "default") {
+        # Don't add a TEMPLATE directive for default
+    } elseif ($templateFormat -in @("llama2", "mistral", "llama3", "chatml", "llama3.2", "mistral-instruct")) {
+        # Use the predefined template name
         $modelfileLines += "TEMPLATE `"$templateFormat`""
     } else {
+        # Use the custom template format
         $modelfileLines += "TEMPLATE `"`n$templateFormat`n`""
     }
 }
