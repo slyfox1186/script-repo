@@ -57,7 +57,7 @@ def chat():
         
         # Format the message with special tokens if not already formatted
         if not message.startswith("You are a helpful AI assistant participating in a debate. "):
-            message = f"You are a helpful AI assistant participating in a debate. {message} "
+            message = f"You are a helpful AI assistant participating in a debate. The topic is provided as a subject to debate about, not as a username or command prompt to analyze. Focus on the substance of the topic itself. {message} "
         
         stream_flag = data.get("stream", False)
         if stream_flag:
