@@ -1,110 +1,128 @@
 #!/usr/bin/env python3
 """
-Client External Script
-----------------------
-This script runs on the external LLM machine (3080 Ti) on port 5001.
-It loads the DeepSeek-R1-Distill-Qwen-14B-GGUF model via llama-cpp-python,
-receives generation requests, and returns model completions.
-It also saves conversation history in Redis for temporal memory.
+Server Script
+--------------
+This script sets up a Flask server on port 5000 to connect two LLM clients.
+It receives messages from one client, saves them to a Redis‑stack‑server for
+temporal memory, and forwards the messages to the opposite client.
+It also provides a /redis_config endpoint that returns the Redis connection
+information so external clients can use the server’s Redis instance.
 Usage:
-    python client_external.py --model_path /path/to/DeepSeek-R1-Distill-Qwen-14B-GGUF.bin
-Additional arguments allow configuration of Redis, GPU layers, and the server port.
+    python server.py --external_client_ip 192.168.50.25 --local_client_ip 192.168.50.177
+Optional arguments include the Redis host/port and the server port.
 """
 
 import argparse
 import logging
 import json
 import redis
+import requests
 from flask import Flask, request, jsonify
-
-# Import llama-cpp-python (make sure it is installed)
-try:
-    from llama_cpp import Llama
-except ImportError:
-    raise ImportError("Please install llama-cpp-python (pip install llama-cpp-python)")
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 app = Flask(__name__)
 
+# Global variables for client URLs and Redis connection
+external_client_url = None  # e.g., "192.168.50.25:5001"
+local_client_url = None     # e.g., "192.168.50.177:5001"
 redis_client = None
-model = None
+# This variable holds the external (network-accessible) IP for Redis
+redis_external_host = None
 
-def load_model(model_path, n_gpu_layers):
+@app.route('/message', methods=['POST'])
+def message():
     """
-    Loads the model using llama-cpp-python.
-    """
-    try:
-        logging.info(f"Loading model from {model_path} with n_gpu_layers={n_gpu_layers} ...")
-        return Llama(model_path=model_path, n_gpu_layers=n_gpu_layers)
-    except Exception as e:
-        logging.error("Error loading model: " + str(e))
-        exit(1)
-
-@app.route('/generate', methods=['POST'])
-def generate():
-    """
-    Expects a JSON payload with at least the key "message" (the prompt).
-    Uses the loaded model to generate a completion using streaming and returns the result.
+    Expects JSON payload with keys:
+       - sender: "external" or "local"
+       - message: The prompt/message text
+    Saves the message in Redis and forwards it to the opposite client.
     """
     try:
         data = request.get_json()
-        if not data or "message" not in data:
-            return jsonify({"error": "No message provided in JSON payload"}), 400
+        if not data:
+            return jsonify({"error": "No JSON data provided"}), 400
 
-        prompt = data.get('message')
-        logging.info(f"Received prompt: {prompt}")
+        sender = data.get('sender')
+        message_text = data.get('message')
+        if not sender or not message_text:
+            return jsonify({"error": "Missing sender or message"}), 400
 
-        # Generate completion using the updated llama-cpp-python call with streaming
-        response_stream = model.create_completion(
-            prompt,
-            max_tokens=None,
-            temperature=0.6,
-            top_p=0.95,
-            top_k=40,
-            repeat_penalty=1.2,
-            stream=True,
-            echo=False,
-            stop=["<｜User｜>", "<｜Assistant｜>"]
-        )
-        generated_text = ""
-        for token in response_stream:
-            generated_text += token.get("text", "")
+        # Store the message in Redis for temporal memory
+        redis_client.rpush("conversation", json.dumps(data))
+        logging.info(f"Stored message from '{sender}' in Redis.")
 
-        logging.info("Generation successful.")
+        # Determine the target client based on sender
+        if sender == "external":
+            target_url = f"http://{local_client_url}/generate"
+        elif sender == "local":
+            target_url = f"http://{external_client_url}/generate"
+        else:
+            return jsonify({"error": "Unknown sender value"}), 400
 
-        # Save the interaction to Redis memory
-        conversation_entry = {
-            "sender": "external",
-            "message": prompt,
-            "response": generated_text
-        }
-        redis_client.rpush("conversation", json.dumps(conversation_entry))
-        logging.info("Saved conversation entry to Redis.")
+        # Forward the message to the target client
+        logging.info(f"Forwarding message from '{sender}' to {target_url}")
+        response = requests.post(target_url, json=data, timeout=5)
+        if response.status_code != 200:
+            return jsonify({"error": "Failed to forward message", "details": response.text}), 500
 
-        return jsonify({"response": generated_text})
+        return jsonify({"status": "Message forwarded", "response": response.json()})
     except Exception as e:
-        logging.exception("Error in /generate endpoint")
+        logging.exception("Error in /message endpoint")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/memory', methods=['GET'])
+def memory():
+    """
+    Returns the full conversation history stored in Redis.
+    """
+    try:
+        messages = redis_client.lrange("conversation", 0, -1)
+        conversation = [json.loads(m.decode()) for m in messages]
+        return jsonify({"conversation": conversation})
+    except Exception as e:
+        logging.exception("Error in /memory endpoint")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/redis_config', methods=['GET'])
+def redis_config():
+    """
+    Returns the Redis connection configuration.
+    External clients can use this endpoint to connect to the Redis-stack-server.
+    """
+    try:
+        config = {
+            "redis_host": redis_external_host,
+            "redis_port": redis_client.connection_pool.connection_kwargs.get("port", 6379)
+        }
+        return jsonify(config)
+    except Exception as e:
+        logging.exception("Error in /redis_config endpoint")
         return jsonify({"error": str(e)}), 500
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Client External for LLM (DeepSeek-R1-Distill-Qwen-14B-GGUF on 3080 Ti)"
+        description="Server to connect two local LLM clients over the network."
     )
-    parser.add_argument('--model_path', type=str, required=True,
-                        help="Path to the model file (DeepSeek-R1-Distill-Qwen-14B-GGUF).")
+    parser.add_argument('--external_client_ip', type=str, required=True,
+                        help="IP address of the external client (3080 Ti).")
+    parser.add_argument('--local_client_ip', type=str, required=True,
+                        help="IP address of the local client (4090 Geforce). This should be the network IP of the machine hosting Redis and this server.")
     parser.add_argument('--redis_host', type=str, default='localhost',
                         help="Hostname for the Redis server (default: localhost).")
     parser.add_argument('--redis_port', type=int, default=6379,
                         help="Port for the Redis server (default: 6379).")
-    parser.add_argument('--port', type=int, default=5001,
-                        help="Port for this client to run on (default: 5001).")
-    parser.add_argument('--gpu_layers', type=int, default=-1,
-                        help="Number of GPU layers to use (default: -1 for all).")
+    parser.add_argument('--port', type=int, default=5000,
+                        help="Port for the server to run on (default: 5000).")
     args = parser.parse_args()
 
-    global redis_client, model
+    global external_client_url, local_client_url, redis_client, redis_external_host
+    external_client_url = f"{args.external_client_ip}:5001"
+    local_client_url = f"{args.local_client_ip}:5001"
+    # The external address for Redis will be the same as the local client's network IP
+    redis_external_host = args.local_client_ip
+
     try:
         redis_client = redis.Redis(host=args.redis_host, port=args.redis_port, db=0)
         redis_client.ping()
@@ -113,8 +131,7 @@ def main():
         logging.error("Failed to connect to Redis: " + str(e))
         exit(1)
 
-    model = load_model(args.model_path, args.gpu_layers)
-    logging.info(f"Starting Client External on port {args.port} ...")
+    logging.info(f"Starting server on port {args.port}...")
     app.run(host='0.0.0.0', port=args.port)
 
 if __name__ == '__main__':
