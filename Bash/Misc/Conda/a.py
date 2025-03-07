@@ -1,138 +1,124 @@
 #!/usr/bin/env python3
 """
-Server Script
---------------
-This script sets up a Flask server on port 5000 to connect two LLM clients.
-It receives messages from one client, saves them to a Redis‑stack‑server for
-temporal memory, and forwards the messages to the opposite client.
-It also provides a /redis_config endpoint that returns the Redis connection
-information so external clients can use the server’s Redis instance.
+LLM Server for GeForce 3080 Ti using model_3090.gguf (Streaming Enabled)
+========================================================================
+
+This server exposes a /chat API endpoint that generates responses using the 
+model_3090.gguf model (GGUF format) via llama-cpp-python. It supports streaming 
+mode via Server-Sent Events (SSE) when the request payload includes "stream": true.
+
 Usage:
-    python server.py --external_client_ip 192.168.50.25 --local_client_ip 192.168.50.177
-Optional arguments include the Redis host/port and the server port.
+    python3 llm_server_3080.py
+
+The server will use the model at ./models/model_3090.gguf and bind to 0.0.0.0:5001.
 """
 
-import argparse
-import logging
+import sys
 import json
-import redis
-import requests
-from flask import Flask, request, jsonify
-
-# Set up logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+import os
+from flask import Flask, request, jsonify, Response
+from flask_cors import CORS
+from llama_cpp import Llama
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes
 
-# Global variables for client URLs and Redis connection
-external_client_url = None  # e.g., "192.168.50.25:5001"
-local_client_url = None     # e.g., "192.168.50.177:5001"
-redis_client = None
-# This variable holds the external (network-accessible) IP for Redis
-redis_external_host = None
+def create_llm():
+    try:
+        model_path = "./models/model_3090.gguf"
+        cpu_threads = os.cpu_count()
+        return Llama(
+            model_path=model_path, 
+            n_ctx=4096,
+            n_threads=cpu_threads, 
+            n_batch=512,
+            main_gpu=0,
+            n_gpu_layers=-1, 
+            flash_attn=True,
+            use_mmap=True,
+            use_mlock=True,
+            offload_kqv=True,
+            verbose=True            
+        )
+    except Exception as e:
+        print(f"Error initializing LLM: {e}", file=sys.stderr)
+        sys.exit(1)
 
-@app.route('/message', methods=['POST'])
-def message():
-    """
-    Expects JSON payload with keys:
-       - sender: "external" or "local"
-       - message: The prompt/message text
-    Saves the message in Redis and forwards it to the opposite client.
-    """
+llm = create_llm()
+
+@app.route("/chat", methods=["POST"])
+def chat():
     try:
         data = request.get_json()
-        if not data:
-            return jsonify({"error": "No JSON data provided"}), 400
-
-        sender = data.get('sender')
-        message_text = data.get('message')
-        if not sender or not message_text:
-            return jsonify({"error": "Missing sender or message"}), 400
-
-        # Store the message in Redis for temporal memory
-        redis_client.rpush("conversation", json.dumps(data))
-        logging.info(f"Stored message from '{sender}' in Redis.")
-
-        # Determine the target client based on sender
-        if sender == "external":
-            target_url = f"http://{local_client_url}/generate"
-        elif sender == "local":
-            target_url = f"http://{external_client_url}/generate"
+        if not data or "message" not in data:
+            return jsonify({"error": "No message provided"}), 400
+        
+        message = data["message"]
+        
+        # Format the message with special tokens if not already formatted
+        if not message.startswith("You are a helpful AI assistant participating in a debate. "):
+            message = f"You are a helpful AI assistant participating in a debate. {message} "
+        
+        stream_flag = data.get("stream", False)
+        if stream_flag:
+            def generate():
+                # SSE format: each message is prefixed with "data: " and ends with two newlines
+                yield "data: {\"token\": \"\", \"event\": \"start\"}\n\n"
+                try:
+                    for token_data in llm(
+                            message,
+                            max_tokens=None, 
+                            temperature=0.6,
+                            top_p=0.95,
+                            top_k=40,
+                            stream=True,
+                            echo=False,
+                            stop=["<｜User｜>", "<｜Assistant｜>"]
+                        ):
+                        # Debug the token data
+                        print(f"Token data: {token_data}")
+                        
+                        # Extract token text correctly based on the structure
+                        if isinstance(token_data, dict):
+                            if "choices" in token_data and len(token_data["choices"]) > 0:
+                                token_text = token_data["choices"][0].get("text", "")
+                            else:
+                                token_text = token_data.get("token", "")
+                        else:
+                            token_text = str(token_data)
+                            
+                        if token_text:
+                            print(f"Sending token: {token_text}")
+                            yield f"data: {json.dumps({'token': token_text})}\n\n"
+                    yield "data: {\"token\": \"\", \"event\": \"end\"}\n\n"
+                except Exception as e:
+                    print(f"Error in generate: {e}")
+                    yield f"data: {json.dumps({'token': '', 'error': str(e)})}\n\n"
+                    yield "data: {\"token\": \"\", \"event\": \"end\"}\n\n"
+            return Response(generate(), mimetype="text/event-stream", headers={
+                'Cache-Control': 'no-cache',
+                'X-Accel-Buffering': 'no',
+                'Access-Control-Allow-Origin': '*'
+            })
         else:
-            return jsonify({"error": "Unknown sender value"}), 400
-
-        # Forward the message to the target client
-        logging.info(f"Forwarding message from '{sender}' to {target_url}")
-        response = requests.post(target_url, json=data, timeout=5)
-        if response.status_code != 200:
-            return jsonify({"error": "Failed to forward message", "details": response.text}), 500
-
-        return jsonify({"status": "Message forwarded", "response": response.json()})
+            response = llm(
+                message,
+                max_tokens=None, 
+                temperature=0.6,
+                top_p=0.95,
+                top_k=40,
+                stream=True,
+                echo=False,
+                stop=["<｜User｜>", "<｜Assistant｜>"]
+            )
+            text = response.get("choices", [{}])[0].get("text", "").strip()
+            return jsonify({"response": text})
     except Exception as e:
-        logging.exception("Error in /message endpoint")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": f"Exception: {e}"}), 500
 
-@app.route('/memory', methods=['GET'])
-def memory():
-    """
-    Returns the full conversation history stored in Redis.
-    """
-    try:
-        messages = redis_client.lrange("conversation", 0, -1)
-        conversation = [json.loads(m.decode()) for m in messages]
-        return jsonify({"conversation": conversation})
-    except Exception as e:
-        logging.exception("Error in /memory endpoint")
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/redis_config', methods=['GET'])
-def redis_config():
-    """
-    Returns the Redis connection configuration.
-    External clients can use this endpoint to connect to the Redis-stack-server.
-    """
-    try:
-        config = {
-            "redis_host": redis_external_host,
-            "redis_port": redis_client.connection_pool.connection_kwargs.get("port", 6379)
-        }
-        return jsonify(config)
-    except Exception as e:
-        logging.exception("Error in /redis_config endpoint")
-        return jsonify({"error": str(e)}), 500
-
-def main():
-    parser = argparse.ArgumentParser(
-        description="Server to connect two local LLM clients over the network."
-    )
-    parser.add_argument('--external_client_ip', type=str, required=True,
-                        help="IP address of the external client (3080 Ti).")
-    parser.add_argument('--local_client_ip', type=str, required=True,
-                        help="IP address of the local client (4090 Geforce). This should be the network IP of the machine hosting Redis and this server.")
-    parser.add_argument('--redis_host', type=str, default='localhost',
-                        help="Hostname for the Redis server (default: localhost).")
-    parser.add_argument('--redis_port', type=int, default=6379,
-                        help="Port for the Redis server (default: 6379).")
-    parser.add_argument('--port', type=int, default=5000,
-                        help="Port for the server to run on (default: 5000).")
-    args = parser.parse_args()
-
-    global external_client_url, local_client_url, redis_client, redis_external_host
-    external_client_url = f"{args.external_client_ip}:5001"
-    local_client_url = f"{args.local_client_ip}:5001"
-    # The external address for Redis will be the same as the local client's network IP
-    redis_external_host = args.local_client_ip
-
-    try:
-        redis_client = redis.Redis(host=args.redis_host, port=args.redis_port, db=0)
-        redis_client.ping()
-        logging.info("Connected to Redis successfully.")
-    except Exception as e:
-        logging.error("Failed to connect to Redis: " + str(e))
-        exit(1)
-
-    logging.info(f"Starting server on port {args.port}...")
-    app.run(host='0.0.0.0', port=args.port)
-
-if __name__ == '__main__':
-    main()
+if __name__ == "__main__":
+    model_path = "./models/model_3090.gguf"
+    host = "0.0.0.0"
+    port = 5001
+    print(f"Starting LLM server on {host}:{port} using model {model_path}")
+    app.run(host=host, port=port, debug=False)
