@@ -19,9 +19,13 @@ import os
 from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
 from llama_cpp import Llama
+import redis_memory  # Import the Redis memory module
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
+
+# Session ID for persistent memory
+SESSION_ID = redis_memory.SESSION_ID
 
 def create_llm():
     try:
@@ -59,6 +63,9 @@ def chat():
         if not message.startswith("You are a helpful AI assistant participating in a debate. "):
             message = f"You are a helpful AI assistant participating in a debate. {message} "
         
+        # Check if session_id is provided in the request
+        session_id = data.get("session_id", SESSION_ID)
+        
         stream_flag = data.get("stream", False)
         if stream_flag:
             def generate():
@@ -73,7 +80,7 @@ def chat():
                             top_k=40,
                             stream=True,
                             echo=False,
-                            stop=["<｜User｜>", "<｜Assistant｜>"]
+                            stop=["<User｜>", "<｜Assistant｜>"]
                         ):
                         # Debug the token data
                         print(f"Token data: {token_data}")
@@ -109,7 +116,7 @@ def chat():
                 top_k=40,
                 stream=True,
                 echo=False,
-                stop=["<｜User｜>", "<｜Assistant｜>"]
+                stop=["<User｜>", "<｜Assistant｜>"]
             )
             text = response.get("choices", [{}])[0].get("text", "").strip()
             return jsonify({"response": text})
@@ -117,8 +124,9 @@ def chat():
         return jsonify({"error": f"Exception: {e}"}), 500
 
 if __name__ == "__main__":
-    model_path = "./models/model_3090.gguf"
-    host = "0.0.0.0"
-    port = 5001
-    print(f"Starting LLM server on {host}:{port} using model {model_path}")
-    app.run(host=host, port=port, debug=False)
+    # Check Redis connection
+    if redis_memory.check_connection():
+        print(f"Connected to Redis server. Using session ID: {SESSION_ID}")
+    else:
+        print("Warning: Could not connect to Redis server. Memory features will not work.")
+    app.run(host='0.0.0.0', port=5001, debug=False, threaded=True)
