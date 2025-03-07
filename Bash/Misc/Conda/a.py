@@ -19,13 +19,9 @@ import os
 from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
 from llama_cpp import Llama
-import redis_memory  # Import the Redis memory module
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
-
-# Session ID for persistent memory
-SESSION_ID = redis_memory.SESSION_ID
 
 def create_llm():
     try:
@@ -62,9 +58,6 @@ def chat():
         # Format the message with special tokens if not already formatted
         if not message.startswith("You are a helpful AI assistant participating in a debate. "):
             message = f"You are a helpful AI assistant participating in a debate. {message} "
-        
-        # Check if session_id is provided in the request
-        session_id = data.get("session_id", SESSION_ID)
         
         stream_flag = data.get("stream", False)
         if stream_flag:
@@ -124,9 +117,4 @@ def chat():
         return jsonify({"error": f"Exception: {e}"}), 500
 
 if __name__ == "__main__":
-    # Check Redis connection
-    if redis_memory.check_connection():
-        print(f"Connected to Redis server. Using session ID: {SESSION_ID}")
-    else:
-        print("Warning: Could not connect to Redis server. Memory features will not work.")
     app.run(host='0.0.0.0', port=5001, debug=False, threaded=True)
