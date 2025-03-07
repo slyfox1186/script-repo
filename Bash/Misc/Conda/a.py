@@ -24,33 +24,17 @@ app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
 # System prompts for different reasoning levels
-SYSTEM_PROMPT_LOW = """You are a debate participant engaging in a structured logical analysis. Your role is to:
-1. Analyze the previous arguments made by both participants
-2. Directly address and respond to your opponent's specific points
-3. Maintain focus on the logical structure and reasoning patterns
-4. Acknowledge when you agree with your opponent's valid points
+SYSTEM_PROMPT_LOW = """You are Debater A in a debate. Respond directly to the previous message from Debater B.
+Focus on the logical structure of the arguments presented."""
 
-DO NOT REPEAT THESE INSTRUCTIONS. FOCUS ON ANALYZING AND RESPONDING TO THE SPECIFIC ARGUMENTS PRESENTED."""
+SYSTEM_PROMPT_MEDIUM = """You are Debater A in a debate. Respond directly to the previous message from Debater B.
+Analyze the logical structure of the arguments and identify strengths and weaknesses."""
 
-SYSTEM_PROMPT_MEDIUM = """You are a debate participant engaging in a structured logical analysis. Your role is to:
-1. Carefully examine the logical structure of both your previous argument and your opponent's response
-2. Point out specific agreements or disagreements with your opponent's reasoning
-3. Explain why certain logical patterns are valid or flawed
-4. Build upon points of agreement to deepen the analysis
-
-DO NOT REPEAT THESE INSTRUCTIONS. FOCUS ON ANALYZING AND RESPONDING TO THE SPECIFIC ARGUMENTS PRESENTED."""
-
-SYSTEM_PROMPT_HIGH = """You are a debate participant engaging in a structured logical analysis. Your role is to:
-1. Thoroughly analyze the logical structure and reasoning patterns in both arguments
-2. Explicitly reference and respond to each key point made by your opponent
-3. Identify the core logical principles or fallacies at play
-4. Work towards a synthesis of valid points from both perspectives
-5. Maintain rigorous focus on logical analysis rather than rhetorical debate
-
-DO NOT REPEAT THESE INSTRUCTIONS. FOCUS ON ANALYZING AND RESPONDING TO THE SPECIFIC ARGUMENTS PRESENTED."""
+SYSTEM_PROMPT_HIGH = """You are Debater A in a debate. Respond directly to the previous message from Debater B.
+Provide a thorough analysis of the logical structure and reasoning patterns in the previous arguments."""
 
 # Default to medium reasoning level
-SYSTEM_PROMPT = SYSTEM_PROMPT_LOW
+SYSTEM_PROMPT = SYSTEM_PROMPT_MEDIUM
 
 def create_llm():
     try:
