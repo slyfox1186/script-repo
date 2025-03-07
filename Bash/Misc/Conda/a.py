@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-LLM Server for GeForce 3080 Ti using DeepSeek-R1-Distill-Qwen-14B (Streaming Enabled)
-========================================================================================
+LLM Server for GeForce 3080 Ti using model_3090.gguf (Streaming Enabled)
+========================================================================
 
-This server exposes a /chat API endpoint for generating responses using the 
-DeepSeek-R1-Distill-Qwen-14B model (GGUF format) via llama-cpp-python. 
-Streaming mode is supported via Server-Sent Events (SSE) when "stream": true is provided in the request.
+This server exposes a /chat API endpoint that generates responses using the 
+model_3090.gguf model (GGUF format) via llama-cpp-python. It supports streaming 
+mode via Server-Sent Events (SSE) when the request payload includes "stream": true.
 
 Usage:
     python3 llm_server_3080.py
@@ -27,7 +27,19 @@ def create_llm():
     try:
         model_path = "./models/model_3090.gguf"
         cpu_threads = os.cpu_count()
-        return Llama(model_path=model_path, n_gpu_layers=-1, n_threads=cpu_threads, verbose=True)
+        return Llama(
+            model_path=model_path, 
+            n_ctx=4096,
+            n_threads=cpu_threads, 
+            n_batch=512,
+            main_gpu=0,
+            n_gpu_layers=-1, 
+            flash_attn=True,
+            use_mmap=True,
+            use_mlock=True,
+            offload_kqv=True,
+            verbose=True            
+        )
     except Exception as e:
         print(f"Error initializing LLM: {e}", file=sys.stderr)
         sys.exit(1)
@@ -40,23 +52,65 @@ def chat():
         data = request.get_json()
         if not data or "message" not in data:
             return jsonify({"error": "No message provided"}), 400
+        
         message = data["message"]
+        
+        # Format the message with special tokens if not already formatted
+        if not message.startswith("You are a helpful AI assistant participating in a debate. "):
+            message = f"You are a helpful AI assistant participating in a debate. {message} "
+        
         stream_flag = data.get("stream", False)
         if stream_flag:
             def generate():
                 # SSE format: each message is prefixed with "data: " and ends with two newlines
                 yield "data: {\"token\": \"\", \"event\": \"start\"}\n\n"
-                for token_data in llm(message, max_tokens=None, temperature=0.6, stream=True):
-                    token_text = token_data.get("token", "")
-                    yield f"data: {json.dumps({'token': token_text})}\n\n"
-                yield "data: {\"token\": \"\", \"event\": \"end\"}\n\n"
+                try:
+                    for token_data in llm(
+                            message,
+                            max_tokens=None, 
+                            temperature=0.6,
+                            top_p=0.95,
+                            top_k=40,
+                            stream=True,
+                            echo=False,
+                            stop=["<｜User｜>", "<｜Assistant｜>"]
+                        ):
+                        # Debug the token data
+                        print(f"Token data: {token_data}")
+                        
+                        # Extract token text correctly based on the structure
+                        if isinstance(token_data, dict):
+                            if "choices" in token_data and len(token_data["choices"]) > 0:
+                                token_text = token_data["choices"][0].get("text", "")
+                            else:
+                                token_text = token_data.get("token", "")
+                        else:
+                            token_text = str(token_data)
+                            
+                        if token_text:
+                            print(f"Sending token: {token_text}")
+                            yield f"data: {json.dumps({'token': token_text})}\n\n"
+                    yield "data: {\"token\": \"\", \"event\": \"end\"}\n\n"
+                except Exception as e:
+                    print(f"Error in generate: {e}")
+                    yield f"data: {json.dumps({'token': '', 'error': str(e)})}\n\n"
+                    yield "data: {\"token\": \"\", \"event\": \"end\"}\n\n"
             return Response(generate(), mimetype="text/event-stream", headers={
                 'Cache-Control': 'no-cache',
                 'X-Accel-Buffering': 'no',
                 'Access-Control-Allow-Origin': '*'
             })
         else:
-            response = llm(message, max_tokens=None, temperature=0.6)
+            response = llm(
+                message,
+                max_tokens=None, 
+                temperature=0.6,
+                top_p=0.95,
+                top_k=40,
+                stream=True,
+                echo=False,
+                stop=["<｜User｜>", "<｜Assistant｜>"]
+            )
             text = response.get("choices", [{}])[0].get("text", "").strip()
             return jsonify({"response": text})
     except Exception as e:
