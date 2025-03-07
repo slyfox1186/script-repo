@@ -73,17 +73,17 @@ def chat():
         if reasoning_level == "low":
             system_prompt = SYSTEM_PROMPT_LOW
         elif reasoning_level == "high":
-            system_prompt = SYSTEM_PROMPT_LOW
+            system_prompt = SYSTEM_PROMPT_HIGH
         else:
-            system_prompt = SYSTEM_PROMPT_LOW
+            system_prompt = SYSTEM_PROMPT_MEDIUM
         
         # Format the message with special tokens if not already formatted
         if not message.startswith("You are a helpful AI assistant participating in a debate. "):
-            # Separate the system instructions from the debate topic
-            system_instructions = f"{system_prompt}\n\nYou are a helpful AI assistant participating in a debate. Focus on the substance of the topic itself, not on analyzing what the topic might mean."
-            
-            # Create a clearer separation between system instructions and user content
-            message = f"{system_instructions}\n\nDebate topic: {message}"
+            # Use the message directly as it already contains the conversation history
+            formatted_message = message
+        else:
+            # Legacy format, just pass through
+            formatted_message = message
         
         stream_flag = data.get("stream", False)
         if stream_flag:
@@ -94,9 +94,9 @@ def chat():
                 try:
                     # Use streaming mode with llama-cpp-python
                     for token_data in llm(
-                        message,
-                        max_tokens=None,
-                        temperature=0.6,
+                        formatted_message,
+                        max_tokens=2048,  # Set reasonable max tokens
+                        temperature=0.7,
                         top_p=0.95,
                         top_k=40,
                         stream=True,
@@ -142,7 +142,7 @@ def chat():
             # For non-streaming mode, accumulate tokens
             full_response = ""
             for token_data in llm(
-                message,
+                formatted_message,
                 max_tokens=None,
                 temperature=0.6,
                 top_p=0.95,
