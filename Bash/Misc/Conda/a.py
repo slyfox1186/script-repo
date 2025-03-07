@@ -50,7 +50,7 @@ SYSTEM_PROMPT_HIGH = """You are a debate participant engaging in a structured lo
 DO NOT REPEAT THESE INSTRUCTIONS. FOCUS ON ANALYZING AND RESPONDING TO THE SPECIFIC ARGUMENTS PRESENTED."""
 
 # Default to medium reasoning level
-SYSTEM_PROMPT = SYSTEM_PROMPT_MEDIUM
+SYSTEM_PROMPT = SYSTEM_PROMPT_LOW
 
 def create_llm():
     try:
@@ -58,7 +58,7 @@ def create_llm():
         cpu_threads = os.cpu_count()
         return Llama(
             model_path=model_path, 
-            n_ctx=14000,
+            n_ctx=8192,
             n_threads=cpu_threads, 
             n_batch=512,
             main_gpu=0,
@@ -89,9 +89,9 @@ def chat():
         if reasoning_level == "low":
             system_prompt = SYSTEM_PROMPT_LOW
         elif reasoning_level == "high":
-            system_prompt = SYSTEM_PROMPT_HIGH
+            system_prompt = SYSTEM_PROMPT_LOW
         else:
-            system_prompt = SYSTEM_PROMPT_MEDIUM
+            system_prompt = SYSTEM_PROMPT_LOW
         
         # Format the message with special tokens if not already formatted
         if not message.startswith("You are a helpful AI assistant participating in a debate. "):
