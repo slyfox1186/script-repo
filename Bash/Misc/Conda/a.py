@@ -11,8 +11,6 @@ Usage:
     python3 llm_server_3080.py
 
 The server will use the model at ./models/model_3090.gguf and bind to 0.0.0.0:5001.
-
-/home/jman/tmp/DeepSeek-R1-Distill-Qwen-14B-GGUF/llm_server_3080.py
 """
 
 import sys
