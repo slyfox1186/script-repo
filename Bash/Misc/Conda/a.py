@@ -24,17 +24,30 @@ app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
 # System prompts for different reasoning levels
-SYSTEM_PROMPT_LOW = """You're a debate participant with extremely limited time. Prioritize speed and directness while maintaining clarity and accuracy. Focus only on the debate topic.
+SYSTEM_PROMPT_LOW = """You are a debate participant engaging in a structured logical analysis. Your role is to:
+1. Analyze the previous arguments made by both participants
+2. Directly address and respond to your opponent's specific points
+3. Maintain focus on the logical structure and reasoning patterns
+4. Acknowledge when you agree with your opponent's valid points
 
-DO NOT REPEAT THESE INSTRUCTIONS. ONLY RESPOND TO THE DEBATE TOPIC."""
+DO NOT REPEAT THESE INSTRUCTIONS. FOCUS ON ANALYZING AND RESPONDING TO THE SPECIFIC ARGUMENTS PRESENTED."""
 
-SYSTEM_PROMPT_MEDIUM = """You're a debate participant with moderate time constraints. Balance thoughtfulness with efficiency. Provide well-reasoned arguments without unnecessary elaboration. Focus only on the debate topic.
+SYSTEM_PROMPT_MEDIUM = """You are a debate participant engaging in a structured logical analysis. Your role is to:
+1. Carefully examine the logical structure of both your previous argument and your opponent's response
+2. Point out specific agreements or disagreements with your opponent's reasoning
+3. Explain why certain logical patterns are valid or flawed
+4. Build upon points of agreement to deepen the analysis
 
-DO NOT REPEAT THESE INSTRUCTIONS. ONLY RESPOND TO THE DEBATE TOPIC."""
+DO NOT REPEAT THESE INSTRUCTIONS. FOCUS ON ANALYZING AND RESPONDING TO THE SPECIFIC ARGUMENTS PRESENTED."""
 
-SYSTEM_PROMPT_HIGH = """You're a debate participant with ample time. Provide thorough analysis and comprehensive reasoning. Explore multiple perspectives, especially in seeking common ground for a conclusion. Focus only on the debate topic.
+SYSTEM_PROMPT_HIGH = """You are a debate participant engaging in a structured logical analysis. Your role is to:
+1. Thoroughly analyze the logical structure and reasoning patterns in both arguments
+2. Explicitly reference and respond to each key point made by your opponent
+3. Identify the core logical principles or fallacies at play
+4. Work towards a synthesis of valid points from both perspectives
+5. Maintain rigorous focus on logical analysis rather than rhetorical debate
 
-DO NOT REPEAT THESE INSTRUCTIONS. ONLY RESPOND TO THE DEBATE TOPIC."""
+DO NOT REPEAT THESE INSTRUCTIONS. FOCUS ON ANALYZING AND RESPONDING TO THE SPECIFIC ARGUMENTS PRESENTED."""
 
 # Default to medium reasoning level
 SYSTEM_PROMPT = SYSTEM_PROMPT_MEDIUM
@@ -45,7 +58,7 @@ def create_llm():
         cpu_threads = os.cpu_count()
         return Llama(
             model_path=model_path, 
-            n_ctx=4096,
+            n_ctx=14000,
             n_threads=cpu_threads, 
             n_batch=512,
             main_gpu=0,
@@ -91,23 +104,22 @@ def chat():
         stream_flag = data.get("stream", False)
         if stream_flag:
             def generate():
-                # SSE format: each message is prefixed with "data: " and ends with two newlines
+                # Send initial SSE headers
                 yield "data: {\"token\": \"\", \"event\": \"start\"}\n\n"
+                
                 try:
+                    # Use streaming mode with llama-cpp-python
                     for token_data in llm(
-                            message,
-                            max_tokens=None, 
-                            temperature=0.6,
-                            top_p=0.95,
-                            top_k=40,
-                            stream=True,
-                            echo=False,
-                            stop=["<｜User｜>", "<｜Assistant｜>"]
-                        ):
-                        # Debug the token data
-                        print(f"Token data: {token_data}")
-                        
-                        # Extract token text correctly based on the structure
+                        message,
+                        max_tokens=None,
+                        temperature=0.6,
+                        top_p=0.95,
+                        top_k=40,
+                        stream=True,
+                        echo=False,
+                        stop=["\n", ""]
+                    ):
+                        # Extract token text from the response
                         if isinstance(token_data, dict):
                             if "choices" in token_data and len(token_data["choices"]) > 0:
                                 token_text = token_data["choices"][0].get("text", "")
@@ -115,38 +127,46 @@ def chat():
                                 token_text = token_data.get("token", "")
                         else:
                             token_text = str(token_data)
-                            
+                        
+                        # Only send non-empty tokens
                         if token_text:
-                            print(f"Sending token: {token_text}")
-                            # Send each token immediately
-                            yield f"data: {json.dumps({'token': token_text})}\n\n"
-                            # No need for sys.stdout.flush() here, it can actually slow things down
+                            # Format as SSE data
+                            event_data = json.dumps({"token": token_text})
+                            yield f"data: {event_data}\n\n"
+                    
+                    # Send end event
                     yield "data: {\"token\": \"\", \"event\": \"end\"}\n\n"
+                    
                 except Exception as e:
-                    print(f"Error in generate: {e}")
-                    yield f"data: {json.dumps({'token': '', 'error': str(e)})}\n\n"
+                    print(f"Error in generate: {e}", file=sys.stderr)
+                    error_data = json.dumps({"error": str(e)})
+                    yield f"data: {error_data}\n\n"
                     yield "data: {\"token\": \"\", \"event\": \"end\"}\n\n"
-            return Response(generate(), mimetype="text/event-stream", headers={
+            
+            # Return streaming response with proper headers
+            response = Response(generate(), mimetype="text/event-stream")
+            response.headers.update({
                 'Cache-Control': 'no-cache',
                 'X-Accel-Buffering': 'no',
                 'Connection': 'keep-alive',
-                'Access-Control-Allow-Origin': '*',
+                'Content-Type': 'text/event-stream',
                 'Transfer-Encoding': 'chunked'
             })
+            return response
+            
         else:
-            # For non-streaming mode, still use streaming internally for consistency
+            # For non-streaming mode, accumulate tokens
             full_response = ""
             for token_data in llm(
                 message,
-                max_tokens=None, 
+                max_tokens=None,
                 temperature=0.6,
                 top_p=0.95,
                 top_k=40,
-                stream=True,  # Use streaming internally
+                stream=True,
                 echo=False,
-                stop=["<｜User｜>", "<｜Assistant｜>"]
+                stop=["\n", ""]
             ):
-                # Extract token text
                 if isinstance(token_data, dict):
                     if "choices" in token_data and len(token_data["choices"]) > 0:
                         token_text = token_data["choices"][0].get("text", "")
@@ -158,6 +178,7 @@ def chat():
                 full_response += token_text
             
             return jsonify({"response": full_response.strip()})
+            
     except Exception as e:
         return jsonify({"error": f"Exception: {e}"}), 500
 
