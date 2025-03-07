@@ -102,7 +102,7 @@ def chat():
                             top_k=40,
                             stream=True,
                             echo=False,
-                            stop=["\n", ""]
+                            stop=["<｜User｜>", "<｜Assistant｜>"]
                         ):
                         # Debug the token data
                         print(f"Token data: {token_data}")
@@ -144,7 +144,7 @@ def chat():
                 top_k=40,
                 stream=True,  # Use streaming internally
                 echo=False,
-                stop=["\n", ""]
+                stop=["<｜User｜>", "<｜Assistant｜>"]
             ):
                 # Extract token text
                 if isinstance(token_data, dict):
