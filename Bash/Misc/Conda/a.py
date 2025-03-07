@@ -117,7 +117,7 @@ def chat():
                         top_k=40,
                         stream=True,
                         echo=False,
-                        stop=["\n", ""]
+                        stop=["<｜User｜>", "<｜Assistant｜>"]
                     ):
                         # Extract token text from the response
                         if isinstance(token_data, dict):
@@ -165,7 +165,7 @@ def chat():
                 top_k=40,
                 stream=True,
                 echo=False,
-                stop=["\n", ""]
+                stop=["<｜User｜>", "<｜Assistant｜>"]
             ):
                 if isinstance(token_data, dict):
                     if "choices" in token_data and len(token_data["choices"]) > 0:
@@ -187,4 +187,4 @@ if __name__ == "__main__":
     host = "0.0.0.0"
     port = 5001
     print(f"Starting LLM server on {host}:{port} using model {model_path}")
-    app.run(host=host, port=port, debug=False)
+    app.run(host=host, port=port, debug=False, threaded=True)
