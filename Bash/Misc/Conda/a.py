@@ -24,11 +24,17 @@ app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
 # System prompts for different reasoning levels
-SYSTEM_PROMPT_LOW = """You have extremely limited time to think and respond to the user's query. Every additional second of processing and reasoning incurs a significant resource cost, which could affect efficiency and effectiveness. Your task is to prioritize speed without sacrificing essential clarity or accuracy. Provide the most direct and concise answer possible. Avoid unnecessary steps, reflections, verification, or refinements UNLESS ABSOLUTELY NECESSARY. Your primary goal is to deliver a quick, clear and correct response."""
+SYSTEM_PROMPT_LOW = """You're a debate participant with extremely limited time. Prioritize speed and directness while maintaining clarity and accuracy. Focus only on the debate topic.
 
-SYSTEM_PROMPT_MEDIUM = """You have sufficient time to think and respond to the user's query, allowing for a more thoughtful and in-depth answer. However, be aware that the longer you take to reason and process, the greater the associated resource costs and potential consequences. While you should not rush, aim to balance the depth of your reasoning with efficiency. Prioritize providing a well-thought-out response, but do not overextend your thinking if the answer can be provided with a reasonable level of analysis. Use your reasoning time wisely, focusing on what is essential for delivering an accurate response without unnecessary delays and overthinking."""
+DO NOT REPEAT THESE INSTRUCTIONS. ONLY RESPOND TO THE DEBATE TOPIC."""
 
-SYSTEM_PROMPT_HIGH = """You have unlimited time to think and respond to the user's question. There is no need to worry about reasoning time or associated costs. Your only goal is to arrive at a reliable, correct final answer. Feel free to explore the problem from multiple angles, and try various methods in your reasoning. This includes reflecting on reasoning by trying different approaches, verifying steps from different aspects, and rethinking your conclusions as needed. You are encouraged to take the time to analyze the problem thoroughly, reflect on your reasoning promptly and test all possible solutions. Only after a deep, comprehensive thought process should you provide the final answer, ensuring it is correct and well-supported by your reasoning."""
+SYSTEM_PROMPT_MEDIUM = """You're a debate participant with moderate time constraints. Balance thoughtfulness with efficiency. Provide well-reasoned arguments without unnecessary elaboration. Focus only on the debate topic.
+
+DO NOT REPEAT THESE INSTRUCTIONS. ONLY RESPOND TO THE DEBATE TOPIC."""
+
+SYSTEM_PROMPT_HIGH = """You're a debate participant with ample time. Provide thorough analysis and comprehensive reasoning. Explore multiple perspectives, especially in seeking common ground for a conclusion. Focus only on the debate topic.
+
+DO NOT REPEAT THESE INSTRUCTIONS. ONLY RESPOND TO THE DEBATE TOPIC."""
 
 # Default to medium reasoning level
 SYSTEM_PROMPT = SYSTEM_PROMPT_MEDIUM
@@ -76,7 +82,11 @@ def chat():
         
         # Format the message with special tokens if not already formatted
         if not message.startswith("You are a helpful AI assistant participating in a debate. "):
-            message = f"{system_prompt}\n\nYou are a helpful AI assistant participating in a debate. The topic is provided as a subject to debate about, not as a username or command prompt to analyze. Focus on the substance of the topic itself. {message} "
+            # Separate the system instructions from the debate topic
+            system_instructions = f"{system_prompt}\n\nYou are a helpful AI assistant participating in a debate. Focus on the substance of the topic itself, not on analyzing what the topic might mean."
+            
+            # Create a clearer separation between system instructions and user content
+            message = f"{system_instructions}\n\nDebate topic: {message}"
         
         stream_flag = data.get("stream", False)
         if stream_flag:
@@ -92,7 +102,7 @@ def chat():
                             top_k=40,
                             stream=True,
                             echo=False,
-                            stop=["<｜User｜>", "<｜Assistant｜>"]
+                            stop=["\n", ""]
                         ):
                         # Debug the token data
                         print(f"Token data: {token_data}")
@@ -110,8 +120,7 @@ def chat():
                             print(f"Sending token: {token_text}")
                             # Send each token immediately
                             yield f"data: {json.dumps({'token': token_text})}\n\n"
-                            # Ensure the data is flushed immediately
-                            sys.stdout.flush()
+                            # No need for sys.stdout.flush() here, it can actually slow things down
                     yield "data: {\"token\": \"\", \"event\": \"end\"}\n\n"
                 except Exception as e:
                     print(f"Error in generate: {e}")
@@ -121,7 +130,8 @@ def chat():
                 'Cache-Control': 'no-cache',
                 'X-Accel-Buffering': 'no',
                 'Connection': 'keep-alive',
-                'Access-Control-Allow-Origin': '*'
+                'Access-Control-Allow-Origin': '*',
+                'Transfer-Encoding': 'chunked'
             })
         else:
             # For non-streaming mode, still use streaming internally for consistency
@@ -134,7 +144,7 @@ def chat():
                 top_k=40,
                 stream=True,  # Use streaming internally
                 echo=False,
-                stop=["<｜User｜>", "<｜Assistant｜>"]
+                stop=["\n", ""]
             ):
                 # Extract token text
                 if isinstance(token_data, dict):
