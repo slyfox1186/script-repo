@@ -1,98 +1,111 @@
 #!/usr/bin/env python3
 """
-LLM Server for GeForce 3080 Ti using DeepSeek-R1-Distill-Qwen-14B (Streaming Enabled)
-========================================================================================
+debate_client.py
 
-This server exposes a /chat API endpoint for generating responses using the 
-DeepSeek-R1-Distill-Qwen-14B model (GGUF format) via llama-cpp-python. It supports streaming 
-mode when the request payload includes "stream": true, yielding tokens one by one.
+./debate_client.py --host 0.0.0.0 --port 5000 --debug False
+
+This script starts a minimal Flask server that exposes an endpoint to process debate prompts.
+When contacted by the Debate Server, it uses the local LLM (via llama-cpp-python) to generate a counter-argument.
 
 Usage:
-    python3 llm_server_3080.py --model_path ./models/model_3090.gguf [--host 0.0.0.0]
-                               [--port 5001] [--gpu_layers -1] [--max_tokens 256]
-                               [--temperature 0.7] [--n_threads 8]
+    ./debate_client.py [--host 0.0.0.0] [--port 5000] [--debug False]
+                        [--model-path ./models/name.gguf] [--n_gpu_layers 20]
 
-Arguments:
-    --model_path    Path to the DeepSeek-R1-Distill-Qwen-14B model file (default: ./models/model_3090.gguf)
-    --host          Host IP to bind (default: 0.0.0.0)
-    --port          Port number (default: 5001)
-    --gpu_layers    Number of GPU layers (default: -1)
-    --max_tokens    Maximum tokens to generate (default: 256)
-    --temperature   Temperature for generation (default: 0.7)
-    --n_threads     Number of CPU threads to use (default: 8)
+Example:
+    ./debate_client.py --host 0.0.0.0 --port 5000 --debug False
 """
-
 import argparse
-import sys
+import logging
 import os
-from flask import Flask, request, jsonify, Response
-from llama_cpp import Llama
+from flask import Flask, request, jsonify
+import sys
 
+# Attempt to import the llama-cpp-python module
+try:
+    from llama_cpp import Llama
+except ImportError as e:
+    logging.error("Failed to import llama_cpp: %s", e)
+    sys.exit(1)
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(levelname)s: %(message)s')
+
+# Parse command-line arguments with a detailed help menu
+parser = argparse.ArgumentParser(
+    description="Debate Client for processing debate messages via a local LLM (GeForce 3080TI)."
+)
+parser.add_argument("--host", type=str, default="0.0.0.0",
+                    help="Host to run the client Flask server on (default: 0.0.0.0)")
+parser.add_argument("--port", type=int, default=5000,
+                    help="Port to run the client Flask server on (default: 5000)")
+parser.add_argument("--debug", type=bool, default=False,
+                    help="Run Flask in debug mode (default: False)")
+parser.add_argument("--model-path", type=str, default="./models/name.gguf",
+                    help="Path to the local LLM model for the client (default: ./models/name.gguf)")
+parser.add_argument("--n_gpu_layers", type=int, default=-1,
+                    help="Number of GPU layers to use (default: -1 for the client)")
+args = parser.parse_args()
+
+# Initialize the local client LLM model using llama-cpp-python
+try:
+    client_llm = Llama(
+        model_path=args.model_path,
+        n_batch=512,
+        n_threads=os.cpu_count(),
+        main_gpu=0,
+        n_gpu_layers=args.n_gpu_layers,
+        flash_attn=True,
+        use_mlock=True,
+        use_mmap=True,
+        offload_kqv=True,
+        verbose=True
+    )
+    logging.info("Client LLM model loaded successfully from '%s'", args.model_path)
+except Exception as e:
+    logging.error("Failed to load client LLM model: %s", e)
+    sys.exit(1)
+
+# Create the Flask app
 app = Flask(__name__)
+app.config["DEBUG"] = args.debug
 
-def create_llm(model_path, gpu_layers, n_threads, **kwargs):
+@app.route("/process_debate", methods=["POST"])
+def process_debate():
+    """
+    Process a debate request.
+    Expected JSON payload:
+        - topic: The debate topic.
+        - previous: The previous argument from the server.
+    """
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No JSON payload provided"}), 400
+
+    topic = data.get("topic", "").strip()
+    previous = data.get("previous", "")
+    if not topic:
+        return jsonify({"error": "No topic provided in payload"}), 400
+
     try:
-        # Initialize the model using best practices.
-        return Llama(model_path=model_path, n_gpu_layers=gpu_layers, n_threads=n_threads, verbose=False, **kwargs)
+        # Formulate a prompt for the client LLM model
+        prompt = (f"Debate on: {topic}\n"
+                  f"Previous argument: {previous}\n"
+                  "Counter-argument from Client (3080TI):")
+        response_obj = client_llm(prompt, max_tokens=200)
+        client_response = response_obj["choices"][0]["text"].strip()
     except Exception as e:
-        print(f"Error initializing LLM: {e}", file=sys.stderr)
-        sys.exit(1)
+        logging.error("Client LLM generation error: %s", e)
+        return jsonify({"error": f"Client LLM error: {str(e)}"}), 500
 
-def parse_args():
-    parser = argparse.ArgumentParser(description="LLM Server for GeForce 3080 Ti using DeepSeek-R1-Distill-Qwen-14B")
-    parser.add_argument("--model_path", default="./models/model_3090.gguf",
-                        help="Path to the DeepSeek-R1-Distill-Qwen-14B model file (default: ./models/model_3090.gguf)")
-    parser.add_argument("--host", default="0.0.0.0", help="Host IP to bind (default: 0.0.0.0)")
-    parser.add_argument("--port", type=int, default=5001, help="Port number (default: 5001)")
-    parser.add_argument("--gpu_layers", type=int, default=-1, help="Number of GPU layers (default: -1)")
-    parser.add_argument("--max_tokens", type=int, default=4096, help="Maximum tokens to generate (default: 256)")
-    parser.add_argument("--temperature", type=float, default=0.6, help="Temperature for generation (default: 0.7)")
-    parser.add_argument("--n_threads", type=int, default=os.cpu_count(), help="Number of CPU threads to use (default: 8)")
-    return parser.parse_args()
+    return jsonify({"response": client_response})
 
-args = parse_args()
-llm = create_llm(args.model_path, args.gpu_layers, args.n_threads)
-
-@app.route("/chat", methods=["POST"])
-def chat():
+def main():
+    """Start the client Flask server."""
     try:
-        data = request.get_json()
-        if not data or "message" not in data:
-            return jsonify({"error": "No message provided"}), 400
-        message = data["message"]
-        stream_flag = data.get("stream", True)
-        if stream_flag:
-            def generate():
-                # Use streaming mode to yield tokens one by one.
-                for token_data in llm(
-                    message,
-                    max_tokens=4096,
-                    temperature=0.6,
-                    stream=True,
-                    echo=False,
-                    top_p=0.95,
-                    top_k=40,
-                    stop=["<｜User｜>", "<｜Assistant｜>"]
-                ):
-                    token_text = token_data.get("token", "")
-                    yield token_text
-            return Response(generate(), mimetype="text/plain")
-        else:
-            response = llm(
-                message,
-                max_tokens=4096,
-                temperature=0.6,
-                top_p=0.95,
-                top_k=40,
-                stream=True,
-                echo=False,
-                stop=["<｜User｜>", "<｜Assistant｜>"]
-            )
-            text = response.get("choices", [{}])[0].get("text", "").strip()
-            return jsonify({"response": text})
+        logging.info("Starting Debate Client on %s:%s", args.host, args.port)
+        app.run(host=args.host, port=args.port, debug=args.debug)
     except Exception as e:
-        return jsonify({"error": f"Exception: {e}"}), 500
+        logging.error("Error running Flask client server: %s", e)
 
 if __name__ == "__main__":
-    print(f"Starting LLM server on {args.host}:{args.port} using model {args.model_path}")
-    app.run(host=args.host, port=args.port, debug=False)
+    main()
