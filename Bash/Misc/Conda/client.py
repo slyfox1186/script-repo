@@ -21,6 +21,7 @@ clear; python3 server.py --model_path /models/QwQ-32B-Q4_K_L.gguf --host 0.0.0.0
 clear; python3 client.py --model_path /models/name.gguf --server_url http://192.168.50.177:5000/generate
 """
 
+import os
 import argparse
 import sys
 import requests
@@ -30,17 +31,22 @@ from token_manager import lock
 # Global variable for local 14B model.
 llm_local = None
 
-def load_local_model(model_path, n_ctx, n_gpu_layers, n_batch):
+def load_local_model(model_path):
     try:
         print("Loading local 14B model from:", model_path)
         model = Llama(
             model_path=model_path,
-            n_ctx=n_ctx,
-            n_gpu_layers=n_gpu_layers,
-            n_batch=n_batch,
-            f16_kv=True,
-            seed=0,
+            n_ctx=6000,
+            n_batch=512,
+            n_threads=os.cpu_count(),
+            main_gpu=0,
+            n_gpu_layers=-1,
+            flash_attn=True,
+            seed=47,
+            use_mmap=True,
             use_mlock=True,
+            offload_kqv=True,
+            verbose=True
         )
         print("Local 14B model loaded successfully.")
         return model
@@ -64,17 +70,19 @@ def get_remote_response(server_url, prompt, max_tokens, temperature, top_p):
         print(f"Error calling remote server: {e}", file=sys.stderr)
         return ""
 
-def solve_task(question, server_url, max_tokens, temperature, top_p):
+def solve_task(question, server_url):
     global llm_local
     # Generate draft answer from local 14B model.
     with lock:
         try:
             draft_output = llm_local(
                 question,
-                max_tokens=128,
-                temperature=temperature,
-                top_p=top_p,
-                stop=[],
+                max_tokens=None,
+                temperature=0.6,
+                top_p=95,
+                stream=True,
+                echo=False,
+                stop=["<｜User｜>", "<｜Assistant｜>"]
             )
             draft_text = draft_output.get("choices", [{}])[0].get("text", "").strip()
         except Exception as e:
