@@ -93,7 +93,7 @@ def solve_task(question, server_url):
     print("-" * 40)
     
     # Get detailed answer from remote 32B model.
-    detailed_text = get_remote_response(server_url, question, max_tokens, temperature, top_p)
+    detailed_text = get_remote_response(server_url, question)
     print("Detailed answer from remote 32B model:")
     print(detailed_text)
     print("-" * 40)
