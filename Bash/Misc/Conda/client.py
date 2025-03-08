@@ -70,7 +70,7 @@ def get_remote_response(server_url, prompt, max_tokens, temperature, top_p):
         print(f"Error calling remote server: {e}", file=sys.stderr)
         return ""
 
-def solve_task(question, server_url):
+def solve_task(question, server_url, max_tokens, temperature, top_p):
     global llm_local
     # Generate draft answer from local 14B model.
     with lock:
@@ -93,7 +93,7 @@ def solve_task(question, server_url):
     print("-" * 40)
     
     # Get detailed answer from remote 32B model.
-    detailed_text = get_remote_response(server_url, question)
+    detailed_text = get_remote_response(server_url, question, max_tokens, temperature, top_p)
     print("Detailed answer from remote 32B model:")
     print(detailed_text)
     print("-" * 40)
@@ -120,7 +120,7 @@ def parse_args():
 def main():
     global llm_local
     args = parse_args()
-    llm_local = load_local_model(args.model_path, args.n_ctx, args.n_gpu_layers, args.n_batch)
+    llm_local = load_local_model(args.model_path)
     
     question = args.question if args.question else input("Enter your question/prompt: ")
     final_answer = solve_task(question, args.server_url, args.max_tokens, args.temperature, args.top_p)
