@@ -2,6 +2,8 @@
 """
 client.py - Client Orchestrator for Dual LLM Inference
 
+curl -X POST http://192.168.50.177:5000/generate -H "Content-Type: application/json" -d '{"prompt": "Hello, how are you?", "max_tokens": 100, "temperature": 0.7, "top_p": 0.9}'
+'
 This script loads a local 14B model (e.g. bartowski/DeepSeek-R1-Distill-Qwen-14B-GGUF) fully into VRAM 
 using llama-cpp-python to produce a draft answer, then sends a request to a remote server (running on PC1) 
 to obtain a detailed answer from a 32B model. The two answers are then combined.
