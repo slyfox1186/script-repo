@@ -72,5 +72,15 @@ GetDefaultBrowser() {
 }
 
 UrlEncode(str) {
-    return RegExReplace(str, "[!#$&'()*+,/:;=?@[\]%\s]", "%$0")
+    encoded := ""
+    allowed := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.~"
+    Loop Parse, str {
+        if InStr(allowed, A_LoopField) {
+            encoded .= A_LoopField
+        } else {
+            hex := Format("{:02X}", Ord(A_LoopField))
+            encoded .= "%" . hex
+        }
+    }
+    return encoded
 }
