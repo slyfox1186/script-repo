@@ -1,126 +1,184 @@
-# $HOME/.bashrc: executed by bash(1) for non-login shells.
-# see /usr/share/doc/bash/examples/startup-files (in the package bash-doc) for examples
+#!/usr/bin/env bash
+
+# ===============================================================
+# Enhanced .bashrc for Ubuntu Jammy
+# Author: slyfox1186 (https://github.com/slyfox1186/script-repo)
+# ===============================================================
 
 # If not running interactively, don't do anything
 case "$-" in
     *i*) ;;
-      *) return ;;
+    *) return ;;
 esac
 
-# Don't put duplicate lines or lines starting with space in the history.
-HISTCONTROL="ignoreboth"
+# ====================
+# HISTORY SETTINGS
+# ====================
+HISTCONTROL="ignoreboth:erasedups"  # Don't save duplicate commands or commands starting with space
+HISTSIZE=100000                      # Increased history size in memory
+HISTFILESIZE=200000                  # Increased history file size
+HISTTIMEFORMAT="%F %T "             # Add timestamp to history
+HISTIGNORE="ls:ll:cd:cd -:pwd:exit:date:* --help:clear:c:cls:history"  # Commands to not record in history
 
-# Append to the history file, don't overwrite it
+# Append to history instead of overwriting
 shopt -s histappend
+# Record each line of multiline commands
+shopt -s cmdhist 
+# Save multi-line commands as one command
+shopt -s lithist
 
-# For setting history length see HISTSIZE and HISTFILESIZE in bash(1)
-HISTSIZE=10000
-HISTFILESIZE=20000
-
-# Check the window size after each command and, if necessary,
-# update the values of LINES and COLUMNS.
+# ====================
+# SHELL OPTIONS
+# ====================
+# Check window size and update LINES/COLUMNS
 shopt -s checkwinsize
-
-# If set, the pattern "**" used in a pathname expansion context will
-# match all files and zero or more directories and subdirectories.
+# Enable ** pattern in pathname expansion
 shopt -s globstar
+# Include dotfiles in pattern matching
+shopt -s dotglob
+# Enable extended pattern matching
+shopt -s extglob
+# Make tab-completion case-insensitive
+bind "set completion-ignore-case on"
+# List all matches when multiple completions possible
+bind "set show-all-if-ambiguous on"
+# Match hidden files without needing the leading dot
+bind "set match-hidden-files on"
+# Show tab completion options on first tab press
+bind "set show-all-if-ambiguous on"
 
-# Make less more friendly for non-text input files, see lesspipe(1)
-[[ -x "/usr/bin/lesspipe" ]] && eval $(SHELL=/bin/sh lesspipe)
+# ====================
+# LESSPIPE SETUP
+# ====================
+# Make less more friendly for non-text input files
+[[ -x "/usr/bin/lesspipe" ]] && eval "$(SHELL=/bin/sh lesspipe)"
 
-# Set variable identifying the chroot you work in (used in the prompt below)
+# ====================
+# CHROOT DETECTION
+# ====================
 if [[ -z "${debian_chroot:-}" ]] && [[ -r "/etc/debian_chroot" ]]; then
     debian_chroot=$(cat /etc/debian_chroot)
 fi
 
-# Set a fancy prompt (non-color, unless we know we "want" color)
+# ====================
+# PROMPT SETTINGS
+# ====================
+# Check for color support
 case "$TERM" in
     xterm-color|*-256color) color_prompt="yes" ;;
 esac
 
-# Uncomment for a colored prompt, if the terminal has the capability; turned
-# off by default to not distract the user: the focus in a terminal window
-# should be on the output of commands, not on the prompt
+# Force colored prompt if terminal supports it
 force_color_prompt="yes"
-
 if [[ -n "$force_color_prompt" ]]; then
     if [[ -x /usr/bin/tput ]] && tput setaf 1 >&/dev/null; then
-        # We have color support; assume it's compliant with Ecma-48 (ISO/IEC-6429)
-        # Lack of such support is extremely rare, and such a case would tend to support setf rather than setaf.
         color_prompt="yes"
     else
         color_prompt=""
     fi
 fi
 
+# Use a modern, informative prompt with git branch support
+__git_ps1() {
+    local b="$(git symbolic-ref HEAD 2>/dev/null)";
+    if [ -n "$b" ]; then
+        printf " (%s)" "${b##refs/heads/}";
+    fi
+}
+
+# Define a fancy multi-line prompt
 if [[ "$color_prompt" == "yes" ]]; then
-    PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
+    PS1='\n\[\e[38;5;227m\]\w\[\e[38;5;82m\]$(__git_ps1 " (%s)")\n\[\e[38;5;215m\]\u\[\e[38;5;183;1m\]@\[\e[0;38;5;117m\]\h\[\e[97;1m\]\\$\[\e[0m\] '
 else
-    PS1='${debian_chroot:+($debian_chroot)}\u@\h:\w\$ '
+    PS1='\n\w$(__git_ps1 " (%s)")\n\u@\h\$ '
 fi
 unset color_prompt force_color_prompt
 
-# If this is an xterm set the title to user@host:dir
+# Set xterm window title
 case "$TERM" in
-    xterm*|rxvt*) PS1="\[\e]0;${debian_chroot:+($debian_chroot)}\u@\h: \w\a\]$PS1" ;;
-               *) ;;
+    xterm*|rxvt*)
+        PS1="\[\e]0;${debian_chroot:+($debian_chroot)}\u@\h: \w\a\]$PS1"
+        ;;
 esac
 
-# Enable color support of ls and also add handy aliases
+# ====================
+# DIRCOLORS SETUP
+# ====================
+# Set up colors for ls command
 if [[ -x "/usr/bin/dircolors" ]]; then
-    if test -r "$HOME/.dircolors"; then
-        eval $(dircolors -b "$HOME/.dircolors")
+    if [[ -r "$HOME/.dircolors" ]]; then
+        eval "$(dircolors -b "$HOME/.dircolors")"
     else
-        eval $(dircolors -b)
+        eval "$(dircolors -b)"
     fi
-    alias ls="ls --color=always --group-directories-first"
-    alias grep="grep --color=always"
 fi
 
-# Colored GCC warnings and errors
-GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01'
-
-# Alias definitions.
-# You may want to put all your additions into a separate file like
-# $HOME/.bash_aliases, instead of adding them here directly.
-# See /usr/share/doc/bash-doc/examples in the bash-doc package.
-
+# ====================
+# EXTERNAL FILES
+# ====================
+# Load aliases
 if [[ -f "$HOME/.bash_aliases" ]]; then
     source "$HOME/.bash_aliases"
 fi
 
-# You don't need to enable this, if it's already enabled in
-# /etc/bash.bashrc and /etc/profile sources /etc/bash.bashrc
-if ! shopt -oq posix; then
-  if [ -f "/usr/share/bash-completion/bash_completion" ]; then
-    source "/usr/share/bash-completion/bash_completion"
-  elif [ -f "/etc/bash_completion" ]; then
-    source "/etc/bash_completion"
-  fi
-fi
-
-####################
-## CUSTOM SECTION ##
-####################
-
+# Load functions
 if [[ -f "$HOME/.bash_functions" ]]; then
     source "$HOME/.bash_functions"
 fi
 
+# Enable bash completion
+if ! shopt -oq posix; then
+    if [[ -f "/usr/share/bash-completion/bash_completion" ]]; then
+        source "/usr/share/bash-completion/bash_completion"
+    elif [[ -f "/etc/bash_completion" ]]; then
+        source "/etc/bash_completion"
+    fi
+fi
+
+# ====================
+# ADDITIONAL DEPENDENCIES
+# ====================
+# Load cargo environment if available
 if [[ -f "$HOME/.cargo/env" ]]; then
     source "$HOME/.cargo/env"
 fi
 
-threads=$(nproc --all)
+# ====================
+# ENVIRONMENT VARIABLES
+# ====================
+# System info variables
+threads=$(nproc --all 2>/dev/null || echo "unknown")
 cpus=$((threads / 2))
-lan=$(ip route get 1.2.3.4 | awk '{print $7}')
-wan=$(curl --connect-timeout 1 -fsS "https://checkip.amazonaws.com")
-PS1='\n\[\e[38;5;227m\]\w\n\[\e[38;5;215m\]\u\[\e[38;5;183;1m\]@\[\e[0;38;5;117m\]\h\[\e[97;1m\]\\$\[\e[0m\]'
-PYTHONUTF8=1
-MAGICK_THREAD_LIMIT=16
-export cpus lan PS1 PYTHONUTF8 threads wan MAGICK_THREAD_LIMIT
+lan=$(ip route get 1.2.3.4 2>/dev/null | awk '{print $7}' || echo "unknown")
+wan=$(curl --connect-timeout 1 -fsS "https://checkip.amazonaws.com" 2>/dev/null || echo "unknown")
 
-# Set the script's path variable
+# Default applications
+export EDITOR="nano"
+export VISUAL="nano"
+export PAGER="less"
+
+# Performance and behavior settings
+export PYTHONUTF8=1
+export MAGICK_THREAD_LIMIT=16
+export GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01'
+export LESS="-R -F -X"  # Enable color, exit if file fits on screen, don't clear screen
+
+# Terminal colors - improve readability in less and man pages
+export LESS_TERMCAP_mb=$'\E[1;31m'     # begin blink
+export LESS_TERMCAP_md=$'\E[1;36m'     # begin bold
+export LESS_TERMCAP_me=$'\E[0m'        # reset bold/blink
+export LESS_TERMCAP_so=$'\E[01;33m'    # begin reverse video
+export LESS_TERMCAP_se=$'\E[0m'        # reset reverse video
+export LESS_TERMCAP_us=$'\E[1;32m'     # begin underline
+export LESS_TERMCAP_ue=$'\E[0m'        # reset underline
+
+# Export common variables
+export cpus lan PS1 threads wan
+
+# ====================
+# PATH CONFIGURATION
+# ====================
+# Set the PATH variable with commonly used directories
 PATH="\
 /usr/lib/ccache:\
 $HOME/perl5/bin:\
@@ -136,15 +194,40 @@ $HOME/.local/bin:\
 /bin:\
 /usr/local/games:\
 /usr/games:\
-/snap/bin:\
+/snap/bin"
+
+# Add Windows paths if running in WSL
+if grep -qi microsoft /proc/version 2>/dev/null; then
+    PATH="$PATH:\
 /c/Windows/System32:\
 /c/Program Files:\
-/c/Program Files (x86):\
-/c/Users/jholl/Downloads\
-"
+/c/Program Files (x86)"
+fi
+
 export PATH
 
-# Fix annoying error message in WSL Linux
+# ====================
+# WSL SPECIFIC FIXES
+# ====================
+# Fix CUDA library symlinks in WSL
 if [[ -f /usr/lib/wsl/lib/libcuda.so.1.1 ]] && [[ ! -L /usr/lib/wsl/lib/libcuda.so.1 ]]; then
     sudo ln -sf /usr/lib/wsl/lib/libcuda.so.1.1 /usr/lib/wsl/lib/libcuda.so.1
+fi
+
+# ====================
+# PERFORMANCE TWEAKS
+# ====================
+# Disable flow control (Ctrl+S/Ctrl+Q) to prevent terminal freezing
+stty -ixon
+
+# ====================
+# WELCOME MESSAGE
+# ====================
+# Display a welcome message with system information
+if [[ -n "$PS1" ]]; then
+    echo "Welcome, $(whoami)! Terminal ready at $(date '+%H:%M:%S')"
+    echo "System: $(lsb_release -ds 2>/dev/null || cat /etc/os-release | grep PRETTY_NAME | cut -d= -f2- | tr -d '"')"
+    echo "Kernel: $(uname -sr)"
+    echo "CPU cores: $threads (Physical: $cpus)"
+    echo -e "IP: $lan (LAN), $wan (WAN)\n"
 fi

@@ -15,45 +15,31 @@
 ##
 ##########################################################
 
+# Source common utilities
+source "$(dirname "$0")/common-utils.sh"
+
 clear
 
-# Verify the script has root access before continuing
-if [ "${EUID}" -eq '0' ]; then
-    echo 'You must run this script WITHOUT root/sudo.'
-    echo
-    exit 1
-fi
+# Verify the script is not running as root
+check_root
 
-##
-## DEFINE THE APT PACKAGE INSTALLER TO BE USED  
-##
-
-if which 'apt-fast' &>/dev/null; then
-    exec_apt='apt-fast'
-elif which 'aptitude' &>/dev/null; then
-    exec_apt='aptitude'
-else
-    exec_apt='apt'
-fi
+# Set the apt command to use
+exec_apt=$(get_apt_cmd)
 
 ######################
 ## FUNCTION SECTION ##
 ######################
 
-installed() { return $(dpkg-query -W -f '${Status}\n' "${1}" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}'); }
-
-exit_fn()
-{
-    printf "\n%s\n\n%s\n\n" \
-        '[i] Make sure to star this repository to show your support!' \
-        '[i] https://github.com/slyfox1186/script-repo/'
-    exit 0
+# Install D language
+install_other_fn() { 
+    curl -Ssf 'https://dlang.org/install.sh' | bash -s dmd
 }
-
-install_other_fn() { curl -Ssf 'https://dlang.org/install.sh' | bash -s dmd; }
 
 install_apt_fn()
 {
+    local missing_pkgs=()
+    
+    # Define packages to install
     pkgs=(alien apt-file aptitude aria2 autoconf autoconf-archive autogen automake bat binutils bison
           build-essential ccache ccdiff checkinstall clang cmake cmake-extras cmake-qt-gui colordiff cpu-checker
           curl cvs dbus-x11 dconf-editor ddclient debhelper devscripts dh-make disktype dos2unix dpkg-dev
@@ -70,64 +56,75 @@ install_apt_fn()
           psensor python3-pip quilt reiser4progs reiserfsprogs rpm ruby-all-dev samba shellcheck smbclient sqlite3 subversion
           synaptic texinfo tofrodos trash-cli tty-share udftools unzip usb-creator-gtk uuid-dev wget xclip xsel yasm)
 
-    for pkg in ${pkgs[@]}
-    do
+    # Find missing packages and install them
+    for pkg in "${pkgs[@]}"; do
+        # Use install_pkg to check if it's installed and install if needed
         if ! installed "$pkg"; then
-            missing_pkgs+=" $pkg"
+            echo "Installing package: $pkg"
+            sudo $exec_apt -y install "$pkg"
+            if [ $? -eq 0 ]; then
+                echo "Successfully installed $pkg"
+            else
+                echo "Failed to install $pkg"
+            fi
         fi
     done
 
-    if [ -n "$missing_pkgs-" ]; then
-        for i in "$missing_pkgs"
-        do
-            $exec_apt -y install $i
-        done
-        printf "\n%s\n\n" \
-            'The required packages were successfully installed.'
-        exit 0
-    else
-        echo 'The required packages are already installed.'
-    fi
+    echo "All required packages have been checked and installed if needed."
 }
 
 install_ppa_fn()
 {
-    local i missing_pkgs pkg pkgs ppa_repo
+    local apt_pkgs=()
+    local ppa_added=false
+    local ppa_repos=(
+        'apt-fast/stable'
+        'cappelikan/ppa'
+        'danielrichter2007/grub-customizer'
+        'git-core/ppa'
+        'ubuntu-toolchain-r/ppa'
+    )
 
+    # Ensure sources.list.d directory exists
     if [ ! -d '/etc/apt/sources.list.d' ]; then
         sudo mkdir -p '/etc/apt/sources.list.d'
     fi
 
-    ppa_repo='apt-fast/stable cappelikan/ppa danielrichter2007/grub-customizer git-core/ppa ubuntu-toolchain-r/ppa'
-
-    for pkg in ${ppa_repo[@]}
-    do
-        ppa_list="$(grep -Eo "^deb .*$pkg" /etc/apt/sources.list /etc/apt/sources.list.d/*)"
+    # Check each PPA and add if missing
+    for ppa in "${ppa_repos[@]}"; do
+        ppa_list="$(grep -Eo "^deb .*$ppa" /etc/apt/sources.list /etc/apt/sources.list.d/* 2>/dev/null || true)"
         if [ -z "$ppa_list" ]; then
-            sudo add-apt-repository -y ppa:$pkg
-            for i in "$pkg"
-            do
-                case "$i" in
-                        'apt-fast/stable')                         apt_pkg='apt-fast';;
-                        'cappelikan/ppa')                          apt_pkg+=' mainline';;
-                        'danielrichter2007/grub-customizer')       apt_pkg+=' grub-customizer';;
-                        'git-core/ppa')                            apt_pkg+=' git';;
-                 esac
-            done
+            echo "Adding PPA: $ppa"
+            sudo add-apt-repository -y "ppa:$ppa"
+            ppa_added=true
+            
+            # Map PPA to package name
+            case "$ppa" in
+                'apt-fast/stable')                    apt_pkgs+=('apt-fast');;
+                'cappelikan/ppa')                     apt_pkgs+=('mainline');;
+                'danielrichter2007/grub-customizer')  apt_pkgs+=('grub-customizer');;
+                'git-core/ppa')                       apt_pkgs+=('git');;
+            esac
         fi
     done
 
-    if [ -n "$apt_pkg" ]; then
-        sudo $exec_apt update
-        if sudo $exec_apt -y install $apt_pkg; then
-            printf "%s\n\n" \
-                '$ Any missing ppa repositories were installed'
-                sleep 2
-        else
-            printf "%s\n\n" \
-                '$ The ppa repositories are already installed'
-                sleep 2
+    # Install packages from added PPAs
+    if [ ${#apt_pkgs[@]} -gt 0 ]; then
+        # Update package list if PPAs were added
+        if [ "$ppa_added" = true ]; then
+            echo "Updating package lists..."
+            sudo $exec_apt update
         fi
+        
+        # Install each package using the common utility
+        for pkg in "${apt_pkgs[@]}"; do
+            echo "Installing package from PPA: $pkg"
+            install_pkg "$pkg"
+        done
+        
+        echo "PPA packages installed successfully"
+    else
+        echo "All required PPA repositories are already installed"
     fi
 }
 
