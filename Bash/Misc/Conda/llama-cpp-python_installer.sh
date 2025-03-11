@@ -18,18 +18,17 @@ echo "CUDA_HOME is set to: $CUDA_HOME"
 echo "LD_LIBRARY_PATH is set to: $LD_LIBRARY_PATH"
 echo "PATH is set to: $PATH"
 
-# Install conda packages
 printf "\n%s\n\n" "Installing conda packages."
-conda install bs4 markdown2 nltk psutil pytest python-dotenv \
-                 sentencepiece spacy textblob tqdm unidecode \
-                 peft apscheduler redis pandas_datareader yfinance \
-                 -y
-
 conda install -c pytorch pytorch torchvision torchaudio -y
 
 # Install pip packages
-printf "\n%s\n\n" "Installing pip packages."
-pip install fake_useragent flask flask_cors langdetect "numpy<2.0.0,>=1.25.0"
+printf "%s\n\n" "Installing pip packages."
+pip install bs4 markdown2 nltk psutil pytest \
+python-dotenv sentencepiece spacy textblob tqdm \
+unidecode peft apscheduler redis fake_useragent \
+flask flask_cors langdetect "numpy<2.0.0,>=1.25.0" \
+"scipy>=1.6.0" "threadpoolctl>=3.1.0" "tzdata>=2022.7" \
+"python-dateutil>=2.8.2"
 
 # Install with CUDA support in editable mode
 CMAKE_ARGS="-DGGML_CUDA=ON \
