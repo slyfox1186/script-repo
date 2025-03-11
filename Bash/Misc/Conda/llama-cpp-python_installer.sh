@@ -51,6 +51,6 @@ CUDACXX="$CUDA_HOME/bin/nvcc" \
 CUDA_PATH="$CUDA_HOME" \
 pip install llama-cpp-python --force-reinstall --no-cache-dir --upgrade --verbose || (
     printf "\n%s\n%s\n" "[ERROR] Failed to install llama-cpp-python." \
-                    "Exiting the script"
+                    "Exiting the script."
     exit 1
 )
