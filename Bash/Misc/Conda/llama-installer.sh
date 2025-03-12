@@ -11,11 +11,13 @@ detect_conda() {
     
     # Check common conda installation locations first (fast check)
     local conda_paths=(
+        "$HOME/miniconda/bin/conda"
         "$HOME/miniconda3/bin/conda"
         "$HOME/anaconda3/bin/conda"
         "/opt/conda/bin/conda"
         "/usr/local/anaconda/bin/conda"
         "/usr/local/miniconda/bin/conda"
+        "/usr/local/miniconda3/bin/conda"
     )
     
     for conda_path in "${conda_paths[@]}"; do
@@ -232,4 +234,3 @@ pip install llama-cpp-python --force-reinstall --no-cache-dir --upgrade --verbos
                     "Exiting the script."
     exit 1
 )
-
