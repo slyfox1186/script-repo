@@ -33,7 +33,7 @@ echo "LD_LIBRARY_PATH is set to: $LD_LIBRARY_PATH"
 echo "PATH is set to: $PATH"
 
 printf "\n%s\n\n" "Installing conda packages."
-conda install -c pytorch pytorch torchvision torchaudio -y
+conda install -y -c pytorch pytorch torchvision torchaudio
 
 # Install pip packages
 printf "%s\n\n" "Installing pip packages."
@@ -44,9 +44,10 @@ spacy textblob "threadpoolctl>=3.1.0" tqdm "tzdata>=2022.7" unidecode utils uvic
 
 # Install with CUDA support in editable mode
 CMAKE_ARGS="-DGGML_CUDA=ON \
--DCMAKE_CUDA_ARCHITECTURES=native \
--DCMAKE_LIBRARY_PATH=$CUDA_HOME/lib64:/usr/lib/x86_64-linux-gnu \
--DCMAKE_CUDA_HOST_COMPILER=$(type -P gcc-12)" \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_CUDA_ARCHITECTURES=native \
+    -DCMAKE_LIBRARY_PATH=$CUDA_HOME/lib64:/usr/lib/x86_64-linux-gnu \
+    -DCMAKE_CUDA_HOST_COMPILER=$(type -P gcc-12)" \
 CUDACXX="$CUDA_HOME/bin/nvcc" \
 CUDA_PATH="$CUDA_HOME" \
 pip install llama-cpp-python --force-reinstall --no-cache-dir --upgrade --verbose || (
