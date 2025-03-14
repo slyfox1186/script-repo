@@ -16,12 +16,3 @@ export GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quo
 
 # PostgreSQL configuration
 export PG_CONFIG="/usr/bin/pg_config"
-
-# ====================
-# API KEYS
-# ====================
-# Google API's - Note: Consider moving these to a separate private file
-GOOGLE_API_KEY="***REDACTED***"
-GOOGLE_CSE_ID="***REDACTED***"
-OPENWEATHER_API_KEY="***REDACTED***"
-export GOOGLE_API_KEY GOOGLE_CSE_ID OPENWEATHER_API_KEY
