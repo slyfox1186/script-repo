@@ -14,19 +14,19 @@ log_file=""           # Log file path
 
 # Define colors
 declare -A eventcolors=(
-    [ACCESS]=$'\033[36m'             # Cyan for access events
-    [CREATE]=$'\033[32m'             # Green for create events
-    [DELETE]=$'\033[31m'             # Red for delete events
-    [MODIFY]=$'\033[33m'             # Yellow for modify events
-    [MOVE]=$'\033[35m'               # Magenta for move events
-    [MOVED_FROM]=$'\033[95m'         # Light Magenta for moved from events
-    [MOVED_TO]=$'\033[95m'           # Light Magenta for moved to events
-    [CREATE_ISDIR]=$'\033[1;32m'     # Bold Green for create, isdir events
-    [MOVED_FROM_ISDIR]=$'\033[1;35m'  # Bold Magenta for moved from, isdir events
-    [MOVED_TO_ISDIR]=$'\033[1;35m'    # Bold Magenta for moved to, isdir events
-    [DELETE_ISDIR]=$'\033[1;31m'     # Bold Red for delete, isdir events
-    [MODIFY_ISDIR]=$'\033[1;33m'     # Bold Yellow for modify, isdir events
-    [RESET]=$'\033[0m'               # Resets the color to none
+    [ACCESS]=$'\033[36m'          # Cyan for access events
+    [CREATE]=$'\033[32m'          # Green for create events
+    [DELETE]=$'\033[31m'          # Red for delete events
+    [MODIFY]=$'\033[33m'          # Yellow for modify events
+    [MOVE]=$'\033[35m'            # Magenta for move events
+    [MOVED_FROM]=$'\033[95m'      # Light Magenta for moved from events
+    [MOVED_TO]=$'\033[95m'        # Light Magenta for moved to events
+    [CREATE_ISDIR]=$'\033[1;32m'  # Bold Green for create, isdir events
+    [MOVED_FROM_ISDIR]=$'\033[1;35m' # Bold Magenta for moved from, isdir events
+    [MOVED_TO_ISDIR]=$'\033[1;35m'   # Bold Magenta for moved to, isdir events
+    [DELETE_ISDIR]=$'\033[1;31m'  # Bold Red for delete, isdir events
+    [MODIFY_ISDIR]=$'\033[1;33m'  # Bold Yellow for modify, isdir events
+    [RESET]=$'\033[0m'            # Resets the color to none
 )
 
 # Function to display help
@@ -84,24 +84,6 @@ check_command() {
     fi
 }
 
-# New function to check the maximum number of inotify watches against the number of directories to monitor.
-check_max_watches() {
-    local max_watches num_dirs
-    max_watches=$(cat /proc/sys/fs/inotify/max_user_watches 2>/dev/null)
-    if [[ -z "$max_watches" ]]; then
-        echo -e "${eventcolors[DELETE]}[WARNING]${eventcolors[RESET]} Unable to retrieve max_user_watches."
-        return
-    fi
-    num_dirs=$(find "$monitor_dir" -type d 2>/dev/null | wc -l)
-    echo -e "${eventcolors[MODIFY]}[INFO]${eventcolors[RESET]} Max inotify watches: $max_watches"
-    echo -e "${eventcolors[MODIFY]}[INFO]${eventcolors[RESET]} Number of directories to watch: $num_dirs"
-    # Use integer arithmetic: 80% threshold = max_watches * 8 / 10
-    if (( num_dirs > max_watches * 8 / 10 )); then
-        echo -e "${eventcolors[DELETE]}[WARNING]${eventcolors[RESET]} The number of directories ($num_dirs) exceeds 80% of the maximum allowed inotify watches ($max_watches)."
-        echo -e "${eventcolors[CREATE]}[INFO]${eventcolors[RESET]} Consider increasing the inotify watch limit (e.g., via 'sudo sysctl fs.inotify.max_user_watches=<new_value>')."
-    fi
-}
-
 # Main function to monitor directory
 monitor_directory() {
     local events="create,delete,modify,move"
@@ -131,9 +113,6 @@ parse_arguments "$@"
 
 # Check if inotifywait is installed
 check_command
-
-# Check max inotify watches before monitoring
-check_max_watches
 
 # Monitor the directory
 monitor_directory
