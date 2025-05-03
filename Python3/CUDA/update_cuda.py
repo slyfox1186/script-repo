@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
 
+## All Debian packages are officially sourced from: https://developer.nvidia.com/cuda-downloads/
+## Execute: python3 update_cuda.py
+##
+## Optional args:
+## [-f | --force] to force a download regardless (even if it overwrites the same version)
+## [-o menu_number_here] to bypass the menu
+
 import argparse
 import os
 from pathlib import Path
