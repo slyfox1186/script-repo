@@ -143,8 +143,6 @@ usage() {
     exit 0
 }
 
-
-
 fail() {
     log "ERROR" "$1"
     log "ERROR" "To report a bug, create an issue at: ${CYAN}https://github.com/slyfox1186/script-repo/issues${NC}"
