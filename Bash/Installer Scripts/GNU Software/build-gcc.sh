@@ -38,6 +38,55 @@ RED='\033[0;31m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No color
 
+# Logging function - defined early since it's used in variable initialization
+log() {
+    local level=$1
+    shift
+    local message=$*
+    local timestamp
+    timestamp=$(date +"%Y-%m-%d %H:%M:%S")
+    local color_prefix=""
+    local nc_suffix=""
+
+    # Determine if we are writing to a tty for console output
+    if [[ -t 3 || (-n "$log_file" && "$verbose" -eq 1) ]]; then # Check original stdout or if logging to file but verbose
+        case "$level" in
+            DEBUG) color_prefix="$CYAN" ;;
+            INFO) color_prefix="$GREEN" ;;
+            WARNING) color_prefix="$YELLOW" ;;
+            ERROR) color_prefix="$RED" ;;
+        esac
+        nc_suffix="$NC"
+    fi
+
+    local log_line="[$level $timestamp] $message"
+    
+    # Log to file if specified
+    if [[ -n "$log_file" ]]; then
+        echo "$log_line" >> "$log_file"
+    fi
+
+    # Log to original stdout/stderr based on level and verbosity
+    case "$level" in
+        DEBUG)
+            if [[ "$debug_mode" -eq 1 ]]; then
+                echo -e "${color_prefix}${log_line}${nc_suffix}" >&3
+            fi
+            ;;
+        INFO)
+            if [[ "$verbose" -eq 1 || "$debug_mode" -eq 1 ]]; then
+                echo -e "${color_prefix}${log_line}${nc_suffix}" >&3
+            fi
+            ;;
+        WARNING)
+            echo -e "${color_prefix}${log_line}${nc_suffix}" >&4 # Warnings always to stderr
+            ;;
+        ERROR)
+            echo -e "${color_prefix}${log_line}${nc_suffix}" >&4 # Errors always to stderr
+            ;;
+    esac
+}
+
 # Ensure pc_type and target_arch are set early
 # Try to determine the system's architecture triplet
 pc_type=$(gcc -dumpmachine 2>/dev/null)
@@ -94,49 +143,6 @@ usage() {
     exit 0
 }
 
-log() {
-    local level=$1
-    shift
-    local message=$*
-    local timestamp
-    timestamp=$(date +"%Y-%m-%d %H:%M:%S")
-    local color_prefix=""
-    local nc_suffix=""
-
-    # Determine if we are writing to a tty for console output
-    if [[ -t 3 || (-n "$log_file" && "$verbose" -eq 1) ]]; then # Check original stdout or if logging to file but verbose
-        case "$level" in
-            DEBUG) color_prefix="$CYAN" ;;
-            INFO) color_prefix="$GREEN" ;;
-            WARNING) color_prefix="$YELLOW" ;;
-            ERROR) color_prefix="$RED" ;;
-        esac
-        nc_suffix="$NC"
-    fi
-
-    local log_line="[$level $timestamp] $message"
-    
-    # Log to file if specified
-    if [[ -n "$log_file" ]]; then
-        echo "$log_line" >> "$log_file"
-    fi
-
-    # Log to original stdout/stderr based on level and verbosity
-    case "$level" in
-        DEBUG)
-            [[ "$debug_mode" -eq 1 ]] && echo -e "${color_prefix}${log_line}${nc_suffix}" >&3
-            ;;
-        INFO)
-            [[ "$verbose" -eq 1 || "$debug_mode" -eq 1 ]] && echo -e "${color_prefix}${log_line}${nc_suffix}" >&3
-            ;;
-        WARNING)
-            echo -e "${color_prefix}${log_line}${nc_suffix}" >&4 # Warnings always to stderr
-            ;;
-        ERROR)
-            echo -e "${color_prefix}${log_line}${nc_suffix}" >&4 # Errors always to stderr
-            ;;
-    esac
-}
 
 
 fail() {
@@ -540,8 +546,7 @@ trim_binaries() {
         return
     fi
 
-    if [[ "$dry_run" -eq 1 ]]; Mapped to GitHub issue: https://github.com/google/generative-ai-python/issues/267
-Could not generate the full response. Retrying.
+    if [[ "$dry_run" -eq 1 ]]; then
         log "INFO" "Dry run: would rename $target_arch-* binaries in $bin_dir"
         # Example of what would be logged for one file
         local example_file
@@ -660,8 +665,7 @@ download_source_file() {
     while [[ $attempt -le $max_attempts ]]; do
         log "INFO" "Download attempt $attempt of $max_attempts for $file."
         # Check if file exists and is valid (simple tar -tf check)
-        if [[ -f "$download_path" ]]; Mapped to GitHub issue: https://github.com/google/generative-ai-python/issues/267
-Could not generate the full response. Retrying.
+        if [[ -f "$download_path" ]]; then
             log "INFO" "File $download_path already exists. Verifying integrity..."
             if tar -tf "$download_path" &>/dev/null; then
                 log "INFO" "Existing file $download_path seems valid. Skipping download."
@@ -1712,14 +1716,15 @@ main() {
     log "INFO" "Optimization level for GCC build: $optimization_level"
     log "INFO" "Target architecture (pc_type/target_arch): $target_arch"
 
-    # Setup error trapping
-    trap 'trap_and_exit_on_error $LINENO' ERR
+    # Note: ERR trap disabled to avoid issues with conditional expressions
+    # Error handling is done manually where needed using || fail
     # Setup debug trap if debug_mode is on
     # The previous `trap 'debug' DEBUG` was for a function named 'debug'.
     # This script uses `set -x` for general debug, and `bash_debug_trap` for BASH_COMMAND.
-    if [[ "$debug_mode" -eq 1 ]]; then
-        trap 'bash_debug_trap' DEBUG # Log each command before execution via BASH_COMMAND
-    fi
+    case "$debug_mode" in
+        1) trap 'bash_debug_trap' DEBUG ;; # Log each command before execution via BASH_COMMAND
+        *) ;; # No debug trap
+    esac
 
     if [[ "$EUID" -eq 0 ]]; then
         fail "This script must NOT be run as root or with sudo directly. Sudo is used internally for specific commands like 'make install' or 'apt install'."
