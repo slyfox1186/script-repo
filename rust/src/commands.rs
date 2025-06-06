@@ -195,7 +195,12 @@ impl CommandExecutor {
         
         debug!("Executing command with output capture: {}", cmd_string);
         
-        if self.dry_run {
+        // Special handling for version resolution commands - always execute these
+        // since they're read-only operations needed for proper planning
+        let is_version_resolution = program == "bash" && 
+            args.iter().any(|arg| arg.as_ref().to_string_lossy().contains("curl -fsSL https://ftp.gnu.org/gnu/gcc/"));
+        
+        if self.dry_run && !is_version_resolution {
             info!("Dry run: would execute: {}", cmd_string);
             return Ok("dry-run-output".to_string());
         }
