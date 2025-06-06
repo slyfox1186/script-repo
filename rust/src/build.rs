@@ -124,7 +124,9 @@ pub async fn build_gcc_version(
     let logger = ProgressLogger::new(&format!("🔨 Building GCC {}", version));
     let start_time = Instant::now();
     
-    info!("🚀 Starting GCC {} build process", version);
+    println!("\n┌─────────────────────────────────────────────────────────────┐");
+    println!("│            🔨 Building GCC {}                               │", version.major);
+    println!("└─────────────────────────────────────────────────────────────┘");
     
     // EFFICIENCY: Resolve version ONLY if needed (zero-allocation check first)
     let full_version = if version.minor == 0 && version.patch == 0 {
@@ -140,11 +142,22 @@ pub async fn build_gcc_version(
     
     // EFFICIENCY: Quick existence check before expensive operations
     if !env.config.force_rebuild && install_prefix.exists() {
-        info!("⚡ GCC {} already installed at {}", full_version, install_prefix.display());
-        info!("💡 Use --force-rebuild to rebuild anyway");
+        println!("\n   ⚡ GCC {} is already installed!", full_version);
+        println!("   📍 Location: {}", install_prefix.display());
+        println!("   💡 Tip: Use --force-rebuild to rebuild anyway");
         logger.finish();
         return Ok(());
     }
+    
+    println!("\n   📋 Build Details:");
+    println!("   • Version: GCC {}", full_version);
+    println!("   • Install to: {}", install_prefix.display());
+    println!("   • Build directory: {}", build_dir.display());
+    println!("   • Parallel jobs: {}", env.config.parallel_jobs);
+    println!();
+    
+    println!("   ⏳ Starting build process...");
+    println!();
     
     info!("📥 Step 1/7: Downloading GCC {} source code...", full_version);
     download_gcc_source_fast(env, &full_version).await?;
@@ -168,11 +181,15 @@ pub async fn build_gcc_version(
     post_install_tasks_fast(env, &full_version, &install_prefix).await?;
     
     let duration = start_time.elapsed();
-    info!("✅ GCC {} build completed in {:.2?}", full_version, duration);
+    println!("\n   ✅ GCC {} successfully built!", full_version);
+    println!("   ⏱️  Total time: {:.2?}", duration);
+    println!("   📍 Installed to: {}", install_prefix.display());
+    println!();
     logger.finish();
     
     Ok(())
 }
+
 
 async fn resolve_latest_gcc_version_fast(
     env: &BuildEnvironment,
@@ -197,45 +214,29 @@ async fn resolve_latest_gcc_version_fast(
         }
     }
     
-    // EFFICIENCY: Use system curl (already optimized, no Rust HTTP overhead)
-    let ftp_url = "https://ftp.gnu.org/gnu/gcc/";
-    let content = env.command_executor.execute_with_output("curl", ["-fsSL", ftp_url]).await
-        .map_err(|e| GccBuildError::download(ftp_url.to_string(), e.to_string()))?;
+    // Use simple shell command to find latest version for this major version
+    let command = format!(
+        r#"curl -fsSL https://ftp.gnu.org/gnu/gcc/ | grep -oP 'gcc-{}\.\d+\.\d+(?=/)' | sort -V | tail -n1 | cut -d- -f2"#,
+        major_version
+    );
     
-    // EFFICIENCY: Single-pass regex parsing (no multiple allocations)
-    let version_pattern = format!(r"gcc-{}\.\d+\.\d+/", major_version);
-    let regex = regex::Regex::new(&version_pattern)
-        .map_err(|e| GccBuildError::configuration(format!("Regex error: {}", e)))?;
+    let output = env.command_executor.execute_with_output("bash", ["-c", &command]).await
+        .map_err(|e| GccBuildError::download("https://ftp.gnu.org/gnu/gcc/".to_string(), e.to_string()))?;
     
-    let mut latest_version: Option<GccVersion> = None;
-    
-    // EFFICIENCY: Iterator-based parsing (no intermediate collections)
-    for cap in regex.find_iter(&content) {
-        let dir_name = cap.as_str();
-        let version_str = dir_name.trim_start_matches("gcc-").trim_end_matches('/');
-        if let Ok(version) = GccVersion::from_str(version_str) {
-            match &latest_version {
-                None => latest_version = Some(version),
-                Some(current) => {
-                    if version > *current {
-                        latest_version = Some(version);
-                    }
-                }
-            }
-        }
+    let version_str = output.trim();
+    if version_str.is_empty() {
+        return Err(GccBuildError::configuration(format!("No versions found for GCC {}", major_version)));
     }
     
-    let latest = latest_version.ok_or_else(|| {
-        GccBuildError::configuration(format!("No versions found for GCC {}", major_version))
-    })?;
+    let version = GccVersion::from_str(version_str)?;
     
     // EFFICIENCY: Async cache update (don't block on this)
-    let cache_entry = format!("gcc-{}:{}\n", major_version, latest);
+    let cache_entry = format!("gcc-{}:{}\n", major_version, version);
     let _ = fs::write(&cache_file, cache_entry).await;
     
-    info!("🎯 Latest GCC {} version: {}", major_version, latest);
+    info!("🎯 Latest GCC {} version: {}", major_version, version);
     logger.finish();
-    Ok(latest)
+    Ok(version)
 }
 
 async fn download_gcc_source_fast(
@@ -364,14 +365,17 @@ async fn configure_gcc_fast(
     let configure_options = env.gcc_config.get_gcc_configure_options(version, &env.config)?;
     env.gcc_config.validate_configure_options(version, &env.config)?;
     
-    info!("⚙️ GCC configure options: {}", configure_options.join(" "));
-    info!("📁 Build directory: {}", build_dir.display());
-    info!("📁 Install prefix: {}", install_prefix.display());
-    info!("⏳ Configuration typically takes 2-5 minutes...");
-    
     // EFFICIENCY: Execute configure with optimized environment
     let executor = env.command_executor.clone().with_working_dir(build_dir);
     let configure_script = source_dir.join("configure");
+    
+    println!("\n─────────────────────────────────────────────────────────────────");
+    println!("⚙️  Configuring GCC {}", version);
+    println!("─────────────────────────────────────────────────────────────────");
+    println!("Configure command:");
+    println!("  {} {}", configure_script.to_str().unwrap(), configure_options.join(" "));
+    println!("\nConfigure output:");
+    println!("─────────────────────────────────────────────────────────────────");
     
     executor.execute(
         configure_script.to_str().unwrap(),
@@ -381,7 +385,8 @@ async fn configure_gcc_fast(
         format!("Configure failed: {}", e),
     ))?;
     
-    info!("✅ GCC configuration completed successfully");
+    println!("─────────────────────────────────────────────────────────────────");
+    println!("✅ Configuration completed successfully!\n");
     
     logger.finish();
     Ok(())
@@ -403,19 +408,21 @@ async fn build_gcc_fast(
         env.config.system_info.cpu_cores
     );
     
-    info!("🚀 Building with {} parallel jobs", optimal_jobs);
-    info!("⏳ This is the longest step - typically 45-90 minutes");
-    info!("💻 Using {} CPU cores out of {}", optimal_jobs, env.config.system_info.cpu_cores);
-    info!("📊 You can monitor system load with 'htop' in another terminal");
+    println!("\n─────────────────────────────────────────────────────────────────");
+    println!("🏗️  Building GCC {} (make -j{})", version, optimal_jobs);
+    println!("─────────────────────────────────────────────────────────────────");
+    println!("This is the longest step (45-90 minutes). You'll see compiler output below.");
+    println!("💡 Tip: Open another terminal and run 'htop' to monitor system resources.");
+    println!("\nMake output:");
+    println!("─────────────────────────────────────────────────────────────────");
     
     // EFFICIENCY: Try parallel first, fallback to single-threaded
     let make_args = vec![format!("-j{}", optimal_jobs)];
-    
-    info!("🔨 Starting parallel make build...");
     match executor.execute("make", make_args.iter().map(|s| s.as_str())).await {
         Ok(_) => {
             let duration = start_time.elapsed();
-            info!("⚡ Parallel build completed in {:.2?}", duration);
+            println!("─────────────────────────────────────────────────────────────────");
+            println!("✅ Build completed successfully in {:.2?}\n", duration);
         }
         Err(_) => {
             warn!("🔄 Parallel build failed, trying single-threaded");
@@ -444,6 +451,13 @@ async fn install_gcc_fast(
 ) -> GccResult<()> {
     let logger = ProgressLogger::new("📦 Installing GCC");
     
+    println!("\n─────────────────────────────────────────────────────────────────");
+    println!("📦 Installing GCC {} to {}", version, install_prefix.display());
+    println!("─────────────────────────────────────────────────────────────────");
+    println!("This requires sudo privileges. You may be prompted for your password.");
+    println!("\nInstall output:");
+    println!("─────────────────────────────────────────────────────────────────");
+    
     let executor = env.command_executor.clone().with_working_dir(build_dir);
     
     // EFFICIENCY: Use install-strip to save space and time
@@ -453,7 +467,8 @@ async fn install_gcc_fast(
             format!("Installation failed: {}", e),
         ))?;
     
-    info!("✅ GCC {} installed to {}", version, install_prefix.display());
+    println!("─────────────────────────────────────────────────────────────────");
+    println!("✅ Installation completed successfully!\n");
     logger.finish();
     Ok(())
 }

@@ -123,13 +123,16 @@ impl BuildScheduler {
         // Initialize CPU scheduler
         let cpu_scheduler = Self::create_cpu_scheduler(config);
         
-        info!("🧮 Enhanced resource-aware scheduler initialized:");
-        info!("  • System RAM: {} MB", config.system_info.ram_mb);
-        info!("  • Estimated RAM per build: {} MB", ram_per_build);
-        info!("  • CPU cores: {}", config.system_info.cpu_cores);
-        info!("  • Max concurrent builds: {}", max_concurrent);
-        info!("  • Phase-aware scheduling: enabled");
-        info!("  • CPU affinity management: enabled");
+        println!("\n📊 System Resource Analysis:");
+        println!("─────────────────────────────────────────────────────────────────");
+        println!("  • Total system RAM: {:.1} GB ({} MB)", config.system_info.ram_mb as f64 / 1024.0, config.system_info.ram_mb);
+        println!("  • RAM per GCC build: ~{:.1} GB ({} MB)", ram_per_build as f64 / 1024.0, ram_per_build);
+        println!("  • CPU cores available: {}", config.system_info.cpu_cores);
+        println!("  • Max parallel builds: {} (based on available resources)", max_concurrent);
+        println!("  • Smart scheduling: ✓ (adjusts based on build phases)");
+        println!("  • CPU affinity: ✓ (optimizes cache usage)");
+        println!("─────────────────────────────────────────────────────────────────");
+        println!();
         
         Self {
             max_concurrent,

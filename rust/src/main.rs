@@ -47,8 +47,12 @@ async fn main() -> Result<()> {
     // Initialize logging
     logging::init_logger(&args)?;
     
-    info!("🚀 GCC Builder v{} - ULTRAFAST Rust Edition", env!("CARGO_PKG_VERSION"));
+    println!("\n╔═══════════════════════════════════════════════════════════════╗");
+    println!("║         🚀 GCC Builder v{} - ULTRAFAST Rust Edition         ║", env!("CARGO_PKG_VERSION"));
+    println!("╚═══════════════════════════════════════════════════════════════╝");
+    println!();
     info!("💡 Press Ctrl+C at any time to gracefully stop the build");
+    println!();
     
     // Set up graceful shutdown signal handling
     let shutdown_flag = Arc::new(AtomicBool::new(false));
@@ -69,6 +73,21 @@ async fn main() -> Result<()> {
     // Initialize configuration with compile-time validation
     let config = Config::new(args)?;
     
+    // Display build plan
+    println!("📋 Build Plan:");
+    println!("─────────────────────────────────────────────────────────────────");
+    for version in &config.gcc_versions {
+        println!("   • GCC {} (will resolve to latest patch version)", version.major);
+    }
+    println!("   • Installation prefix: {}", config.install_prefix.as_ref().map(|p| p.display().to_string()).unwrap_or_else(|| "/usr/local/programs".to_string()));
+    println!("   • Build directory: {}", config.build_dir.display());
+    println!("   • Parallel jobs: {}", config.parallel_jobs);
+    if config.dry_run {
+        println!("   • Mode: DRY RUN (no actual changes)");
+    }
+    println!("─────────────────────────────────────────────────────────────────");
+    println!();
+    
     // EFFICIENCY: Validate EVERYTHING upfront before any long operations
     system::validate_requirements(&config).await?;
     
@@ -78,7 +97,9 @@ async fn main() -> Result<()> {
     // EFFICIENCY: Build multiple GCC versions in PARALLEL
     match run_parallel_builds(config, shutdown_flag).await {
         Ok(_) => {
-            info!("✅ ALL GCC builds completed successfully!");
+            println!("\n╔═══════════════════════════════════════════════════════════════╗");
+            println!("║              ✅ ALL GCC BUILDS COMPLETED SUCCESSFULLY!         ║");
+            println!("╚═══════════════════════════════════════════════════════════════╝");
             Ok(())
         }
         Err(e) => {
