@@ -95,30 +95,35 @@ impl MirrorManager {
         
         let mut last_error = None;
         
-        for mirror in &mut self.mirrors {
-            if self.is_mirror_healthy(mirror) {
-                let url = format!("{}{}", mirror.base_url, relative_path);
-                
-                info!("🔗 Trying mirror: {} ({})", mirror.name, url);
-                
-                match self.download_from_mirror(mirror, &url, destination, progress_tracker).await {
-                    Ok(_) => {
-                        mirror.last_success = Some(Instant::now());
-                        mirror.failure_count = 0;
-                        info!("✅ Successfully downloaded from {}", mirror.name);
-                        return Ok(());
-                    }
-                    Err(e) => {
-                        warn!("❌ Download failed from {}: {}", mirror.name, e);
-                        mirror.failure_count += 1;
-                        last_error = Some(e);
-                        
-                        // Small delay before trying next mirror
-                        tokio::time::sleep(Duration::from_secs(2)).await;
-                    }
+        // Create a vector of indices for healthy mirrors to avoid borrowing conflicts
+        let healthy_indices: Vec<usize> = self.mirrors
+            .iter()
+            .enumerate()
+            .filter(|(_, mirror)| self.is_mirror_healthy(mirror))
+            .map(|(i, _)| i)
+            .collect();
+        
+        for &mirror_index in &healthy_indices {
+            let url = format!("{}{}", self.mirrors[mirror_index].base_url, relative_path);
+            let mirror_name = self.mirrors[mirror_index].name.clone();
+            
+            info!("🔗 Trying mirror: {} ({})", mirror_name, url);
+            
+            match self.download_from_mirror_by_index(mirror_index, &url, destination, progress_tracker).await {
+                Ok(_) => {
+                    self.mirrors[mirror_index].last_success = Some(Instant::now());
+                    self.mirrors[mirror_index].failure_count = 0;
+                    info!("✅ Successfully downloaded from {}", mirror_name);
+                    return Ok(());
                 }
-            } else {
-                debug!("Skipping unhealthy mirror: {}", mirror.name);
+                Err(e) => {
+                    warn!("❌ Download failed from {}: {}", mirror_name, e);
+                    self.mirrors[mirror_index].failure_count += 1;
+                    last_error = Some(e);
+                    
+                    // Small delay before trying next mirror
+                    tokio::time::sleep(Duration::from_secs(2)).await;
+                }
             }
         }
         
@@ -130,6 +135,74 @@ impl MirrorManager {
         ))
     }
     
+    /// Download from a specific mirror by index
+    async fn download_from_mirror_by_index(
+        &mut self,
+        mirror_index: usize,
+        url: &str,
+        destination: &std::path::Path,
+        progress_tracker: Option<&BuildProgressTracker>,
+    ) -> GccResult<()> {
+        let mirror_name = self.mirrors[mirror_index].name.clone();
+        
+        let start_time = Instant::now();
+        
+        // Create progress bar if tracker provided
+        let progress_bar = if let Some(tracker) = progress_tracker {
+            Some(tracker.create_download_progress(
+                &format!("from {}", mirror_name),
+                0 // We don't know size yet
+            ))
+        } else {
+            None
+        };
+        
+        for attempt in 1..=self.max_retries_per_mirror {
+            debug!("Attempt {}/{} for {}", attempt, self.max_retries_per_mirror, url);
+            
+            match self.download_single_attempt(url, destination).await {
+                Ok(_) => {
+                    let duration = start_time.elapsed();
+                    let file_size = destination.metadata()
+                        .map(|m| m.len())
+                        .unwrap_or(0) as f64;
+                    
+                    // Calculate speed
+                    if duration.as_secs() > 0 {
+                        let mbps = (file_size / 1_000_000.0) / duration.as_secs_f64();
+                        let mirror = &mut self.mirrors[mirror_index];
+                        mirror.avg_speed_mbps = if mirror.avg_speed_mbps > 0.0 {
+                            (mirror.avg_speed_mbps + mbps) / 2.0
+                        } else {
+                            mbps
+                        };
+                        
+                        info!("📊 Download speed: {:.1} MB/s", mbps);
+                    }
+                    
+                    if let Some(pb) = progress_bar {
+                        pb.finish_with_message("Download completed");
+                    }
+                    
+                    return Ok(());
+                }
+                Err(e) => {
+                    if attempt < self.max_retries_per_mirror {
+                        warn!("Attempt {} failed, retrying in 5 seconds: {}", attempt, e);
+                        tokio::time::sleep(Duration::from_secs(5)).await;
+                    } else {
+                        if let Some(pb) = progress_bar {
+                            pb.abandon_with_message("Download failed");
+                        }
+                        return Err(e);
+                    }
+                }
+            }
+        }
+        
+        unreachable!()
+    }
+
     /// Download from a specific mirror
     async fn download_from_mirror(
         &self,
@@ -202,10 +275,11 @@ impl MirrorManager {
         destination: &std::path::Path,
     ) -> GccResult<()> {
         // Use curl with progress and resume support
+        let timeout_str = self.timeout.as_secs().to_string();
         let mut args = vec![
             "-fSL",
             "--connect-timeout", "30",
-            "--max-time", &self.timeout.as_secs().to_string(),
+            "--max-time", &timeout_str,
             "--retry", "0", // We handle retries ourselves
             "-o", destination.to_str().unwrap(),
         ];
