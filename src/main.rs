@@ -165,12 +165,15 @@ async fn run_parallel_builds(config: Config, shutdown_flag: Arc<AtomicBool>) -> 
             }
         }
         
-        // Display scheduler statistics
+        // Display enhanced scheduler statistics
         let stats = scheduler.get_statistics();
-        info!("📊 Build Statistics:");
+        info!("📊 Enhanced Build Statistics:");
         info!("  • Total builds: {}", stats.total_builds);
-        info!("  • Completed: {}", stats.completed_builds);
-        info!("  • Failed: {}", stats.failed_builds);
+        info!("  • Completed: {} | Failed: {}", stats.completed_builds, stats.failed_builds);
+        info!("  • Success rate: {:.1}%", stats.efficiency_rate);
+        info!("  • Average memory utilization: {:.1}%", stats.avg_memory_utilization);
+        info!("  • Peak RAM usage: {:.1} GB", stats.peak_ram_usage as f64 / 1024.0);
+        info!("  • Current system load: {:.2}", stats.current_load);
         if let Some(avg_time) = stats.average_build_time {
             info!("  • Average build time: {:?}", avg_time);
         }
