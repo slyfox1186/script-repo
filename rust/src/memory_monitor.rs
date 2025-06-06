@@ -293,9 +293,10 @@ impl MemoryMonitor {
         };
         
         // Update pressure history
+        let memory_info_clone = state.current_memory.clone();
         state.pressure_history.push(PressureReading {
             pressure: new_pressure,
-            memory_info: state.current_memory.clone(),
+            memory_info: memory_info_clone,
             timestamp: Instant::now(),
         });
         

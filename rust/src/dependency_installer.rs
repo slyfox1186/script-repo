@@ -30,8 +30,8 @@ struct PackageMapping {
 }
 
 impl DependencyInstaller {
-    pub fn new(executor: CommandExecutor, dry_run: bool) -> GccResult<Self> {
-        let package_manager = Self::detect_package_manager(&executor)?;
+    pub async fn new(executor: CommandExecutor, dry_run: bool) -> GccResult<Self> {
+        let package_manager = Self::detect_package_manager(&executor).await?;
         
         Ok(Self {
             executor,
@@ -41,7 +41,7 @@ impl DependencyInstaller {
     }
     
     /// Detect the system's package manager
-    fn detect_package_manager(executor: &CommandExecutor) -> GccResult<PackageManager> {
+    async fn detect_package_manager(executor: &CommandExecutor) -> GccResult<PackageManager> {
         let managers = [
             ("apt-get", PackageManager::Apt),
             ("yum", PackageManager::Yum),
@@ -236,16 +236,16 @@ impl DependencyInstaller {
             }
             _ => {
                 // For unknown or other package managers, check common locations
-                match mapping.generic_name {
-                    "build-essential" => self.executor.command_exists("gcc") && self.executor.command_exists("make"),
+                return match mapping.generic_name {
+                    "build-essential" => self.executor.command_exists("gcc").await && self.executor.command_exists("make").await,
                     "gmp-dev" => self.check_library_exists("gmp"),
                     "mpfr-dev" => self.check_library_exists("mpfr"),
                     "mpc-dev" => self.check_library_exists("mpc"),
-                    "flex" => self.executor.command_exists("flex"),
-                    "bison" => self.executor.command_exists("bison"),
-                    "texinfo" => self.executor.command_exists("makeinfo"),
+                    "flex" => self.executor.command_exists("flex").await,
+                    "bison" => self.executor.command_exists("bison").await,
+                    "texinfo" => self.executor.command_exists("makeinfo").await,
                     _ => false,
-                }
+                };
             }
         }
         

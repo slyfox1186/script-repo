@@ -8,7 +8,7 @@ use std::path::PathBuf;
 #[command(author = "GCC Builder Team")]
 #[command(group(
     ArgGroup::new("version-selection")
-        .required(true)
+        .required(false)
         .args(&["versions", "latest", "all-supported", "preset"])
 ))]
 pub struct Args {
@@ -148,6 +148,35 @@ impl OptimizationLevel {
             OptimizationLevel::Fast => "-Ofast",
             OptimizationLevel::Debug => "-Og",
             OptimizationLevel::Size => "-Os",
+        }
+    }
+}
+
+impl PartialEq<&str> for OptimizationLevel {
+    fn eq(&self, other: &&str) -> bool {
+        match (self, *other) {
+            (OptimizationLevel::O0, "O0") => true,
+            (OptimizationLevel::O1, "O1") => true,
+            (OptimizationLevel::O2, "O2") => true,
+            (OptimizationLevel::O3, "O3") => true,
+            (OptimizationLevel::Fast, "fast") => true,
+            (OptimizationLevel::Debug, "g") => true,
+            (OptimizationLevel::Size, "s") => true,
+            _ => false,
+        }
+    }
+}
+
+impl ToString for OptimizationLevel {
+    fn to_string(&self) -> String {
+        match self {
+            OptimizationLevel::O0 => "O0".to_string(),
+            OptimizationLevel::O1 => "O1".to_string(),
+            OptimizationLevel::O2 => "O2".to_string(),
+            OptimizationLevel::O3 => "O3".to_string(),
+            OptimizationLevel::Fast => "fast".to_string(),
+            OptimizationLevel::Debug => "g".to_string(),
+            OptimizationLevel::Size => "s".to_string(),
         }
     }
 }
