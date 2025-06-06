@@ -52,7 +52,7 @@ impl DependencyInstaller {
         ];
         
         for (cmd, pm) in managers {
-            if executor.command_exists(cmd) {
+            if executor.command_exists(cmd).await {
                 info!("Detected package manager: {:?}", pm);
                 return Ok(pm);
             }
@@ -402,13 +402,3 @@ impl DependencyInstaller {
     }
 }
 
-impl CommandExecutor {
-    /// Check if a command exists in PATH
-    pub fn command_exists(&self, cmd: &str) -> bool {
-        std::process::Command::new("which")
-            .arg(cmd)
-            .output()
-            .map(|output| output.status.success())
-            .unwrap_or(false)
-    }
-}
