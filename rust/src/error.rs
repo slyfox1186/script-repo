@@ -46,6 +46,15 @@ pub enum GccBuildError {
     
     #[error("Resource exhausted: {resource} - {details}")]
     ResourceExhausted { resource: String, details: String },
+    
+    #[error("Compilation failed: {message}")]
+    Compilation { message: String },
+    
+    #[error("Test execution failed: {message}")]
+    TestExecution { message: String },
+    
+    #[error("IO operation failed: {operation} - {message}")]
+    IoError { operation: String, message: String },
 }
 
 impl GccBuildError {
@@ -117,6 +126,21 @@ impl GccBuildError {
         Self::ResourceExhausted { 
             resource: resource.into(), 
             details: details.into() 
+        }
+    }
+    
+    pub fn compilation(message: impl Into<String>) -> Self {
+        Self::Compilation { message: message.into() }
+    }
+    
+    pub fn test_execution(message: impl Into<String>) -> Self {
+        Self::TestExecution { message: message.into() }
+    }
+    
+    pub fn io_error(operation: impl Into<String>, message: impl Into<String>) -> Self {
+        Self::IoError { 
+            operation: operation.into(), 
+            message: message.into() 
         }
     }
 }

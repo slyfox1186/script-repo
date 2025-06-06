@@ -96,22 +96,38 @@ impl ArtifactCache {
     ) -> GccResult<Option<PathBuf>> {
         let cache_key = self.generate_cache_key(gcc_version, config_hash);
         
-        if let Some(entry) = self.index.artifacts.get_mut(&cache_key) {
+        // Check if artifact exists
+        let (install_path, build_time_seconds, should_remove) = if let Some(entry) = self.index.artifacts.get(&cache_key) {
+            let install_path = entry.install_path.clone();
+            let build_time_seconds = entry.build_time_seconds;
+            
             // Verify artifact still exists and is valid
             if entry.install_path.exists() && self.verify_artifact(entry).await? {
-                // Update access time
-                entry.last_accessed = SystemTime::now();
-                self.save_index().await?;
-                
-                info!("🎯 Cache HIT for GCC {} (saved ~{}min build time)", 
-                      gcc_version, entry.build_time_seconds / 60);
-                
-                return Ok(Some(entry.install_path.clone()));
+                (Some(install_path), build_time_seconds, false)
             } else {
-                // Remove invalid entry
-                warn!("🗑️ Removing invalid cache entry for {}", cache_key);
-                self.remove_artifact(&cache_key).await?;
+                (None, build_time_seconds, true)
             }
+        } else {
+            (None, 0, false)
+        };
+        
+        if should_remove {
+            warn!("🗑️ Removing invalid cache entry for {}", cache_key);
+            self.remove_artifact(&cache_key).await?;
+            return Ok(None);
+        }
+        
+        if let Some(path) = install_path {
+            // Update access time
+            if let Some(entry) = self.index.artifacts.get_mut(&cache_key) {
+                entry.last_accessed = SystemTime::now();
+            }
+            self.save_index().await?;
+            
+            info!("🎯 Cache HIT for GCC {} (saved ~{}min build time)", 
+                  gcc_version, build_time_seconds / 60);
+            
+            return Ok(Some(path));
         }
         
         debug!("📦 Cache MISS for GCC {}", gcc_version);
@@ -297,25 +313,30 @@ impl ArtifactCache {
     async fn evict_old_artifacts(&mut self) -> GccResult<()> {
         info!("🧹 Cache size exceeded, evicting old artifacts...");
         
-        // Sort by last access time (oldest first)
-        let mut entries: Vec<_> = self.index.artifacts.iter().collect();
-        entries.sort_by_key(|(_, entry)| entry.last_accessed);
-        
+        // Collect keys to remove to avoid borrowing conflicts
+        let mut keys_to_remove = Vec::new();
         let target_size = (self.max_cache_size_gb * 1_000_000_000) * 80 / 100; // Target 80% of max
         let mut current_size = self.index.total_size_bytes;
         
-        for (cache_key, _) in entries {
+        // Sort entries by last access time (oldest first)
+        let mut entries: Vec<_> = self.index.artifacts.iter()
+            .map(|(key, entry)| (key.clone(), entry.last_accessed, entry.size_bytes))
+            .collect();
+        entries.sort_by_key(|(_, last_accessed, _)| *last_accessed);
+        
+        for (cache_key, _, size_bytes) in entries {
             if current_size <= target_size {
                 break;
             }
             
-            let cache_key = cache_key.clone();
-            if let Some(entry) = self.index.artifacts.get(&cache_key) {
-                current_size = current_size.saturating_sub(entry.size_bytes);
-                info!("🗑️ Evicting old artifact: {}", cache_key);
-            }
-            
-            self.remove_artifact(&cache_key).await?;
+            current_size = current_size.saturating_sub(size_bytes);
+            info!("🗑️ Evicting old artifact: {}", cache_key);
+            keys_to_remove.push(cache_key);
+        }
+        
+        // Remove the artifacts
+        for key in keys_to_remove {
+            self.remove_artifact(&key).await?;
         }
         
         info!("✅ Cache cleanup completed ({:.1} GB freed)", 

@@ -306,11 +306,11 @@ impl AutoTuner {
         
         // Optimization level adjustment based on available resources
         if optimization_level == "O3" && profile.total_memory_gb < 16.0 {
-            optimization_level = "O2".to_string();
+            optimization_level = crate::cli::OptimizationLevel::O2;
             rationale.push("Reduced optimization level for memory".to_string());
         }
         
-        Ok((optimization_level, configure_args))
+        Ok((optimization_level.to_string(), configure_args))
     }
     
     /// Optimize make arguments
