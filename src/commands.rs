@@ -226,9 +226,34 @@ impl CommandExecutor {
         }
     }
     
-    /// Check if a command exists in PATH
+    /// Check if a command exists in PATH (optimized with caching)
     pub async fn command_exists(&self, program: &str) -> bool {
-        self.execute_with_output("which", [program]).await.is_ok()
+        // Use a simple static cache for command existence checks to avoid repeated `which` calls
+        use std::collections::HashMap;
+        use std::sync::Mutex;
+        
+        lazy_static::lazy_static! {
+            static ref COMMAND_CACHE: Mutex<HashMap<String, bool>> = Mutex::new(HashMap::new());
+        }
+        
+        // Check cache first
+        {
+            let cache = COMMAND_CACHE.lock().unwrap();
+            if let Some(&exists) = cache.get(program) {
+                return exists;
+            }
+        }
+        
+        // Not in cache, check with which
+        let exists = self.execute_with_output("which", [program]).await.is_ok();
+        
+        // Update cache
+        {
+            let mut cache = COMMAND_CACHE.lock().unwrap();
+            cache.insert(program.to_string(), exists);
+        }
+        
+        exists
     }
     
     /// Download a file with progress tracking

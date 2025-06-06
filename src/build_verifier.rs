@@ -108,7 +108,7 @@ pub struct PerformanceMetrics {
 impl BuildVerifier {
     pub fn new() -> Self {
         Self {
-            executor: CommandExecutor::new(),
+            executor: CommandExecutor::new(false, false),
             test_suite: Self::create_test_suite(),
             verification_cache: HashMap::new(),
         }
@@ -128,7 +128,7 @@ impl BuildVerifier {
         let start_time = Instant::now();
         let mut test_results = Vec::new();
         let mut warnings = Vec::new();
-        let mut errors = Vec::new();
+        let errors = Vec::new();
         
         // Basic functionality tests
         info!("🧪 Running basic functionality tests...");
@@ -431,7 +431,7 @@ impl BuildVerifier {
             .await?;
         
         if !compile_output.status.success() {
-            return Err(GccBuildError::compilation(format!(
+            return Err(GccBuildError::build_failed("compilation".to_string(), format!(
                 "Compilation failed: {}", 
                 String::from_utf8_lossy(&compile_output.stderr)
             )));
@@ -443,7 +443,7 @@ impl BuildVerifier {
             .await?;
         
         if !run_output.status.success() {
-            return Err(GccBuildError::test_execution(format!(
+            return Err(GccBuildError::build_failed("test_execution".to_string(), format!(
                 "Runtime failed: {}", 
                 String::from_utf8_lossy(&run_output.stderr)
             )));
@@ -546,7 +546,7 @@ impl BuildVerifier {
         let compile_time = start_time.elapsed().as_secs_f64();
         
         if !output.status.success() {
-            return Err(GccBuildError::compilation(
+            return Err(GccBuildError::build_failed("compilation".to_string(),
                 "Benchmark compilation failed".to_string()
             ));
         }

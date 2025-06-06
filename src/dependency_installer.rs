@@ -235,8 +235,11 @@ impl DependencyInstaller {
             }
             _ => {
                 // For unknown or other package managers, check common locations
-                match mapping.generic_name {
-                    "build-essential" => self.executor.command_exists("gcc").await && self.executor.command_exists("make").await,
+                return match mapping.generic_name {
+                    "build-essential" => {
+                        self.executor.command_exists("gcc").await && 
+                        self.executor.command_exists("make").await
+                    }
                     "gmp-dev" => self.check_library_exists("gmp"),
                     "mpfr-dev" => self.check_library_exists("mpfr"),
                     "mpc-dev" => self.check_library_exists("mpc"),
@@ -244,7 +247,7 @@ impl DependencyInstaller {
                     "bison" => self.executor.command_exists("bison").await,
                     "texinfo" => self.executor.command_exists("makeinfo").await,
                     _ => false,
-                }
+                };
             }
         }
         

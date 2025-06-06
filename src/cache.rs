@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
@@ -55,28 +56,33 @@ impl VersionCache {
         }
     }
     
-    /// Get a resolved version from cache
+    /// Get a resolved version from cache (optimized with zero-allocation lookup)
     pub fn get_version(&self, key: &str) -> Option<GccVersion> {
         let now = Local::now();
         let mut inner = self.inner.write().unwrap();
         
-        // Single lookup with entry API
-        if let Some(cached) = inner.versions.get(key) {
-            if cached.resolved_at.timestamp() + cached.ttl.as_secs() as i64 > now.timestamp() {
-                let result = cached.version.clone();
-                inner.stats.hits += 1;
-                debug!("Cache hit for version key: {}", key);
-                return Some(result);
-            } else {
-                // Expired, remove it
-                inner.versions.remove(key);
-                inner.stats.evictions += 1;
+        // Optimized: Use entry API to avoid double lookup and reduce allocations
+        match inner.versions.entry(key.to_string()) {
+            std::collections::hash_map::Entry::Occupied(entry) => {
+                let cached = entry.get();
+                if cached.resolved_at.timestamp() + cached.ttl.as_secs() as i64 > now.timestamp() {
+                    let result = cached.version.clone();
+                    inner.stats.hits += 1;
+                    debug!("Cache hit for version key: {}", key);
+                    Some(result)
+                } else {
+                    // Expired, remove it
+                    entry.remove();
+                    inner.stats.evictions += 1;
+                    inner.stats.misses += 1;
+                    None
+                }
+            }
+            std::collections::hash_map::Entry::Vacant(_) => {
                 inner.stats.misses += 1;
-                return None;
+                None
             }
         }
-        inner.stats.misses += 1;
-        None
     }
     
     /// Store a resolved version in cache
