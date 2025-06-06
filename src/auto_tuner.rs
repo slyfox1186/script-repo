@@ -269,12 +269,12 @@ impl AutoTuner {
     /// Optimize compilation flags
     async fn optimize_compilation_flags(
         &self,
-        gcc_version: &GccVersion,
+        _gcc_version: &GccVersion,
         base_config: &Config,
         rationale: &mut Vec<String>,
     ) -> GccResult<(String, Vec<String>)> {
         let profile = &self.system_profile;
-        let rules = &self.tuning_rules;
+        let _rules = &self.tuning_rules;
         
         let mut optimization_level = base_config.optimization_level.clone();
         let mut configure_args = Vec::new();
@@ -304,12 +304,12 @@ impl AutoTuner {
         }
         
         // Optimization level adjustment based on available resources
-        if optimization_level == "O3" && profile.total_memory_gb < 16.0 {
-            optimization_level = "O2".to_string();
+        if optimization_level == crate::cli::OptimizationLevel::O3 && profile.total_memory_gb < 16.0 {
+            optimization_level = crate::cli::OptimizationLevel::O2;
             rationale.push("Reduced optimization level for memory".to_string());
         }
         
-        Ok((optimization_level, configure_args))
+        Ok((optimization_level.as_str().to_string(), configure_args))
     }
     
     /// Optimize make arguments

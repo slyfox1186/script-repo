@@ -52,7 +52,7 @@ struct PressureReading {
     timestamp: Instant,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct AdaptiveThresholds {
     low_threshold: f64,
     medium_threshold: f64,
@@ -291,10 +291,11 @@ impl MemoryMonitor {
             MemoryPressure::None
         };
         
-        // Update pressure history
+        // Update pressure history  
+        let memory_info = state.current_memory.clone();
         state.pressure_history.push(PressureReading {
             pressure: new_pressure,
-            memory_info: state.current_memory.clone(),
+            memory_info,
             timestamp: Instant::now(),
         });
         

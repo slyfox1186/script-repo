@@ -296,26 +296,52 @@ impl BuildScheduler {
         optimal_jobs
     }
     
-    /// Get build statistics for reporting
+    /// Get build statistics for reporting with enhanced metrics
     pub fn get_statistics(&self) -> SchedulerStatistics {
         let state = self.system_state.lock().unwrap();
+        
+        let completed_builds = &state.completed_builds;
+        let active_builds = &state.active_builds;
+        
+        // Calculate efficiency metrics
+        let successful_builds = completed_builds.iter().filter(|b| b.success).count();
+        let failed_builds = completed_builds.iter().filter(|b| !b.success).count();
+        
+        let efficiency_rate = if !completed_builds.is_empty() {
+            (successful_builds as f64 / completed_builds.len() as f64) * 100.0
+        } else {
+            0.0
+        };
+        
+        // Calculate resource utilization
+        let avg_memory_utilization = if !completed_builds.is_empty() {
+            completed_builds.iter()
+                .map(|b| b.peak_ram_mb as f64 / self.ram_per_build as f64)
+                .sum::<f64>() / completed_builds.len() as f64 * 100.0
+        } else {
+            0.0
+        };
+        
         SchedulerStatistics {
-            total_builds: state.completed_builds.len() + state.active_builds.len(),
-            completed_builds: state.completed_builds.len(),
-            active_builds: state.active_builds.len(),
-            failed_builds: state.completed_builds.iter().filter(|b| !b.success).count(),
-            average_build_time: if !state.completed_builds.is_empty() {
-                let total_time: Duration = state.completed_builds.iter()
+            total_builds: completed_builds.len() + active_builds.len(),
+            completed_builds: completed_builds.len(),
+            active_builds: active_builds.len(),
+            failed_builds,
+            average_build_time: if !completed_builds.is_empty() {
+                let total_time: Duration = completed_builds.iter()
                     .map(|b| b.duration)
                     .sum();
-                Some(total_time / state.completed_builds.len() as u32)
+                Some(total_time / completed_builds.len() as u32)
             } else {
                 None
             },
-            peak_ram_usage: state.completed_builds.iter()
+            peak_ram_usage: completed_builds.iter()
                 .map(|b| b.peak_ram_mb)
                 .max()
                 .unwrap_or(0),
+            efficiency_rate,
+            avg_memory_utilization,
+            current_load: self.cpu_scheduler.load_balancer.current_load,
         }
     }
     
@@ -567,6 +593,9 @@ pub struct SchedulerStatistics {
     pub failed_builds: usize,
     pub average_build_time: Option<Duration>,
     pub peak_ram_usage: u64,
+    pub efficiency_rate: f64,
+    pub avg_memory_utilization: f64,
+    pub current_load: f64,
 }
 
 /// Calculate estimated RAM per GCC build based on version and settings

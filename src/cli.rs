@@ -97,7 +97,7 @@ pub struct Args {
     pub force_rebuild: bool,
 }
 
-#[derive(ValueEnum, Clone, Debug)]
+#[derive(ValueEnum, Clone, Debug, PartialEq)]
 pub enum OptimizationLevel {
     #[value(name = "0")]
     O0,

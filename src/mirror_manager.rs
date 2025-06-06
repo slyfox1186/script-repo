@@ -95,22 +95,31 @@ impl MirrorManager {
         
         let mut last_error = None;
         
-        for mirror in &mut self.mirrors {
-            if self.is_mirror_healthy(mirror) {
-                let url = format!("{}{}", mirror.base_url, relative_path);
+        for i in 0..self.mirrors.len() {
+            let is_healthy = {
+                let mirror = &self.mirrors[i];
+                self.is_mirror_healthy(mirror)
+            };
+            
+            if is_healthy {
+                let url = {
+                    let mirror = &self.mirrors[i];
+                    format!("{}{}", mirror.base_url, relative_path)
+                };
                 
-                info!("🔗 Trying mirror: {} ({})", mirror.name, url);
+                let mirror_name = self.mirrors[i].name.clone();
+                info!("🔗 Trying mirror: {} ({})", mirror_name, url);
                 
-                match self.download_from_mirror(mirror, &url, destination, progress_tracker).await {
+                match self.download_from_mirror_by_index(i, &url, destination, progress_tracker).await {
                     Ok(_) => {
-                        mirror.last_success = Some(Instant::now());
-                        mirror.failure_count = 0;
-                        info!("✅ Successfully downloaded from {}", mirror.name);
+                        self.mirrors[i].last_success = Some(Instant::now());
+                        self.mirrors[i].failure_count = 0;
+                        info!("✅ Successfully downloaded from {}", mirror_name);
                         return Ok(());
                     }
                     Err(e) => {
-                        warn!("❌ Download failed from {}: {}", mirror.name, e);
-                        mirror.failure_count += 1;
+                        warn!("❌ Download failed from {}: {}", mirror_name, e);
+                        self.mirrors[i].failure_count += 1;
                         last_error = Some(e);
                         
                         // Small delay before trying next mirror
@@ -118,7 +127,8 @@ impl MirrorManager {
                     }
                 }
             } else {
-                debug!("Skipping unhealthy mirror: {}", mirror.name);
+                let mirror_name = &self.mirrors[i].name;
+                debug!("Skipping unhealthy mirror: {}", mirror_name);
             }
         }
         
@@ -130,10 +140,10 @@ impl MirrorManager {
         ))
     }
     
-    /// Download from a specific mirror
-    async fn download_from_mirror(
-        &self,
-        mirror: &mut Mirror,
+    /// Download from a specific mirror by index
+    async fn download_from_mirror_by_index(
+        &mut self,
+        mirror_index: usize,
         url: &str,
         destination: &std::path::Path,
         progress_tracker: Option<&BuildProgressTracker>,
@@ -142,8 +152,9 @@ impl MirrorManager {
         
         // Create progress bar if tracker provided
         let progress_bar = if let Some(tracker) = progress_tracker {
+            let mirror_name = &self.mirrors[mirror_index].name;
             Some(tracker.create_download_progress(
-                &format!("from {}", mirror.name),
+                &format!("from {}", mirror_name),
                 0 // We don't know size yet
             ))
         } else {
@@ -163,6 +174,7 @@ impl MirrorManager {
                     // Calculate speed
                     if duration.as_secs() > 0 {
                         let mbps = (file_size / 1_000_000.0) / duration.as_secs_f64();
+                        let mirror = &mut self.mirrors[mirror_index];
                         mirror.avg_speed_mbps = if mirror.avg_speed_mbps > 0.0 {
                             (mirror.avg_speed_mbps + mbps) / 2.0
                         } else {
@@ -202,10 +214,11 @@ impl MirrorManager {
         destination: &std::path::Path,
     ) -> GccResult<()> {
         // Use curl with progress and resume support
+        let timeout_str = self.timeout.as_secs().to_string();
         let mut args = vec![
             "-fSL",
             "--connect-timeout", "30",
-            "--max-time", &self.timeout.as_secs().to_string(),
+            "--max-time", &timeout_str,
             "--retry", "0", // We handle retries ourselves
             "-o", destination.to_str().unwrap(),
         ];

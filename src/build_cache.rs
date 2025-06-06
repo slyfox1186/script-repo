@@ -22,8 +22,8 @@ enum CacheType {
 }
 
 impl BuildCache {
-    pub fn new(config: &Config, executor: CommandExecutor) -> GccResult<Self> {
-        let cache_type = Self::detect_cache_type(&executor);
+    pub async fn new(config: &Config, executor: CommandExecutor) -> GccResult<Self> {
+        let cache_type = Self::detect_cache_type(&executor).await;
         let cache_dir = config.build_dir.join("cache");
         
         // Default to 10GB cache size
@@ -43,11 +43,11 @@ impl BuildCache {
     }
     
     /// Detect available cache type
-    fn detect_cache_type(executor: &CommandExecutor) -> CacheType {
-        if executor.command_exists("sccache") {
+    async fn detect_cache_type(executor: &CommandExecutor) -> CacheType {
+        if executor.command_exists("sccache").await {
             info!("🚀 Using sccache for build acceleration");
             CacheType::Sccache
-        } else if executor.command_exists("ccache") {
+        } else if executor.command_exists("ccache").await {
             info!("🚀 Using ccache for build acceleration");
             CacheType::Ccache
         } else {
@@ -349,7 +349,7 @@ fn extract_size(line: &str) -> Option<f64> {
 }
 
 /// Estimate time saved by cache hits
-fn estimate_time_saved(hits: u64, hit_rate: f64) -> f64 {
+fn estimate_time_saved(hits: u64, _hit_rate: f64) -> f64 {
     // Assume each cache hit saves about 30 seconds of compilation time
     let seconds_per_hit = 30.0;
     let total_seconds_saved = hits as f64 * seconds_per_hit;

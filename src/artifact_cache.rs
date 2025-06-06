@@ -297,9 +297,11 @@ impl ArtifactCache {
     async fn evict_old_artifacts(&mut self) -> GccResult<()> {
         info!("🧹 Cache size exceeded, evicting old artifacts...");
         
-        // Sort by last access time (oldest first)
-        let mut entries: Vec<_> = self.index.artifacts.iter().collect();
-        entries.sort_by_key(|(_, entry)| entry.last_accessed);
+        // Sort by last access time (oldest first) - clone keys to avoid borrow issues
+        let mut entries: Vec<_> = self.index.artifacts.iter()
+            .map(|(k, v)| (k.clone(), v.last_accessed))
+            .collect();
+        entries.sort_by_key(|(_, last_accessed)| *last_accessed);
         
         let target_size = (self.max_cache_size_gb * 1_000_000_000) * 80 / 100; // Target 80% of max
         let mut current_size = self.index.total_size_bytes;
@@ -309,7 +311,6 @@ impl ArtifactCache {
                 break;
             }
             
-            let cache_key = cache_key.clone();
             if let Some(entry) = self.index.artifacts.get(&cache_key) {
                 current_size = current_size.saturating_sub(entry.size_bytes);
                 info!("🗑️ Evicting old artifact: {}", cache_key);

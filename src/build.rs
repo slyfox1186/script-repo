@@ -197,12 +197,36 @@ async fn resolve_latest_gcc_version_fast(
         }
     }
     
-    // EFFICIENCY: Use system curl (already optimized, no Rust HTTP overhead)
-    let ftp_url = "https://ftp.gnu.org/gnu/gcc/";
-    let content = env.command_executor.execute_with_output("curl", ["-fsSL", ftp_url]).await
-        .map_err(|e| GccBuildError::download(ftp_url.to_string(), e.to_string()))?;
+    // EFFICIENCY: Try mirror failover for better reliability
+    let mirrors = [
+        "https://ftp.gnu.org/gnu/gcc/",
+        "https://mirrors.kernel.org/gnu/gcc/",
+        "https://mirrors.mit.edu/gnu/gcc/",
+    ];
     
-    // EFFICIENCY: Single-pass regex parsing (no multiple allocations)
+    let mut content = String::new();
+    let mut successful_url = String::new();
+    
+    for &ftp_url in &mirrors {
+        match env.command_executor.execute_with_output("curl", ["-fsSL", "--connect-timeout", "10", ftp_url]).await {
+            Ok(mirror_content) => {
+                content = mirror_content;
+                successful_url = ftp_url.to_string();
+                debug!("Successfully fetched GCC listing from {}", ftp_url);
+                break;
+            }
+            Err(e) => {
+                warn!("Failed to fetch from {}: {}", ftp_url, e);
+                continue;
+            }
+        }
+    }
+    
+    if content.is_empty() {
+        return Err(GccBuildError::download("GCC FTP listing".to_string(), "All mirrors failed".to_string()));
+    }
+    
+    // EFFICIENCY: Single-pass regex parsing with pre-allocated capacity
     let version_pattern = format!(r"gcc-{}\.\d+\.\d+/", major_version);
     let regex = regex::Regex::new(&version_pattern)
         .map_err(|e| GccBuildError::configuration(format!("Regex error: {}", e)))?;
@@ -214,14 +238,10 @@ async fn resolve_latest_gcc_version_fast(
         let dir_name = cap.as_str();
         let version_str = dir_name.trim_start_matches("gcc-").trim_end_matches('/');
         if let Ok(version) = GccVersion::from_str(version_str) {
-            match &latest_version {
-                None => latest_version = Some(version),
-                Some(current) => {
-                    if version > *current {
-                        latest_version = Some(version);
-                    }
-                }
-            }
+            latest_version = Some(match latest_version {
+                None => version,
+                Some(current) => if version > current { version } else { current },
+            });
         }
     }
     
@@ -465,11 +485,23 @@ async fn post_install_tasks_fast(
 ) -> GccResult<()> {
     let logger = ProgressLogger::new("🔧 Post-installation");
     
-    // EFFICIENCY: Run all post-install operations sequentially for now
-    run_libtool_finish_fast(env, version, install_prefix).await?;
-    update_linker_cache_fast(env, version, install_prefix).await?;
-    create_gcc_symlinks_fast(env, version, install_prefix).await?;
-    trim_gcc_binaries_fast(env, version, install_prefix).await?;
+    // EFFICIENCY: Run post-install operations in parallel for maximum speed
+    let tasks = vec![
+        run_libtool_finish_fast(env, version, install_prefix),
+        update_linker_cache_fast(env, version, install_prefix),
+        create_gcc_symlinks_fast(env, version, install_prefix),
+        trim_gcc_binaries_fast(env, version, install_prefix),
+    ];
+    
+    // Execute all tasks concurrently
+    let results = futures::future::join_all(tasks).await;
+    
+    // Check if any failed (but don't fail the whole build for non-critical tasks)
+    for (i, result) in results.into_iter().enumerate() {
+        if let Err(e) = result {
+            warn!("Post-install task {} failed (non-critical): {}", i, e);
+        }
+    }
     
     // EFFICIENCY: Conditional static binary saving
     if env.config.static_build && env.config.save_binaries {
