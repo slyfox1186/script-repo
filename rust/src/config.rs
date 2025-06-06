@@ -232,9 +232,9 @@ fn detect_target_architecture() -> GccResult<String> {
 
 fn parse_gcc_versions(versions_str: Option<&str>) -> GccResult<Vec<GccVersion>> {
     let versions_str = match versions_str {
-        Some(s) => s,
-        None => {
-            return Err(GccBuildError::configuration("No GCC versions specified".to_string()));
+        Some(s) if !s.is_empty() => s,
+        _ => {
+            return Err(GccBuildError::configuration("No GCC versions specified. Use --versions, --latest, or --all-supported".to_string()));
         }
     };
     
@@ -243,8 +243,10 @@ fn parse_gcc_versions(versions_str: Option<&str>) -> GccResult<Vec<GccVersion>> 
     // Handle special cases
     if versions_str == "latest" {
         info!("Resolving latest GCC version...");
-        // For now, default to GCC 13 (will be resolved dynamically later)
-        versions.push(GccVersion::new(13, 0, 0));
+        // Resolve the actual latest version immediately
+        let latest_version = resolve_latest_version_sync()?;
+        info!("Latest GCC version: {}", latest_version);
+        versions.push(latest_version);
         return Ok(versions);
     }
     
@@ -365,4 +367,27 @@ fn create_build_settings(args: &Args, target_arch: &str, system_info: &SystemInf
         ldflags,
         env_vars,
     })
+}
+
+// Synchronous wrapper to resolve latest GCC version during config parsing
+fn resolve_latest_version_sync() -> GccResult<GccVersion> {
+    use std::process::Command;
+    
+    let output = Command::new("bash")
+        .arg("-c")
+        .arg(r#"curl -fsSL https://ftp.gnu.org/gnu/gcc/ | grep -oP 'gcc-\K\d+\.\d+\.\d+(?=/)' | sort -V | tail -n1"#)
+        .output()
+        .map_err(|e| GccBuildError::configuration(format!("Failed to resolve latest GCC version: {}", e)))?;
+    
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(GccBuildError::configuration(format!("Failed to resolve latest GCC version: {}", stderr)));
+    }
+    
+    let version_str = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    if version_str.is_empty() {
+        return Err(GccBuildError::configuration("Failed to resolve latest GCC version: no versions found".to_string()));
+    }
+    
+    GccVersion::from_str(&version_str)
 }
