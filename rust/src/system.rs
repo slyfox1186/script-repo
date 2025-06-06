@@ -166,6 +166,15 @@ impl SystemUtilities {
             ));
         }
         
+        // Ensure build directory exists before checking disk space
+        if !config.build_dir.exists() {
+            fs::create_dir_all(&config.build_dir)
+                .map_err(|e| GccBuildError::system_requirements(
+                    format!("Failed to create build directory {}: {}", config.build_dir.display(), e)
+                ))?;
+            info!("✅ Created build directory: {}", config.build_dir.display());
+        }
+        
         // Check disk space
         let available_disk_gb = self.get_available_space(&config.build_dir, SpaceUnit::GB)?;
         let required_disk_gb = config.gcc_versions.len() as u64 * self.requirements.gb_per_gcc_version + self.requirements.safety_margin_gb;
