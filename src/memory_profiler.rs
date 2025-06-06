@@ -101,8 +101,9 @@ impl MemoryProfiler {
     /// Record system memory baseline
     async fn record_system_baseline(&self) -> GccResult<()> {
         let baseline = self.get_current_memory().await?;
+        let available_mb = baseline.available_mb;
         self.profiles.write().await.system_baseline = Some(baseline);
-        debug!("Recorded system memory baseline: {} MB available", baseline.available_mb);
+        debug!("Recorded system memory baseline: {} MB available", available_mb);
         Ok(())
     }
     
@@ -193,12 +194,12 @@ impl MemoryProfiler {
     }
     
     /// Find similar builds for estimation
-    async fn find_similar_builds(
+    async fn find_similar_builds<'a>(
         &self,
-        profiles: &ProfileData,
+        profiles: &'a ProfileData,
         gcc_version: &GccVersion,
         config_hash: &str,
-    ) -> Vec<&BuildProfile> {
+    ) -> Vec<&'a BuildProfile> {
         let mut similar = Vec::new();
         
         for profile in profiles.build_profiles.values() {
