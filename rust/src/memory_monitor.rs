@@ -53,7 +53,7 @@ struct PressureReading {
     timestamp: Instant,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct AdaptiveThresholds {
     low_threshold: f64,
     medium_threshold: f64,
