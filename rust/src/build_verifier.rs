@@ -108,7 +108,7 @@ pub struct PerformanceMetrics {
 impl BuildVerifier {
     pub fn new() -> Self {
         Self {
-            executor: CommandExecutor::new(),
+            executor: CommandExecutor::new(false, false),
             test_suite: Self::create_test_suite(),
             verification_cache: HashMap::new(),
         }

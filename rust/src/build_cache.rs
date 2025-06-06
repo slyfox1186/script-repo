@@ -22,8 +22,8 @@ enum CacheType {
 }
 
 impl BuildCache {
-    pub fn new(config: &Config, executor: CommandExecutor) -> GccResult<Self> {
-        let cache_type = Self::detect_cache_type(&executor);
+    pub async fn new(config: &Config, executor: CommandExecutor) -> GccResult<Self> {
+        let cache_type = Self::detect_cache_type(&executor).await;
         let cache_dir = config.build_dir.join("cache");
         
         // Default to 10GB cache size
@@ -43,11 +43,11 @@ impl BuildCache {
     }
     
     /// Detect available cache type
-    fn detect_cache_type(executor: &CommandExecutor) -> CacheType {
-        if executor.command_exists("sccache") {
+    async fn detect_cache_type(executor: &CommandExecutor) -> CacheType {
+        if executor.command_exists("sccache").await {
             info!("🚀 Using sccache for build acceleration");
             CacheType::Sccache
-        } else if executor.command_exists("ccache") {
+        } else if executor.command_exists("ccache").await {
             info!("🚀 Using ccache for build acceleration");
             CacheType::Ccache
         } else {
