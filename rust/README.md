@@ -44,7 +44,7 @@ A high-performance, intelligent GCC build automation tool with advanced optimiza
 git clone https://github.com/slyfox1186/script-repo.git
 
 # Navigate to the gcc-builder rust directory
-cd script-repo/Bash/Installer\ Scripts/GNU\ Software/GCC/gcc-test-rust/rust
+cd script-repo/gcc-test-rust/rust
 ```
 
 ### Step 2: Install Rust using Debian Package Manager
@@ -281,7 +281,7 @@ RUST_LOG=debug ./target/release/gcc-builder --latest --prefix $HOME/gcc --verbos
 
 # Complete example from clone to run
 git clone https://github.com/slyfox1186/script-repo.git
-cd script-repo/Bash/Installer\ Scripts/GNU\ Software/GCC/gcc-test-rust/rust
+cd script-repo/gcc-test-rust/rust
 sudo apt update && sudo apt install -y rustc cargo build-essential curl wget m4 flex bison
 cargo build --release
 ./target/release/gcc-builder --latest --prefix $HOME/gcc --verbose
