@@ -34,20 +34,66 @@ A high-performance, intelligent GCC build automation tool with advanced optimiza
 ## 🛠️ Installation
 
 ### Prerequisites
-- Rust 1.70+ with Cargo
-- Linux/Unix system with standard build tools
+- Debian/Ubuntu-based Linux system
+- Standard build tools (build-essential)
+- Git for cloning the repository
 
-### Build from Source
+### Step 1: Clone the Repository
 ```bash
+# Clone the repository
 git clone https://github.com/slyfox1186/script-repo.git
+
+# Navigate to the gcc-builder rust directory
 cd script-repo/Bash/Installer\ Scripts/GNU\ Software/GCC/gcc-test-rust/rust
-cargo build --release
 ```
 
-### Quick Start
+### Step 2: Install Rust using Debian Package Manager
 ```bash
-# The binary is located at:
-./target/release/gcc-builder
+# Update package list
+sudo apt update
+
+# Install Rust and Cargo from Debian repositories
+sudo apt install -y rustc cargo
+
+# Alternatively, for the latest Rust version, use rustup:
+# curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+# source $HOME/.cargo/env
+
+# Verify installation
+rustc --version
+cargo --version
+```
+
+### Step 3: Install Build Dependencies
+```bash
+# Install required system packages
+sudo apt install -y \
+    build-essential \
+    curl \
+    wget \
+    m4 \
+    flex \
+    bison \
+    texinfo \
+    libtool \
+    pkg-config
+```
+
+### Step 4: Build the Project
+```bash
+# Build the project in release mode (optimized)
+cargo build --release
+
+# The binary will be created at: ./target/release/gcc-builder
+ls -la ./target/release/gcc-builder
+```
+
+### Step 5: Quick Start
+```bash
+# Make the binary easily accessible (optional)
+sudo cp ./target/release/gcc-builder /usr/local/bin/
+# OR add to PATH for current session
+export PATH="$PWD/target/release:$PATH"
 
 # Basic usage (installs to home directory to avoid permission issues):
 ./target/release/gcc-builder --latest --prefix $HOME/gcc --jobs $(nproc)
@@ -55,13 +101,34 @@ cargo build --release
 
 ## 🚀 Usage Examples
 
+### Version Specification Examples (NEW!)
+```bash
+# Build the latest GCC version (auto-resolves to newest stable)
+./target/release/gcc-builder --latest --prefix $HOME/gcc --verbose
+
+# Build a specific version
+./target/release/gcc-builder --versions 13 --prefix $HOME/gcc-13 --verbose
+
+# Build multiple versions using comma-separated list
+./target/release/gcc-builder --versions 13,14,15 --prefix $HOME/gcc-multi --verbose
+
+# Build a range of versions
+./target/release/gcc-builder --versions 10-15 --prefix $HOME/gcc-range --verbose
+
+# Mix ranges and specific versions
+./target/release/gcc-builder --versions 10,12-14,15 --prefix $HOME/gcc-mixed --verbose
+```
+
 ### Recommended Usage (Home Directory Install)
 ```bash
 # Build latest GCC in your home directory (avoids permission issues)
 ./target/release/gcc-builder --latest --prefix $HOME/gcc --jobs $(nproc) --build-dir /tmp/gcc-build
 
 # Build specific version with custom optimization
-./target/release/gcc-builder --version 13.4.0 --prefix $HOME/gcc-13 -O 3 --jobs 16
+./target/release/gcc-builder --versions 13 --prefix $HOME/gcc-13 -O 3 --jobs 16
+
+# Build multiple versions in parallel
+./target/release/gcc-builder --versions 13,14,15 --prefix $HOME/gcc-multi --jobs $(nproc)
 ```
 
 ### System-Wide Install (Requires Permissions)
@@ -72,6 +139,9 @@ sudo chown $USER:$USER /opt/gcc
 
 # Then build and install
 ./target/release/gcc-builder --latest --prefix /opt/gcc --jobs $(nproc)
+
+# Or build multiple versions
+./target/release/gcc-builder --versions 12-15 --prefix /opt/gcc --jobs $(nproc)
 ```
 
 ### Advanced Usage
@@ -89,15 +159,20 @@ sudo chown $USER:$USER /opt/gcc
 ./target/release/gcc-builder --latest --prefix $HOME/gcc --jobs 4 --memory-monitor
 
 # Dry run to see what would be done
-./target/release/gcc-builder --latest --prefix $HOME/gcc --dry-run
+./target/release/gcc-builder --latest --prefix $HOME/gcc --dry-run --verbose
+
+# Build specific versions with debug output
+./target/release/gcc-builder --versions 13,14 --prefix $HOME/gcc --debug --verbose
 ```
 
 ## 🔧 Command Line Options
 
 ### Version Selection
-- `--latest` - Build the latest stable GCC version
-- `--version X.Y.Z` - Build specific version
-- `--versions X,Y,Z` - Build multiple versions
+- `--latest` - Build the latest stable GCC version (auto-resolves)
+- `--versions X` - Build specific major version (e.g., `--versions 13`)
+- `--versions X,Y,Z` - Build multiple versions (e.g., `--versions 13,14,15`)
+- `--versions X-Y` - Build version range (e.g., `--versions 10-15`)
+- `--versions X,Y-Z` - Mix specific versions and ranges (e.g., `--versions 10,12-14,15`)
 - `--all-supported` - Build all supported versions
 
 ### Build Configuration
@@ -196,8 +271,20 @@ RUST_LOG=debug ./target/release/gcc-builder --latest --prefix $HOME/gcc --verbos
 # Basic build (recommended)
 ./target/release/gcc-builder --latest --prefix $HOME/gcc --jobs $(nproc)
 
+# Build specific versions
+./target/release/gcc-builder --versions 13 --prefix $HOME/gcc-13 --verbose
+./target/release/gcc-builder --versions 13,14,15 --prefix $HOME/gcc-multi --verbose
+./target/release/gcc-builder --versions 10-15 --prefix $HOME/gcc-range --verbose
+
 # Advanced build with all features
 ./target/release/gcc-builder --latest --prefix $HOME/gcc -O 3 --jobs 32 --build-dir /tmp/my-gcc-build --log-file build.log --verbose
+
+# Complete example from clone to run
+git clone https://github.com/slyfox1186/script-repo.git
+cd script-repo/Bash/Installer\ Scripts/GNU\ Software/GCC/gcc-test-rust/rust
+sudo apt update && sudo apt install -y rustc cargo build-essential curl wget m4 flex bison
+cargo build --release
+./target/release/gcc-builder --latest --prefix $HOME/gcc --verbose
 ```
 
 ## 📝 Implementation Details
