@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
@@ -215,7 +216,7 @@ pub struct CacheStatistics {
     pub hit_rate: f64,
 }
 
-/// Global cache instance
+
 lazy_static::lazy_static! {
     pub static ref VERSION_CACHE: VersionCache = VersionCache::new();
 }

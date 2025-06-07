@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use anyhow::Result;
 use colored::*;
 use env_logger::{Builder, Target};

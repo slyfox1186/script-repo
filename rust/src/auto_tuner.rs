@@ -1,10 +1,10 @@
+#![allow(dead_code)]
 use std::collections::HashMap;
 use std::path::PathBuf;
-use log::{info, debug, warn};
+use log::{info, debug};
 use serde::{Deserialize, Serialize};
 use crate::config::{Config, GccVersion};
 use crate::error::{GccBuildError, Result as GccResult};
-use crate::system;
 
 /// Auto-tuning system for optimal build configuration based on system capabilities
 #[derive(Clone)]
@@ -270,12 +270,12 @@ impl AutoTuner {
     /// Optimize compilation flags
     async fn optimize_compilation_flags(
         &self,
-        gcc_version: &GccVersion,
+        _gcc_version: &GccVersion,
         base_config: &Config,
         rationale: &mut Vec<String>,
     ) -> GccResult<(String, Vec<String>)> {
         let profile = &self.system_profile;
-        let rules = &self.tuning_rules;
+        let _rules = &self.tuning_rules;
         
         let mut optimization_level = base_config.optimization_level.clone();
         let mut configure_args = Vec::new();

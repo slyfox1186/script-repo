@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use log::{info, debug, warn};
@@ -176,7 +177,7 @@ impl BuildCache {
             }
         }
         
-        stats.hit_rate = if stats.hits + stats.misses > 0 {
+        stats._hit_rate = if stats.hits + stats.misses > 0 {
             (stats.hits as f64 / (stats.hits + stats.misses) as f64) * 100.0
         } else {
             0.0
@@ -206,7 +207,7 @@ impl BuildCache {
             }
         }
         
-        stats.hit_rate = if stats.hits + stats.misses > 0 {
+        stats._hit_rate = if stats.hits + stats.misses > 0 {
             (stats.hits as f64 / (stats.hits + stats.misses) as f64) * 100.0
         } else {
             0.0
@@ -228,12 +229,12 @@ impl BuildCache {
         info!("  • Cache type: {:?}", self.cache_type);
         info!("  • Cache hits: {}", stats.hits);
         info!("  • Cache misses: {}", stats.misses);
-        info!("  • Hit rate: {:.1}%", stats.hit_rate);
+        info!("  • Hit rate: {:.1}%", stats._hit_rate);
         info!("  • Cache size: {:.1} MB", stats.size_mb);
         info!("  • Files cached: {}", stats.files);
         
-        if stats.hit_rate > 0.0 {
-            let saved_time = estimate_time_saved(stats.hits, stats.hit_rate);
+        if stats._hit_rate > 0.0 {
+            let saved_time = estimate_time_saved(stats.hits, stats._hit_rate);
             info!("  • Estimated time saved: {:.1} minutes", saved_time);
         }
         
@@ -313,7 +314,7 @@ impl BuildCache {
 pub struct CacheStats {
     pub hits: u64,
     pub misses: u64,
-    pub hit_rate: f64,
+    pub _hit_rate: f64,
     pub size_mb: f64,
     pub files: u64,
 }
@@ -349,7 +350,7 @@ fn extract_size(line: &str) -> Option<f64> {
 }
 
 /// Estimate time saved by cache hits
-fn estimate_time_saved(hits: u64, hit_rate: f64) -> f64 {
+fn estimate_time_saved(hits: u64, _hit_rate: f64) -> f64 {
     // Assume each cache hit saves about 30 seconds of compilation time
     let seconds_per_hit = 30.0;
     let total_seconds_saved = hits as f64 * seconds_per_hit;

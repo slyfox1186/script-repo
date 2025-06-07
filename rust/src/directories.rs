@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use log::{debug, info};
 use std::fs;
 use std::path::{Path, PathBuf};

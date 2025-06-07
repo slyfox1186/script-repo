@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use log::{info, warn};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
