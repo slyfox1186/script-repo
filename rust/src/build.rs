@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 use log::{info, warn};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::fs;
@@ -141,11 +141,13 @@ pub async fn build_gcc_version(
     let source_dir = env.config.workspace_dir.join(format!("gcc-{}", full_version));
     let build_dir = source_dir.join("build-gcc");
     
-    // EFFICIENCY: Quick existence check before expensive operations
-    if !env.config.force_rebuild && install_prefix.exists() {
-        println!("\n   ⚡ GCC {} is already installed!", full_version);
-        println!("   📍 Location: {}", install_prefix.display());
-        println!("   💡 Tip: Use --force-rebuild to rebuild anyway");
+    // ULTRAFAST: Smart binary verification before expensive operations
+    if crate::binary_verifier::should_skip_build(
+        &install_prefix,
+        &full_version,
+        env.config.force_rebuild,
+        env.config.verify_level.clone(),
+    ).await? {
         logger.finish();
         return Ok(());
     }
@@ -481,13 +483,50 @@ async fn post_install_tasks_fast(
 ) -> GccResult<()> {
     let logger = ProgressLogger::new("🔧 Post-installation");
     
-    // EFFICIENCY: Run all post-install operations sequentially for now
-    run_libtool_finish_fast(env, version, install_prefix).await?;
-    update_linker_cache_fast(env, version, install_prefix).await?;
-    create_gcc_symlinks_fast(env, version, install_prefix).await?;
-    trim_gcc_binaries_fast(env, version, install_prefix).await?;
+    // ULTRAFAST: Run independent tasks in parallel
+    let env_clone1 = env.clone();
+    let env_clone2 = env.clone();
+    let env_clone3 = env.clone();
+    let version_clone1 = version.clone();
+    let version_clone2 = version.clone();
+    let version_clone3 = version.clone();
+    let prefix_clone1 = install_prefix.to_path_buf();
+    let prefix_clone2 = install_prefix.to_path_buf();
+    let prefix_clone3 = install_prefix.to_path_buf();
     
-    // EFFICIENCY: Conditional static binary saving
+    // Spawn parallel tasks
+    let libtool_task = tokio::spawn(async move {
+        run_libtool_finish_fast(&env_clone1, &version_clone1, &prefix_clone1).await
+    });
+    
+    let symlinks_task = if env.config.create_symlinks {
+        Some(tokio::spawn(async move {
+            create_gcc_symlinks_fast(&env_clone2, &version_clone2, &prefix_clone2).await
+        }))
+    } else {
+        info!("⏭️  Skipping symlink creation (disabled by configuration)");
+        None
+    };
+    
+    let trim_task = tokio::spawn(async move {
+        trim_gcc_binaries_fast(&env_clone3, &version_clone3, &prefix_clone3).await
+    });
+    
+    // Execute parallel tasks and collect results
+    let (libtool_result, trim_result) = tokio::join!(libtool_task, trim_task);
+    
+    // Handle results
+    libtool_result.unwrap()?;
+    trim_result.unwrap()?;
+    
+    if let Some(task) = symlinks_task {
+        task.await.unwrap()?;
+    }
+    
+    // Linker cache must run after other tasks complete
+    update_linker_cache_fast(env, version, install_prefix).await?;
+    
+    // Static binary saving (if needed)
     if env.config.static_build && env.config.save_binaries {
         save_static_binaries_fast(env, version, install_prefix).await?;
     }
@@ -521,13 +560,48 @@ async fn update_linker_cache_fast(
     version: &GccVersion,
     install_prefix: &Path,
 ) -> GccResult<()> {
-    let conf_content = format!("{}/lib\n{}/lib64\n", 
-                              install_prefix.display(), 
-                              install_prefix.display());
+    info!("📚 Updating linker cache for GCC {}", version);
     
-    let conf_file = format!("/etc/ld.so.conf.d/gcc-{}.conf", version);
-    let _ = env.file_ops.write_file(Path::new(&conf_file), &conf_content);
-    let _ = env.command_executor.execute_as("sudo", "ldconfig", Vec::<&str>::new()).await;
+    // Include all possible library directories
+    let lib_dirs = vec![
+        install_prefix.join("lib"),
+        install_prefix.join("lib64"),
+        install_prefix.join("lib32"),  // For multilib support
+        install_prefix.join(format!("lib/gcc/{}/{}", env.config.target_arch, version.full_version)),
+    ];
+    
+    let mut conf_content = String::new();
+    for lib_dir in &lib_dirs {
+        if lib_dir.exists() {
+            conf_content.push_str(&format!("{}\n", lib_dir.display()));
+            info!("  📁 Added library path: {}", lib_dir.display());
+        }
+    }
+    
+    let conf_file = format!("/etc/ld.so.conf.d/gcc-{}.conf", version.full_version);
+    let conf_path = Path::new(&conf_file);
+    
+    // Write config file with sudo
+    let temp_file = env.config.build_dir.join(format!("gcc-{}.conf", version.full_version));
+    env.file_ops.write_file(&temp_file, &conf_content)?;
+    
+    // Copy to system location with sudo
+    env.command_executor.execute_as("sudo", "cp", [
+        temp_file.to_str().unwrap(),
+        conf_path.to_str().unwrap(),
+    ]).await?;
+    
+    // Set proper permissions
+    env.command_executor.execute_as("sudo", "chmod", ["644", conf_path.to_str().unwrap()]).await?;
+    
+    // Update linker cache
+    info!("  🔄 Running ldconfig to update library cache...");
+    env.command_executor.execute_as("sudo", "ldconfig", Vec::<&str>::new()).await?;
+    
+    info!("  ✅ Linker cache updated successfully");
+    
+    // Clean up temp file
+    let _ = fs::remove_file(&temp_file).await;
     
     Ok(())
 }
@@ -537,54 +611,110 @@ async fn create_gcc_symlinks_fast(
     version: &GccVersion,
     install_prefix: &Path,
 ) -> GccResult<()> {
-    // EFFICIENCY: Only create essential symlinks
+    use crate::symlink_optimizer::{SymlinkOptimizer, discover_gcc_binaries_parallel};
+    
+    info!("🔗 Creating symlinks for GCC {} binaries", version);
+    
     let bin_dir = install_prefix.join("bin");
     let symlink_dir = Path::new("/usr/local/bin");
     
     if !bin_dir.exists() {
+        warn!("Binary directory not found: {}", bin_dir.display());
         return Ok(());
     }
     
-    let _ = env.dir_ops.create_directory(symlink_dir, "symlink directory", true);
+    // Ensure symlink directory exists
+    env.dir_ops.create_directory(symlink_dir, "symlink directory", true)?;
     
-    // EFFICIENCY: Only symlink main compiler binaries
-    let main_binaries = [
-        format!("gcc-{}", version.major),
-        format!("g++-{}", version.major),
-        format!("gfortran-{}", version.major),
+    // Dynamically find all GCC binaries with version suffixes
+    let version_patterns = vec![
+        format!("-{}", version.major),                    // e.g., gcc-14
+        format!("-{}.{}", version.major, version.minor),  // e.g., gcc-14.3
+        format!("-{}", version.full_version),             // e.g., gcc-14.3.0
     ];
     
-    for binary in &main_binaries {
-        let source = bin_dir.join(binary);
-        let target = symlink_dir.join(binary);
-        if source.exists() {
-            let _ = env.file_ops.create_symlink(&source, &target, true);
-        }
+    // ULTRAFAST: Parallel binary discovery
+    let binaries = discover_gcc_binaries_parallel(&bin_dir, &version_patterns).await?;
+    
+    // Prepare symlink pairs
+    let symlinks: Vec<(PathBuf, PathBuf)> = binaries
+        .into_iter()
+        .map(|(source, filename)| {
+            let target = symlink_dir.join(&filename);
+            (source, target)
+        })
+        .collect();
+    
+    if symlinks.is_empty() {
+        info!("No GCC binaries found to symlink");
+        return Ok(());
     }
+    
+    // ULTRAFAST: Batch symlink creation
+    let optimizer = SymlinkOptimizer::new(env.config.dry_run);
+    let created_count = optimizer.create_symlinks_batch(symlinks, true).await?;
+    
+    info!("🔗 Created {} symlinks in /usr/local/bin/", created_count);
     
     Ok(())
 }
 
 async fn trim_gcc_binaries_fast(
     env: &BuildEnvironment,
-    _version: &GccVersion,
+    version: &GccVersion,
     install_prefix: &Path,
 ) -> GccResult<()> {
-    // EFFICIENCY: Use system find and rename for batch operations
+    info!("🔧 Trimming architecture prefix from GCC {} binaries", version);
+    
     let bin_dir = install_prefix.join("bin");
     if !bin_dir.exists() {
         return Ok(());
     }
     
+    // Read directory to find binaries with architecture prefix
     let prefix = format!("{}-", env.config.target_arch);
-    let _ = env.command_executor.execute_as("sudo", "find", [
-        bin_dir.to_str().unwrap(),
-        "-name", &format!("{}*", prefix),
-        "-exec", "bash", "-c", 
-        &format!("mv \"$1\" \"$(dirname \"$1\")/$(basename \"$1\" | sed 's/^{}//')\"", prefix),
-        "_", "{}", ";"
-    ]).await;
+    let mut entries = fs::read_dir(&bin_dir).await
+        .map_err(|e| GccBuildError::file_operation(
+            "read_dir".to_string(),
+            bin_dir.display().to_string(),
+            e.to_string(),
+        ))?;
     
+    let mut trimmed_count = 0;
+    
+    while let Some(entry) = entries.next_entry().await
+        .map_err(|e| GccBuildError::file_operation(
+            "next_entry".to_string(),
+            bin_dir.display().to_string(),
+            e.to_string(),
+        ))? {
+        let path = entry.path();
+        if let Some(filename) = path.file_name().and_then(|f| f.to_str()) {
+                if filename.starts_with(&prefix) && !filename.contains(&format!("-{}", version.major)) {
+                    // This is a prefixed binary without version number
+                    let new_name = filename.strip_prefix(&prefix).unwrap();
+                    let new_path = bin_dir.join(new_name);
+                    
+                    // Only rename if target doesn't exist
+                    if !new_path.exists() {
+                        match env.command_executor.execute_as("sudo", "mv", [
+                            path.to_str().unwrap(),
+                            new_path.to_str().unwrap(),
+                        ]).await {
+                            Ok(_) => {
+                                info!("  ✂️  Trimmed: {} -> {}", filename, new_name);
+                                trimmed_count += 1;
+                            }
+                            Err(e) => {
+                                warn!("  ⚠️  Failed to trim {}: {}", filename, e);
+                            }
+                        }
+                    }
+                }
+        }
+    }
+    
+    info!("  ✅ Trimmed {} binary names", trimmed_count);
     Ok(())
 }
 
@@ -593,8 +723,17 @@ async fn save_static_binaries_fast(
     version: &GccVersion,
     install_prefix: &Path,
 ) -> GccResult<()> {
-    let save_dir = env.config.build_dir.parent().unwrap()
-        .join(format!("gcc-{}-static-binaries", version));
+    // FIXED: Create static binaries in a proper dedicated location
+    let save_dir = if let Some(static_dir) = &env.config.static_binaries_dir {
+        static_dir.join(format!("gcc-{}", version))
+    } else if let Some(prefix) = &env.config.install_prefix {
+        prefix.parent().unwrap_or_else(|| Path::new("/usr/local"))
+            .join("static-binaries")
+            .join(format!("gcc-{}", version))
+    } else {
+        Path::new("/usr/local/static-binaries")
+            .join(format!("gcc-{}", version))
+    };
     
     env.dir_ops.create_directory(&save_dir, "static binaries", false)?;
     

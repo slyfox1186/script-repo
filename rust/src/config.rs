@@ -8,6 +8,37 @@ use crate::cli::{Args, OptimizationLevel};
 use crate::error::{GccBuildError, Result as GccResult};
 use log::info;
 
+// ULTRAFAST: Compile-time constants
+pub const MIN_GCC_VERSION: u8 = 10;
+pub const DEFAULT_BUILD_DIR: &str = "/tmp/gcc-build-script";
+pub const MIN_RAM_MB: u64 = 2000;
+pub const GB_PER_VERSION: u64 = 25;
+pub const SAFETY_GB: u64 = 5;
+
+// Dynamic maximum version detection
+use once_cell::sync::Lazy;
+use std::sync::RwLock;
+
+pub static MAX_GCC_VERSION: Lazy<RwLock<u8>> = Lazy::new(|| {
+    // Start with a reasonable default, will be updated dynamically
+    RwLock::new(15)
+});
+
+#[inline(always)]
+pub fn is_valid_gcc_version(version: u8) -> bool {
+    let max_version = MAX_GCC_VERSION.read().unwrap();
+    version >= MIN_GCC_VERSION && version <= *max_version
+}
+
+/// Update the maximum GCC version based on discovered versions
+pub fn update_max_gcc_version(version: u8) {
+    let mut max_version = MAX_GCC_VERSION.write().unwrap();
+    if version > *max_version {
+        info!("Updated maximum GCC version to {}", version);
+        *max_version = version;
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Config {
     pub debug: bool,
@@ -20,6 +51,9 @@ pub struct Config {
     pub verbose: bool,
     pub skip_checksum: bool,
     pub force_rebuild: bool,
+    pub create_symlinks: bool,
+    pub verify_level: crate::binary_verifier::VerificationLevel,
+    pub static_binaries_dir: Option<PathBuf>,
     
     pub optimization_level: OptimizationLevel,
     pub max_retries: usize,
@@ -114,7 +148,7 @@ impl Config {
         let target_arch = detect_target_architecture()?;
         
         // Set up directories
-        let build_dir = args.build_dir.clone().unwrap_or_else(|| PathBuf::from("/tmp/gcc-build-script"));
+        let build_dir = args.build_dir.clone().unwrap_or_else(|| PathBuf::from(DEFAULT_BUILD_DIR));
         let packages_dir = build_dir.join("packages");
         let workspace_dir = build_dir.join("workspace");
         
@@ -142,6 +176,15 @@ impl Config {
             verbose: args.verbose,
             skip_checksum: args.skip_checksum,
             force_rebuild: args.force_rebuild,
+            create_symlinks: if args.create_symlinks {
+                true
+            } else if args.skip_symlinks {
+                false
+            } else {
+                true  // Default to true
+            },
+            verify_level: args.verify_level.into(),
+            static_binaries_dir: args.static_binaries_dir,
             
             optimization_level: args.optimization,
             max_retries: args.max_retries,
@@ -278,9 +321,11 @@ fn parse_gcc_versions(versions_str: Option<&str>) -> GccResult<Vec<GccVersion>> 
                 ));
             }
             
-            if start < 10 || end > 15 {
+            if !is_valid_gcc_version(start) || !is_valid_gcc_version(end) {
+                let max_version = MAX_GCC_VERSION.read().unwrap();
                 return Err(GccBuildError::configuration(
-                    format!("Version range '{}' out of bounds. Supported versions are 10-15", part)
+                    format!("Version range '{}' out of bounds. Supported versions are {}-{}", 
+                            part, MIN_GCC_VERSION, *max_version)
                 ));
             }
             
@@ -290,9 +335,11 @@ fn parse_gcc_versions(versions_str: Option<&str>) -> GccResult<Vec<GccVersion>> 
             }
         } else if let Ok(major) = part.parse::<u8>() {
             // Single version like "13"
-            if major < 10 || major > 15 {
+            if !is_valid_gcc_version(major) {
+                let max_version = MAX_GCC_VERSION.read().unwrap();
                 return Err(GccBuildError::configuration(
-                    format!("Version {} is not supported. Supported versions are 10-15", major)
+                    format!("Version {} is not supported. Supported versions are {}-{}", 
+                            major, MIN_GCC_VERSION, *max_version)
                 ));
             }
             versions.push(GccVersion::new(major, 0, 0));
@@ -300,9 +347,11 @@ fn parse_gcc_versions(versions_str: Option<&str>) -> GccResult<Vec<GccVersion>> 
             // Try to parse as full version (e.g., "13.2.0")
             match GccVersion::from_str(part) {
                 Ok(version) => {
-                    if version.major < 10 || version.major > 15 {
+                    if !is_valid_gcc_version(version.major) {
+                        let max_version = MAX_GCC_VERSION.read().unwrap();
                         return Err(GccBuildError::configuration(
-                            format!("Version {} is not supported. Supported versions are 10-15", version)
+                            format!("Version {} is not supported. Supported versions are {}-{}", 
+                                    version, MIN_GCC_VERSION, *max_version)
                         ));
                     }
                     versions.push(version);
@@ -374,6 +423,20 @@ fn create_build_settings(args: &Args, _target_arch: &str, system_info: &SystemIn
 fn resolve_latest_version_sync() -> GccResult<GccVersion> {
     use std::process::Command;
     
+    // First, discover ALL available GCC versions to update our maximum
+    let all_versions_output = Command::new("bash")
+        .arg("-c")
+        .arg(r#"curl -fsSL https://ftp.gnu.org/gnu/gcc/ | grep -oP 'gcc-\K\d+(?=\.\d+\.\d+/)' | sort -nu | tail -n1"#)
+        .output()
+        .map_err(|e| GccBuildError::configuration(format!("Failed to discover GCC versions: {}", e)))?;
+    
+    if all_versions_output.status.success() {
+        if let Ok(max_major) = String::from_utf8_lossy(&all_versions_output.stdout).trim().parse::<u8>() {
+            update_max_gcc_version(max_major);
+        }
+    }
+    
+    // Now get the latest full version
     let output = Command::new("bash")
         .arg("-c")
         .arg(r#"curl -fsSL https://ftp.gnu.org/gnu/gcc/ | grep -oP 'gcc-\K\d+\.\d+\.\d+(?=/)' | sort -V | tail -n1"#)
@@ -390,5 +453,10 @@ fn resolve_latest_version_sync() -> GccResult<GccVersion> {
         return Err(GccBuildError::configuration("Failed to resolve latest GCC version: no versions found".to_string()));
     }
     
-    GccVersion::from_str(&version_str)
+    let version = GccVersion::from_str(&version_str)?;
+    
+    // Update max version if we found a newer one
+    update_max_gcc_version(version.major);
+    
+    Ok(version)
 }

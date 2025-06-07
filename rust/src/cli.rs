@@ -64,8 +64,8 @@ pub struct Args {
     #[arg(long, help = "Build the latest stable GCC version")]
     pub latest: bool,
     
-    /// Build all currently supported GCC versions (10-15)
-    #[arg(long, help = "Build all currently supported GCC versions (10-15)")]
+    /// Build all currently supported GCC versions
+    #[arg(long, help = "Build all currently supported GCC versions (dynamically detected)")]
     pub all_supported: bool,
     
     /// Use a build preset configuration
@@ -95,6 +95,45 @@ pub struct Args {
     /// Force rebuild even if installation exists
     #[arg(long, help = "Force rebuild even if installation already exists")]
     pub force_rebuild: bool,
+
+    /// Create symlinks in /usr/local/bin for GCC binaries
+    #[arg(long, help = "Create symlinks in /usr/local/bin for all GCC binaries (requires sudo)")]
+    pub create_symlinks: bool,
+
+    /// Skip creating symlinks (overrides default behavior)
+    #[arg(long, conflicts_with = "create_symlinks", help = "Skip creating symlinks in /usr/local/bin")]
+    pub skip_symlinks: bool,
+
+    /// Verification level for existing installations
+    #[arg(long, value_enum, default_value = "fast", help = "Level of verification for existing GCC installations")]
+    pub verify_level: VerificationLevel,
+
+    /// Directory to save static binaries (only with --save-binaries)
+    #[arg(long, value_name = "DIR", help = "Directory to save static binaries (default: /usr/local/static-binaries)")]
+    pub static_binaries_dir: Option<PathBuf>,
+}
+
+#[derive(ValueEnum, Clone, Debug)]
+pub enum VerificationLevel {
+    /// Quick: Check file exists and is executable
+    #[value(name = "quick")]
+    Quick,
+    /// Fast: Quick + run --version (default)
+    #[value(name = "fast")]
+    Fast,
+    /// Full: Fast + compile test program
+    #[value(name = "full")]
+    Full,
+}
+
+impl From<VerificationLevel> for crate::binary_verifier::VerificationLevel {
+    fn from(level: VerificationLevel) -> Self {
+        match level {
+            VerificationLevel::Quick => crate::binary_verifier::VerificationLevel::Quick,
+            VerificationLevel::Fast => crate::binary_verifier::VerificationLevel::Fast,
+            VerificationLevel::Full => crate::binary_verifier::VerificationLevel::Full,
+        }
+    }
 }
 
 #[derive(ValueEnum, Clone, Debug)]
@@ -214,15 +253,26 @@ impl Args {
     
     /// Get the effective versions string based on flags
     pub fn get_versions_string(&self) -> String {
+        use crate::config::{MIN_GCC_VERSION, MAX_GCC_VERSION};
+        
         if let Some(preset) = &self.preset {
             match preset {
                 BuildPreset::Minimal | BuildPreset::Development | BuildPreset::Production | BuildPreset::Ci => "latest".to_string(),
-                BuildPreset::Cross => "13-15".to_string(), // Latest 3 versions
+                BuildPreset::Cross => {
+                    // Latest 3 versions dynamically
+                    let max = *MAX_GCC_VERSION.read().unwrap();
+                    if max >= MIN_GCC_VERSION + 2 {
+                        format!("{}-{}", max - 2, max)
+                    } else {
+                        format!("{}-{}", MIN_GCC_VERSION, max)
+                    }
+                }
             }
         } else if self.latest {
             "latest".to_string()
         } else if self.all_supported {
-            "10-15".to_string()
+            let max = *MAX_GCC_VERSION.read().unwrap();
+            format!("{}-{}", MIN_GCC_VERSION, max)
         } else {
             self.versions.clone().unwrap_or_default()
         }
