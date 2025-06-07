@@ -1,9 +1,10 @@
+#![allow(dead_code)]
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::{RwLock, watch};
 use tokio::time::interval;
 use log::{info, warn, debug, error};
-use serde::{Deserialize, Serialize};
+
 use crate::error::{GccBuildError, Result as GccResult};
 
 /// Real-time memory pressure monitoring and automatic response system
@@ -54,7 +55,7 @@ struct PressureReading {
 }
 
 #[derive(Debug, Clone)]
-struct AdaptiveThresholds {
+pub struct AdaptiveThresholds {
     low_threshold: f64,
     medium_threshold: f64,
     high_threshold: f64,
@@ -429,7 +430,7 @@ impl MemoryMonitor {
         }
         
         // Force garbage collection in allocator (if using jemalloc)
-        #[cfg(feature = "jemalloc")]
+        #[cfg(target_os = "linux")]
         {
             extern "C" {
                 fn malloc_trim(pad: libc::size_t) -> libc::c_int;

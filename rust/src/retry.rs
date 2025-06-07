@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use std::time::Duration;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -152,7 +153,7 @@ impl RetryExecutor {
     }
     
     /// Handle OOM by adjusting system resources
-    async fn handle_oom_adjustment(&self, scheduler: &BuildScheduler) {
+    async fn handle_oom_adjustment(&self, _scheduler: &BuildScheduler) {
         let oom_count = self.oom_count.load(Ordering::Relaxed);
         
         match oom_count {

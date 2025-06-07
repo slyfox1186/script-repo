@@ -1,8 +1,9 @@
-use std::path::{Path, PathBuf};
+#![allow(dead_code)]
+use std::path::PathBuf;
 use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Local};
-use log::{info, warn, debug};
+use log::{info, debug};
 use crate::config::GccVersion;
 use crate::error::{GccBuildError, Result as GccResult};
 

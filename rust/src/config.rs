@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use std::collections::HashMap;
 use std::path::PathBuf;
 use semver::Version;
@@ -328,7 +329,7 @@ fn parse_gcc_versions(versions_str: Option<&str>) -> GccResult<Vec<GccVersion>> 
     Ok(versions)
 }
 
-fn create_build_settings(args: &Args, target_arch: &str, system_info: &SystemInfo) -> GccResult<BuildSettings> {
+fn create_build_settings(args: &Args, _target_arch: &str, system_info: &SystemInfo) -> GccResult<BuildSettings> {
     let mut cflags = vec![args.optimization.as_str().to_string(), "-pipe".to_string()];
     let mut cxxflags = cflags.clone();
     let cppflags = vec!["-D_FORTIFY_SOURCE=2".to_string()];

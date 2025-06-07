@@ -1,7 +1,8 @@
+#![allow(dead_code)]
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 use std::collections::HashMap;
-use log::{info, warn, debug, error};
+use log::{info, warn};
 use serde::{Deserialize, Serialize};
 use tokio::process::Command;
 use crate::config::GccVersion;
@@ -128,7 +129,7 @@ impl BuildVerifier {
         let start_time = Instant::now();
         let mut test_results = Vec::new();
         let mut warnings = Vec::new();
-        let mut errors = Vec::new();
+        let errors = Vec::new();
         
         // Basic functionality tests
         info!("🧪 Running basic functionality tests...");

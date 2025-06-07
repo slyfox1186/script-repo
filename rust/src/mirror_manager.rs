@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use std::time::{Duration, Instant};
 use log::{info, warn, debug};
 use crate::error::{GccBuildError, Result as GccResult};

@@ -1,8 +1,9 @@
+#![allow(dead_code)]
 use std::collections::HashMap;
 use log::{info, warn, error};
 use crate::error::{GccBuildError, Result as GccResult};
 use crate::commands::CommandExecutor;
-use crate::suggestions::Suggestion;
+
 use colored::*;
 
 /// Automatic dependency installer for missing packages

@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use log::{info, warn};
 use std::path::Path;
 use std::sync::Arc;
@@ -11,7 +12,7 @@ use crate::error::{GccBuildError, Result as GccResult};
 use crate::files::{FileOperations, FileValidationType};
 use crate::gcc_config::GccConfigGenerator;
 use crate::logging::ProgressLogger;
-use crate::progress::{BuildProgressTracker, ProgressLogger as TrackedProgressLogger};
+use crate::progress::BuildProgressTracker;
 use crate::system::ResourceMonitor;
 
 #[derive(Clone)]
@@ -566,7 +567,7 @@ async fn create_gcc_symlinks_fast(
 
 async fn trim_gcc_binaries_fast(
     env: &BuildEnvironment,
-    version: &GccVersion,
+    _version: &GccVersion,
     install_prefix: &Path,
 ) -> GccResult<()> {
     // EFFICIENCY: Use system find and rename for batch operations

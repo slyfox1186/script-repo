@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use log::{debug, info, warn};
 use std::collections::{HashMap, HashSet};
 use std::process::Command;

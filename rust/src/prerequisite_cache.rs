@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -237,7 +238,7 @@ impl PrerequisiteCache {
     }
     
     /// Extract tarball to directory
-    async fn extract_tarball(&self, tarball: &Path, target: &Path) -> GccResult<()> {
+    async fn extract_tarball(&self, tarball: &Path, _target: &Path) -> GccResult<()> {
         let tar_cmd = if tarball.to_string_lossy().ends_with(".tar.xz") {
             vec!["tar", "-xJf", tarball.to_str().unwrap(), "-C", self.cache_dir.to_str().unwrap()]
         } else {
@@ -339,7 +340,7 @@ impl PrerequisiteCache {
         }
         
         // Keep only latest versions
-        for (name, mut versions) in by_name {
+        for (_name, mut versions) in by_name {
             versions.sort_by(|a, b| b.version.cmp(&a.version));
             let to_keep = versions.into_iter().take(keep_latest);
             state.prerequisites.extend(to_keep);
