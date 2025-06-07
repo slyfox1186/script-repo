@@ -711,8 +711,9 @@ impl BuildVerifier {
             .await?;
         
         let duration = start_time.elapsed().as_secs_f64();
-        let passed = output.status.success() || 
-                     !String::from_utf8_lossy(&output.stderr).contains("unrecognized");
+        let stderr_text = String::from_utf8_lossy(&output.stderr);
+        let has_unrecognized_error = stderr_text.contains("unrecognized");
+        let passed = output.status.success() || !has_unrecognized_error;
         
         Ok(TestResult {
             test_name: format!("standard_{}_{}", compiler, standard.trim_start_matches('-')),

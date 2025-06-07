@@ -23,6 +23,8 @@ mod cache;
 mod build_state;
 mod retry;
 mod suggestions;
+mod symlink_optimizer;
+mod binary_verifier;
 mod prerequisite_cache;
 mod dependency_installer;
 mod build_cache;
