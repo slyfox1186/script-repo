@@ -35,7 +35,10 @@ impl FileOperations {
         
         match validation_type {
             FileValidationType::Exists => Ok(true),
-            FileValidationType::Readable => Ok(file_path.metadata()?.permissions().readonly() == false),
+            FileValidationType::Readable => {
+                let permissions = file_path.metadata()?.permissions();
+                Ok(!permissions.readonly())
+            },
             FileValidationType::Writable => {
                 // Try to open for writing
                 match fs::OpenOptions::new().write(true).open(file_path) {
@@ -330,6 +333,55 @@ impl FileOperations {
         }
         
         debug!("Created symlink: {:?} -> {:?}", link_path, target);
+        Ok(())
+    }
+    
+    /// Create symbolic link with sudo if needed
+    pub fn create_symlink_sudo(
+        &self,
+        target: &Path,
+        link_path: &Path,
+        force: bool,
+    ) -> GccResult<()> {
+        if self.dry_run {
+            info!("Dry run: would create symlink {:?} -> {:?}", link_path, target);
+            return Ok(());
+        }
+        
+        // First try without sudo
+        match self.create_symlink(target, link_path, force) {
+            Ok(_) => return Ok(()),
+            Err(e) => {
+                debug!("Failed to create symlink without sudo: {}, trying with sudo", e);
+            }
+        }
+        
+        // Check and remove existing file/link with sudo if needed
+        if link_path.exists() && force {
+            let _ = std::process::Command::new("sudo")
+                .args(&["rm", "-f", link_path.to_str().unwrap()])
+                .output();
+        }
+        
+        // Create symlink with sudo
+        let status = std::process::Command::new("sudo")
+            .args(&["ln", "-sf", target.to_str().unwrap(), link_path.to_str().unwrap()])
+            .status()
+            .map_err(|e| GccBuildError::file_operation(
+                "symlink_sudo".to_string(),
+                link_path.display().to_string(),
+                e.to_string(),
+            ))?;
+        
+        if !status.success() {
+            return Err(GccBuildError::file_operation(
+                "symlink_sudo".to_string(),
+                link_path.display().to_string(),
+                "sudo ln command failed".to_string(),
+            ));
+        }
+        
+        debug!("Created symlink with sudo: {:?} -> {:?}", link_path, target);
         Ok(())
     }
     
