@@ -1,12 +1,13 @@
+#![allow(dead_code)]
 use log::{debug, error, info, warn};
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::path::Path;
 use std::process::Stdio;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
+
+
 use std::time::{Duration, Instant};
-use tokio::io::{AsyncBufReadExt, BufReader};
+
 use tokio::process::Command as AsyncCommand;
 use tokio::time::timeout;
 
@@ -164,12 +165,12 @@ impl CommandExecutor {
         command.stderr(Stdio::inherit());
         
         let mut child = command.spawn()
-            .map_err(|e| GccBuildError::command_failed(cmd_string.clone(), -1))?;
+            .map_err(|_e| GccBuildError::command_failed(cmd_string.clone(), -1))?;
         
         // All output is now inherited, so no need to handle pipes
         
         let status = child.wait().await
-            .map_err(|e| GccBuildError::command_failed(cmd_string.clone(), -1))?;
+            .map_err(|_e| GccBuildError::command_failed(cmd_string.clone(), -1))?;
         
         let duration = start_time.elapsed();
         
@@ -222,7 +223,7 @@ impl CommandExecutor {
         command.stderr(Stdio::piped());
         
         let output = command.output().await
-            .map_err(|e| GccBuildError::command_failed(cmd_string.clone(), -1))?;
+            .map_err(|_e| GccBuildError::command_failed(cmd_string.clone(), -1))?;
         
         if output.status.success() {
             Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
@@ -341,7 +342,7 @@ pub async fn monitor_command_progress<F>(
     executor: &CommandExecutor,
     program: &str,
     args: Vec<&str>,
-    progress_callback: F,
+    _progress_callback: F,
 ) -> GccResult<()>
 where
     F: Fn(&str) + Send + 'static,

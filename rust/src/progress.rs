@@ -1,9 +1,10 @@
+#![allow(dead_code)]
 use std::time::{Duration, Instant};
 use std::sync::{Arc, Mutex};
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle, ProgressState, ProgressDrawTarget};
 use log::info;
 use std::collections::HashMap;
-use chrono::{DateTime, Local, Duration as ChronoDuration};
+use chrono::{Local, Duration as ChronoDuration};
 
 /// Tracks progress for various build phases with ETA calculations
 #[derive(Clone)]

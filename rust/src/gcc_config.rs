@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use log::{debug, info};
 use std::collections::HashMap;
 
@@ -290,7 +291,7 @@ impl GccConfigGenerator {
     }
     
     /// Get optimization-specific configure options
-    pub fn get_optimization_options(&self, config: &Config) -> Vec<String> {
+    pub fn get_optimization_options(&self, _config: &Config) -> Vec<String> {
         let mut options = Vec::new();
         
         // Add LTO support for newer versions

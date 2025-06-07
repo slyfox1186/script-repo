@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
@@ -41,7 +42,7 @@ struct ArtifactEntry {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-struct BuildConfig {
+pub struct BuildConfig {
     optimization_level: String,
     enable_multilib: bool,
     static_build: bool,

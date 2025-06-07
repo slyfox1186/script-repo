@@ -1,10 +1,11 @@
+#![allow(dead_code)]
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::process;
+
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
-use log::{info, debug, warn};
+use log::{info, debug};
 use serde::{Deserialize, Serialize};
 use crate::config::GccVersion;
 use crate::error::{GccBuildError, Result as GccResult};
@@ -45,7 +46,7 @@ struct MemoryPhase {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-struct BuildSettings {
+pub struct BuildSettings {
     optimization_level: String,
     enable_multilib: bool,
     static_build: bool,
