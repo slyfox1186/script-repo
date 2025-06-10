@@ -35,19 +35,23 @@ fail() {
 
 # Function to print 7-zip version
 print_version() {
-    "$install_dir/7z" -version 2>/dev/null | awk '
-        /7-Zip \(z\)/ {
-            version = $3
-            architecture = $4
-            gsub(/[()]/, "", architecture)
-        }
-        /[0-9]{4}-[0-9]{2}-[0-9]{2}/ {
-            date = $0
-            sub(/^[^-]*-/, "", date)
-        }
-        END {
-            print "7-Zip", version, "(" architecture ")", "Igor Pavlov", date
-        }'
+    if [[ -f "$install_dir/7z" ]]; then
+        "$install_dir/7z" -version 2>/dev/null | awk '
+            /7-Zip \(z\)/ {
+                version = $3
+                architecture = $4
+                gsub(/[()]/, "", architecture)
+            }
+            /[0-9]{4}-[0-9]{2}-[0-9]{2}/ {
+                date = $0
+                sub(/^[^-]*-/, "", date)
+            }
+            END {
+                print "7-Zip", version, "(" architecture ")", "Igor Pavlov", date
+            }'
+    else
+        echo "7-Zip not found in $install_dir"
+    fi
 }
 
 # Function to print script banner
@@ -137,8 +141,8 @@ display_help() {
     echo "  Install 7-Zip (stable version) and clean up install files:"
     echo "    $0"
     echo
-    echo "  Install 7-Zip (beta version) and keep install files:"
-    echo "    $0 -nc"
+    echo "  Install 7-Zip and keep install files:"
+    echo "    $0 -n"
     echo
     echo "  Display the script version:"
     echo "    $0 -v"
@@ -148,7 +152,7 @@ display_help() {
 }
 
 # Parse command-line options
-while [[ "$#" -gt 0 ]]; then
+while [[ "$#" -gt 0 ]]; do
     case "$1" in
         -h|--help)
             display_help
@@ -173,19 +177,42 @@ done
 box_out_banner "7-Zip Install Script"
 detect_os_distro
 
+# Check if 7z is already installed
+if [[ -f "$install_dir/7z" ]]; then
+    log "7-Zip is already installed:"
+    print_version
+    read -p "Do you want to reinstall/update 7-Zip? (y/N): " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        log "Installation cancelled by user."
+        exit 0
+    fi
+fi
+
 # Check if wget and tar are installed and install them if missing
 command -v wget &>/dev/null && command -v tar &>/dev/null || install_dependencies
 
 # Fetch and parse the 7-zip download page
-download_page=$(wget -qO- "https://www.7-zip.org/download.html")
+log "Fetching 7-Zip download page..."
+download_page=$(wget -qO- "https://www.7-zip.org/download.html") || fail "Failed to fetch 7-Zip download page"
+
+# Extract version information
 release_version=$(echo "$download_page" | grep -oP '(?<=Download 7-Zip )[0-9.]+(?= \()' | head -n1)
 beta_version=$(echo "$download_page" | grep -oP '(?<=Download 7-Zip )[0-9.]+ beta(?= \()' | head -n1)
 
+# Determine which version to use
 if [[ -n "$beta_version" ]]; then
-    version="${release_version}-beta"
+    # Extract just the version number from beta string (e.g., "24.01 beta" -> "24.01")
+    version=$(echo "$beta_version" | sed 's/ beta//')
+    version_suffix="beta"
+    log "Found beta version: $version (beta)"
 else
     version="$release_version"
+    version_suffix=""
+    log "Found stable version: $version"
 fi
+
+[[ -z "$version" ]] && fail "Could not determine 7-Zip version from download page"
 
 # Detect architecture and set download url based on the operating system
 case "$OS" in
@@ -198,11 +225,24 @@ case "$OS" in
             arm|armv7*) arch_suffix="arm" ;;
             *) fail "Unrecognized architecture: $arch" ;;
         esac
-        url="https://www.7-zip.org/a/7z${version//./}-linux-$arch_suffix.tar.xz"
+        # Construct URL - remove dots and add beta suffix if needed
+        version_for_url="${version//./}"
+        if [[ -n "$version_suffix" ]]; then
+            version_for_url="${version_for_url}${version_suffix}"
+        fi
+        url="https://www.7-zip.org/a/7z${version_for_url}-linux-$arch_suffix.tar.xz"
         ;;
-    macos) url="https://www.7-zip.org/a/7z${version//./}-mac.tar.xz" ;;
+    macos) 
+        version_for_url="${version//./}"
+        if [[ -n "$version_suffix" ]]; then
+            version_for_url="${version_for_url}${version_suffix}"
+        fi
+        url="https://www.7-zip.org/a/7z${version_for_url}-mac.tar.xz" 
+        ;;
     *) fail "Unsupported operating system: $OS" ;;
 esac
+
+log "Download URL: $url"
 
 # Create variables to make the script easier to read
 tar_file="7zip-$version.tar.xz"
@@ -215,15 +255,24 @@ download_files_dir="$working/7zip-$version"
 mkdir -p "$download_files_dir"
 
 # Download the source files if not already downloaded
+log "Downloading 7-Zip $version..."
 [[ ! -f "$working/$tar_file" ]] && download "$url" "$working/$tar_file"
 
 # Extract the downloaded files
+log "Extracting archive..."
 tar -xf "$working/$tar_file" -C "$download_files_dir" || fail "The script was unable to extract the archive: '$working/$tar_file'"
 
 # Copy the 7z binary file to the /usr/local/bin folder
+log "Installing 7-Zip binary..."
 case "$OS" in
-    linux) sudo cp -f "$download_files_dir/7zzs" "$install_dir/7z" || fail "The script was unable to copy the static file '7zzs' to '$install_dir/7z'" ;;
-    macos) sudo cp -f "$download_files_dir/7zz" "$install_dir/7z" || fail "The script was unable to copy the static file '7zz' to '$install_dir/7z'" ;;
+    linux) 
+        [[ -f "$download_files_dir/7zzs" ]] || fail "7zzs binary not found in extracted files"
+        sudo cp -f "$download_files_dir/7zzs" "$install_dir/7z" || fail "The script was unable to copy the static file '7zzs' to '$install_dir/7z'" 
+        ;;
+    macos) 
+        [[ -f "$download_files_dir/7zz" ]] || fail "7zz binary not found in extracted files"
+        sudo cp -f "$download_files_dir/7zz" "$install_dir/7z" || fail "The script was unable to copy the static file '7zz' to '$install_dir/7z'" 
+        ;;
 esac
 sudo chmod 755 "$install_dir/7z"
 
@@ -234,7 +283,10 @@ print_version
 
 # Cleanup the leftover install files if specified by an argument
 if [[ "$no_cleanup" == false ]]; then
-    sudo rm -fr "$working" "$0"
+    log "Cleaning up installation files..."
+    sudo rm -fr "$working"
 else
     log "Skipped the cleanup of install files as specified."
 fi
+
+log "Installation complete! You can now use 7-Zip with the '7z' command."
