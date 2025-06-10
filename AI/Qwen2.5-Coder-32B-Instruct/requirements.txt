@@ -5,7 +5,7 @@ torchaudio
 torchvision
 numpy==1.24.3
 psutil==5.9.5
-requests==2.32.2
+requests==2.32.4
 tqdm==4.66.3
 python-dotenv==1.0.0
 werkzeug==3.0.6
