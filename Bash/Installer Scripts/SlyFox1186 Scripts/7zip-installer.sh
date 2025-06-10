@@ -1,11 +1,6 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2000,SC2034,SC2086 source=/dev/null
 
-if [[ "$EUID" -ne 0 ]]; then
-    echo "You must run this script as root or with sudo."
-    exit 1
-fi
-
 # Set variables
 readonly script_version="4.0"
 readonly working="$PWD/7zip-install-script"
@@ -153,7 +148,7 @@ display_help() {
 }
 
 # Parse command-line options
-while [[ "$#" -gt 0 ]]; do
+while [[ "$#" -gt 0 ]]; then
     case "$1" in
         -h|--help)
             display_help
@@ -213,8 +208,8 @@ esac
 tar_file="7zip-$version.tar.xz"
 download_files_dir="$working/7zip-$version"
 
-# Clean up any found existing installation directory
-[[ -d "$working" ]] && { log "Deleting existing 7zip-install-script directory..."; rm -fr "$working"; }
+# Clean up any found existing installation directory (use sudo in case it was root-owned)
+[[ -d "$working" ]] && { log "Deleting existing 7zip-install-script directory..."; sudo rm -fr "$working"; }
 
 # Create the installation directory and the output folder to store the sourced files
 mkdir -p "$download_files_dir"
