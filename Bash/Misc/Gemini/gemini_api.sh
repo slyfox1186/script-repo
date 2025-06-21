@@ -40,8 +40,7 @@ _gemini_usage() {
 # Function to quickly query Gemini API with conversation memory
 gemini() {
     # Constants
-    local GEMINI_SCRIPT_ENHANCED="/usr/local/bin/gemini_query_with_memory.py"
-    local GEMINI_SCRIPT_BASIC="/usr/local/bin/gemini_query.py"
+    local GEMINI_SCRIPT="/usr/local/bin/gemini_api.py"
     
     # Initialize variables
     local query=""
@@ -155,10 +154,10 @@ gemini() {
     
     # Handle list sessions
     if [[ "$list_sessions" == "true" ]]; then
-        if [[ -f "$GEMINI_SCRIPT_ENHANCED" ]]; then
-            python3 "$GEMINI_SCRIPT_ENHANCED" --list-sessions
+        if [[ -f "$GEMINI_SCRIPT" ]]; then
+            python3 "$GEMINI_SCRIPT" --list-sessions
         else
-            echo "Error: Enhanced Gemini script not found at $GEMINI_SCRIPT_ENHANCED"
+            echo "Error: Gemini script not found at $GEMINI_SCRIPT"
             return 1
         fi
         return 0
@@ -166,15 +165,15 @@ gemini() {
     
     # Handle clear session
     if [[ -n "$clear_session" ]]; then
-        if [[ -f "$GEMINI_SCRIPT_ENHANCED" ]]; then
+        if [[ -f "$GEMINI_SCRIPT" ]]; then
             # If "current" was specified, use the session name
             if [[ "$clear_session" == "current" ]]; then
-                python3 "$GEMINI_SCRIPT_ENHANCED" --clear-session "$session"
+                python3 "$GEMINI_SCRIPT" --clear-session "$session"
             else
-                python3 "$GEMINI_SCRIPT_ENHANCED" --clear-session "$clear_session"
+                python3 "$GEMINI_SCRIPT" --clear-session "$clear_session"
             fi
         else
-            echo "Error: Enhanced Gemini script not found at $GEMINI_SCRIPT_ENHANCED"
+            echo "Error: Gemini script not found at $GEMINI_SCRIPT"
             return 1
         fi
         return 0
@@ -188,22 +187,13 @@ gemini() {
         return 1
     fi
     
-    # Determine which script to use
-    local GEMINI_SCRIPT="$GEMINI_SCRIPT_ENHANCED"
-    if [[ ! -f "$GEMINI_SCRIPT" ]]; then
-        GEMINI_SCRIPT="$GEMINI_SCRIPT_BASIC"
-        if [[ "$session" != "default" ]] || [[ "$reset" == "true" ]] || [[ ${#files[@]} -gt 0 ]]; then
-            echo "Warning: Memory and file features not available. Install gemini_query_with_memory.py"
-        fi
-    fi
-    
     # Check if script exists
     if [[ ! -f "$GEMINI_SCRIPT" ]]; then
         echo "Error: Gemini script not found at $GEMINI_SCRIPT"
         echo ""
-        echo "To install the enhanced script with memory support, run:"
-        echo "  sudo cp /path/to/gemini_query_with_memory.py /usr/local/bin/"
-        echo "  sudo chmod +x /usr/local/bin/gemini_query_with_memory.py"
+        echo "To install the script, run:"
+        echo "  sudo cp gemini_api.py /usr/local/bin/"
+        echo "  sudo chmod +x /usr/local/bin/gemini_api.py"
         echo ""
         echo "Make sure you have installed the required Python package:"
         echo "  pip install -q -U google-genai"
@@ -225,19 +215,17 @@ gemini() {
         cmd+=(--model "$model")
     fi
     
-    # Add session and other options if using enhanced script
-    if [[ "$GEMINI_SCRIPT" == "$GEMINI_SCRIPT_ENHANCED" ]]; then
-        if [[ "$session" != "default" ]]; then
-            cmd+=(--session "$session")
-        fi
-        if [[ "$reset" == "true" ]]; then
-            cmd+=(--reset)
-        fi
-        # Add file arguments
-        for file in "${files[@]}"; do
-            cmd+=(--file "$file")
-        done
+    # Add session and other options
+    if [[ "$session" != "default" ]]; then
+        cmd+=(--session "$session")
     fi
+    if [[ "$reset" == "true" ]]; then
+        cmd+=(--reset)
+    fi
+    # Add file arguments
+    for file in "${files[@]}"; do
+        cmd+=(--file "$file")
+    done
     
     # Execute the command
     "${cmd[@]}"
