@@ -8,6 +8,7 @@ import glob
 import logging
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -18,12 +19,9 @@ from typing import List
 # Constants
 MAX_THREADS = os.cpu_count()
 DEFAULT_THREADS = MAX_THREADS
-MASTER_FOLDER = Path.home() / "python-venv"
-VENV_NAME = "myenv"
-VENV_PATH = MASTER_FOLDER / VENV_NAME
 GOOGLE_SPEECH_PACKAGE = "google_speech"
 TERMCOLOR_PACKAGE = "termcolor"
-REQUIRED_PACKAGES = ['sox', 'libsox-dev', 'python3-venv']
+# System dependencies are checked in check_system_dependencies()
 MAX_WIDTH, MAX_HEIGHT = 8000, 6000
 
 MAGICK_LIMITS = {
@@ -86,44 +84,42 @@ def run_command(command: List[str], verbose: bool = False) -> None:
             logging.error(colored(line, 'red'))
             with open('error_report.log', 'a') as f:
                 f.write(line + '\n')
-        elif 'Successfully installed google_speech-1.2.0' in line:
+        elif 'Successfully installed google_speech' in line:
             logging.info(colored(line, 'green'))
         else:
             logging.info(line)
     if verbose:
         logging.info()  # Blank line to separate commands
 
-def check_and_install_apt_packages() -> None:
-    """Check and install required APT packages if necessary."""
-    missing_packages = []
+def check_system_dependencies() -> None:
+    """Check for required system dependencies and provide installation instructions if missing."""
+    required_commands = {'sox': 'sox', 'magick': 'ImageMagick', 'identify': 'ImageMagick'}
+    missing_commands = []
+    
+    for cmd, package_name in required_commands.items():
+        if not shutil.which(cmd):
+            missing_commands.append(package_name)
+    
+    if missing_commands:
+        unique_packages = list(set(missing_commands))  # Remove duplicates
+        logging.error(colored(f"Missing required system dependencies: {', '.join(unique_packages)}", 'red'))
+        logging.info("Please install them using your system's package manager.")
+        logging.info("Example for Conda: conda install -c conda-forge sox imagemagick")
+        logging.info("Example for Debian/Ubuntu: sudo apt install sox imagemagick")
+        logging.info("Example for macOS (Homebrew): brew install sox imagemagick")
+        logging.info("Example for Windows: Use WSL or install through appropriate package manager")
+        sys.exit(1)
 
-    for pkg in REQUIRED_PACKAGES:
-        result = subprocess.run(['dpkg-query', '-W', '-f=${Status}', pkg], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        if 'ok installed' not in result.stdout:
-            missing_packages.append(pkg)
-
-    if missing_packages:
-        logging.info(colored(f"Installing missing packages: {', '.join(missing_packages)}", 'yellow'))
-        try:
-            subprocess.run(['sudo', 'apt', 'update'], check=True)
-            subprocess.run(['sudo', 'apt', 'install', '-y'] + missing_packages, check=True)
-        except subprocess.CalledProcessError as e:
-            logging.error(colored(f"Failed to install required packages: {e}", 'red'))
-            sys.exit(1)
-
-def create_virtualenv() -> None:
-    """Create a Python virtual environment and install required packages."""
-    logging.info(colored(f"Creating Python virtual environment at {VENV_PATH}...", 'yellow'))
-    os.makedirs(VENV_PATH, exist_ok=True)
-    subprocess.run(['python3', '-m', 'venv', VENV_PATH], check=True)
+def install_python_packages() -> None:
+    """Install required Python packages using pip."""
+    logging.info(colored("Installing required Python packages...", 'yellow'))
     install_package(GOOGLE_SPEECH_PACKAGE)
     install_package(TERMCOLOR_PACKAGE)
 
 def install_package(package: str) -> None:
-    """Install a package in the virtual environment."""
-    activate_script = str(VENV_PATH / 'bin' / 'activate')
-    logging.info(colored(f"Installing {package} in virtual environment...", 'yellow'))
-    result = subprocess.run(f"source {activate_script} && pip install --upgrade pip && pip install {package}", shell=True, executable="/bin/bash", stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    """Install a package using pip."""
+    logging.info(colored(f"Installing {package}...", 'yellow'))
+    result = subprocess.run([sys.executable, '-m', 'pip', 'install', package], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     output_lines = result.stdout.splitlines() + result.stderr.splitlines()
     for line in output_lines:
         if 'Successfully installed' in line:
@@ -139,8 +135,8 @@ def install_package(package: str) -> None:
         sys.exit(1)
 
 def check_package_installed(package: str) -> bool:
-    """Check if a package is installed in the virtual environment."""
-    result = subprocess.run([VENV_PATH / 'bin' / 'pip', 'show', package], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    """Check if a package is installed."""
+    result = subprocess.run([sys.executable, '-m', 'pip', 'show', package], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     return result.returncode == 0
 
 # Image processing function
@@ -241,13 +237,16 @@ def process_image(infile: Path, overwrite_mode: bool, verbose_mode: bool, no_app
             infile.unlink()
 
 def notify_completion() -> None:
-    """Check if google_speech and termcolor are installed and send notification."""
+    """Send notification if google_speech is available."""
     try:
-        subprocess.run([VENV_PATH / 'bin' / 'google_speech', 'Image optimization completed.'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
-        win_path = subprocess.check_output(['wslpath', '-w', str(Path.cwd())]).decode('utf-8').strip()
-        logging.info(colored(f"\nWindows Path: {win_path}", 'green'))
-    except subprocess.CalledProcessError as e:
-        logging.warning(colored("Failed to run google_speech command.", 'red'))
+        subprocess.run(['google_speech', 'Image optimization completed.'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+        try:
+            win_path = subprocess.check_output(['wslpath', '-w', str(Path.cwd())]).decode('utf-8').strip()
+            logging.info(colored(f"\nWindows Path: {win_path}", 'green'))
+        except:
+            pass
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        logging.info(colored("\nImage optimization completed.", 'green'))
 
 # Main function
 def main() -> None:
@@ -257,12 +256,12 @@ def main() -> None:
     # Setup logging based on the presence of the logfile argument
     setup_logging(args.logfile)
 
-    # Ensure required APT packages are installed
-    check_and_install_apt_packages()
+    # Check for required system dependencies
+    check_system_dependencies()
 
-    # Ensure virtual environment and required pip packages are installed
-    if not check_package_installed(GOOGLE_SPEECH_PACKAGE) or not check_package_installed(TERMCOLOR_PACKAGE):
-        create_virtualenv()
+    # Ensure required pip packages are installed
+    if not check_package_installed(TERMCOLOR_PACKAGE):
+        install_python_packages()
 
     # Change to the specified working directory
     if not args.dir.is_dir():
@@ -272,10 +271,13 @@ def main() -> None:
     os.chdir(args.dir)
 
     # Find image files and process them
-    if args.recursive:
-        image_files = list(Path(args.dir).rglob('*.jpg')) + list(Path(args.dir).rglob('*.jpeg'))
-    else:
-        image_files = list(Path(args.dir).glob('*.jpg')) + list(Path(args.dir).glob('*.jpeg'))
+    image_extensions = ['*.jpg', '*.jpeg', '*.png', '*.tiff', '*.tif']
+    image_files = []
+    for ext in image_extensions:
+        if args.recursive:
+            image_files.extend(list(Path(args.dir).rglob(ext)))
+        else:
+            image_files.extend(list(Path(args.dir).glob(ext)))
 
     # Dictionary to keep track of input and corresponding output file paths
     file_dict = {}
@@ -296,16 +298,15 @@ def main() -> None:
             except Exception as e:
                 logging.error(colored(f"Error processing {infile}: {e}", 'red'))
 
-    # Check for leftover input files
-    for infile, outfile in file_dict.items():
-        if os.path.exists(infile):
-            if os.path.exists(outfile):
-                # Remove leftover input file if output file exists
-                os.remove(infile)
-            else:
-                # Reprocess file if output file does not exist
-                infile_path = Path(infile)
-                process_image(infile_path, args.overwrite, args.verbose, args.no_append_text, args.format, args.quality, args.backup, args.preserve_metadata, args.recursive, args.dir)
+    # Check for leftover input files (which indicates a processing failure)
+    for infile_str, outfile_str in file_dict.items():
+        # The original file should only exist if overwrite was false OR processing failed.
+        # The output file should not exist if processing failed.
+        if os.path.exists(infile_str) and not os.path.exists(outfile_str):
+            logging.warning(colored(f"Output for {infile_str} not found. Retrying...", 'yellow'))
+            infile_path = Path(infile_str)
+            # Reprocess file if output file does not exist
+            process_image(infile_path, args.overwrite, args.verbose, args.no_append_text, args.format, args.quality, args.backup, args.preserve_metadata, args.recursive, args.dir)
 
     # Notify completion if google_speech is installed
     notify_completion()
