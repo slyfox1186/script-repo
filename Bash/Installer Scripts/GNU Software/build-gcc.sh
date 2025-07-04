@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2162 source=/dev/null
 
+# Strict error handling
+set -euo pipefail
+
+# Set up file descriptors early for logging
+exec 3>&1 4>&2
+
 # GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-gcc.sh
 # Purpose: Build GNU GCC
 # GCC versions available: 10-15
@@ -8,7 +14,8 @@
 # Updated: 06.02.2025
 # Script version: 1.8
 
-build_dir="/tmp/gcc-build-script"
+# Initialize secure temporary build directory
+build_dir="${TMPDIR:-/tmp}/build-gcc-$$"
 packages="$build_dir/packages"
 workspace="$build_dir/workspace"
 default_target_arch="x86_64-linux-gnu" # Default, can be overridden by detected pc_type
@@ -154,7 +161,7 @@ fail() {
     # Perform cleanup if keep_build_dir is not set, to avoid leaving partial builds
     if [[ "$keep_build_dir" -ne 1 && -d "$build_dir" ]]; then
         log "INFO" "Attempting to cleanup $build_dir due to failure..."
-        sudo rm -rf "$build_dir"
+        rm -rf "$build_dir"
     fi
     exit 1
 }
@@ -355,7 +362,7 @@ set_environment() {
     # Add architecture-specific flags
     if [[ "$generic_build" -eq 0 ]]; then
         # Check if march=native is supported by the current compiler
-        if gcc -v --help 2>&1 | grep -q 'march=native'; then
+        if gcc --help=target 2>&1 | grep -q 'march.*native' || gcc -march=native -E - </dev/null >/dev/null 2>&1; then
             CFLAGS+=" -march=native"
             CXXFLAGS+=" -march=native"
         else
@@ -415,10 +422,10 @@ verify_checksum() {
     version=$2 # Full version string e.g., 13.2.0
     local major_version="${version%%.*}" # e.g. 13
 
-    # GCC 14 and potentially newer versions (like 15) might use different signature/checksum approaches
-    # For now, assume GCC 15 might also have this, adjust when official info is out.
-    if [[ "$major_version" == "14" || "$major_version" == "15" ]]; then
-        log "INFO" "Checksum verification for GCC $version (major version $major_version) might use a different signature format or not be available in the old format."
+    # GCC 14 might use different signature/checksum approaches
+    # GCC 15 uses traditional .sig files, so only treat GCC 14 specially
+    if [[ "$major_version" == "14" ]]; then
+        log "INFO" "Checksum verification for GCC $version (major version $major_version) uses a different signature format."
         log "INFO" "Attempting to find a .sha512 file first."
         local sha512_url="https://ftp.gnu.org/gnu/gcc/gcc-${version}/sha512.sum"
         if expected_checksum=$(curl -fsSL "$sha512_url" | grep "gcc-${version}.tar.xz" | awk '{print $1}'); then
@@ -435,25 +442,12 @@ verify_checksum() {
             return 0
         fi
     else
-        # Traditional .sig file for SHA512
-        sig_url="https://ftp.gnu.org/gnu/gcc/gcc-${version}/gcc-${version}.tar.xz.sig"
-        log "INFO" "Attempting to retrieve SHA512 checksum from signature file: $sig_url"
-        if ! expected_checksum_line=$(curl -fsSL "$sig_url"); then
-            log "WARNING" "Could not retrieve signature file from $sig_url for GCC $version."
-            log "WARNING" "Proceeding without checksum verification."
-            return 0
-        fi
-
-        # Try to parse the SHA512 sum from the .sig file (format can vary slightly)
-        expected_checksum=$(echo "$expected_checksum_line" | grep -oP '(?<=SHA512 CHECKSUM: )[a-f0-9]+' || echo "$expected_checksum_line" | grep -oP '^[a-f0-9]{128}')
-        
-        if [[ -z "$expected_checksum" ]]; then
-            log "WARNING" "No SHA512 checksum found in the signature file: $sig_url"
-            log "WARNING" "Content of sig file:\n$expected_checksum_line"
-            log "WARNING" "Proceeding without checksum verification for GCC $version."
-            return 0
-        fi
-        log "INFO" "Found expected SHA512 checksum for $file: $expected_checksum"
+        # Traditional .sig files are GPG signatures, not plain text checksums
+        log "INFO" "GCC $version uses GPG signature files (.sig) for verification."
+        log "INFO" "GPG signature verification is not implemented in this script."
+        log "WARNING" "Skipping checksum verification for GCC $version."
+        log "WARNING" "Manual verification recommended: gpg --verify gcc-${version}.tar.xz.sig gcc-${version}.tar.xz"
+        return 0
     fi
 
     log "INFO" "Calculating SHA512 checksum for local file: $file"
@@ -474,7 +468,7 @@ check_system_resources() {
     # Overall basic check (can be run early)
     local required_ram_mb=2000 # Minimum RAM in MB
     local available_ram_mb
-    available_ram_mb=$(free -m | awk '/^Mem:/ {print $2}')
+    available_ram_mb=$(free -m | awk '/^Mem:/ {print $7}')
     if [[ "$available_ram_mb" -lt "$required_ram_mb" ]]; then
         fail "Insufficient RAM. Required: ${required_ram_mb}MB, Available: ${available_ram_mb}MB"
     fi
