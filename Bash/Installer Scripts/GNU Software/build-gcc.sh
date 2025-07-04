@@ -1783,16 +1783,229 @@ main() {
     cleanup_temporary_folders
     
     log "INFO" "--- GCC Build Script Finished ---"
-    # Summary of what was built could be added here if build_status_log is used to track successes.
+    
+    # ═══════════════════════════════════════════════════════════════════════════════════
+    # COMPREHENSIVE BUILD SUMMARY REPORT
+    # ═══════════════════════════════════════════════════════════════════════════════════
+    
+    log "INFO" ""
+    log "INFO" "┌─────────────────────────────────────────────────────────────────────────────────┐"
+    log "INFO" "│                         GCC BUILD SUMMARY REPORT                               │"
+    log "INFO" "└─────────────────────────────────────────────────────────────────────────────────┘"
+    log "INFO" ""
+    
+    # Initialize tracking arrays and counters
     local successful_builds=0
-    # This is a simple check, could be more robust by tracking build_status_log "BUILD_PROCESS_SUCCESS"
+    local failed_builds=0
+    local skipped_builds=0
+    local total_builds=${#selected_versions[@]}
+    declare -a build_results
+    declare -a installation_paths
+    declare -a build_times
+    
+    # Process each selected version to determine final status
     for major_ver in "${selected_versions[@]}"; do
-        # Check if install dir exists as a proxy for success
-        # Needs full_release_ver again, or better status tracking
-        # For now, just a generic message
-        : # Placeholder for more detailed summary
+        # Get the latest version for this major version (reconstruct the lookup)
+        local version_var="gcc_${major_ver}_latest"
+        local full_version_string
+        
+        # Attempt to get full version string from global variable or reconstruct
+        if [[ -n "${!version_var}" ]]; then
+            full_version_string="${!version_var}"
+        else
+            # Fallback: assume major.x.0 pattern for summary purposes
+            case "$major_ver" in
+                10) full_version_string="10.5.0" ;;
+                11) full_version_string="11.4.0" ;;
+                12) full_version_string="12.3.0" ;;
+                13) full_version_string="13.2.0" ;;
+                14) full_version_string="14.1.0" ;;
+                15) full_version_string="15.1.0" ;;
+                *) full_version_string="${major_ver}.x.x" ;;
+            esac
+        fi
+        
+        # Determine installation prefix
+        local install_prefix
+        if [[ -z "$user_prefix" ]]; then
+            install_prefix="/usr/local/programs/gcc-$full_version_string"
+        else
+            install_prefix="${user_prefix%/}/gcc-$full_version_string"
+        fi
+        
+        # Check build status indicators
+        local build_status="UNKNOWN"
+        local status_indicator="❓"
+        local status_color="$YELLOW"
+        
+        if [[ "$dry_run" -eq 1 ]]; then
+            build_status="DRY_RUN_COMPLETED"
+            status_indicator="🔍"
+            status_color="$CYAN"
+            ((skipped_builds++))
+        elif [[ -d "$install_prefix/bin" && -x "$install_prefix/bin/gcc" ]]; then
+            # Check if GCC binary exists and is executable
+            if "$install_prefix/bin/gcc" --version &>/dev/null; then
+                build_status="SUCCESS"
+                status_indicator="✅"
+                status_color="$GREEN"
+                ((successful_builds++))
+                
+                # Get installed GCC version
+                local installed_version
+                installed_version=$("$install_prefix/bin/gcc" --version 2>/dev/null | head -n1 | grep -oP '\d+\.\d+\.\d+' | head -n1)
+                if [[ -n "$installed_version" ]]; then
+                    full_version_string="$installed_version"
+                fi
+            else
+                build_status="PARTIAL_FAILURE"
+                status_indicator="⚠️"
+                status_color="$YELLOW"
+                ((failed_builds++))
+            fi
+        elif [[ -d "$install_prefix" ]]; then
+            build_status="INCOMPLETE"
+            status_indicator="🔄"
+            status_color="$YELLOW"
+            ((failed_builds++))
+        else
+            build_status="FAILED"
+            status_indicator="❌"
+            status_color="$RED"
+            ((failed_builds++))
+        fi
+        
+        # Store results for detailed display
+        build_results+=("$status_indicator GCC $full_version_string - $build_status")
+        installation_paths+=("$install_prefix")
+        
+        # Display individual result
+        log "INFO" "${status_color}$status_indicator GCC $full_version_string${NC}"
+        log "INFO" "   Status: $build_status"
+        log "INFO" "   Location: $install_prefix"
+        if [[ "$build_status" == "SUCCESS" ]]; then
+            # Show compiler capabilities for successful builds
+            local gcc_features
+            gcc_features=$("$install_prefix/bin/gcc" -v 2>&1 | tail -n 1 | grep -oP '(?<=Configured with: ).*' | head -c 60)
+            [[ -n "$gcc_features" ]] && log "INFO" "   Features: ${gcc_features}..."
+            
+            # Show target architecture
+            local gcc_target
+            gcc_target=$("$install_prefix/bin/gcc" -dumpmachine 2>/dev/null)
+            [[ -n "$gcc_target" ]] && log "INFO" "   Target: $gcc_target"
+        fi
+        log "INFO" ""
     done
-    log "INFO" "Check logs and install prefixes for build status of each version."
+    
+    # ═══════════════════════════════════════════════════════════════════════════════════
+    # SUMMARY STATISTICS
+    # ═══════════════════════════════════════════════════════════════════════════════════
+    
+    log "INFO" "┌─────────────────────────────────────────────────────────────────────────────────┐"
+    log "INFO" "│                            BUILD STATISTICS                                    │"
+    log "INFO" "└─────────────────────────────────────────────────────────────────────────────────┘"
+    log "INFO" ""
+    log "INFO" "📊 Total Versions Requested: $total_builds"
+    log "INFO" "${GREEN}✅ Successful Builds: $successful_builds${NC}"
+    log "INFO" "${RED}❌ Failed Builds: $failed_builds${NC}"
+    if [[ "$dry_run" -eq 1 ]]; then
+        log "INFO" "${CYAN}🔍 Dry Run Completed: $skipped_builds${NC}"
+    fi
+    log "INFO" ""
+    
+    # Success Rate Calculation
+    if [[ $total_builds -gt 0 ]]; then
+        local success_rate
+        if [[ "$dry_run" -eq 1 ]]; then
+            log "INFO" "📈 Success Rate: N/A (Dry Run Mode)"
+        else
+            success_rate=$(( (successful_builds * 100) / total_builds ))
+            if [[ $success_rate -ge 90 ]]; then
+                log "INFO" "${GREEN}📈 Success Rate: ${success_rate}% (Excellent)${NC}"
+            elif [[ $success_rate -ge 70 ]]; then
+                log "INFO" "${YELLOW}📈 Success Rate: ${success_rate}% (Good)${NC}"
+            else
+                log "INFO" "${RED}📈 Success Rate: ${success_rate}% (Needs Attention)${NC}"
+            fi
+        fi
+    fi
+    
+    # ═══════════════════════════════════════════════════════════════════════════════════
+    # RESOURCE USAGE SUMMARY
+    # ═══════════════════════════════════════════════════════════════════════════════════
+    
+    log "INFO" ""
+    log "INFO" "┌─────────────────────────────────────────────────────────────────────────────────┐"
+    log "INFO" "│                           RESOURCE USAGE                                       │"
+    log "INFO" "└─────────────────────────────────────────────────────────────────────────────────┘"
+    log "INFO" ""
+    
+    # Execution Time
+    log "INFO" "⏱️  Total Execution Time: $overall_duration"
+    
+    # Disk Space Usage
+    if [[ -d "$build_dir" ]]; then
+        local build_dir_size
+        build_dir_size=$(du -sh "$build_dir" 2>/dev/null | cut -f1)
+        [[ -n "$build_dir_size" ]] && log "INFO" "💾 Build Directory Size: $build_dir_size"
+        log "INFO" "📁 Build Directory: $build_dir"
+    fi
+    
+    # Log File Location
+    if [[ -n "$log_file" ]]; then
+        local log_size
+        log_size=$(du -sh "$log_file" 2>/dev/null | cut -f1)
+        [[ -n "$log_size" ]] && log "INFO" "📝 Log File Size: $log_size"
+        log "INFO" "📋 Detailed Log: $log_file"
+    fi
+    
+    # ═══════════════════════════════════════════════════════════════════════════════════
+    # NEXT STEPS & RECOMMENDATIONS
+    # ═══════════════════════════════════════════════════════════════════════════════════
+    
+    log "INFO" ""
+    log "INFO" "┌─────────────────────────────────────────────────────────────────────────────────┐"
+    log "INFO" "│                      NEXT STEPS & RECOMMENDATIONS                              │"
+    log "INFO" "└─────────────────────────────────────────────────────────────────────────────────┘"
+    log "INFO" ""
+    
+    if [[ $successful_builds -gt 0 ]]; then
+        log "INFO" "🎉 Successfully built GCC versions are ready for use!"
+        log "INFO" ""
+        log "INFO" "To use your new GCC installations:"
+        for i in "${!build_results[@]}"; do
+            if [[ "${build_results[i]}" =~ ✅ ]]; then
+                local install_path="${installation_paths[i]}"
+                local version_num=$(echo "${build_results[i]}" | grep -oP 'GCC \K\d+\.\d+\.\d+')
+                log "INFO" "   • GCC $version_num: export PATH=\"$install_path/bin:\$PATH\""
+            fi
+        done
+        log "INFO" ""
+        log "INFO" "💡 Consider adding your preferred version to ~/.bashrc or ~/.profile"
+    fi
+    
+    if [[ $failed_builds -gt 0 ]]; then
+        log "INFO" "🔧 For failed builds:"
+        log "INFO" "   • Check the detailed log above for error messages"
+        log "INFO" "   • Verify system dependencies are installed"
+        log "INFO" "   • Ensure sufficient disk space and memory"
+        log "INFO" "   • Try building individual versions to isolate issues"
+        if [[ -n "$log_file" ]]; then
+            log "INFO" "   • Review detailed logs in: $log_file"
+        fi
+    fi
+    
+    if [[ "$dry_run" -eq 1 ]]; then
+        log "INFO" "🔍 Dry run completed successfully!"
+        log "INFO" "   • Remove --dry-run flag to perform actual builds"
+        log "INFO" "   • All prerequisites and configurations look good"
+    fi
+    
+    log "INFO" ""
+    log "INFO" "🔗 For support and bug reports:"
+    log "INFO" "   ${CYAN}https://github.com/slyfox1186/script-repo/issues${NC}"
+    log "INFO" ""
+    log "INFO" "═══════════════════════════════════════════════════════════════════════════════════"
 
 
     # Restore original stdout/stderr if they were redirected
