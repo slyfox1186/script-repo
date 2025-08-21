@@ -72,8 +72,8 @@ parse_arguments() {
 set_compiler_settings() {
     CC="gcc"
     CXX="g++"
-    CFLAGS="-O2 -pipe -fno-plt -march=native"
-    CXXFLAGS="-O2 -pipe -fno-plt -march=native"
+    CFLAGS="-O3 -pipe -fno-plt -march=native"
+    CXXFLAGS="$CFLAGS"
     PATH="/usr/lib/ccache:$PATH"
     PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/lib64/pkgconfig:/usr/local/share/pkgconfig:/usr/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/share/pkgconfig"
     PKG_CONFIG_PATH+=":/usr/local/cuda/lib64/pkgconfig:/usr/local/cuda/lib/pkgconfig:/opt/cuda/lib64/pkgconfig:/opt/cuda/lib/pkgconfig"
@@ -94,9 +94,9 @@ check_dependencies() {
 
     dependencies=(
         autoconf autoconf-archive autogen automake binutils bison
-        build-essential bzip2 ccache curl libc6-dev libpth-dev
+        build-essential bzip2 ccache libc6-dev libpth-dev
         libtool libtool-bin lzip lzma-dev m4 nasm texinfo zlib1g-dev
-        yasm
+        wget yasm
     )
 
     for dep in "${dependencies[@]}"; do
@@ -142,15 +142,15 @@ download_and_extract() {
 
     # Download the source code files
     if [[ "$version" == "latest" ]]; then
-        archive_url="https://ftp.gnu.org/gnu/parallel/parallel-20240522.tar.bz2"
-    else
-        archive_url="https://ftp.gnu.org/gnu/parallel/parallel-$version.tar.bz2"
+        archive_url="http://ftp.gnu.org/gnu/parallel/parallel-latest.tar.bz2"
     fi
 
-    curl --connect-timeout 2 --retry 2 -LSso "$prog_name-$version.tar.bz2" "$archive_url"
- 
     # Extract source code
-    tar -jxf "$prog_name-$version.tar.bz2" --strip-components 1
+    if wget --show-progress -cqO "parallel-latest.tar.bz2" "http://ftp.gnu.org/gnu/parallel/parallel-latest.tar.bz2"; then
+        tar -jxf "parallel-latest.tar.bz2" --strip-components 1
+    else
+        fail "Failed to download the parallel tar file 'parallel-latest.tar.bz2'."
+    fi
 }
 
 # Build and install
@@ -167,11 +167,12 @@ build_and_install() {
 
 # Main script
 main() {
+    log "Building the latest parallel..."
     parse_arguments "$@"
     verify_not_root
     check_dependencies
     set_compiler_settings
-    log "Building GNU $prog_name from source."
+    log "Building GNU parallel from source."
     echo
     download_and_extract
     build_and_install
@@ -181,10 +182,11 @@ main() {
 
 # Variables
 prog_name="parallel"
-version=$(curl -fsS "https://ftp.gnu.org/gnu/parallel/" | grep -oP 'parallel-\K\d+' | sort -ruV | head -n1)
-archive_url="https://ftp.gnu.org/gnu/parallel/$prog_name-$version.tar.bz2"
-cwd="$PWD/$prog_name-build-script"
-install_dir="/usr/local/programs/$prog_name-$version"
+archive_url="https://ftp.gnu.org/gnu/parallel/parallel-latest.tar.bz2"
+cwd="$PWD/parallel-build-script"
+install_dir="/usr/local/programs/parallel-latest"
 CLEANUP="false"
+
+[[ -d "$install_dir" ]] && sudo rm -fr "$install_dir"
 
 main "$@"
