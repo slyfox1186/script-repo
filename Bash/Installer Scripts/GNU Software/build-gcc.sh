@@ -12,7 +12,7 @@ exec 3>&1 4>&2
 # GCC versions available: 10-15
 # Features: Automatically sources the latest release of each version.
 # Updated: 06.02.2025
-# Script version: 1.8
+# Script version: 1.9
 
 # Initialize secure temporary build directory
 build_dir="${TMPDIR:-/tmp}/build-gcc-$$"
@@ -26,7 +26,7 @@ dry_run=0
 enable_multilib_flag=0 # Renamed to avoid conflict with --enable-multilib configure option
 keep_build_dir=0
 log_file=""
-optimization_level="-O3"
+optimization_level='-O3'
 save_binaries=0
 static_build=0
 verbose=0
@@ -47,11 +47,11 @@ NC='\033[0m' # No color
 
 # Logging function - defined early since it's used in variable initialization
 log() {
-    local level=$1
+    local level="$1"
     shift
-    local message=$*
+    local message="$*"
     local timestamp
-    timestamp=$(date +"%Y-%m-%d %H:%M:%S")
+    timestamp="$(date +"%Y-%m-%d %H:%M:%S")"
     local color_prefix=""
     local nc_suffix=""
 
@@ -96,12 +96,12 @@ log() {
 
 # Ensure pc_type and target_arch are set early
 # Try to determine the system's architecture triplet
-pc_type=$(gcc -dumpmachine 2>/dev/null)
+pc_type="$(gcc -dumpmachine 2>/dev/null)"
 if [[ -z "$pc_type" ]]; then
     # Fallback if gcc is not available or fails to report
     log "WARNING" "Could not auto-detect machine type using 'gcc -dumpmachine'."
     # Attempt to get it from 'cc'
-    pc_type=$(cc -dumpmachine 2>/dev/null)
+    pc_type="$(cc -dumpmachine 2>/dev/null)"
     if [[ -z "$pc_type" ]]; then
         log "WARNING" "Could not auto-detect machine type using 'cc -dumpmachine'. Using default: $default_target_arch"
         pc_type="$default_target_arch"
@@ -199,7 +199,7 @@ parse_args() {
                 fi
                 # Check if directory is writable, or can be created
                 local log_dir
-                log_dir=$(dirname "$2")
+                log_dir="$(dirname "$2")"
                 if [[ ! -d "$log_dir" ]]; then
                     if mkdir -p "$log_dir"; then
                         log "INFO" "Created log directory: $log_dir"
@@ -243,7 +243,7 @@ parse_args() {
                 # Check if parent of prefix is writable, or if prefix itself is writable if it exists
                 local prefix_path="$2"
                 local prefix_parent
-                prefix_parent=$(dirname "$prefix_path")
+                prefix_parent="$(dirname "$prefix_path")"
                 if [[ -d "$prefix_path" ]]; then
                     if [[ ! -w "$prefix_path" ]]; then
                         fail "Prefix directory exists but is not writable: $prefix_path. Check permissions or run with sudo for 'make install' if needed (script itself should not be sudo)."
@@ -301,20 +301,20 @@ verbose_logging_cmd() { # Renamed to avoid conflict
         # Debug mode: Show command, let output go to current stdout/stderr (which might be log file)
         echo "+ $cmd_string" # Mimic set -x
         if ! "$@"; then
-            retval=$?
+            retval="$?"
             fail "Command failed with exit code $retval: $cmd_string"
         fi
     elif [[ "$verbose" -eq 1 && -z "$log_file" ]]; then # Verbose to console, not to file
         # Verbose mode: Show command, show output only on error
         echo "+ $cmd_string" >&3 # Show command on original stdout
-        if ! output=$("$@" 2>&1); then
-            retval=$?
+        if ! output="$("$@" 2>&1)"; then
+            retval="$?"
             echo "$output" >&4 # Show output on original stderr
             fail "Command failed with exit code $retval: $cmd_string"
         fi
     else # Normal mode or verbose with log file (output already going to log)
         if ! output=$("$@" 2>&1); then
-            retval=$?
+            retval="$?"
             # Output is already in $output variable, log it before failing
             log "ERROR" "Command output on failure:\n$output"
             fail "Command failed with exit code $retval: $cmd_string"
@@ -368,8 +368,6 @@ set_environment() {
         else
             log "WARNING" "-march=native not supported by current GCC, using generic tuning."
         fi
-        # mtune=native is often implied by march=native or can be omitted if causing issues.
-        # For simplicity, let's rely on march=native or generic.
     fi
     
     CFLAGS+=" -fstack-protector-strong"
@@ -408,7 +406,6 @@ set_environment() {
         local nvcc_path
         nvcc_path=$(command -v nvcc)
         cuda_check="--enable-offload-targets=nvptx-none" # Generic, specific target might need nvcc path
-        # cuda_check="--enable-offload-targets=nvptx-none=$(dirname "$(dirname "$nvcc_path")")" # Example if path needed
         log "INFO" "CUDA (nvcc) found at $nvcc_path. Enabling nvptx offload target."
     else
         cuda_check=""
@@ -416,19 +413,31 @@ set_environment() {
     fi
 }
 
+get_make_threads() {
+    # Calculate optimal thread count: total logical cores - 2, with minimum of 2
+    local available_cores threads
+    available_cores="$(nproc --all 2>/dev/null || echo 4)"
+    threads="$((available_cores - 2))"
+
+    # Ensure minimum of 2 threads
+    if [ "$threads" -lt 2 ]; then
+        threads="2"
+    fi
+
+    echo "$threads"
+}
+
 verify_checksum() {
     local file version expected_checksum actual_checksum sig_url
-    file=$1
-    version=$2 # Full version string e.g., 13.2.0
+    file="$1"
+    version="$2" # Full version string e.g., 13.2.0
     local major_version="${version%%.*}" # e.g. 13
 
-    # GCC 14 might use different signature/checksum approaches
-    # GCC 15 uses traditional .sig files, so only treat GCC 14 specially
     if [[ "$major_version" == "14" ]]; then
         log "INFO" "Checksum verification for GCC $version (major version $major_version) uses a different signature format."
         log "INFO" "Attempting to find a .sha512 file first."
         local sha512_url="https://ftp.gnu.org/gnu/gcc/gcc-${version}/sha512.sum"
-        if expected_checksum=$(curl -fsSL "$sha512_url" | grep "gcc-${version}.tar.xz" | awk '{print $1}'); then
+        if expected_checksum="$(curl -fsSL "$sha512_url" | grep "gcc-${version}.tar.xz" | awk '{print $1}')"; then
              if [[ -n "$expected_checksum" ]]; then
                 log "INFO" "Found SHA512 checksum for $file from $sha512_url"
              else
@@ -442,12 +451,59 @@ verify_checksum() {
             return 0
         fi
     else
-        # Traditional .sig files are GPG signatures, not plain text checksums
+        # Traditional .sig files are GPG signatures
         log "INFO" "GCC $version uses GPG signature files (.sig) for verification."
-        log "INFO" "GPG signature verification is not implemented in this script."
-        log "WARNING" "Skipping checksum verification for GCC $version."
-        log "WARNING" "Manual verification recommended: gpg --verify gcc-${version}.tar.xz.sig gcc-${version}.tar.xz"
-        return 0
+
+        # Download signature file if not present
+        local sig_file="${file}.sig"
+        if [[ ! -f "$sig_file" ]]; then
+            log "INFO" "Downloading GPG signature file for GCC $version..."
+            sig_url="https://ftp.gnu.org/gnu/gcc/gcc-${version}/gcc-${version}.tar.xz.sig"
+            if ! curl -fsSL -o "$sig_file" "$sig_url"; then
+                log "WARNING" "Could not download signature file from $sig_url"
+                log "WARNING" "Skipping GPG verification for GCC $version."
+                return 0
+            fi
+        fi
+
+        # Fix GPG permissions if needed
+        if [[ -d "$HOME/.gnupg" ]]; then
+            chmod 700 "$HOME/.gnupg" 2>/dev/null || true
+            chmod 600 "$HOME/.gnupg"/* 2>/dev/null || true
+        fi
+
+        # Import GCC release signing keys if not already imported
+        log "INFO" "Importing GCC release signing keys..."
+        # Multiple known GCC signing keys - import all of them
+        local gcc_keys=(
+            "33C235A34C46AA3FFB293709A328C3A2C3C45C06"  # Jakub Jelinek
+            "7F74F97C103468EE5D750B583AB00996FC26A641"  # Recent GCC releases
+            "13975A70E63C361C73AE69EF6EEB81F8981C74C7"  # Richard Biener
+        )
+
+        for key in "${gcc_keys[@]}"; do
+            if ! gpg --list-keys "$key" >/dev/null 2>&1; then
+                gpg --keyserver keyserver.ubuntu.com --recv-keys "$key" 2>/dev/null || \
+                gpg --keyserver keys.openpgp.org --recv-keys "$key" 2>/dev/null || \
+                gpg --keyserver pgp.mit.edu --recv-keys "$key" 2>/dev/null || \
+                log "WARNING" "Could not import GCC signing key $key automatically."
+            fi
+        done
+
+        # Verify GPG signature
+        log "INFO" "Verifying GPG signature for $file..."
+        if gpg --verify "$sig_file" "$file" 2>&1 | tee /tmp/gpg_verify.log; then
+            log "INFO" "GPG signature verified successfully for $file."
+            rm -f /tmp/gpg_verify.log
+            return 0
+        else
+            log "WARNING" "GPG signature verification failed for $file."
+            cat /tmp/gpg_verify.log
+            rm -f /tmp/gpg_verify.log
+            log "WARNING" "This could indicate a compromised download or missing GPG keys."
+            log "WARNING" "Continuing anyway, but manual verification is recommended."
+            return 0
+        fi
     fi
 
     log "INFO" "Calculating SHA512 checksum for local file: $file"
@@ -523,7 +579,7 @@ check_disk_space_for_selected_versions() {
 
 trim_binaries() {
     local bin_dir install_dir version
-    version=$1 # Full version string
+    version="$1" # Full version string
     if [[ -z "$user_prefix" ]]; then
         install_dir="/usr/local/programs/gcc-$version"
     else
@@ -579,7 +635,7 @@ trim_binaries() {
 
 save_static_binaries() {
     local install_dir save_dir version
-    version=$1 # Full version string
+    version="$1" # Full version string
     local short_version="${version%%.*}" # e.g. 13
 
     if [[ -z "$user_prefix" ]]; then
@@ -609,12 +665,7 @@ save_static_binaries() {
             # Add other language compilers if built and static
             # These might not all be present or relevant depending on --enable-languages
             "gfortran-$short_version"
-            # "gnat-$short_version" # Ada related, often not built by default or needs specific setup
-            # "go-$short_version" "gccgo-$short_version" # Go related
-            # "lto-dump-$short_version" # LTO related
         )
-        # Add target-prefixed versions IF they exist and before trimming was done or if suffix only applied
-        # However, save_static_binaries runs AFTER trim_binaries, so we look for trimmed names + suffix
 
         local copied_count=0
         local not_found_count=0
@@ -644,10 +695,10 @@ save_static_binaries() {
 
 download_source_file() {
     local url file version
-    url=$1
+    url="$1"
     file=$(basename "$url")
     # version=$(echo "$file" | grep -oP 'gcc-\K[0-9.]+(?=\.tar\.[a-z]+)') # version is passed directly now
-    version=$2 # Expect full version string e.g. 13.2.0
+    version="$2" # Expect full version string e.g. 13.2.0
     local max_attempts=3
     local attempt=1
     local download_path="$build_dir/$file"
@@ -747,7 +798,7 @@ download_source_file() {
 
 
 create_symlinks() {
-    local version=$1 # Full version string
+    local version="$1" # Full version string
     local short_version="${version%%.*}"
     local install_dir symlink_target_dir
     
@@ -866,14 +917,9 @@ install_dependencies() {
         ca-certificates # For HTTPS downloads
         ccache # To speed up recompilations
         libtool libtool-bin autoconf automake # Autotools
-        # GCC prerequisites' development libraries (often handled by contrib/download_prerequisites,
-        # but good to have system versions as fallback or for --with-system-foo options)
         zlib1g-dev # For zlib
         libisl-dev # For ISL (Graphite loop optimizations)
-        # libgmp-dev libmpfr-dev libmpc-dev # Usually downloaded by GCC's script, but can be system
         libzstd-dev # For zstd compression, if GCC enables it
-        # For multilib if enabled (example for i386 on x86_64)
-        # libc6-dev-i386 linux-libc-dev:i386 # If enable_multilib_flag is set
     )
 
     if [[ "$enable_multilib_flag" -eq 1 && "$target_arch" == "x86_64-linux-gnu" ]]; then
@@ -912,7 +958,7 @@ install_dependencies() {
 }
 
 get_latest_gcc_release_version() {
-    local major_version=$1 # e.g., 13
+    local major_version="$1" # e.g., 13
     local cache_file="$build_dir/.gcc_version_cache"
     local cache_age_seconds=3600  # Cache for 1 hour
 
@@ -954,11 +1000,11 @@ get_latest_gcc_release_version() {
         return 1
     fi
 
-    latest_release_version=$(echo "$listing" | \
-                            grep -oP "gcc-${major_version}[0-9.]+\/" | \
-                            sed -e 's/gcc-//' -e 's/\///' | \
-                            sort -V | \
-                            tail -n1)
+    latest_release_version=$(echo "$listing" |
+                            grep -oP "gcc-${major_version}[0-9.]+\/" |
+                            sed -e 's/gcc-//' -e 's/\///' |
+                            sort -rV | head -n1
+                        )
 
     if [[ -n "$latest_release_version" ]]; then
         log "INFO" "Latest release found for GCC $major_version: $latest_release_version"
@@ -981,7 +1027,7 @@ get_latest_gcc_release_version() {
 
 
 post_build_cleanup_and_config() {
-    local version_string=$1 # Full version e.g. 13.2.0
+    local version_string="$1" # Full version e.g. 13.2.0
     local short_version="${version_string%%.*}" # e.g. 13
     local install_prefix
     if [[ -z "$user_prefix" ]]; then
@@ -1154,9 +1200,9 @@ create_additional_pkgconfig_links() {
 
 build_status_log() {
     local package version status
-    package=$1
-    version=$2
-    status=$3 # e.g., "SUCCESS", "FAILURE", "CONFIG_START", "BUILD_START", "INSTALL_START"
+    package="$1"
+    version="$2"
+    status="$3" # e.g., "SUCCESS", "FAILURE", "CONFIG_START", "BUILD_START", "INSTALL_START"
     log "INFO" "STATUS: Package: $package, Version: $version, Stage: $status"
 }
 
@@ -1165,8 +1211,8 @@ build_status_log() {
 # The main GCC build is handled by build_gcc_version directly.
 build_generic_package() {
     local package version
-    package=$1
-    version=$2
+    package="$1"
+    version="$2"
     # shift 2; local configure_opts=("$@") # If opts needed
 
     log "INFO" "Building generic package: $package $version (if required by GCC build)..."
@@ -1203,7 +1249,7 @@ build_generic_package() {
         
         log "INFO" "Making $package $version..."
         local threads
-        threads=$(nproc --all 2>/dev/null || echo 2) # Get core count, default to 2 if nproc fails
+        threads=$(get_make_threads)
         if ! verbose_logging_cmd make "-j$threads"; then
             log "WARNING" "Parallel make for $package failed, trying single-threaded build..."
             if ! verbose_logging_cmd make; then
@@ -1381,8 +1427,8 @@ select_gcc_versions_to_build() {
 
 # Placeholder for build state tracking if resume functionality is enhanced later
 # build_state_manager() {
-#     local action=$1
-#     local stage=$2
+#     local action="$1"
+#     local stage="$2"
 #     local state_file="$build_dir/.build_state"
     
 #     case "$action" in
@@ -1399,7 +1445,7 @@ select_gcc_versions_to_build() {
 # }
 
 build_gcc_version() {
-    local full_version_string=$1 # e.g., 13.2.0
+    local full_version_string="$1" # e.g., 13.2.0
     local major_version="${full_version_string%%.*}" # e.g., 13
     local install_prefix # Determined based on user_prefix or default
     local gcc_source_dir="$workspace/gcc-$full_version_string"
@@ -1610,7 +1656,7 @@ build_gcc_version() {
     build_status_log "GCC" "$full_version_string" "MAKE_START"
     log "INFO" "Building GCC $full_version_string (make). This will take a significant amount of time..."
     local threads
-    threads=$(nproc --all 2>/dev/null || echo 2) # Get core count, default to 2 if nproc fails
+    threads=$(get_make_threads)
     log "INFO" "Using $threads threads for make (make -j$threads)."
 
     local make_start_time make_end_time make_duration
@@ -1666,8 +1712,8 @@ build_gcc_version() {
 
 # Trap for errors, call cleanup
 trap_and_exit_on_error() {
-    local exit_code=$?
-    local line_no=$1
+    local exit_code="$?"
+    local line_no="$1"
     local command=${BASH_COMMAND}
     
     if [[ $exit_code -ne 0 ]]; then
@@ -1805,24 +1851,15 @@ main() {
     
     # Process each selected version to determine final status
     for major_ver in "${selected_versions[@]}"; do
-        # Get the latest version for this major version (reconstruct the lookup)
-        local version_var="gcc_${major_ver}_latest"
+        # Get the actual version string by calling the version lookup function
+        # This will use the cache if available (1 hour cache) to avoid repeated network calls
         local full_version_string
-        
-        # Attempt to get full version string from global variable or reconstruct
-        if [[ -n "${!version_var}" ]]; then
-            full_version_string="${!version_var}"
-        else
-            # Fallback: assume major.x.0 pattern for summary purposes
-            case "$major_ver" in
-                10) full_version_string="10.5.0" ;;
-                11) full_version_string="11.4.0" ;;
-                12) full_version_string="12.3.0" ;;
-                13) full_version_string="13.2.0" ;;
-                14) full_version_string="14.1.0" ;;
-                15) full_version_string="15.1.0" ;;
-                *) full_version_string="${major_ver}.x.x" ;;
-            esac
+        full_version_string=$(get_latest_gcc_release_version "$major_ver")
+
+        # If version lookup fails, log error and skip this version in summary
+        if [[ -z "$full_version_string" ]]; then
+            log "ERROR" "Failed to determine version for GCC $major_ver in summary report. Skipping."
+            continue
         fi
         
         # Determine installation prefix
@@ -1886,7 +1923,7 @@ main() {
         if [[ "$build_status" == "SUCCESS" ]]; then
             # Show compiler capabilities for successful builds
             local gcc_features
-            gcc_features=$("$install_prefix/bin/gcc" -v 2>&1 | tail -n 1 | grep -oP '(?<=Configured with: ).*' | head -c 60)
+            gcc_features=$("$install_prefix/bin/gcc" -v 2>&1 | tail -n1 | grep -oP '(?<=Configured with: ).*' | head -c 60)
             [[ -n "$gcc_features" ]] && log "INFO" "   Features: ${gcc_features}..."
             
             # Show target architecture
@@ -2020,7 +2057,7 @@ main() {
 }
 
 # Global SCRIPT_VERSION, used in main's log
-SCRIPT_VERSION="1.8"
+SCRIPT_VERSION="1.9"
 
 # Call main function with all script arguments
 main "$@"
