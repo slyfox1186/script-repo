@@ -27,7 +27,7 @@ impl GccConfigGenerator {
     
     fn init_base_options() -> HashMap<String, String> {
         let mut options = HashMap::new();
-        
+
         options.insert("languages".to_string(), "--enable-languages=all".to_string());
         options.insert("bootstrap".to_string(), "--disable-bootstrap".to_string());
         options.insert("checking".to_string(), "--enable-checking=release".to_string());
@@ -35,9 +35,9 @@ impl GccConfigGenerator {
         options.insert("shared".to_string(), "--enable-shared".to_string());
         options.insert("threads".to_string(), "--enable-threads=posix".to_string());
         options.insert("zlib".to_string(), "--with-system-zlib".to_string());
-        options.insert("isl".to_string(), "--with-isl=/usr".to_string());
+        // isl will be detected dynamically later
         options.insert("major_version_only".to_string(), "--with-gcc-major-version-only".to_string());
-        
+
         options
     }
     
@@ -106,8 +106,18 @@ impl GccConfigGenerator {
         options.push(format!("--program-suffix=-{}", gcc_version.major));
         
         // Add base options
-        for (_, option) in &self.base_options {
-            options.push(option.clone());
+        for (key, option) in &self.base_options {
+            if key == "isl" {
+                // Handle isl detection dynamically
+                if let Some(isl_path) = self.detect_isl_path() {
+                    options.push(format!("--with-isl={}", isl_path));
+                } else {
+                    debug!("No isl library detected, disabling isl support");
+                    options.push("--without-isl".to_string());
+                }
+            } else {
+                options.push(option.clone());
+            }
         }
         
         // Add multilib option
@@ -193,6 +203,114 @@ impl GccConfigGenerator {
         } else {
             None
         }
+    }
+
+    /// Detect isl library path using multiple methods
+    fn detect_isl_path(&self) -> Option<String> {
+        // Method 1: Try pkg-config first (most reliable)
+        if let Some(path) = self.detect_isl_via_pkgconfig() {
+            info!("Detected isl via pkg-config: {}", path);
+            return Some(path);
+        }
+
+        // Method 2: Search common multiarch paths
+        if let Some(path) = self.detect_isl_via_system_search() {
+            info!("Detected isl via system search: {}", path);
+            return Some(path);
+        }
+
+        // Method 3: Try default paths as last resort
+        if let Some(path) = self.detect_isl_via_default_paths() {
+            info!("Detected isl via default paths: {}", path);
+            return Some(path);
+        }
+
+        debug!("Could not detect isl library path");
+        None
+    }
+
+    /// Detect isl path using pkg-config
+    fn detect_isl_via_pkgconfig(&self) -> Option<String> {
+        // Try to get library path from pkg-config
+        let output = std::process::Command::new("pkg-config")
+            .args(["--libs-only-L", "isl"])
+            .output()
+            .ok()?;
+
+        if output.status.success() {
+            let lib_paths = String::from_utf8_lossy(&output.stdout);
+            for path in lib_paths.trim().split_whitespace() {
+                if let Some(clean_path) = path.strip_prefix("-L") {
+                    // Found library path, convert to prefix
+                    if clean_path.starts_with("/usr/lib/x86_64-linux-gnu") {
+                        return Some("/usr".to_string());
+                    } else if clean_path.starts_with("/usr/lib") {
+                        return Some("/usr".to_string());
+                    } else if clean_path.starts_with("/") {
+                        // Use the parent directory of lib as the prefix
+                        if let Some(lib_parent) = clean_path.strip_suffix("/lib") {
+                            return Some(lib_parent.to_string());
+                        } else {
+                            // Extract prefix from full path
+                            return Some(clean_path.to_string());
+                        }
+                    }
+                }
+            }
+        }
+
+        None
+    }
+
+    /// Detect isl by searching system paths
+    fn detect_isl_via_system_search(&self) -> Option<String> {
+        let common_paths = [
+            "/usr/lib/x86_64-linux-gnu",
+            "/usr/lib/x86_64-linux-gnu/libisl.so",
+            "/usr/lib",
+            "/usr/local/lib",
+            "/opt/homebrew/lib",  // macOS
+        ];
+
+        for path in &common_paths {
+            // Check if isl library exists
+            let lib_file = if path.ends_with(".so") {
+                path.to_string()
+            } else {
+                format!("{}/libisl.so", path)
+            };
+
+            if std::path::Path::new(&lib_file).exists() {
+                // Extract prefix from library path
+                if path.starts_with("/usr/lib/x86_64-linux-gnu") {
+                    return Some("/usr".to_string());
+                } else if path.starts_with("/usr/lib") {
+                    return Some("/usr".to_string());
+                } else if let Some(prefix) = path.strip_suffix("/lib") {
+                    return Some(prefix.to_string());
+                }
+            }
+        }
+
+        None
+    }
+
+    /// Detect isl using default paths
+    fn detect_isl_via_default_paths(&self) -> Option<String> {
+        let default_prefixes = ["/usr", "/usr/local", "/opt/homebrew"];
+
+        for prefix in &default_prefixes {
+            let include_path = format!("{}/include/isl/aff.h", prefix);
+            let lib_path = format!("{}/lib/libisl.so", prefix);
+
+            if std::path::Path::new(&include_path).exists() &&
+               (std::path::Path::new(&lib_path).exists() ||
+                std::path::Path::new(&format!("{}/lib64/libisl.so", prefix)).exists()) {
+                return Some(prefix.to_string());
+            }
+        }
+
+        None
     }
     
     /// Get configure options as a formatted string for logging
