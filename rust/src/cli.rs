@@ -255,29 +255,29 @@ impl OptimizationLevel {
 
 impl PartialEq<&str> for OptimizationLevel {
     fn eq(&self, other: &&str) -> bool {
-        match (self, *other) {
-            (OptimizationLevel::O0, "O0") => true,
-            (OptimizationLevel::O1, "O1") => true,
-            (OptimizationLevel::O2, "O2") => true,
-            (OptimizationLevel::O3, "O3") => true,
-            (OptimizationLevel::Fast, "fast") => true,
-            (OptimizationLevel::Debug, "g") => true,
-            (OptimizationLevel::Size, "s") => true,
-            _ => false,
-        }
+        matches!(
+            (self, *other),
+            (OptimizationLevel::O0, "O0")
+                | (OptimizationLevel::O1, "O1")
+                | (OptimizationLevel::O2, "O2")
+                | (OptimizationLevel::O3, "O3")
+                | (OptimizationLevel::Fast, "fast")
+                | (OptimizationLevel::Debug, "g")
+                | (OptimizationLevel::Size, "s")
+        )
     }
 }
 
-impl ToString for OptimizationLevel {
-    fn to_string(&self) -> String {
+impl std::fmt::Display for OptimizationLevel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            OptimizationLevel::O0 => "O0".to_string(),
-            OptimizationLevel::O1 => "O1".to_string(),
-            OptimizationLevel::O2 => "O2".to_string(),
-            OptimizationLevel::O3 => "O3".to_string(),
-            OptimizationLevel::Fast => "fast".to_string(),
-            OptimizationLevel::Debug => "g".to_string(),
-            OptimizationLevel::Size => "s".to_string(),
+            OptimizationLevel::O0 => write!(f, "O0"),
+            OptimizationLevel::O1 => write!(f, "O1"),
+            OptimizationLevel::O2 => write!(f, "O2"),
+            OptimizationLevel::O3 => write!(f, "O3"),
+            OptimizationLevel::Fast => write!(f, "fast"),
+            OptimizationLevel::Debug => write!(f, "g"),
+            OptimizationLevel::Size => write!(f, "s"),
         }
     }
 }

@@ -442,7 +442,62 @@ impl DirectoryOperations {
             let path = entry.path();
 
             if path.is_dir() {
-                total_size += self.get_directory_size(&path)?;
+                total_size += self.get_directory_size_recursive(&path)?;
+            } else {
+                let metadata = path.metadata().map_err(|e| {
+                    GccBuildError::directory_operation(
+                        "metadata".to_string(),
+                        path.display().to_string(),
+                        e.to_string(),
+                    )
+                })?;
+                total_size += metadata.len();
+            }
+        }
+
+        Ok(total_size)
+    }
+
+    /// Internal recursive helper function
+    fn get_directory_size_recursive(&self, dir: &Path) -> GccResult<u64> {
+        if !dir.exists() {
+            return Ok(0);
+        }
+
+        if !dir.is_dir() {
+            let metadata = dir.metadata().map_err(|e| {
+                GccBuildError::directory_operation(
+                    "metadata".to_string(),
+                    dir.display().to_string(),
+                    e.to_string(),
+                )
+            })?;
+            return Ok(metadata.len());
+        }
+
+        let mut total_size = 0u64;
+
+        let entries = fs::read_dir(dir).map_err(|e| {
+            GccBuildError::directory_operation(
+                "read_dir".to_string(),
+                dir.display().to_string(),
+                e.to_string(),
+            )
+        })?;
+
+        for entry in entries {
+            let entry = entry.map_err(|e| {
+                GccBuildError::directory_operation(
+                    "read entry".to_string(),
+                    dir.display().to_string(),
+                    e.to_string(),
+                )
+            })?;
+
+            let path = entry.path();
+
+            if path.is_dir() {
+                total_size += self.get_directory_size_recursive(&path)?;
             } else {
                 let metadata = path.metadata().map_err(|e| {
                     GccBuildError::directory_operation(
