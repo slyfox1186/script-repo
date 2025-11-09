@@ -2,8 +2,8 @@
 
 # Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-git.sh
 # Purpose: Build Git
-# Updated: 07.03.24
-# Script version: 1.6
+# Updated: 11.09.2025
+# Script version: 1.7
 
 if [[ "$EUID" -eq 0 ]]; then
     echo "You must run this script without root or sudo."
@@ -19,10 +19,10 @@ NC='\033[0m' # No Color
 # Set the variables
 script_ver="1.6"
 prog_name="git"
-version=$(curl -fsS "https://github.com/git/git/tags/" | grep -oP 'href="[^"]*/tag/v?\K([0-9.])+' | sort -ruV | head -n1)
+version=$(curl -fsS "https://github.com/git/git/tags/" | grep -o 'href="[^"]*/tag/v\([0-9.]\+\)"' | sed 's/.*v\([0-9.]\+\).*/\1/' | sort -ruV | head -n1)
 dir_name="$prog_name-$version"
-archive_url="https://github.com/git/git/archive/refs/tags/v$version.tar.gz"
-archive_ext="${archive_url//*.}"
+archive_url="https://github.com/git/git/archive/v$version.tar.gz"
+archive_ext="gz"
 tar_file="$dir_name.tar.$archive_ext"
 install_dir="/usr/local/programs/$dir_name"
 cwd="$PWD/$dir_name-build-script"
@@ -151,15 +151,14 @@ set_compiler_flags() {
     CXXFLAGS="$CFLAGS"
     CPPFLAGS="-D_FORTIFY_SOURCE=2"
     LDFLAGS="-Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now,-rpath,$install_dir/lib"
-    PATH="/usr/lib/ccache:$PATH"
     PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/lib64/pkgconfig:/usr/local/share/pkgconfig:/usr/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/share/pkgconfig"
     PKG_CONFIG_PATH+=":/usr/local/cuda/lib64/pkgconfig:/usr/local/cuda/lib/pkgconfig:/opt/cuda/lib64/pkgconfig:/opt/cuda/lib/pkgconfig"
     PKG_CONFIG_PATH+=":/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/i386-linux-gnu/pkgconfig:/usr/lib/arm-linux-gnueabihf/pkgconfig:/usr/lib/aarch64-linux-gnu/pkgconfig"
-    export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS PATH PKG_CONFIG_PATH
+    export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS PKG_CONFIG_PATH
 }
 
 download_archive() {
-    wget --show-progress -cqO "$cwd/$tar_file" "$archive_url" || fail "Failed to download archive with WGET. Line: $LINENO"
+    curl -fsSL -L -o "$cwd/$tar_file" "$archive_url" || fail "Failed to download archive with WGET. Line: $LINENO"
 }
 
 extract_archive() {
@@ -211,4 +210,3 @@ main_menu() {
 }
 
 main_menu "$@"
-
