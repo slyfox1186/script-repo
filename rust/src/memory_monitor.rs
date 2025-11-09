@@ -1,9 +1,9 @@
 #![allow(dead_code)]
+use log::{debug, error, info, warn};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use tokio::sync::{RwLock, watch};
+use tokio::sync::{watch, RwLock};
 use tokio::time::interval;
-use log::{info, warn, debug, error};
 
 use crate::error::{GccBuildError, Result as GccResult};
 
@@ -29,7 +29,7 @@ struct MonitorState {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MemoryPressure {
     None,     // < 70% usage
-    Low,      // 70-80% usage  
+    Low,      // 70-80% usage
     Medium,   // 80-90% usage
     High,     // 90-95% usage
     Critical, // > 95% usage
@@ -99,7 +99,7 @@ impl Default for AdaptiveThresholds {
 impl MemoryMonitor {
     pub fn new(config: MonitorConfig) -> Self {
         let (pressure_sender, pressure_receiver) = watch::channel(MemoryPressure::None);
-        
+
         Self {
             state: Arc::new(RwLock::new(MonitorState {
                 current_memory: MemoryInfo::default(),
@@ -114,7 +114,7 @@ impl MemoryMonitor {
             pressure_receiver,
         }
     }
-    
+
     /// Start monitoring memory pressure
     pub async fn start_monitoring(&self) -> GccResult<()> {
         {
@@ -124,57 +124,59 @@ impl MemoryMonitor {
             }
             state.monitoring_active = true;
         }
-        
-        info!("🔍 Starting memory pressure monitoring ({}s intervals)", 
-              self.config.polling_interval.as_secs());
-        
+
+        info!(
+            "🔍 Starting memory pressure monitoring ({}s intervals)",
+            self.config.polling_interval.as_secs()
+        );
+
         let monitor = self.clone();
         tokio::spawn(async move {
             monitor.monitoring_loop().await;
         });
-        
+
         Ok(())
     }
-    
+
     /// Stop monitoring
     pub async fn stop_monitoring(&self) {
         let mut state = self.state.write().await;
         state.monitoring_active = false;
         info!("⏹️ Memory monitoring stopped");
     }
-    
+
     /// Get current memory pressure level
     pub async fn get_pressure_level(&self) -> MemoryPressure {
         self.state.read().await.pressure_level
     }
-    
+
     /// Get memory pressure change notifications
     pub fn subscribe_pressure_changes(&self) -> watch::Receiver<MemoryPressure> {
         self.pressure_receiver.clone()
     }
-    
+
     /// Get current memory information
     pub async fn get_memory_info(&self) -> MemoryInfo {
         self.state.read().await.current_memory.clone()
     }
-    
+
     /// Check if system can handle additional memory load
     pub async fn can_allocate_memory(&self, required_mb: u64) -> bool {
         let state = self.state.read().await;
         let available = state.current_memory.available_mb;
-        let would_use_percent = (state.current_memory.used_mb + required_mb) as f64 
+        let would_use_percent = (state.current_memory.used_mb + required_mb) as f64
             / state.current_memory.total_mb as f64;
-        
+
         // Don't allow allocation if it would push us into high pressure
         would_use_percent < state.adaptive_thresholds.high_threshold && available > required_mb
     }
-    
+
     /// Request emergency memory cleanup
     pub async fn request_emergency_cleanup(&self) -> GccResult<()> {
         info!("🚨 Emergency memory cleanup requested");
-        
+
         let mut state = self.state.write().await;
-        
+
         // Avoid too frequent cleanups
         if let Some(last_gc) = state.last_gc_trigger {
             if last_gc.elapsed() < self.config.gc_cooldown {
@@ -182,66 +184,66 @@ impl MemoryMonitor {
                 return Ok(());
             }
         }
-        
+
         state.last_gc_trigger = Some(Instant::now());
         drop(state);
-        
+
         // Trigger system garbage collection
         self.trigger_system_cleanup().await?;
-        
+
         // Force memory update
         self.update_memory_info().await?;
-        
+
         Ok(())
     }
-    
+
     /// Main monitoring loop
     async fn monitoring_loop(&self) {
         let mut interval = interval(self.config.polling_interval);
-        
+
         while self.state.read().await.monitoring_active {
             interval.tick().await;
-            
+
             if let Err(e) = self.update_memory_info().await {
                 error!("Failed to update memory info: {}", e);
                 continue;
             }
-            
+
             if let Err(e) = self.evaluate_pressure().await {
                 error!("Failed to evaluate memory pressure: {}", e);
                 continue;
             }
-            
+
             if let Err(e) = self.handle_pressure_changes().await {
                 error!("Failed to handle pressure changes: {}", e);
             }
         }
     }
-    
+
     /// Update current memory information
     async fn update_memory_info(&self) -> GccResult<()> {
         let memory_info = self.read_system_memory().await?;
-        
+
         let mut state = self.state.write().await;
         state.current_memory = memory_info;
-        
+
         Ok(())
     }
-    
+
     /// Read memory information from system
     async fn read_system_memory(&self) -> GccResult<MemoryInfo> {
-        let sys_info = sys_info::mem_info()
-            .map_err(|e| GccBuildError::system_requirements(
-                format!("Failed to read memory info: {}", e)
-            ))?;
-        
+        let sys_info = sys_info::mem_info().map_err(|e| {
+            GccBuildError::system_requirements(format!("Failed to read memory info: {}", e))
+        })?;
+
         // Read additional info from /proc/meminfo for more details
-        let meminfo = tokio::fs::read_to_string("/proc/meminfo").await
+        let meminfo = tokio::fs::read_to_string("/proc/meminfo")
+            .await
             .unwrap_or_default();
-        
+
         let mut cached_mb = 0;
         let mut buffers_mb = 0;
-        
+
         for line in meminfo.lines() {
             if line.starts_with("Cached:") {
                 if let Some(kb) = self.extract_kb_value(line) {
@@ -253,7 +255,7 @@ impl MemoryMonitor {
                 }
             }
         }
-        
+
         Ok(MemoryInfo {
             total_mb: sys_info.total / 1024,
             available_mb: sys_info.avail / 1024,
@@ -265,22 +267,20 @@ impl MemoryMonitor {
             timestamp: Instant::now(),
         })
     }
-    
+
     /// Extract KB value from /proc/meminfo line
     fn extract_kb_value(&self, line: &str) -> Option<u64> {
-        line.split_whitespace()
-            .nth(1)?
-            .parse::<u64>()
-            .ok()
+        line.split_whitespace().nth(1)?.parse::<u64>().ok()
     }
-    
+
     /// Evaluate current memory pressure
     async fn evaluate_pressure(&self) -> GccResult<()> {
         let mut state = self.state.write().await;
-        
-        let usage_ratio = state.current_memory.used_mb as f64 / state.current_memory.total_mb as f64;
+
+        let usage_ratio =
+            state.current_memory.used_mb as f64 / state.current_memory.total_mb as f64;
         let thresholds = &state.adaptive_thresholds;
-        
+
         let new_pressure = if usage_ratio >= thresholds.critical_threshold {
             MemoryPressure::Critical
         } else if usage_ratio >= thresholds.high_threshold {
@@ -292,7 +292,7 @@ impl MemoryMonitor {
         } else {
             MemoryPressure::None
         };
-        
+
         // Update pressure history
         let memory_info_clone = state.current_memory.clone();
         state.pressure_history.push(PressureReading {
@@ -300,64 +300,72 @@ impl MemoryMonitor {
             memory_info: memory_info_clone,
             timestamp: Instant::now(),
         });
-        
+
         // Keep only recent history
         if state.pressure_history.len() > self.config.pressure_window_size {
             state.pressure_history.remove(0);
         }
-        
+
         // Adapt thresholds if enabled
         if self.config.adaptive_mode {
             self.adapt_thresholds(&mut state).await;
         }
-        
+
         let old_pressure = state.pressure_level;
         state.pressure_level = new_pressure;
-        
+
         // Notify pressure change
         if old_pressure != new_pressure {
-            debug!("Memory pressure changed: {:?} -> {:?} ({:.1}% usage)", 
-                   old_pressure, new_pressure, usage_ratio * 100.0);
-            
+            debug!(
+                "Memory pressure changed: {:?} -> {:?} ({:.1}% usage)",
+                old_pressure,
+                new_pressure,
+                usage_ratio * 100.0
+            );
+
             let _ = self.pressure_sender.send(new_pressure);
         }
-        
+
         Ok(())
     }
-    
+
     /// Adapt thresholds based on system behavior
     async fn adapt_thresholds(&self, state: &mut MonitorState) {
         if state.pressure_history.len() < self.config.pressure_window_size {
             return;
         }
-        
+
         // Analyze pressure stability
-        let recent_pressures: Vec<_> = state.pressure_history
+        let recent_pressures: Vec<_> = state
+            .pressure_history
             .iter()
             .rev()
             .take(5)
             .map(|r| r.pressure)
             .collect();
-        
+
         let all_same = recent_pressures.windows(2).all(|w| w[0] == w[1]);
-        
+
         if all_same && recent_pressures[0] == MemoryPressure::High {
             // System is consistently at high pressure - lower thresholds slightly
             let factor = state.adaptive_thresholds.adaptation_factor;
-            state.adaptive_thresholds.high_threshold = 
+            state.adaptive_thresholds.high_threshold =
                 (state.adaptive_thresholds.high_threshold - factor * 0.1).max(0.80);
-            
-            debug!("Adapted high threshold to {:.2}", state.adaptive_thresholds.high_threshold);
+
+            debug!(
+                "Adapted high threshold to {:.2}",
+                state.adaptive_thresholds.high_threshold
+            );
         }
     }
-    
+
     /// Handle memory pressure changes
     async fn handle_pressure_changes(&self) -> GccResult<()> {
         let pressure = {
             let state = self.state.read().await;
             state.pressure_level
         };
-        
+
         match pressure {
             MemoryPressure::Critical => {
                 warn!("🚨 CRITICAL memory pressure detected!");
@@ -379,28 +387,28 @@ impl MemoryMonitor {
                 debug!("No memory pressure");
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Emergency response to critical memory pressure
     async fn emergency_response(&self) -> GccResult<()> {
         info!("🚨 Executing emergency memory response");
-        
+
         // Force garbage collection
         self.trigger_system_cleanup().await?;
-        
+
         // Clear caches if possible
         if let Err(e) = self.clear_system_caches().await {
             warn!("Failed to clear system caches: {}", e);
         }
-        
+
         // Wait a moment for memory to stabilize
         tokio::time::sleep(Duration::from_secs(5)).await;
-        
+
         Ok(())
     }
-    
+
     /// Response to high memory pressure
     async fn high_pressure_response(&self) -> GccResult<()> {
         // Trigger garbage collection if cooldown period has passed
@@ -411,24 +419,24 @@ impl MemoryMonitor {
                 None => true,
             }
         };
-        
+
         if should_gc {
             self.trigger_system_cleanup().await?;
             self.state.write().await.last_gc_trigger = Some(Instant::now());
         }
-        
+
         Ok(())
     }
-    
+
     /// Trigger system-level memory cleanup
     async fn trigger_system_cleanup(&self) -> GccResult<()> {
         info!("🧹 Triggering system memory cleanup");
-        
+
         // Force kernel to drop caches
         if let Err(e) = tokio::fs::write("/proc/sys/vm/drop_caches", "3").await {
             debug!("Cannot drop caches (permission issue): {}", e);
         }
-        
+
         // Force garbage collection in allocator (if using jemalloc)
         #[cfg(target_os = "linux")]
         {
@@ -439,28 +447,29 @@ impl MemoryMonitor {
                 malloc_trim(0);
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Clear system caches
     async fn clear_system_caches(&self) -> GccResult<()> {
         // Drop page cache, dentries and inodes
-        tokio::fs::write("/proc/sys/vm/drop_caches", "3").await
-            .map_err(|e| GccBuildError::system_requirements(
-                format!("Failed to clear system caches: {}", e)
-            ))?;
-        
+        tokio::fs::write("/proc/sys/vm/drop_caches", "3")
+            .await
+            .map_err(|e| {
+                GccBuildError::system_requirements(format!("Failed to clear system caches: {}", e))
+            })?;
+
         Ok(())
     }
-    
+
     /// Get monitoring statistics
     pub async fn get_stats(&self) -> MonitorStats {
         let state = self.state.read().await;
-        
+
         let pressure_distribution = self.calculate_pressure_distribution(&state.pressure_history);
         let avg_usage = self.calculate_average_usage(&state.pressure_history);
-        
+
         MonitorStats {
             monitoring_active: state.monitoring_active,
             current_pressure: state.pressure_level,
@@ -471,16 +480,16 @@ impl MemoryMonitor {
             adaptive_thresholds: state.adaptive_thresholds.clone(),
         }
     }
-    
+
     /// Calculate pressure level distribution
     fn calculate_pressure_distribution(&self, history: &[PressureReading]) -> PressureDistribution {
         if history.is_empty() {
             return PressureDistribution::default();
         }
-        
+
         let total = history.len() as f64;
         let mut dist = PressureDistribution::default();
-        
+
         for reading in history {
             match reading.pressure {
                 MemoryPressure::None => dist.none_percent += 1.0,
@@ -490,26 +499,27 @@ impl MemoryMonitor {
                 MemoryPressure::Critical => dist.critical_percent += 1.0,
             }
         }
-        
+
         dist.none_percent = (dist.none_percent / total) * 100.0;
         dist.low_percent = (dist.low_percent / total) * 100.0;
         dist.medium_percent = (dist.medium_percent / total) * 100.0;
         dist.high_percent = (dist.high_percent / total) * 100.0;
         dist.critical_percent = (dist.critical_percent / total) * 100.0;
-        
+
         dist
     }
-    
+
     /// Calculate average memory usage
     fn calculate_average_usage(&self, history: &[PressureReading]) -> f64 {
         if history.is_empty() {
             return 0.0;
         }
-        
-        let sum: f64 = history.iter()
+
+        let sum: f64 = history
+            .iter()
             .map(|r| r.memory_info.used_mb as f64 / r.memory_info.total_mb as f64)
             .sum();
-        
+
         (sum / history.len() as f64) * 100.0
     }
 }

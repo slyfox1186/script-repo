@@ -1,10 +1,10 @@
 #![allow(dead_code)]
-use std::collections::HashMap;
-use std::path::{Path, PathBuf};
-use log::{info, debug, warn};
-use crate::error::{GccBuildError, Result as GccResult};
 use crate::commands::CommandExecutor;
 use crate::config::Config;
+use crate::error::{GccBuildError, Result as GccResult};
+use log::{debug, info, warn};
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 
 /// Build cache integration using ccache and sccache
 pub struct BuildCache {
@@ -26,10 +26,10 @@ impl BuildCache {
     pub async fn new(config: &Config, executor: CommandExecutor) -> GccResult<Self> {
         let cache_type = Self::detect_cache_type(&executor).await;
         let cache_dir = config.build_dir.join("cache");
-        
+
         // Default to 10GB cache size
         let max_size_gb = 10;
-        
+
         let mut instance = Self {
             cache_type,
             cache_dir,
@@ -37,12 +37,12 @@ impl BuildCache {
             executor,
             env_vars: HashMap::new(),
         };
-        
+
         instance.setup_environment()?;
-        
+
         Ok(instance)
     }
-    
+
     /// Detect available cache type
     async fn detect_cache_type(executor: &CommandExecutor) -> CacheType {
         if executor.command_exists("sccache").await {
@@ -56,70 +56,98 @@ impl BuildCache {
             CacheType::None
         }
     }
-    
+
     /// Setup cache environment
     fn setup_environment(&mut self) -> GccResult<()> {
         match &self.cache_type {
             CacheType::Ccache => {
                 // Set ccache environment variables
-                self.env_vars.insert("CCACHE_DIR".to_string(), 
-                                   self.cache_dir.to_string_lossy().to_string());
-                self.env_vars.insert("CCACHE_MAXSIZE".to_string(), 
-                                   format!("{}G", self.max_size_gb));
-                self.env_vars.insert("CCACHE_COMPRESS".to_string(), "1".to_string());
-                self.env_vars.insert("CCACHE_COMPRESSLEVEL".to_string(), "6".to_string());
-                
+                self.env_vars.insert(
+                    "CCACHE_DIR".to_string(),
+                    self.cache_dir.to_string_lossy().to_string(),
+                );
+                self.env_vars.insert(
+                    "CCACHE_MAXSIZE".to_string(),
+                    format!("{}G", self.max_size_gb),
+                );
+                self.env_vars
+                    .insert("CCACHE_COMPRESS".to_string(), "1".to_string());
+                self.env_vars
+                    .insert("CCACHE_COMPRESSLEVEL".to_string(), "6".to_string());
+
                 // Use ccache for C/C++ compilation
-                self.env_vars.insert("CC".to_string(), "ccache gcc".to_string());
-                self.env_vars.insert("CXX".to_string(), "ccache g++".to_string());
-                
+                self.env_vars
+                    .insert("CC".to_string(), "ccache gcc".to_string());
+                self.env_vars
+                    .insert("CXX".to_string(), "ccache g++".to_string());
+
                 // Enable ccache statistics
-                self.env_vars.insert("CCACHE_STATS".to_string(), "1".to_string());
+                self.env_vars
+                    .insert("CCACHE_STATS".to_string(), "1".to_string());
             }
             CacheType::Sccache => {
                 // Set sccache environment variables
-                self.env_vars.insert("SCCACHE_DIR".to_string(), 
-                                   self.cache_dir.to_string_lossy().to_string());
-                self.env_vars.insert("SCCACHE_CACHE_SIZE".to_string(), 
-                                   format!("{}G", self.max_size_gb));
-                
+                self.env_vars.insert(
+                    "SCCACHE_DIR".to_string(),
+                    self.cache_dir.to_string_lossy().to_string(),
+                );
+                self.env_vars.insert(
+                    "SCCACHE_CACHE_SIZE".to_string(),
+                    format!("{}G", self.max_size_gb),
+                );
+
                 // Use sccache for compilation
-                self.env_vars.insert("CC".to_string(), "sccache gcc".to_string());
-                self.env_vars.insert("CXX".to_string(), "sccache g++".to_string());
-                self.env_vars.insert("RUSTC_WRAPPER".to_string(), "sccache".to_string());
+                self.env_vars
+                    .insert("CC".to_string(), "sccache gcc".to_string());
+                self.env_vars
+                    .insert("CXX".to_string(), "sccache g++".to_string());
+                self.env_vars
+                    .insert("RUSTC_WRAPPER".to_string(), "sccache".to_string());
             }
             CacheType::None => {
                 // No caching available
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Initialize the cache
     pub async fn init(&self) -> GccResult<()> {
         if matches!(self.cache_type, CacheType::None) {
             return Ok(());
         }
-        
+
         // Create cache directory
-        tokio::fs::create_dir_all(&self.cache_dir).await
-            .map_err(|e| GccBuildError::directory_operation(
-                "create cache directory",
-                self.cache_dir.display().to_string(),
-                e.to_string()
-            ))?;
-        
+        tokio::fs::create_dir_all(&self.cache_dir)
+            .await
+            .map_err(|e| {
+                GccBuildError::directory_operation(
+                    "create cache directory",
+                    self.cache_dir.display().to_string(),
+                    e.to_string(),
+                )
+            })?;
+
         match &self.cache_type {
             CacheType::Ccache => {
                 // Configure ccache
-                self.executor.execute("ccache", ["--set-config", &format!("max_size={}G", self.max_size_gb)]).await?;
-                self.executor.execute("ccache", ["--set-config", "compression=true"]).await?;
-                self.executor.execute("ccache", ["--set-config", "compression_level=6"]).await?;
-                
+                self.executor
+                    .execute(
+                        "ccache",
+                        ["--set-config", &format!("max_size={}G", self.max_size_gb)],
+                    )
+                    .await?;
+                self.executor
+                    .execute("ccache", ["--set-config", "compression=true"])
+                    .await?;
+                self.executor
+                    .execute("ccache", ["--set-config", "compression_level=6"])
+                    .await?;
+
                 // Clear old statistics
                 self.executor.execute("ccache", ["--zero-stats"]).await?;
-                
+
                 info!("✅ ccache initialized with {}GB cache", self.max_size_gb);
             }
             CacheType::Sccache => {
@@ -128,34 +156,40 @@ impl BuildCache {
             }
             CacheType::None => {}
         }
-        
+
         Ok(())
     }
-    
+
     /// Get environment variables for build process
     pub fn get_env_vars(&self) -> &HashMap<String, String> {
         &self.env_vars
     }
-    
+
     /// Get cache statistics
     pub async fn get_stats(&self) -> GccResult<CacheStats> {
         match &self.cache_type {
             CacheType::Ccache => {
-                let output = self.executor.execute_with_output("ccache", ["--show-stats"]).await?;
+                let output = self
+                    .executor
+                    .execute_with_output("ccache", ["--show-stats"])
+                    .await?;
                 self.parse_ccache_stats(&output)
             }
             CacheType::Sccache => {
-                let output = self.executor.execute_with_output("sccache", ["--show-stats"]).await?;
+                let output = self
+                    .executor
+                    .execute_with_output("sccache", ["--show-stats"])
+                    .await?;
                 self.parse_sccache_stats(&output)
             }
             CacheType::None => Ok(CacheStats::default()),
         }
     }
-    
+
     /// Parse ccache statistics
     fn parse_ccache_stats(&self, output: &str) -> GccResult<CacheStats> {
         let mut stats = CacheStats::default();
-        
+
         for line in output.lines() {
             let line = line.trim();
             if line.contains("cache hit") {
@@ -176,20 +210,20 @@ impl BuildCache {
                 }
             }
         }
-        
+
         stats._hit_rate = if stats.hits + stats.misses > 0 {
             (stats.hits as f64 / (stats.hits + stats.misses) as f64) * 100.0
         } else {
             0.0
         };
-        
+
         Ok(stats)
     }
-    
+
     /// Parse sccache statistics
     fn parse_sccache_stats(&self, output: &str) -> GccResult<CacheStats> {
         let mut stats = CacheStats::default();
-        
+
         for line in output.lines() {
             let line = line.trim();
             if line.contains("Cache hits") {
@@ -206,25 +240,25 @@ impl BuildCache {
                 }
             }
         }
-        
+
         stats._hit_rate = if stats.hits + stats.misses > 0 {
             (stats.hits as f64 / (stats.hits + stats.misses) as f64) * 100.0
         } else {
             0.0
         };
-        
+
         Ok(stats)
     }
-    
+
     /// Show cache statistics
     pub async fn show_stats(&self) -> GccResult<()> {
         let stats = self.get_stats().await?;
-        
+
         if matches!(self.cache_type, CacheType::None) {
             info!("No build cache available");
             return Ok(());
         }
-        
+
         info!("📊 Build Cache Statistics:");
         info!("  • Cache type: {:?}", self.cache_type);
         info!("  • Cache hits: {}", stats.hits);
@@ -232,15 +266,15 @@ impl BuildCache {
         info!("  • Hit rate: {:.1}%", stats._hit_rate);
         info!("  • Cache size: {:.1} MB", stats.size_mb);
         info!("  • Files cached: {}", stats.files);
-        
+
         if stats._hit_rate > 0.0 {
             let saved_time = estimate_time_saved(stats.hits, stats._hit_rate);
             info!("  • Estimated time saved: {:.1} minutes", saved_time);
         }
-        
+
         Ok(())
     }
-    
+
     /// Clear the cache
     pub async fn clear(&self) -> GccResult<()> {
         match &self.cache_type {
@@ -261,50 +295,53 @@ impl BuildCache {
                 info!("No cache to clear");
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Warm up cache with common compilation patterns
     pub async fn warmup(&self, source_dir: &Path) -> GccResult<()> {
         if matches!(self.cache_type, CacheType::None) {
             return Ok(());
         }
-        
+
         info!("🔥 Warming up build cache...");
-        
+
         // Find common source files to pre-compile
         let common_files = [
             "gcc/tree.c",
-            "gcc/rtl.c", 
+            "gcc/rtl.c",
             "gcc/gimple.c",
             "gcc/fold-const.c",
             "gcc/expr.c",
         ];
-        
+
         for file in common_files {
             let file_path = source_dir.join(file);
             if file_path.exists() {
                 debug!("Pre-compiling {}", file);
-                
+
                 // Compile to object file (will be cached)
                 let obj_file = format!("{}.o", file_path.to_string_lossy());
-                let result = self.executor.execute(
-                    "gcc",
-                    ["-c", "-O2", "-o", &obj_file, file_path.to_str().unwrap()]
-                ).await;
-                
+                let result = self
+                    .executor
+                    .execute(
+                        "gcc",
+                        ["-c", "-O2", "-o", &obj_file, file_path.to_str().unwrap()],
+                    )
+                    .await;
+
                 // Clean up object file
                 if std::path::Path::new(&obj_file).exists() {
                     let _ = tokio::fs::remove_file(&obj_file).await;
                 }
-                
+
                 if result.is_err() {
                     debug!("Failed to pre-compile {}, continuing...", file);
                 }
             }
         }
-        
+
         info!("✅ Cache warmup completed");
         Ok(())
     }

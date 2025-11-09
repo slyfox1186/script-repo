@@ -1,8 +1,8 @@
 #![allow(dead_code)]
-use std::collections::HashMap;
-use log::{info, warn, error};
-use crate::error::{GccBuildError, Result as GccResult};
 use crate::commands::CommandExecutor;
+use crate::error::{GccBuildError, Result as GccResult};
+use log::{error, info, warn};
+use std::collections::HashMap;
 
 use colored::*;
 
@@ -33,14 +33,14 @@ struct PackageMapping {
 impl DependencyInstaller {
     pub async fn new(executor: CommandExecutor, dry_run: bool) -> GccResult<Self> {
         let package_manager = Self::detect_package_manager(&executor).await?;
-        
+
         Ok(Self {
             executor,
             dry_run,
             package_manager,
         })
     }
-    
+
     /// Detect the system's package manager
     async fn detect_package_manager(executor: &CommandExecutor) -> GccResult<PackageManager> {
         let managers = [
@@ -51,59 +51,59 @@ impl DependencyInstaller {
             ("zypper", PackageManager::Zypper),
             ("brew", PackageManager::Brew),
         ];
-        
+
         for (cmd, pm) in managers {
             if executor.command_exists(cmd).await {
                 info!("Detected package manager: {:?}", pm);
                 return Ok(pm);
             }
         }
-        
+
         warn!("Could not detect package manager");
         Ok(PackageManager::Unknown)
     }
-    
+
     /// Check and install missing dependencies
     pub async fn check_and_install(&self, auto_install: bool) -> GccResult<()> {
         info!("🔍 Checking system dependencies...");
-        
+
         let missing = self.find_missing_dependencies().await?;
-        
+
         if missing.is_empty() {
             info!("✅ All required dependencies are installed");
             return Ok(());
         }
-        
+
         info!("❌ Missing dependencies detected:");
         for dep in &missing {
             println!("  • {}", dep.generic_name.red());
         }
-        
+
         if !auto_install {
             self.print_install_commands(&missing);
             return Err(GccBuildError::system_requirements(
-                "Missing dependencies. Run with --auto-install-deps to install automatically"
+                "Missing dependencies. Run with --auto-install-deps to install automatically",
             ));
         }
-        
+
         // Install dependencies
         self.install_dependencies(&missing).await
     }
-    
+
     /// Find missing dependencies
     async fn find_missing_dependencies(&self) -> GccResult<Vec<PackageMapping>> {
         let required = self.get_required_packages();
         let mut missing = Vec::new();
-        
+
         for mapping in required {
             if !self.is_installed(&mapping).await {
                 missing.push(mapping);
             }
         }
-        
+
         Ok(missing)
     }
-    
+
     /// Get list of required packages
     fn get_required_packages(&self) -> Vec<PackageMapping> {
         vec![
@@ -186,7 +186,7 @@ impl DependencyInstaller {
             },
         ]
     }
-    
+
     /// Check if a package is installed
     async fn is_installed(&self, mapping: &PackageMapping) -> bool {
         match &self.package_manager {
@@ -238,7 +238,10 @@ impl DependencyInstaller {
             _ => {
                 // For unknown or other package managers, check common locations
                 return match mapping.generic_name {
-                    "build-essential" => self.executor.command_exists("gcc").await && self.executor.command_exists("make").await,
+                    "build-essential" => {
+                        self.executor.command_exists("gcc").await
+                            && self.executor.command_exists("make").await
+                    }
                     "gmp-dev" => self.check_library_exists("gmp"),
                     "mpfr-dev" => self.check_library_exists("mpfr"),
                     "mpc-dev" => self.check_library_exists("mpc"),
@@ -249,10 +252,10 @@ impl DependencyInstaller {
                 };
             }
         }
-        
+
         false
     }
-    
+
     /// Check if a library exists in common locations
     fn check_library_exists(&self, lib_name: &str) -> bool {
         let common_paths = [
@@ -261,7 +264,7 @@ impl DependencyInstaller {
             "/usr/local/lib",
             "/usr/local/lib64",
         ];
-        
+
         for path in common_paths {
             let lib_path = format!("{}/lib{}.so", path, lib_name);
             if std::path::Path::new(&lib_path).exists() {
@@ -272,10 +275,10 @@ impl DependencyInstaller {
                 return true;
             }
         }
-        
+
         false
     }
-    
+
     /// Install missing dependencies
     async fn install_dependencies(&self, missing: &[PackageMapping]) -> GccResult<()> {
         if self.dry_run {
@@ -283,18 +286,15 @@ impl DependencyInstaller {
             self.print_install_commands(missing);
             return Ok(());
         }
-        
-        match &self.package_manager {
-            PackageManager::Unknown => {
-                error!("Cannot auto-install: package manager not detected");
-                self.print_install_commands(missing);
-                return Err(GccBuildError::system_requirements(
-                    "Cannot auto-install dependencies: package manager not detected"
-                ));
-            }
-            _ => {}
+
+        if self.package_manager == PackageManager::Unknown {
+            error!("Cannot auto-install: package manager not detected");
+            self.print_install_commands(missing);
+            return Err(GccBuildError::system_requirements(
+                "Cannot auto-install dependencies: package manager not detected",
+            ));
         }
-        
+
         // Collect all packages to install
         let mut packages = Vec::new();
         for mapping in missing {
@@ -302,13 +302,13 @@ impl DependencyInstaller {
                 packages.extend(pkgs.iter().map(|s| s.to_string()));
             }
         }
-        
+
         if packages.is_empty() {
             return Ok(());
         }
-        
+
         info!("📦 Installing {} packages...", packages.len());
-        
+
         // Build install command
         let install_cmd = match &self.package_manager {
             PackageManager::Apt => {
@@ -331,35 +331,40 @@ impl DependencyInstaller {
             }
             _ => unreachable!(),
         };
-        
+
         // Add packages to command
         let mut full_cmd = install_cmd;
         full_cmd.extend(packages.iter().map(|s| s.as_str()));
-        
+
         // Execute installation
         info!("Running: {}", full_cmd.join(" "));
-        
-        match self.executor.execute(&full_cmd[0], &full_cmd[1..]).await {
+
+        match self.executor.execute(full_cmd[0], &full_cmd[1..]).await {
             Ok(_) => {
                 info!("✅ Dependencies installed successfully");
                 Ok(())
             }
             Err(e) => {
                 error!("Failed to install dependencies: {}", e);
-                Err(GccBuildError::package_manager(
-                    format!("Failed to install dependencies: {}", e)
-                ))
+                Err(GccBuildError::package_manager(format!(
+                    "Failed to install dependencies: {}",
+                    e
+                )))
             }
         }
     }
-    
+
     /// Print manual install commands
     fn print_install_commands(&self, missing: &[PackageMapping]) {
-        println!("\n{}", "To install missing dependencies manually:".yellow().bold());
-        
+        println!(
+            "\n{}",
+            "To install missing dependencies manually:".yellow().bold()
+        );
+
         match &self.package_manager {
             PackageManager::Apt => {
-                let packages: Vec<&str> = missing.iter()
+                let packages: Vec<&str> = missing
+                    .iter()
                     .filter_map(|m| m.packages.get(&self.package_manager))
                     .flatten()
                     .copied()
@@ -368,7 +373,8 @@ impl DependencyInstaller {
                 println!("  sudo apt-get install -y {}", packages.join(" "));
             }
             PackageManager::Yum => {
-                let packages: Vec<&str> = missing.iter()
+                let packages: Vec<&str> = missing
+                    .iter()
                     .filter_map(|m| m.packages.get(&self.package_manager))
                     .flatten()
                     .copied()
@@ -376,7 +382,8 @@ impl DependencyInstaller {
                 println!("  sudo yum install -y {}", packages.join(" "));
             }
             PackageManager::Dnf => {
-                let packages: Vec<&str> = missing.iter()
+                let packages: Vec<&str> = missing
+                    .iter()
                     .filter_map(|m| m.packages.get(&self.package_manager))
                     .flatten()
                     .copied()
@@ -384,7 +391,8 @@ impl DependencyInstaller {
                 println!("  sudo dnf install -y {}", packages.join(" "));
             }
             PackageManager::Pacman => {
-                let packages: Vec<&str> = missing.iter()
+                let packages: Vec<&str> = missing
+                    .iter()
                     .filter_map(|m| m.packages.get(&self.package_manager))
                     .flatten()
                     .copied()
@@ -398,8 +406,10 @@ impl DependencyInstaller {
                 }
             }
         }
-        
-        println!("\nOr run with {} to install automatically", "--auto-install-deps".green());
+
+        println!(
+            "\nOr run with {} to install automatically",
+            "--auto-install-deps".green()
+        );
     }
 }
-
