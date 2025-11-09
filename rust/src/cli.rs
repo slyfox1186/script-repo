@@ -9,7 +9,7 @@ use std::path::PathBuf;
 #[command(group(
     ArgGroup::new("version-selection")
         .required(false)
-        .args(&["versions", "latest", "all-supported", "preset"])
+        .args(&["versions", "latest", "all_supported", "preset"])
 ))]
 pub struct Args {
     /// Enable debug mode with verbose command logging
