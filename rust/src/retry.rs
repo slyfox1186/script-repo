@@ -225,9 +225,11 @@ impl PhaseRetryExecutor {
         F: FnMut() -> Fut,
         Fut: std::future::Future<Output = GccResult<T>>,
     {
-        let mut strategy = RetryStrategy::default();
-        strategy.max_attempts = 5; // More retries for downloads
-        strategy.initial_delay = Duration::from_secs(2);
+        let strategy = RetryStrategy {
+            max_attempts: 5, // More retries for downloads
+            initial_delay: Duration::from_secs(2),
+            ..Default::default()
+        };
 
         let executor = RetryExecutor::new(strategy);
         executor

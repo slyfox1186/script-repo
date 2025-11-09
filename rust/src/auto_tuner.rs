@@ -31,9 +31,9 @@ struct SystemProfile {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 enum DiskType {
-    HDD,
-    SSD,
-    NVMe,
+    Hdd,
+    Ssd,
+    NvMe,
     Unknown,
 }
 
@@ -248,11 +248,11 @@ impl AutoTuner {
             ));
         }
 
-        // Disk I/O consideration for non-SSD storage
-        if let DiskType::HDD = profile.disk_type {
+        // Disk I/O consideration for non-Ssd storage
+        if let DiskType::Hdd = profile.disk_type {
             let io_factor = rules.disk_rules.parallel_io_factor;
             jobs = ((jobs as f64) * io_factor).max(1.0) as usize;
-            rationale.push("HDD I/O limitation applied".to_string());
+            rationale.push("Hdd I/O limitation applied".to_string());
         }
 
         // Never exceed CPU count or go below 1
@@ -365,7 +365,7 @@ impl AutoTuner {
         rationale.push("Limited malloc arenas".to_string());
 
         // Temporary directory optimization
-        if matches!(profile.disk_type, DiskType::SSD | DiskType::NVMe) {
+        if matches!(profile.disk_type, DiskType::Ssd | DiskType::NvMe) {
             env_vars.insert("TMPDIR".to_string(), "/tmp".to_string());
             rationale.push("Using fast temp storage".to_string());
         }
@@ -398,15 +398,15 @@ impl AutoTuner {
 
         // Prefer fast storage for temporary files
         match profile.disk_type {
-            DiskType::NVMe => {
+            DiskType::NvMe => {
                 rationale.push("Using NVMe temp storage".to_string());
                 Ok(Some(PathBuf::from("/tmp")))
             }
-            DiskType::SSD => {
-                rationale.push("Using SSD temp storage".to_string());
+            DiskType::Ssd => {
+                rationale.push("Using Ssd temp storage".to_string());
                 Ok(Some(PathBuf::from("/tmp")))
             }
-            DiskType::HDD => {
+            DiskType::Hdd => {
                 // Check if tmpfs is available and has enough space
                 if let Ok(stat) = tokio::fs::metadata("/dev/shm").await {
                     if stat.len() > 2_000_000_000 {
@@ -461,7 +461,7 @@ impl AutoTuner {
         })
     }
 
-    /// Detect disk type (SSD, HDD, NVMe)
+    /// Detect disk type (Ssd, Hdd, NVMe)
     async fn detect_disk_type() -> GccResult<DiskInfo> {
         // Try to detect via /sys/block information
         let mut disk_type = DiskType::Unknown;
@@ -481,16 +481,16 @@ impl AutoTuner {
                 let name_str = name.to_string_lossy();
 
                 if name_str.starts_with("nvme") {
-                    disk_type = DiskType::NVMe;
+                    disk_type = DiskType::NvMe;
                     break;
                 } else if name_str.starts_with("sd") {
-                    // Check if it's SSD by looking at rotational flag
+                    // Check if it's Ssd by looking at rotational flag
                     let rotational_path = format!("/sys/block/{}/queue/rotational", name_str);
                     if let Ok(content) = tokio::fs::read_to_string(&rotational_path).await {
                         if content.trim() == "0" {
-                            disk_type = DiskType::SSD;
+                            disk_type = DiskType::Ssd;
                         } else {
-                            disk_type = DiskType::HDD;
+                            disk_type = DiskType::Hdd;
                         }
                         break;
                     }
@@ -576,7 +576,7 @@ impl AutoTuner {
                 load_adjustment_factor: 0.8,
             },
             disk_rules: DiskTuningRules {
-                parallel_io_factor: 0.7, // Reduce parallelism for HDD
+                parallel_io_factor: 0.7, // Reduce parallelism for Hdd
                 temp_space_multiplier: 2.0,
             },
             gcc_rules: GccTuningRules {
@@ -608,15 +608,15 @@ impl AutoTuner {
 
         // Disk recommendations
         match profile.disk_type {
-            DiskType::HDD => {
+            DiskType::Hdd => {
                 recommendations
-                    .push("💽 HDD storage detected - builds will be I/O bound".to_string());
+                    .push("💽 Hdd storage detected - builds will be I/O bound".to_string());
             }
-            DiskType::SSD => {
+            DiskType::Ssd => {
                 recommendations
-                    .push("⚡ SSD storage detected - good build performance expected".to_string());
+                    .push("⚡ Ssd storage detected - good build performance expected".to_string());
             }
-            DiskType::NVMe => {
+            DiskType::NvMe => {
                 recommendations
                     .push("🏎️ NVMe storage detected - optimal build performance".to_string());
             }
