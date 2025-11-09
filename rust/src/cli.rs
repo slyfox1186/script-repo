@@ -1,4 +1,4 @@
-use clap::{Parser, ValueEnum, ArgGroup};
+use clap::{ArgGroup, Parser, ValueEnum};
 use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
@@ -21,7 +21,10 @@ pub struct Args {
     pub dry_run: bool,
 
     /// Enable multilib support for GCC
-    #[arg(long, help = "Enable multilib support for GCC (passed to GCC's configure)")]
+    #[arg(
+        long,
+        help = "Enable multilib support for GCC (passed to GCC's configure)"
+    )]
     pub enable_multilib: bool,
 
     /// Build static GCC executables
@@ -29,27 +32,54 @@ pub struct Args {
     pub static_build: bool,
 
     /// Use generic tuning instead of native for GCC build
-    #[arg(short = 'g', long, help = "Use generic tuning instead of native for GCC build")]
+    #[arg(
+        short = 'g',
+        long,
+        help = "Use generic tuning instead of native for GCC build"
+    )]
     pub generic: bool,
 
     /// Keep the temporary build directory after completion
-    #[arg(short = 'k', long, help = "Keep the temporary build directory after completion")]
+    #[arg(
+        short = 'k',
+        long,
+        help = "Keep the temporary build directory after completion"
+    )]
     pub keep_build_dir: bool,
 
     /// Specify a log file for output
-    #[arg(short = 'l', long, value_name = "FILE", help = "Specify a log file for output")]
+    #[arg(
+        short = 'l',
+        long,
+        value_name = "FILE",
+        help = "Specify a log file for output"
+    )]
     pub log_file: Option<PathBuf>,
 
     /// Set optimization level for building GCC
-    #[arg(short = 'O', value_enum, default_value = "2", help = "Set optimization level for building GCC")]
+    #[arg(
+        short = 'O',
+        value_enum,
+        default_value = "2",
+        help = "Set optimization level for building GCC"
+    )]
     pub optimization: OptimizationLevel,
 
     /// Set the installation prefix
-    #[arg(short = 'p', long, value_name = "DIR", help = "Set the installation prefix")]
+    #[arg(
+        short = 'p',
+        long,
+        value_name = "DIR",
+        help = "Set the installation prefix"
+    )]
     pub prefix: Option<PathBuf>,
 
     /// Save static binaries (only works with --static)
-    #[arg(short = 's', long, help = "Save static binaries (only works with --static-build)")]
+    #[arg(
+        short = 's',
+        long,
+        help = "Save static binaries (only works with --static-build)"
+    )]
     pub save_binaries: bool,
 
     /// Enable verbose logging
@@ -57,23 +87,35 @@ pub struct Args {
     pub verbose: bool,
 
     /// GCC versions to build (comma-separated or ranges like 11-13)
-    #[arg(long, value_name = "VERSIONS", help = "GCC versions to build (e.g., '11,13' or '11-13')")]
+    #[arg(
+        long,
+        value_name = "VERSIONS",
+        help = "GCC versions to build (e.g., '11,13' or '11-13')"
+    )]
     pub versions: Option<String>,
-    
+
     /// Build the latest stable GCC version
     #[arg(long, help = "Build the latest stable GCC version")]
     pub latest: bool,
-    
+
     /// Build all currently supported GCC versions
-    #[arg(long, help = "Build all currently supported GCC versions (dynamically detected)")]
+    #[arg(
+        long,
+        help = "Build all currently supported GCC versions (dynamically detected)"
+    )]
     pub all_supported: bool,
-    
+
     /// Use a build preset configuration
     #[arg(long, value_enum, help = "Use a predefined build configuration preset")]
     pub preset: Option<BuildPreset>,
 
     /// Number of parallel build jobs
-    #[arg(short = 'j', long, value_name = "N", help = "Number of parallel build jobs (default: auto-detect)")]
+    #[arg(
+        short = 'j',
+        long,
+        value_name = "N",
+        help = "Number of parallel build jobs (default: auto-detect)"
+    )]
     pub jobs: Option<usize>,
 
     /// Build directory location
@@ -81,7 +123,11 @@ pub struct Args {
     pub build_dir: Option<PathBuf>,
 
     /// Maximum download retries
-    #[arg(long, default_value = "3", help = "Maximum number of download retry attempts")]
+    #[arg(
+        long,
+        default_value = "3",
+        help = "Maximum number of download retry attempts"
+    )]
     pub max_retries: usize,
 
     /// Download timeout in seconds
@@ -97,19 +143,35 @@ pub struct Args {
     pub force_rebuild: bool,
 
     /// Create symlinks in /usr/local/bin for GCC binaries
-    #[arg(long, help = "Create symlinks in /usr/local/bin for all GCC binaries (requires sudo)")]
+    #[arg(
+        long,
+        help = "Create symlinks in /usr/local/bin for all GCC binaries (requires sudo)"
+    )]
     pub create_symlinks: bool,
 
     /// Skip creating symlinks (overrides default behavior)
-    #[arg(long, conflicts_with = "create_symlinks", help = "Skip creating symlinks in /usr/local/bin")]
+    #[arg(
+        long,
+        conflicts_with = "create_symlinks",
+        help = "Skip creating symlinks in /usr/local/bin"
+    )]
     pub skip_symlinks: bool,
 
     /// Verification level for existing installations
-    #[arg(long, value_enum, default_value = "fast", help = "Level of verification for existing GCC installations")]
+    #[arg(
+        long,
+        value_enum,
+        default_value = "fast",
+        help = "Level of verification for existing GCC installations"
+    )]
     pub verify_level: VerificationLevel,
 
     /// Directory to save static binaries (only with --save-binaries)
-    #[arg(long, value_name = "DIR", help = "Directory to save static binaries (default: /usr/local/static-binaries)")]
+    #[arg(
+        long,
+        value_name = "DIR",
+        help = "Directory to save static binaries (default: /usr/local/static-binaries)"
+    )]
     pub static_binaries_dir: Option<PathBuf>,
 }
 
@@ -159,19 +221,19 @@ pub enum BuildPreset {
     /// Minimal build for testing (latest GCC, no multilib, -O2)
     #[value(name = "minimal")]
     Minimal,
-    
+
     /// Development build (latest GCC, multilib, debug symbols, -Og)
     #[value(name = "development")]
     Development,
-    
+
     /// Production build (latest stable, static, -O3, generic tuning)
     #[value(name = "production")]
     Production,
-    
+
     /// CI/CD optimized build (fast compile, -O1, no static)
     #[value(name = "ci")]
     Ci,
-    
+
     /// Cross-compilation ready (multilib, generic, latest 3 versions)
     #[value(name = "cross")]
     Cross,
@@ -224,7 +286,9 @@ impl Args {
     pub fn validate(&self) -> Result<(), String> {
         // Validate save_binaries only works with static_build
         if self.save_binaries && !self.static_build {
-            return Err("The --save-binaries option can only be used with --static-build".to_string());
+            return Err(
+                "The --save-binaries option can only be used with --static-build".to_string(),
+            );
         }
 
         // Validate prefix is absolute path if provided
@@ -250,14 +314,17 @@ impl Args {
 
         Ok(())
     }
-    
+
     /// Get the effective versions string based on flags
     pub fn get_versions_string(&self) -> String {
-        use crate::config::{MIN_GCC_VERSION, MAX_GCC_VERSION};
-        
+        use crate::config::{MAX_GCC_VERSION, MIN_GCC_VERSION};
+
         if let Some(preset) = &self.preset {
             match preset {
-                BuildPreset::Minimal | BuildPreset::Development | BuildPreset::Production | BuildPreset::Ci => "latest".to_string(),
+                BuildPreset::Minimal
+                | BuildPreset::Development
+                | BuildPreset::Production
+                | BuildPreset::Ci => "latest".to_string(),
                 BuildPreset::Cross => {
                     // Latest 3 versions dynamically
                     let max = *MAX_GCC_VERSION.read().unwrap();
@@ -277,7 +344,7 @@ impl Args {
             self.versions.clone().unwrap_or_default()
         }
     }
-    
+
     /// Apply preset configurations
     pub fn apply_preset(&mut self) {
         if let Some(preset) = &self.preset {
