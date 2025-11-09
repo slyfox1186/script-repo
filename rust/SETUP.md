@@ -13,14 +13,17 @@ cd script-repo/rust
 sudo apt update && sudo apt install -y build-essential curl wget m4 flex bison
 cargo build --release
 
-# 3. Run GCC builder
-./target/release/gcc-builder --latest --prefix $HOME/gcc --verbose
+# 3. Run GCC builder (without --prefix, defaults to /usr/local/programs/)
+./target/release/gcc-builder --latest --verbose
 ```
 
 ## Usage Examples
 
 ```bash
-# Build latest GCC (recommended)
+# Build latest GCC (uses default: /usr/local/programs/gcc-X.Y.Z)
+./target/release/gcc-builder --latest --jobs $(nproc)
+
+# Build to home directory (custom prefix)
 ./target/release/gcc-builder --latest --prefix $HOME/gcc --jobs $(nproc)
 
 # Build specific versions
@@ -39,7 +42,7 @@ cargo build --release
 - `--latest` - Build latest stable GCC
 - `--versions X` - Build specific version(s)
 - `--preset minimal|development|production` - Use presets
-- `--prefix PATH` - Installation directory
+- `--prefix PATH` - Installation directory (default: /usr/local/programs/gcc-X.Y.Z)
 - `--jobs N` - Parallel jobs (default: auto-detect)
 - `--verbose` - Show detailed output
 - `--dry-run` - Show what would be done
