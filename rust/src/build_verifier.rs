@@ -631,7 +631,7 @@ impl BuildVerifier {
         let gcc_path = install_path.join("bin/gcc");
 
         let output = Command::new(&gcc_path)
-            .args(&["--version"])
+            .args(["--version"])
             .output()
             .await?;
 
@@ -658,7 +658,7 @@ impl BuildVerifier {
             let gcc_path = install_path.join("bin/gcc");
 
             let output = Command::new(&gcc_path)
-                .args(&[opt_level, "--help=optimizers"])
+                .args([opt_level, "--help=optimizers"])
                 .output()
                 .await?;
 
@@ -726,7 +726,7 @@ impl BuildVerifier {
         let compiler_path = install_path.join("bin").join(compiler);
 
         let output = Command::new(&compiler_path)
-            .args(&[standard, "-x", "c", "-", "-fsyntax-only"])
+            .args([standard, "-x", "c", "-", "-fsyntax-only"])
             .stdin(std::process::Stdio::piped())
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
@@ -758,7 +758,7 @@ impl BuildVerifier {
         let gcc_path = install_path.join("bin/gcc");
 
         let output = Command::new(&gcc_path)
-            .args(&["--help=target"])
+            .args(["--help=target"])
             .output()
             .await?;
 

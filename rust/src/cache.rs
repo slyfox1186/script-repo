@@ -162,11 +162,14 @@ impl VersionCache {
 
     /// Persist cache to disk (for future sessions)
     pub async fn persist(&self, path: &std::path::Path) -> GccResult<()> {
-        let inner = self.inner.read().unwrap();
+        // Scope the lock to ensure it's dropped before await
+        let persisted = {
+            let inner = self.inner.read().unwrap();
 
-        let persisted = PersistedCache {
-            versions: inner.versions.clone(),
-            saved_at: Local::now(),
+            PersistedCache {
+                versions: inner.versions.clone(),
+                saved_at: Local::now(),
+            }
         };
 
         let json = serde_json::to_string_pretty(&persisted).map_err(|e| {
@@ -203,20 +206,24 @@ impl VersionCache {
             )
         })?;
 
-        let mut inner = self.inner.write().unwrap();
-
-        // Only load non-expired entries
-        let now = Local::now();
-        for (key, cached) in persisted.versions {
-            if cached.resolved_at.timestamp() + cached.ttl.as_secs() as i64 > now.timestamp() {
-                inner.versions.insert(key, cached);
+        // Only load non-expired entries - scope the lock
+        let valid_entries_count = {
+            let mut inner = self.inner.write().unwrap();
+            let now = Local::now();
+            let mut count = 0;
+            for (key, cached) in persisted.versions {
+                if cached.resolved_at.timestamp() + cached.ttl.as_secs() as i64 > now.timestamp() {
+                    inner.versions.insert(key, cached);
+                    count += 1;
+                }
             }
-        }
+            count
+        };
 
         info!(
             "Cache loaded from {} ({} valid entries)",
             path.display(),
-            inner.versions.len()
+            valid_entries_count
         );
         Ok(())
     }
