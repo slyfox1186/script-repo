@@ -2,8 +2,8 @@
 
 # Github: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-tar.sh
 # Purpose: build gnu tar
-# Updated: 05.13.24
-# Script version: 2.2
+# Updated: 11.09.2025
+# Script version: 2.3
 
 CYAN='\033[0;36m'
 GREEN='\033[0;32m'
@@ -199,9 +199,16 @@ main_menu() {
     configure_build
     compile_build
     install_build
-    if [[ ! -d "$install_dir/$archive_name/lib/" ]]; then
-        warn "Failed to located the lib directory \"$install_dir/$archive_name/lib\" so no custom ld linking will occur."
+    # Check if lib directory exists and add to ld config if it does
+    lib_dir="$install_dir/$archive_name/lib"
+    if [[ ! -d "$lib_dir" ]]; then
+        log "No lib directory found - this is normal for static programs like tar"
     else
+        # Check if there are any .so files in the lib directory
+        so_files=("$lib_dir/"*.so)
+        if [[ ! -e "${so_files[0]}" ]]; then
+            log "Lib directory exists but contains no shared libraries - adding to ld config anyway"
+        fi
         ld_linker_path
     fi
     create_soft_links
