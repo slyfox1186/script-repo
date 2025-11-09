@@ -2,8 +2,8 @@
 
 # GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GitHub%20Projects/build-curl.sh
 # Purpose: Build the latest release version of cURL from source code including nghttp3 support
-# Updated: 07.22.24
-# Version: 1.2
+# Updated: 11.09.2025
+# Version: 1.3
 
 # Define color variables
 RED='\033[0;31m'
@@ -61,7 +61,7 @@ apt_pkgs() {
     local pkgs=(
         autoconf autoconf-archive autotools-dev build-essential curl libcurl4 libcurl4-openssl-dev
         libc-ares-dev libldap-dev libnghttp2-dev libpsl-dev libssh2-1-dev libssl-dev libtool
-        libzstd-dev pkg-config zlib1g-dev
+        libzstd-dev pkg-config sed sort zlib1g-dev
     )
 
     missing_packages=()
@@ -109,7 +109,8 @@ apt_pkgs() {
 # Download and build libssh2
 get_libssh2_source() {
     wget --show-progress -cqO "$cwd/libssh2-$ssh2_version.tar.gz" "https://github.com/libssh2/libssh2/archive/refs/tags/libssh2-$ssh2_version.tar.gz"
-    tar -zxf "$cwd/libssh2-$ssh2_version.tar.gz" -C "$libssh2_install_dir" --strip-components 1
+    mkdir -p "$libssh2_install_dir"
+    tar -zxf "$cwd/libssh2-$ssh2_version.tar.gz" -C "$libssh2_install_dir" --strip-components=1
     cd "$libssh2_install_dir"
     autoreconf -fi
     ./configure --prefix="$libssh2_install_dir" --with-openssl
@@ -138,25 +139,32 @@ build_and_install_curl() {
     cd "$extract_dir"
     autoreconf -fi
     local dopts=('--disable-'{get-easy-options,shared,verbose,versioned-symbols})
-    local eopts=('--enable-'{alt-svc,ares,cookies,dict,dnsshuffle,doh,file,ftp,gopher})
+    local eopts=('--enable-'{alt-svc,cookies,dict,dnsshuffle,doh,file,ftp,gopher})
     eopts+=('--enable-'{headers-api,hsts,http,http-auth,imap,ipv6,ldap,ldaps,libcurl-option,libgcc,manual})
     eopts+=('--enable-'{mime,mqtt,netrc,ntlm,ntlm-wb='/usr/bin/ntlm_auth',openssl-auto-load-config})
     eopts+=('--enable-'{optimize,pop3,progress-meter,proxy,pthreads,rtsp,smb,smtp,socketpair,sspi,static})
     eopts+=('--enable-'{telnet,tftp,threaded-resolver,tls-srp,unix-sockets,websockets})
-    local wopts=('--with-'{libssh2="$libssh2_install_dir",nghttp2=/usr,nghttp3="$nghttp3_install_dir",openssl="$openssl_prefix",ssl,zlib})
+    local wopts=('--with-'{libssh2="$libssh2_install_dir",nghttp2=/usr,openssl="$openssl_prefix",ssl,zlib})
     wopts+=('--with-'{ca-bundle="/etc/ssl/certs/cacert.pem",ca-fallback,ca-path="/etc/ssl/certs",secure-transport})
-    ./configure --prefix="$install_dir" "${dopts[@]}" "${eopts[@]}" "${wopts[@]}" CPPFLAGS="-I$nghttp3_install_dir/include $CPPFLAGS" \
-    LDFLAGS="-L$nghttp3_install_dir/lib $LDFLAGS"
+    ./configure --prefix="$install_dir" "${dopts[@]}" "${eopts[@]}" "${wopts[@]}"
     make "-j$(nproc --all)" && sudo make install
 }
 
 create_softlinks() {
     [[ -f "$install_dir/bin/curl" ]] && sudo ln -sf "$install_dir/bin/curl" "/usr/local/bin/"
-    sudo find "$install_dir/lib/pkgconfig/" -type f -name "libcurl.pc" -exec sudo ln -sf {} "/usr/local/lib/pkgconfig/" \;
-    if [[ "$?" -eq 0 ]]; then
-        printf "\n%s\n\n" "Successful create the softlink for the file 'libcurl.pc'."
+
+    # Create pkgconfig directory if it doesn't exist
+    sudo mkdir -p "/usr/local/lib/pkgconfig/"
+
+    # Find and link libcurl.pc if it exists
+    if [[ -f "$install_dir/lib/pkgconfig/libcurl.pc" ]]; then
+        sudo ln -sf "$install_dir/lib/pkgconfig/libcurl.pc" "/usr/local/lib/pkgconfig/"
+        printf "\n%s\n\n" "Successfully created the softlink for the file 'libcurl.pc'."
+    elif [[ -f "$install_dir/lib64/pkgconfig/libcurl.pc" ]]; then
+        sudo ln -sf "$install_dir/lib64/pkgconfig/libcurl.pc" "/usr/local/lib/pkgconfig/"
+        printf "\n%s\n\n" "Successfully created the softlink for the file 'libcurl.pc' (from lib64)."
     else
-        printf "\n%s\n\n" "Failed to create the softlink for the file 'libcurl.pc'. Line: $LINENO"
+        printf "\n%s\n\n" "Warning: libcurl.pc not found. Skipping softlink creation."
     fi
 }
 
