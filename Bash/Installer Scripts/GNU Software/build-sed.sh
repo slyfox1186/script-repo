@@ -2,8 +2,8 @@
 
 # Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer%20Scripts/GNU%20Software/build-sed.sh
 # Purpose: build gnu sed
-# Updated: 05.13.24
-# Script version: 1.4
+# Updated: 11.09.2025
+# Script version: 1.5
 
 CYAN='\033[0;36m'
 GREEN='\033[0;32m'
@@ -197,8 +197,10 @@ main_menu() {
     configure_build
     compile_build
     install_build
-    if [[ ! -f "$install_dir/$archive_name/lib/"*.so ]]; then
-        warn "Failed to located any \".so\" files so no custom ld linking will occur."
+    # Check for .so files using array to handle glob expansion safely
+    so_files=("$install_dir/$archive_name/lib/"*.so)
+    if [[ ! -e "${so_files[0]}" ]]; then
+        log "No shared libraries (.so files) found - this is normal for sed"
     else
         ld_linker_path
     fi
