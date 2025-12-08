@@ -1,0 +1,149 @@
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# Editor/IDE files
+*.swp
+*.swo
+*.swn
+*~
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+.project
+.classpath
+.settings/
+*.code-workspace
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+.env
+.venv
+env/
+venv/
+ENV/
+.python-version
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.eslintcache
+.node_repl_history
+*.tgz
+.yarn-integrity
+.next/
+
+# Rust
+target/
+rust/target/
+**/*.rs.bk
+
+# Logs and databases
+*.log
+*.sql
+*.sqlite
+*.sqlite3
+*.db
+
+# Compiled binaries and objects
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.dylib
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
+
+# Archives
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+
+# Secrets and credentials (IMPORTANT - never commit these!)
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+.env
+.env.*
+!.env.example
+secrets.json
+credentials.json
+*.secret
+config.local.*
+.htpasswd
+
+# Cache directories
+.cache/
+cache/
+*.cache
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# Build outputs
+out/
+output/
+build/
+dist/
+
+# Package manager locks (keep Cargo.lock for binaries, exclude for libraries)
+# Uncomment if this is a library:
+# Cargo.lock
+
+# Misc
+*.pid
+*.seed
+*.pid.lock
+.history/

@@ -1,0 +1,29 @@
+{
+  "mcpServers": {
+    "supabase": {
+      "command": "npx",
+      "args": [
+        "@supabase/mcp-server-supabase@latest",
+        "--access-token",
+        "sbp_918dc6c92d58b7e5fb9793231476fc44fa4209bb",
+        "--project-ref",
+        "upcbjpcbgoukwsltllun"
+      ]
+    },
+    "sequential-thinking": {
+      "command": "npx",
+      "args": [
+        "@modelcontextprotocol/server-sequential-thinking"
+      ]
+    },
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "@playwright/mcp@latest"
+      ]
+    },
+    "context7": {
+      "command": "context7-mcp"
+    }
+  }
+}

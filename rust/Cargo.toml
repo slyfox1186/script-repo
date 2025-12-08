@@ -1,51 +1,77 @@
 [package]
-name = "gcc-builder"
-version = "1.8.0"
+name = "build-gcc"
+version = "2.6.0"
 edition = "2021"
-authors = ["GCC Builder Team"]
-description = "A high-performance Rust implementation of the GCC build automation script"
+authors = ["slyfox1186"]
+description = "Build GNU GCC from source with async downloads and parallel builds"
 license = "MIT"
 repository = "https://github.com/slyfox1186/script-repo"
 
 [dependencies]
-clap = { version = "4.0", features = ["derive", "color"] }
-tokio = { version = "1.0", features = ["full"] }
-# Using system curl/wget for downloads - more efficient than bundling HTTP client
-anyhow = "1.0"
-thiserror = "1.0"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-log = "0.4"
-env_logger = "0.10"
-colored = "2.0"
-indicatif = "0.17"
-sha2 = "0.10"
-tar = "0.4"
-flate2 = "1.0"
-tempfile = "3.0"
-dirs = "5.0"
-semver = "1.0"
-walkdir = "2.0"
-crossbeam = "0.8"
-rayon = "1.7"
-chrono = { version = "0.4", features = ["serde", "clock"] }
-sys-info = "0.9"
-libc = "0.2"
-regex = "1.0"
-futures = "0.3"
-lazy_static = "1.4"
-dashmap = "6.1"
-once_cell = "1.20"
+# CLI argument parsing
+clap = { version = "4", features = ["derive", "env", "string"] }
 
-[dependencies.nix]
-version = "0.27"
-features = ["fs", "process", "signal"]
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# HTTP client for downloads
+reqwest = { version = "0.12", features = ["stream"] }
+
+# Error handling
+anyhow = "1"
+thiserror = "2"
+
+# Progress bars and spinners
+indicatif = "0.17"
+
+# Interactive prompts
+dialoguer = "0.11"
+
+# Terminal colors and styling
+console = "0.15"
+
+# Secure temporary directories
+tempfile = "3"
+
+# Checksums
+sha2 = "0.10"
+
+# Archive extraction
+tar = "0.4"
+xz2 = "0.1"
+flate2 = "1"
+
+# Find executables in PATH
+which = "7"
+
+# Unix-specific APIs (signals, process, filesystem)
+nix = { version = "0.29", features = ["process", "signal", "fs", "user"] }
+
+# System information (RAM, disk, CPU)
+sysinfo = "0.33"
+
+# Regex for parsing
+regex = "1"
+
+# Timestamps and duration formatting
+chrono = "0.4"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "chrono"] }
+
+# Async utilities
+futures = "0.3"
+tokio-util = { version = "0.7", features = ["io"] }
+
+# File locking
+fs2 = "0.4"
+
+# Byte formatting (for file sizes)
+bytesize = "1"
 
 [profile.release]
+opt-level = 3
 lto = true
 codegen-units = 1
-panic = "abort"
 strip = true
-
-[profile.dev]
-debug = true

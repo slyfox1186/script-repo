@@ -1,0 +1,27 @@
+# Cargo configuration for build-gcc
+
+[build]
+# Use all available CPU cores for compilation
+jobs = -1
+
+[target.x86_64-unknown-linux-gnu]
+# Linker flags for release builds
+rustflags = ["-C", "target-cpu=native"]
+
+[alias]
+# Convenient aliases
+c = "check"
+b = "build"
+br = "build --release"
+t = "test"
+cl = "clippy"
+r = "run"
+rr = "run --release"
+
+# Clippy with all lints
+lint = "clippy --all-targets --all-features -- -D warnings"
+lint-fix = "clippy --all-targets --all-features --fix --allow-dirty -- -D warnings"
+
+[env]
+# Environment variables for builds
+RUST_BACKTRACE = "1"

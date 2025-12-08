@@ -1,0 +1,41 @@
+# Clippy configuration for build-gcc
+# See: https://doc.rust-lang.org/clippy/lint_configuration.html
+
+# Maximum cognitive complexity for functions
+cognitive-complexity-threshold = 30
+
+# Minimum lines for functions to be considered "too many lines"
+too-many-lines-threshold = 150
+
+# Maximum number of arguments for functions
+too-many-arguments-threshold = 8
+
+# Maximum number of bool parameters
+max-fn-params-bools = 3
+
+# Types that are allowed to be used in unreadable literals
+unreadable-literal-lint-fractions = true
+
+# MSRV - Minimum Supported Rust Version
+msrv = "1.75.0"
+
+# Allow certain macros to be used
+allowed-duplicate-crates = []
+
+# Patterns that are allowed in doc comments
+doc-valid-idents = ["GCC", "GNU", "CUDA", "nvptx", "ISL", "GPG", "SHA512", "CFLAGS", "LDFLAGS", "CXXFLAGS", "CPPFLAGS", "PKG_CONFIG_PATH"]
+
+# Standard library types that implement Deref
+enforced-import-renames = []
+
+# Allow these identifiers with single char names
+single-char-binding-names-threshold = 4
+
+# Trivial copy size limit (in bytes)
+trivial-copy-size-limit = 16
+
+# Type complexity threshold
+type-complexity-threshold = 300
+
+# Warn on items with visibility less restrictive than specified
+check-private-items = false
