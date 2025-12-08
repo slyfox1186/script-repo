@@ -1,3 +1,12 @@
+//! GCC Build Tool - A modern Rust implementation for building GNU GCC from source.
+//!
+//! This tool provides:
+//! - Async HTTP downloads with progress tracking
+//! - Parallel multi-version builds using Tokio's JoinSet
+//! - Checksum verification (SHA512/GPG)
+//! - Interactive version selection
+//! - Comprehensive logging with tracing
+
 mod build;
 mod cli;
 mod config;
@@ -5,6 +14,7 @@ mod dependencies;
 mod download;
 mod environment;
 mod error;
+mod http_client;
 mod logging;
 mod post_install;
 mod progress;
@@ -26,12 +36,12 @@ use crate::version::{parse_version_spec, resolve_versions, select_versions_inter
 use anyhow::Result;
 use clap::Parser;
 use console::style;
-use futures::future::join_all;
 use std::sync::Arc;
 use std::time::Instant;
 use tokio::signal;
 use tokio::sync::Mutex;
-use tracing::{error, info, warn};
+use tokio::task::JoinSet;
+use tracing::{debug, error, info, instrument, warn};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -44,7 +54,7 @@ async fn main() -> Result<()> {
     // Initialize logging
     init_logging(args.verbose, args.debug, args.log_file.as_deref())?;
 
-    info!("Starting GCC Build Script v{}", SCRIPT_VERSION);
+    info!(version = SCRIPT_VERSION, "Starting GCC Build Script");
     info!("Rust version - async downloads and parallel builds enabled");
 
     // Log configuration
@@ -60,11 +70,11 @@ async fn main() -> Result<()> {
     // Create secure temporary build directory
     let temp_dir = create_secure_temp_dir()?;
     let build_dir = temp_dir.path().to_path_buf();
-    info!("Secure build directory created: {}", build_dir.display());
+    info!(build_dir = %build_dir.display(), "Secure build directory created");
 
     // Get target architecture
     let target_arch = get_target_arch();
-    info!("Target architecture: {}", target_arch);
+    info!(target_arch, "Target architecture detected");
 
     // Create build configuration
     let config = BuildConfig::from_args(&args, build_dir.clone(), target_arch.clone());
@@ -87,7 +97,7 @@ async fn main() -> Result<()> {
         select_versions_interactive()?
     };
 
-    info!("Selected GCC major versions: {:?}", major_versions);
+    info!(versions = ?major_versions, "Selected GCC major versions");
 
     // Check system resources
     check_system_resources(&build_dir, major_versions.len())?;
@@ -95,12 +105,12 @@ async fn main() -> Result<()> {
     // Resolve to full versions
     let versions = resolve_versions(&major_versions, &build_dir).await?;
     info!(
-        "Will build: {}",
-        versions
+        versions = %versions
             .iter()
             .map(|v| v.full.as_str())
             .collect::<Vec<_>>()
-            .join(", ")
+            .join(", "),
+        "Will build"
     );
 
     // Setup signal handler for graceful shutdown
@@ -115,13 +125,13 @@ async fn main() -> Result<()> {
     // Build versions (parallel or sequential based on --parallel flag)
     let results = if config.parallel > 1 && versions.len() > 1 {
         info!(
-            "Building {} versions with parallelism of {}",
-            versions.len(),
-            config.parallel
+            versions = versions.len(),
+            parallelism = config.parallel,
+            "Building versions in parallel"
         );
         build_parallel(&config, &versions, config.parallel, shutdown.clone()).await
     } else {
-        info!("Building {} versions sequentially", versions.len());
+        info!(versions = versions.len(), "Building versions sequentially");
         build_sequential(&config, &versions, shutdown.clone()).await
     };
 
@@ -143,7 +153,7 @@ async fn main() -> Result<()> {
                     _ => {}
                 },
                 Err(e) => {
-                    error!("Build failed: {}", e);
+                    error!(error = %e, "Build failed");
                     summary.add_failure("unknown".to_string(), e.to_string());
                 }
             }
@@ -153,10 +163,10 @@ async fn main() -> Result<()> {
 
     // Cleanup
     if !config.keep_build_dir {
-        info!("Cleaning up temporary build directory...");
+        info!("Cleaning up temporary build directory");
         // temp_dir will be automatically cleaned up when dropped
     } else {
-        info!("Keeping build directory at: {}", build_dir.display());
+        info!(build_dir = %build_dir.display(), "Keeping build directory");
         // Prevent temp_dir from being dropped
         std::mem::forget(temp_dir);
     }
@@ -199,26 +209,29 @@ async fn main() -> Result<()> {
 
 /// Log the configuration
 fn log_configuration(args: &Args) {
-    info!("Configuration:");
-    info!("  Dry run: {}", args.dry_run);
-    info!("  Debug: {}", args.debug);
-    info!("  Verbose: {}", args.verbose);
-    info!("  Keep build dir: {}", args.keep_build_dir);
-    info!("  Optimization: -O{}", args.optimization);
-    info!("  Static build: {}", args.static_build);
-    info!("  Save binaries: {}", args.save);
-    info!("  Enable multilib: {}", args.enable_multilib);
-    info!("  Generic build: {}", args.generic);
-    info!("  Parallel builds: {}", args.parallel);
+    debug!(
+        dry_run = args.dry_run,
+        debug = args.debug,
+        verbose = args.verbose,
+        keep_build_dir = args.keep_build_dir,
+        optimization = %args.optimization,
+        static_build = args.static_build,
+        save = args.save,
+        enable_multilib = args.enable_multilib,
+        generic = args.generic,
+        parallel = args.parallel,
+        "Configuration"
+    );
     if let Some(ref prefix) = args.prefix {
-        info!("  Custom prefix: {}", prefix.display());
+        debug!(prefix = %prefix.display(), "Custom prefix");
     }
     if let Some(ref log_file) = args.log_file {
-        info!("  Log file: {}", log_file.display());
+        debug!(log_file = %log_file.display(), "Log file");
     }
 }
 
 /// Build versions sequentially
+#[instrument(skip(config, versions, shutdown), fields(versions = versions.len()))]
 async fn build_sequential(
     config: &BuildConfig,
     versions: &[GccVersion],
@@ -229,11 +242,11 @@ async fn build_sequential(
     for version in versions {
         // Check for shutdown signal
         if *shutdown.lock().await {
-            warn!("Shutdown signal received. Stopping builds.");
+            warn!("Shutdown signal received, stopping builds");
             break;
         }
 
-        info!("--- Building GCC {} ---", version.full);
+        info!(version = %version.full, "Building GCC version");
         let result = build_gcc_version(config, version).await;
         results.push(result);
     }
@@ -241,47 +254,51 @@ async fn build_sequential(
     results
 }
 
-/// Build versions in parallel
+/// Build versions in parallel using JoinSet for better task management
+#[instrument(skip(config, versions, shutdown), fields(versions = versions.len(), parallelism))]
 async fn build_parallel(
     config: &BuildConfig,
     versions: &[GccVersion],
     parallelism: usize,
     shutdown: Arc<Mutex<bool>>,
 ) -> Vec<Result<GccBuildResult>> {
-    let mut results = Vec::new();
+    let mut results = Vec::with_capacity(versions.len());
 
     // Process versions in chunks based on parallelism
     for chunk in versions.chunks(parallelism) {
         // Check for shutdown signal
         if *shutdown.lock().await {
-            warn!("Shutdown signal received. Stopping builds.");
+            warn!("Shutdown signal received, stopping builds");
             break;
         }
 
+        let chunk_versions: Vec<_> = chunk.iter().map(|v| v.full.as_str()).collect();
         info!(
-            "Building {} version(s) in parallel: {}",
-            chunk.len(),
-            chunk
-                .iter()
-                .map(|v| v.full.as_str())
-                .collect::<Vec<_>>()
-                .join(", ")
+            versions = chunk_versions.len(),
+            building = %chunk_versions.join(", "),
+            "Building versions in parallel"
         );
 
-        // Create futures for each version in the chunk
-        let futures: Vec<_> = chunk
-            .iter()
-            .map(|version| {
-                // Clone config for each future
-                let config = config.clone();
-                let version = version.clone();
-                async move { build_gcc_version(&config, &version).await }
-            })
-            .collect();
+        // Use JoinSet for better task management and cancellation support
+        let mut join_set: JoinSet<Result<GccBuildResult>> = JoinSet::new();
 
-        // Wait for all in this chunk to complete
-        let chunk_results = join_all(futures).await;
-        results.extend(chunk_results);
+        // Spawn tasks for each version in the chunk
+        for version in chunk {
+            let config = config.clone();
+            let version = version.clone();
+            join_set.spawn(async move { build_gcc_version(&config, &version).await });
+        }
+
+        // Collect results as tasks complete
+        while let Some(result) = join_set.join_next().await {
+            match result {
+                Ok(build_result) => results.push(build_result),
+                Err(join_error) => {
+                    error!(error = %join_error, "Task panicked");
+                    results.push(Err(anyhow::anyhow!("Build task panicked: {}", join_error)));
+                }
+            }
+        }
     }
 
     results
@@ -302,17 +319,17 @@ fn setup_shutdown_handler() -> Arc<Mutex<bool>> {
         #[cfg(unix)]
         tokio::select! {
             _ = ctrl_c => {
-                warn!("Received SIGINT (Ctrl+C). Initiating graceful shutdown...");
+                warn!("Received SIGINT (Ctrl+C), initiating graceful shutdown");
             }
             _ = sigterm.recv() => {
-                warn!("Received SIGTERM. Initiating graceful shutdown...");
+                warn!("Received SIGTERM, initiating graceful shutdown");
             }
         }
 
         #[cfg(not(unix))]
         {
             ctrl_c.await.expect("Failed to wait for Ctrl+C");
-            warn!("Received Ctrl+C. Initiating graceful shutdown...");
+            warn!("Received Ctrl+C, initiating graceful shutdown");
         }
 
         *shutdown_clone.lock().await = true;
