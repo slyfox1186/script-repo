@@ -1,145 +1,91 @@
-#![allow(dead_code)]
-use anyhow::Result;
-use colored::*;
-use env_logger::{Builder, Target};
-use log::LevelFilter;
+use console::style;
 use std::fs::OpenOptions;
-use std::io::Write;
 use std::path::Path;
+use tracing::Level;
+use tracing_subscriber::fmt::format::FmtSpan;
+use tracing_subscriber::fmt::time::ChronoLocal;
+use tracing_subscriber::EnvFilter;
 
-use crate::cli::Args;
-
-pub fn init_logger(args: &Args) -> Result<()> {
-    let mut builder = Builder::new();
-
-    // Set log level based on verbosity - ALWAYS show progress
-    let level = match (args.debug, args.verbose) {
-        (true, _) => LevelFilter::Debug,
-        (false, true) => LevelFilter::Info,
-        (false, false) => LevelFilter::Info, // ALWAYS show progress info
-    };
-
-    builder.filter_level(level);
-
-    // Configure output target
-    if let Some(log_file) = &args.log_file {
-        setup_file_logging(&mut builder, log_file)?;
+/// Initialize the logging system
+pub fn init_logging(verbose: bool, debug: bool, log_file: Option<&Path>) -> anyhow::Result<()> {
+    let level = if debug {
+        Level::DEBUG
+    } else if verbose {
+        Level::INFO
     } else {
-        setup_console_logging(&mut builder);
+        Level::WARN
+    };
+
+    let filter = EnvFilter::from_default_env()
+        .add_directive(level.into())
+        .add_directive("reqwest=warn".parse().unwrap())
+        .add_directive("hyper=warn".parse().unwrap());
+
+    let subscriber = tracing_subscriber::fmt()
+        .with_env_filter(filter)
+        .with_timer(ChronoLocal::new("%Y-%m-%d %H:%M:%S".to_string()))
+        .with_target(false)
+        .with_span_events(FmtSpan::NONE);
+
+    if let Some(path) = log_file {
+        // Log to file
+        let file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .open(path)?;
+
+        subscriber.with_writer(file).with_ansi(false).init();
+    } else {
+        // Log to stderr with colors
+        subscriber.with_writer(std::io::stderr).init();
     }
-
-    builder.init();
-    Ok(())
-}
-
-fn setup_console_logging(builder: &mut Builder) {
-    builder.target(Target::Stderr).format(|buf, record| {
-        let level_color = match record.level() {
-            log::Level::Error => "red",
-            log::Level::Warn => "yellow",
-            log::Level::Info => "green",
-            log::Level::Debug => "cyan",
-            log::Level::Trace => "magenta",
-        };
-
-        let timestamp = chrono::Local::now().format("%Y-%m-%d %H:%M:%S");
-
-        writeln!(
-            buf,
-            "[{} {}] {}",
-            timestamp,
-            record.level().to_string().color(level_color).bold(),
-            record.args()
-        )
-    });
-}
-
-fn setup_file_logging(builder: &mut Builder, log_file: &Path) -> Result<()> {
-    // Create log directory if it doesn't exist
-    if let Some(parent) = log_file.parent() {
-        std::fs::create_dir_all(parent)?;
-    }
-
-    // Open log file
-    let file = OpenOptions::new()
-        .create(true)
-        .write(true)
-        .truncate(true)
-        .open(log_file)?;
-
-    builder
-        .target(Target::Pipe(Box::new(file)))
-        .format(|buf, record| {
-            let timestamp = chrono::Local::now().format("%Y-%m-%d %H:%M:%S");
-            writeln!(buf, "[{} {}] {}", timestamp, record.level(), record.args())
-        });
 
     Ok(())
 }
 
-#[macro_export]
-macro_rules! log_command {
-    ($cmd:expr) => {
-        log::debug!("Executing command: {}", $cmd);
-    };
+/// Print a section header
+pub fn print_header(title: &str) {
+    let width = 80;
+    let line = "=".repeat(width);
+    eprintln!();
+    eprintln!("{}", style(&line).cyan());
+    eprintln!("{}", style(title).cyan().bold());
+    eprintln!("{}", style(&line).cyan());
+    eprintln!();
 }
 
-#[macro_export]
-macro_rules! log_duration {
-    ($operation:expr, $duration:expr) => {
-        log::info!("{} completed in {:.2?}", $operation, $duration);
-    };
+/// Print a box with content
+pub fn print_box(title: &str, content: &[String]) {
+    let width = 80;
+    let top = format!("┌{}┐", "─".repeat(width - 2));
+    let bottom = format!("└{}┘", "─".repeat(width - 2));
+
+    eprintln!();
+    eprintln!("{}", style(&top).cyan());
+    eprintln!("│{:^width$}│", style(title).bold(), width = width - 2);
+    eprintln!("{}", style(&bottom).cyan());
+
+    for line in content {
+        eprintln!("{}", line);
+    }
+    eprintln!();
 }
 
-pub fn log_system_info() {
-    log::info!("System Information:");
-    if let Ok(info) = sys_info::mem_info() {
-        log::info!(
-            "  RAM: {:.1} GB total, {:.1} GB available",
-            info.total as f64 / 1024.0 / 1024.0,
-            info.avail as f64 / 1024.0 / 1024.0
-        );
-    }
-
-    if let Ok(cpu_num) = sys_info::cpu_num() {
-        log::info!("  CPU cores: {}", cpu_num);
-    }
-
-    if let Ok(hostname) = sys_info::hostname() {
-        log::info!("  Hostname: {}", hostname);
-    }
+/// Format duration as HH:MM:SS
+pub fn format_duration(secs: u64) -> String {
+    let hours = secs / 3600;
+    let minutes = (secs % 3600) / 60;
+    let seconds = secs % 60;
+    format!("{:02}:{:02}:{:02}", hours, minutes, seconds)
 }
 
-pub struct ProgressLogger {
-    operation: String,
-    start_time: std::time::Instant,
-}
-
-impl ProgressLogger {
-    pub fn new(operation: &str) -> Self {
-        log::info!("Starting: {}", operation);
-        Self {
-            operation: operation.to_string(),
-            start_time: std::time::Instant::now(),
-        }
-    }
-
-    pub fn update(&self, message: &str) {
-        log::debug!("{}: {}", self.operation, message);
-    }
-
-    pub fn finish(self) {
-        let duration = self.start_time.elapsed();
-        log::info!("Completed: {} (took {:.2?})", self.operation, duration);
-    }
-
-    pub fn fail(self, error: &str) {
-        let duration = self.start_time.elapsed();
-        log::error!(
-            "Failed: {} after {:.2?} - {}",
-            self.operation,
-            duration,
-            error
-        );
-    }
+/// Print build status log
+pub fn print_status(package: &str, version: &str, stage: &str) {
+    tracing::info!(
+        "STATUS: Package: {}, Version: {}, Stage: {}",
+        package,
+        version,
+        stage
+    );
 }

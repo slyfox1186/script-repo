@@ -1,504 +1,172 @@
-#![allow(dead_code)]
-use semver::Version;
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use crate::cli::Args;
 use std::path::PathBuf;
 
-use crate::cli::{Args, OptimizationLevel};
-use crate::error::{GccBuildError, Result as GccResult};
-use log::info;
+/// Available GCC major versions
+pub const AVAILABLE_VERSIONS: &[u32] = &[10, 11, 12, 13, 14, 15];
 
-// ULTRAFAST: Compile-time constants
-pub const MIN_GCC_VERSION: u8 = 10;
-pub const DEFAULT_BUILD_DIR: &str = "/tmp/gcc-build-script";
+/// Script version (matching the bash script)
+pub const SCRIPT_VERSION: &str = "2.6";
+
+/// Default installation prefix base
+pub const DEFAULT_PREFIX_BASE: &str = "/usr/local/programs";
+
+/// Minimum required RAM in MB
 pub const MIN_RAM_MB: u64 = 2000;
-pub const GB_PER_VERSION: u64 = 25;
-pub const SAFETY_GB: u64 = 5;
 
-// Dynamic maximum version detection
-use once_cell::sync::Lazy;
-use std::sync::RwLock;
+/// Estimated disk space per GCC version in GB
+pub const DISK_SPACE_PER_VERSION_GB: u64 = 25;
 
-pub static MAX_GCC_VERSION: Lazy<RwLock<u8>> = Lazy::new(|| {
-    // Start with a reasonable default, will be updated dynamically
-    RwLock::new(15)
-});
+/// Version cache TTL in seconds (1 hour)
+pub const VERSION_CACHE_TTL_SECS: u64 = 3600;
 
-#[inline(always)]
-pub fn is_valid_gcc_version(version: u8) -> bool {
-    let max_version = MAX_GCC_VERSION.read().unwrap();
-    version >= MIN_GCC_VERSION && version <= *max_version
-}
+/// Maximum download retry attempts
+pub const MAX_DOWNLOAD_ATTEMPTS: u32 = 3;
 
-/// Update the maximum GCC version based on discovered versions
-pub fn update_max_gcc_version(version: u8) {
-    let mut max_version = MAX_GCC_VERSION.write().unwrap();
-    if version > *max_version {
-        info!("Updated maximum GCC version to {}", version);
-        *max_version = version;
-    }
-}
-
+/// GCC version information
 #[derive(Debug, Clone)]
-pub struct Config {
-    pub debug: bool,
-    pub dry_run: bool,
-    pub enable_multilib: bool,
-    pub static_build: bool,
-    pub generic_tuning: bool,
-    pub keep_build_dir: bool,
-    pub save_binaries: bool,
-    pub verbose: bool,
-    pub skip_checksum: bool,
-    pub force_rebuild: bool,
-    pub create_symlinks: bool,
-    pub verify_level: crate::binary_verifier::VerificationLevel,
-    pub static_binaries_dir: Option<PathBuf>,
-
-    pub optimization_level: OptimizationLevel,
-    pub max_retries: usize,
-    pub download_timeout_secs: u64,
-    pub parallel_jobs: usize,
-
-    pub build_dir: PathBuf,
-    pub packages_dir: PathBuf,
-    pub workspace_dir: PathBuf,
-    pub install_prefix: Option<PathBuf>,
-    pub log_file: Option<PathBuf>,
-
-    pub gcc_versions: Vec<GccVersion>,
-    pub target_arch: String,
-    pub system_info: SystemInfo,
-    pub build_settings: BuildSettings,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct GccVersion {
-    pub major: u8,
-    pub minor: u8,
-    pub patch: u8,
-    pub full_version: String,
+    /// Major version number (e.g., 13)
+    pub major: u32,
+    /// Full version string (e.g., "13.2.0")
+    pub full: String,
 }
 
 impl GccVersion {
-    pub fn new(major: u8, minor: u8, patch: u8) -> Self {
-        Self {
-            major,
-            minor,
-            patch,
-            full_version: format!("{}.{}.{}", major, minor, patch),
+    pub fn new(major: u32, full: String) -> Self {
+        Self { major, full }
+    }
+
+    /// Get the installation prefix for this version
+    pub fn install_prefix(&self, user_prefix: Option<&PathBuf>) -> PathBuf {
+        if let Some(prefix) = user_prefix {
+            prefix.join(format!("gcc-{}", self.full))
+        } else {
+            PathBuf::from(format!("{}/gcc-{}", DEFAULT_PREFIX_BASE, self.full))
         }
     }
 
-    pub fn from_str(version: &str) -> GccResult<Self> {
-        let version = Version::parse(version).map_err(|_| {
-            GccBuildError::configuration(format!("Invalid version format: {}", version))
-        })?;
-
-        Ok(Self {
-            major: version.major as u8,
-            minor: version.minor as u8,
-            patch: version.patch as u8,
-            full_version: version.to_string(),
-        })
-    }
-
-    pub fn supports_feature(&self, feature: &str) -> bool {
-        match feature {
-            "default_pie" | "gnu_unique_object" => self.major >= 9,
-            "link_serialization" => self.major >= 12,
-            "cet" => self.major >= 13,
-            _ => false,
-        }
+    /// Get the tarball filename
+    pub fn tarball_name(&self) -> String {
+        format!("gcc-{}.tar.xz", self.full)
     }
 }
 
 impl std::fmt::Display for GccVersion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.full_version)
+        write!(f, "GCC {}", self.full)
     }
 }
 
+/// Build configuration derived from CLI arguments
 #[derive(Debug, Clone)]
-pub struct SystemInfo {
-    pub ram_mb: u64,
-    pub cpu_cores: usize,
-    pub available_disk_gb: u64,
-    pub architecture: String,
-    pub os_release: String,
+pub struct BuildConfig {
+    pub dry_run: bool,
+    pub enable_multilib: bool,
+    pub static_build: bool,
+    pub generic: bool,
+    pub keep_build_dir: bool,
+    pub optimization: String,
+    pub prefix: Option<PathBuf>,
+    pub save_binaries: bool,
+    pub parallel: usize,
+    pub target_arch: String,
+    pub build_dir: PathBuf,
+    pub workspace: PathBuf,
 }
 
-#[derive(Debug, Clone)]
-pub struct BuildSettings {
-    pub cflags: Vec<String>,
-    pub cxxflags: Vec<String>,
-    pub cppflags: Vec<String>,
-    pub ldflags: Vec<String>,
-    pub env_vars: HashMap<String, String>,
-}
-
-impl Config {
-    pub fn new(args: Args) -> GccResult<Self> {
-        // Validate arguments
-        args.validate().map_err(GccBuildError::configuration)?;
-
-        // Detect system information
-        let system_info = detect_system_info()?;
-
-        // Determine target architecture
-        let target_arch = detect_target_architecture()?;
-
-        // Set up directories
-        let build_dir = args
-            .build_dir
-            .clone()
-            .unwrap_or_else(|| PathBuf::from(DEFAULT_BUILD_DIR));
-        let packages_dir = build_dir.join("packages");
-        let workspace_dir = build_dir.join("workspace");
-
-        // Determine parallel jobs
-        let parallel_jobs = args.jobs.unwrap_or_else(|| {
-            let memory_limit = system_info.ram_mb / 2000; // 2GB per job
-            let cpu_limit = system_info.cpu_cores;
-            std::cmp::min(memory_limit as usize, cpu_limit).max(1)
-        });
-
-        // Parse GCC versions
-        let gcc_versions = parse_gcc_versions(Some(&args.get_versions_string()))?;
-
-        // Build environment settings
-        let build_settings = create_build_settings(&args, &target_arch, &system_info)?;
-
-        Ok(Config {
-            debug: args.debug,
+impl BuildConfig {
+    /// Create a new BuildConfig from CLI args and detected system info
+    pub fn from_args(args: &Args, build_dir: PathBuf, target_arch: String) -> Self {
+        let workspace = build_dir.join("workspace");
+        Self {
             dry_run: args.dry_run,
             enable_multilib: args.enable_multilib,
             static_build: args.static_build,
-            generic_tuning: args.generic,
+            generic: args.generic,
             keep_build_dir: args.keep_build_dir,
-            save_binaries: args.save_binaries,
-            verbose: args.verbose,
-            skip_checksum: args.skip_checksum,
-            force_rebuild: args.force_rebuild,
-            create_symlinks: if args.create_symlinks {
-                true
-            } else if args.skip_symlinks {
-                false
-            } else {
-                true // Default to true
-            },
-            verify_level: args.verify_level.into(),
-            static_binaries_dir: args.static_binaries_dir,
-
-            optimization_level: args.optimization,
-            max_retries: args.max_retries,
-            download_timeout_secs: args.download_timeout,
-            parallel_jobs,
-
-            build_dir,
-            packages_dir,
-            workspace_dir,
-            install_prefix: args.prefix,
-            log_file: args.log_file,
-
-            gcc_versions,
+            optimization: args.optimization.clone(),
+            prefix: args.prefix.clone(),
+            save_binaries: args.save,
+            parallel: args.parallel,
             target_arch,
-            system_info,
-            build_settings,
-        })
-    }
-
-    pub fn get_install_prefix(&self, version: &GccVersion) -> PathBuf {
-        match &self.install_prefix {
-            Some(prefix) => prefix.join(format!("gcc-{}", version)),
-            None => PathBuf::from(format!("/usr/local/programs/gcc-{}", version)),
+            build_dir,
+            workspace,
         }
     }
 
-    pub fn validate_system_requirements(&self) -> GccResult<()> {
-        // Check minimum RAM
-        if self.system_info.ram_mb < 2000 {
-            return Err(GccBuildError::system_requirements(format!(
-                "Insufficient RAM: {}MB available, 2000MB required",
-                self.system_info.ram_mb
-            )));
+    /// Get the optimization flag
+    pub fn optimization_flag(&self) -> String {
+        format!("-O{}", self.optimization)
+    }
+
+    /// Get CFLAGS for the build
+    pub fn cflags(&self) -> String {
+        let mut flags = format!("{} -pipe", self.optimization_flag());
+
+        if !self.generic {
+            flags.push_str(" -march=native");
         }
 
-        // Check disk space
-        let required_disk = self.gcc_versions.len() as u64 * 25 + 5; // 25GB per version + 5GB safety
-        if self.system_info.available_disk_gb < required_disk {
-            return Err(GccBuildError::system_requirements(format!(
-                "Insufficient disk space: {}GB available, {}GB required",
-                self.system_info.available_disk_gb, required_disk
-            )));
+        flags.push_str(" -fstack-protector-strong");
+        flags
+    }
+
+    /// Get CXXFLAGS for the build
+    pub fn cxxflags(&self) -> String {
+        self.cflags()
+    }
+
+    /// Get CPPFLAGS for the build
+    pub fn cppflags(&self) -> String {
+        "-D_FORTIFY_SOURCE=2".to_string()
+    }
+
+    /// Get LDFLAGS for the build
+    pub fn ldflags(&self) -> String {
+        let mut flags = String::new();
+
+        if self.static_build {
+            flags.push_str("-static ");
         }
 
-        Ok(())
+        flags.push_str("-Wl,-z,relro -Wl,-z,now");
+
+        // Add library path for target architecture
+        let lib_path = format!("/usr/lib/{}", self.target_arch);
+        if PathBuf::from(&lib_path).exists() {
+            flags.push_str(&format!(" -L{}", lib_path));
+        } else if PathBuf::from("/usr/lib64").exists() && self.target_arch.contains("64") {
+            flags.push_str(" -L/usr/lib64");
+        } else if PathBuf::from("/usr/lib").exists() {
+            flags.push_str(" -L/usr/lib");
+        }
+
+        flags
     }
 }
 
-fn detect_system_info() -> GccResult<SystemInfo> {
-    let ram_mb = sys_info::mem_info()
-        .map_err(|e| GccBuildError::configuration(format!("Failed to get memory info: {}", e)))?
-        .total
-        / 1024; // Convert from KB to MB
+/// Required system packages for building GCC
+pub const REQUIRED_PACKAGES: &[&str] = &[
+    "build-essential",
+    "binutils",
+    "gawk",
+    "m4",
+    "flex",
+    "bison",
+    "texinfo",
+    "patch",
+    "curl",
+    "wget",
+    "ca-certificates",
+    "ccache",
+    "libtool",
+    "libtool-bin",
+    "autoconf",
+    "automake",
+    "zlib1g-dev",
+    "libisl-dev",
+    "libzstd-dev",
+];
 
-    let cpu_cores = sys_info::cpu_num()
-        .map_err(|e| GccBuildError::configuration(format!("Failed to get CPU info: {}", e)))?
-        as usize;
-
-    let available_disk_gb = 100; // TODO: Implement actual disk space detection
-
-    let architecture = std::env::consts::ARCH.to_string();
-    let os_release = "Unknown".to_string(); // TODO: Implement OS detection
-
-    Ok(SystemInfo {
-        ram_mb,
-        cpu_cores,
-        available_disk_gb,
-        architecture,
-        os_release,
-    })
-}
-
-fn detect_target_architecture() -> GccResult<String> {
-    // Try to get from gcc -dumpmachine
-    let output = std::process::Command::new("gcc")
-        .arg("-dumpmachine")
-        .output();
-
-    match output {
-        Ok(output) if output.status.success() => {
-            let arch = String::from_utf8_lossy(&output.stdout).trim().to_string();
-            if !arch.is_empty() {
-                return Ok(arch);
-            }
-        }
-        _ => {}
-    }
-
-    // Fallback to default
-    Ok("x86_64-linux-gnu".to_string())
-}
-
-fn parse_gcc_versions(versions_str: Option<&str>) -> GccResult<Vec<GccVersion>> {
-    let versions_str = match versions_str {
-        Some(s) if !s.is_empty() => s,
-        _ => {
-            return Err(GccBuildError::configuration(
-                "No GCC versions specified. Use --versions, --latest, or --all-supported"
-                    .to_string(),
-            ));
-        }
-    };
-
-    let mut versions = Vec::new();
-
-    // Handle special cases
-    if versions_str == "latest" {
-        info!("Resolving latest GCC version...");
-        // Resolve the actual latest version immediately
-        let latest_version = resolve_latest_version_sync()?;
-        info!("Latest GCC version: {}", latest_version);
-        versions.push(latest_version);
-        return Ok(versions);
-    }
-
-    for part in versions_str.split(',') {
-        let part = part.trim();
-
-        if part.contains('-') {
-            // Range like "11-13"
-            let range_parts: Vec<&str> = part.split('-').collect();
-            if range_parts.len() != 2 {
-                return Err(GccBuildError::configuration(format!(
-                    "Invalid version range '{}'. Use format like '11-13'",
-                    part
-                )));
-            }
-
-            let start: u8 = range_parts[0].parse().map_err(|_| {
-                GccBuildError::configuration(format!(
-                    "Invalid start version '{}' in range. Must be a number between 10-15",
-                    range_parts[0]
-                ))
-            })?;
-            let end: u8 = range_parts[1].parse().map_err(|_| {
-                GccBuildError::configuration(format!(
-                    "Invalid end version '{}' in range. Must be a number between 10-15",
-                    range_parts[1]
-                ))
-            })?;
-
-            if start > end {
-                return Err(GccBuildError::configuration(format!(
-                    "Invalid range '{}': start version must be less than or equal to end version",
-                    part
-                )));
-            }
-
-            if !is_valid_gcc_version(start) || !is_valid_gcc_version(end) {
-                let max_version = MAX_GCC_VERSION.read().unwrap();
-                return Err(GccBuildError::configuration(format!(
-                    "Version range '{}' out of bounds. Supported versions are {}-{}",
-                    part, MIN_GCC_VERSION, *max_version
-                )));
-            }
-
-            for v in start..=end {
-                // We'll resolve the full version later from the GNU FTP site
-                versions.push(GccVersion::new(v, 0, 0));
-            }
-        } else if let Ok(major) = part.parse::<u8>() {
-            // Single version like "13"
-            if !is_valid_gcc_version(major) {
-                let max_version = MAX_GCC_VERSION.read().unwrap();
-                return Err(GccBuildError::configuration(format!(
-                    "Version {} is not supported. Supported versions are {}-{}",
-                    major, MIN_GCC_VERSION, *max_version
-                )));
-            }
-            versions.push(GccVersion::new(major, 0, 0));
-        } else {
-            // Try to parse as full version (e.g., "13.2.0")
-            match GccVersion::from_str(part) {
-                Ok(version) => {
-                    if !is_valid_gcc_version(version.major) {
-                        let max_version = MAX_GCC_VERSION.read().unwrap();
-                        return Err(GccBuildError::configuration(format!(
-                            "Version {} is not supported. Supported versions are {}-{}",
-                            version, MIN_GCC_VERSION, *max_version
-                        )));
-                    }
-                    versions.push(version);
-                }
-                Err(_) => {
-                    return Err(GccBuildError::configuration(
-                        format!("Invalid version '{}'. Use a number (e.g., '13'), range (e.g., '11-13'), or full version (e.g., '13.2.0')", part)
-                    ));
-                }
-            }
-        }
-    }
-
-    if versions.is_empty() {
-        return Err(GccBuildError::configuration(
-            "No GCC versions specified".to_string(),
-        ));
-    }
-
-    versions.sort();
-    versions.dedup();
-
-    info!(
-        "Will build GCC versions: {}",
-        versions
-            .iter()
-            .map(|v| v.to_string())
-            .collect::<Vec<_>>()
-            .join(", ")
-    );
-
-    Ok(versions)
-}
-
-fn create_build_settings(
-    args: &Args,
-    _target_arch: &str,
-    system_info: &SystemInfo,
-) -> GccResult<BuildSettings> {
-    let mut cflags = vec![args.optimization.as_str().to_string(), "-pipe".to_string()];
-    let mut cxxflags = cflags.clone();
-    let cppflags = vec!["-D_FORTIFY_SOURCE=2".to_string()];
-    let mut ldflags = vec!["-Wl,-z,relro".to_string(), "-Wl,-z,now".to_string()];
-
-    // Add architecture-specific flags
-    if !args.generic {
-        cflags.push("-march=native".to_string());
-        cxxflags.push("-march=native".to_string());
-    }
-
-    // Add security flags
-    cflags.push("-fstack-protector-strong".to_string());
-    cxxflags.push("-fstack-protector-strong".to_string());
-
-    // Static build flags
-    if args.static_build {
-        ldflags.insert(0, "-static".to_string());
-    }
-
-    // Environment variables
-    let mut env_vars = HashMap::new();
-    env_vars.insert("CC".to_string(), "gcc".to_string());
-    env_vars.insert("CXX".to_string(), "g++".to_string());
-    env_vars.insert(
-        "MAKEFLAGS".to_string(),
-        format!("-j{}", system_info.cpu_cores),
-    );
-
-    // ccache optimization
-    env_vars.insert("CCACHE_MAXSIZE".to_string(), "10G".to_string());
-    env_vars.insert("CCACHE_COMPRESS".to_string(), "1".to_string());
-    env_vars.insert(
-        "CCACHE_SLOPPINESS".to_string(),
-        "time_macros,include_file_mtime".to_string(),
-    );
-
-    Ok(BuildSettings {
-        cflags,
-        cxxflags,
-        cppflags,
-        ldflags,
-        env_vars,
-    })
-}
-
-// Synchronous wrapper to resolve latest GCC version during config parsing
-fn resolve_latest_version_sync() -> GccResult<GccVersion> {
-    use std::process::Command;
-
-    // First, discover ALL available GCC versions to update our maximum
-    let all_versions_output = Command::new("bash")
-        .arg("-c")
-        .arg(r#"curl -fsSL https://ftp.gnu.org/gnu/gcc/ | grep -oP 'gcc-\K\d+(?=\.\d+\.\d+/)' | sort -nu | tail -n1"#)
-        .output()
-        .map_err(|e| GccBuildError::configuration(format!("Failed to discover GCC versions: {}", e)))?;
-
-    if all_versions_output.status.success() {
-        if let Ok(max_major) = String::from_utf8_lossy(&all_versions_output.stdout)
-            .trim()
-            .parse::<u8>()
-        {
-            update_max_gcc_version(max_major);
-        }
-    }
-
-    // Now get the latest full version
-    let output = Command::new("bash")
-        .arg("-c")
-        .arg(r#"curl -fsSL https://ftp.gnu.org/gnu/gcc/ | grep -oP 'gcc-\K\d+\.\d+\.\d+(?=/)' | sort -V | tail -n1"#)
-        .output()
-        .map_err(|e| GccBuildError::configuration(format!("Failed to resolve latest GCC version: {}", e)))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(GccBuildError::configuration(format!(
-            "Failed to resolve latest GCC version: {}",
-            stderr
-        )));
-    }
-
-    let version_str = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    if version_str.is_empty() {
-        return Err(GccBuildError::configuration(
-            "Failed to resolve latest GCC version: no versions found".to_string(),
-        ));
-    }
-
-    let version = GccVersion::from_str(&version_str)?;
-
-    // Update max version if we found a newer one
-    update_max_gcc_version(version.major);
-
-    Ok(version)
-}
+/// Additional packages for multilib support
+pub const MULTILIB_PACKAGES: &[&str] = &["libc6-dev-i386"];
