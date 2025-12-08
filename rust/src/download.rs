@@ -1,5 +1,11 @@
+//! GCC source download and verification module.
+//!
+//! Provides async download with progress tracking, retry logic, caching,
+//! and checksum verification for GCC source tarballs.
+
 use crate::config::{GccVersion, MAX_DOWNLOAD_ATTEMPTS};
 use crate::error::BuildError;
+use crate::http_client::{create_download_client, get_client};
 use crate::progress::create_download_bar;
 use anyhow::{Context, Result};
 use futures::StreamExt;
@@ -10,7 +16,7 @@ use std::io::{Read as IoRead, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::Duration;
-use tracing::{debug, info, warn};
+use tracing::{debug, info, instrument, warn};
 
 /// Official GCC FTP server (confirmed working)
 const GCC_FTP_URL: &str = "https://gcc.gnu.org/ftp/gcc/releases";
@@ -19,17 +25,15 @@ const GCC_FTP_URL: &str = "https://gcc.gnu.org/ftp/gcc/releases";
 const DOWNLOAD_CACHE_DIR: &str = "/tmp/build-gcc-cache";
 
 /// Download a file with progress tracking and retry logic
+#[instrument(skip(progress), fields(dest = %dest.display()))]
 pub async fn download_file(url: &str, dest: &Path, progress: Option<&ProgressBar>) -> Result<()> {
-    let client = reqwest::Client::builder()
-        .connect_timeout(std::time::Duration::from_secs(5)) // Fast fail on connection
-        .timeout(std::time::Duration::from_secs(300)) // 5 min for large files
-        .build()?;
+    let client = create_download_client().context("Failed to create download client")?;
 
     let response = client
         .get(url)
         .send()
         .await
-        .context("Failed to initiate download")?;
+        .with_context(|| format!("Failed to initiate download from {}", url))?;
 
     if !response.status().is_success() {
         return Err(BuildError::Download {
@@ -40,6 +44,7 @@ pub async fn download_file(url: &str, dest: &Path, progress: Option<&ProgressBar
     }
 
     let total_size = response.content_length().unwrap_or(0);
+    debug!(total_size, "Download starting");
 
     // Create or update progress bar
     let pb = if let Some(p) = progress {
@@ -51,28 +56,33 @@ pub async fn download_file(url: &str, dest: &Path, progress: Option<&ProgressBar
 
     // Ensure parent directory exists
     if let Some(parent) = dest.parent() {
-        fs::create_dir_all(parent)?;
+        fs::create_dir_all(parent)
+            .with_context(|| format!("Failed to create parent directory: {}", parent.display()))?;
     }
 
     // Create file
-    let mut file = File::create(dest).context("Failed to create destination file")?;
+    let mut file =
+        File::create(dest).with_context(|| format!("Failed to create file: {}", dest.display()))?;
 
     // Stream the response
     let mut stream = response.bytes_stream();
     let mut downloaded: u64 = 0;
 
     while let Some(chunk) = stream.next().await {
-        let chunk = chunk.context("Failed to read chunk")?;
-        file.write_all(&chunk).context("Failed to write to file")?;
+        let chunk = chunk.context("Failed to read chunk from response stream")?;
+        file.write_all(&chunk)
+            .with_context(|| format!("Failed to write to file: {}", dest.display()))?;
         downloaded += chunk.len() as u64;
         pb.set_position(downloaded);
     }
 
     pb.finish_with_message("Download complete");
+    debug!(bytes = downloaded, "Download completed successfully");
     Ok(())
 }
 
 /// Download GCC source with retry logic and caching
+#[instrument(skip(build_dir), fields(version = %version.full, dry_run))]
 pub async fn download_gcc_source(
     version: &GccVersion,
     build_dir: &Path,
@@ -83,50 +93,52 @@ pub async fn download_gcc_source(
     let cached_file = cache_dir.join(version.tarball_name());
 
     info!(
-        "Preparing to download {} for GCC {}",
-        version.tarball_name(),
-        version.full
+        tarball = %version.tarball_name(),
+        "Preparing to download GCC source"
     );
 
     // Ensure cache directory exists
     if !cache_dir.exists() {
-        info!("Creating download cache directory: {}", cache_dir.display());
+        info!(cache_dir = %cache_dir.display(), "Creating download cache directory");
         fs::create_dir_all(&cache_dir).context("Failed to create cache directory")?;
     }
 
     // Check if file exists in cache first
     if cached_file.exists() {
-        info!(
-            "Found cached file: {}. Verifying integrity...",
-            cached_file.display()
-        );
+        info!(cached_file = %cached_file.display(), "Found cached file, verifying integrity");
 
         if verify_tarball(&cached_file)? {
-            info!("Cached file {} is valid.", cached_file.display());
+            info!("Cached file is valid");
 
             if !dry_run {
                 // Verify checksum of cached file
                 match verify_checksum(&cached_file, version).await {
                     Ok(true) => {
-                        info!("Checksum verified for cached file. Copying to build directory...");
-                        fs::copy(&cached_file, &dest).context("Failed to copy cached file")?;
+                        info!("Checksum verified for cached file, copying to build directory");
+                        fs::copy(&cached_file, &dest).with_context(|| {
+                            format!(
+                                "Failed to copy cached file from {} to {}",
+                                cached_file.display(),
+                                dest.display()
+                            )
+                        })?;
                         return Ok(dest);
                     }
                     Ok(false) => {
-                        warn!("Cached file checksum mismatch. Will re-download.");
+                        warn!("Cached file checksum mismatch, will re-download");
                         fs::remove_file(&cached_file)?;
                     }
                     Err(e) => {
-                        warn!("Cached file checksum error: {}. Will re-download.", e);
+                        warn!(error = %e, "Cached file checksum error, will re-download");
                         fs::remove_file(&cached_file)?;
                     }
                 }
             } else {
-                info!("Dry run: Would use cached file.");
+                info!("Dry run: Would use cached file");
                 return Ok(dest);
             }
         } else {
-            warn!("Cached file appears corrupted. Removing...");
+            warn!("Cached file appears corrupted, removing");
             fs::remove_file(&cached_file)?;
         }
     }
@@ -134,34 +146,34 @@ pub async fn download_gcc_source(
     // Check if file already exists in build dir
     if dest.exists() {
         info!(
-            "File {} already exists in build dir. Verifying integrity...",
-            dest.display()
+            dest = %dest.display(),
+            "File already exists in build dir, verifying integrity"
         );
 
         if verify_tarball(&dest)? {
             if !dry_run {
                 match verify_checksum(&dest, version).await {
                     Ok(true) => {
-                        info!("Checksum verified. Caching file for future use...");
+                        info!("Checksum verified, caching file for future use");
                         // Copy to cache for future runs
                         let _ = fs::copy(&dest, &cached_file);
                         return Ok(dest);
                     }
                     Ok(false) => {
-                        warn!("Checksum mismatch. Will re-download.");
+                        warn!("Checksum mismatch, will re-download");
                         fs::remove_file(&dest)?;
                     }
                     Err(e) => {
-                        warn!("Checksum error: {}. Will re-download.", e);
+                        warn!(error = %e, "Checksum error, will re-download");
                         fs::remove_file(&dest)?;
                     }
                 }
             } else {
-                info!("Dry run: Would verify checksum for existing file.");
+                info!("Dry run: Would verify checksum for existing file");
                 return Ok(dest);
             }
         } else {
-            warn!("Existing file appears corrupted. Removing...");
+            warn!("Existing file appears corrupted, removing");
             fs::remove_file(&dest)?;
         }
     }
@@ -175,16 +187,16 @@ pub async fn download_gcc_source(
     );
 
     if dry_run {
-        info!("Dry run: would download {} to {}", url, dest.display());
+        info!(url, dest = %dest.display(), "Dry run: would download");
         return Ok(dest);
     }
 
-    info!("Downloading from {}", url);
+    info!(url, "Downloading GCC source");
 
     // Download with retry
     let mut last_error = None;
     for attempt in 1..=MAX_DOWNLOAD_ATTEMPTS {
-        info!("Download attempt {} of {}", attempt, MAX_DOWNLOAD_ATTEMPTS);
+        info!(attempt, max = MAX_DOWNLOAD_ATTEMPTS, "Download attempt");
 
         let pb = create_download_bar(0);
         pb.set_message(format!("Downloading {}", version.tarball_name()));
@@ -193,47 +205,47 @@ pub async fn download_gcc_source(
             Ok(()) => {
                 // Verify downloaded file
                 if verify_tarball(&dest)? {
-                    info!("Successfully downloaded {}", version.tarball_name());
+                    info!(tarball = %version.tarball_name(), "Successfully downloaded");
 
                     // Verify checksum
                     match verify_checksum(&dest, version).await {
                         Ok(true) => {
-                            info!("Checksum verified successfully.");
+                            info!("Checksum verified successfully");
                             // Save to cache for future runs
-                            info!("Caching download to {}", cached_file.display());
+                            info!(cache = %cached_file.display(), "Caching download");
                             if let Err(e) = fs::copy(&dest, &cached_file) {
-                                warn!("Failed to cache file: {}", e);
+                                warn!(error = %e, "Failed to cache file");
                             }
                             return Ok(dest);
                         }
                         Ok(false) => {
-                            warn!("Checksum mismatch for downloaded file.");
+                            warn!("Checksum mismatch for downloaded file");
                             fs::remove_file(&dest)?;
                             last_error = Some("Checksum mismatch".to_string());
                         }
                         Err(e) => {
                             // Some versions might not have checksums available
-                            warn!("Checksum verification skipped: {}", e);
+                            warn!(error = %e, "Checksum verification skipped");
                             // Still cache it
                             let _ = fs::copy(&dest, &cached_file);
                             return Ok(dest);
                         }
                     }
                 } else {
-                    warn!("Downloaded file appears corrupted.");
+                    warn!("Downloaded file appears corrupted");
                     fs::remove_file(&dest)?;
                     last_error = Some("Corrupted download".to_string());
                 }
             }
             Err(e) => {
-                warn!("Download attempt {} failed: {}", attempt, e);
+                warn!(attempt, error = %e, "Download attempt failed");
                 let _ = fs::remove_file(&dest);
                 last_error = Some(e.to_string());
             }
         }
 
         if attempt < MAX_DOWNLOAD_ATTEMPTS {
-            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+            tokio::time::sleep(Duration::from_secs(2)).await;
         }
     }
 
@@ -249,12 +261,13 @@ fn verify_tarball(path: &Path) -> Result<bool> {
     let output = Command::new("tar")
         .args(["-tf", path.to_str().unwrap_or("")])
         .output()
-        .context("Failed to verify tarball")?;
+        .with_context(|| format!("Failed to verify tarball: {}", path.display()))?;
 
     Ok(output.status.success())
 }
 
 /// Verify checksum of downloaded file
+#[instrument(skip(path), fields(path = %path.display(), version = %version.full))]
 async fn verify_checksum(path: &Path, version: &GccVersion) -> Result<bool> {
     let major = version.major;
 
@@ -281,20 +294,18 @@ fn create_checksum_spinner(message: &str) -> ProgressBar {
 }
 
 /// Verify SHA512 checksum with progress indication
+#[instrument(skip(path), fields(path = %path.display(), version = %version.full))]
 async fn verify_sha512(path: &Path, version: &GccVersion) -> Result<bool> {
-    info!("Starting SHA512 checksum verification...");
+    info!("Starting SHA512 checksum verification");
 
     // Create spinner for fetching checksum
     let spinner = create_checksum_spinner("Fetching SHA512 checksum from GCC server...");
 
-    let client = reqwest::Client::builder()
-        .connect_timeout(Duration::from_secs(10))
-        .timeout(Duration::from_secs(30))
-        .build()?;
+    let client = get_client();
 
     // Fetch checksum from official GCC FTP server
     let sha512_url = format!("{}/gcc-{}/sha512.sum", GCC_FTP_URL, version.full);
-    debug!("Fetching checksum from: {}", sha512_url);
+    debug!(url = sha512_url, "Fetching checksum");
 
     let response = client.get(&sha512_url).send().await;
     let checksum_file = match response {
@@ -307,15 +318,12 @@ async fn verify_sha512(path: &Path, version: &GccVersion) -> Result<bool> {
                 "Checksum fetch failed (HTTP {}). Skipping verification.",
                 r.status()
             ));
-            warn!(
-                "Failed to fetch checksum (HTTP {}). Skipping verification.",
-                r.status()
-            );
+            warn!(status = %r.status(), "Failed to fetch checksum, skipping verification");
             return Ok(true);
         }
         Err(e) => {
             spinner.finish_with_message(format!("Checksum fetch error: {}. Skipping.", e));
-            warn!("Failed to fetch checksum: {}. Skipping verification.", e);
+            warn!(error = %e, "Failed to fetch checksum, skipping verification");
             return Ok(true);
         }
     };
@@ -329,7 +337,7 @@ async fn verify_sha512(path: &Path, version: &GccVersion) -> Result<bool> {
             let parts: Vec<&str> = line.split_whitespace().collect();
             if !parts.is_empty() {
                 expected_checksum = Some(parts[0].to_string());
-                debug!("Found expected checksum: {}", parts[0]);
+                debug!(checksum = parts[0], "Found expected checksum");
                 break;
             }
         }
@@ -342,7 +350,7 @@ async fn verify_sha512(path: &Path, version: &GccVersion) -> Result<bool> {
                 "No checksum found for {} in sha512.sum. Skipping.",
                 filename
             ));
-            warn!("Could not find checksum for {} in sha512.sum", filename);
+            warn!(filename, "Could not find checksum in sha512.sum");
             return Ok(true);
         }
     };
@@ -355,11 +363,7 @@ async fn verify_sha512(path: &Path, version: &GccVersion) -> Result<bool> {
         "Calculating SHA512 checksum for {:.1} MB file...",
         size_mb
     ));
-    info!(
-        "Calculating SHA512 checksum for {} ({:.1} MB)...",
-        path.display(),
-        size_mb
-    );
+    info!(size_mb, path = %path.display(), "Calculating SHA512 checksum");
 
     // Calculate checksum in blocking task with chunked reading for better responsiveness
     let path_clone = path.to_path_buf();
@@ -419,8 +423,7 @@ async fn verify_sha512(path: &Path, version: &GccVersion) -> Result<bool> {
         }
     };
 
-    debug!("Expected checksum: {}", expected);
-    debug!("Actual checksum:   {}", actual);
+    debug!(expected, actual, "Comparing checksums");
 
     if expected.to_lowercase() == actual.to_lowercase() {
         spinner.finish_with_message("SHA512 checksum verified successfully!");
@@ -428,21 +431,17 @@ async fn verify_sha512(path: &Path, version: &GccVersion) -> Result<bool> {
         Ok(true)
     } else {
         spinner.finish_with_message("SHA512 checksum MISMATCH!");
-        warn!("SHA512 checksum MISMATCH!");
-        warn!("Expected: {}", expected);
-        warn!("Actual:   {}", actual);
+        warn!(expected, actual, "SHA512 checksum MISMATCH!");
         Ok(false)
     }
 }
 
 /// Verify GPG signature
+#[instrument(skip(path), fields(path = %path.display(), version = %version.full))]
 async fn verify_gpg(path: &Path, version: &GccVersion) -> Result<bool> {
     let sig_path = path.with_extension("xz.sig");
 
-    let client = reqwest::Client::builder()
-        .connect_timeout(std::time::Duration::from_secs(5))
-        .timeout(std::time::Duration::from_secs(15))
-        .build()?;
+    let client = get_client();
 
     // Fetch signature from official GCC FTP server
     let sig_url = format!(
@@ -450,7 +449,7 @@ async fn verify_gpg(path: &Path, version: &GccVersion) -> Result<bool> {
         GCC_FTP_URL, version.full, version.full
     );
 
-    info!("Downloading GPG signature from {}", sig_url);
+    info!(url = sig_url, "Downloading GPG signature");
 
     let response = client.get(&sig_url).send().await;
     let sig_downloaded = match response {
@@ -461,27 +460,24 @@ async fn verify_gpg(path: &Path, version: &GccVersion) -> Result<bool> {
         }
         Ok(r) => {
             warn!(
-                "Failed to fetch signature (HTTP {}). Skipping GPG verification.",
-                r.status()
+                status = %r.status(),
+                "Failed to fetch signature, skipping GPG verification"
             );
             return Ok(true);
         }
         Err(e) => {
-            warn!(
-                "Failed to fetch signature: {}. Skipping GPG verification.",
-                e
-            );
+            warn!(error = %e, "Failed to fetch signature, skipping GPG verification");
             return Ok(true);
         }
     };
 
     if !sig_downloaded {
-        warn!("Could not download signature file. Skipping GPG verification.");
+        warn!("Could not download signature file, skipping GPG verification");
         return Ok(true);
     }
 
     // Import GCC signing keys
-    info!("Importing GCC release signing keys...");
+    info!("Importing GCC release signing keys");
     let gcc_keys = [
         "33C235A34C46AA3FFB293709A328C3A2C3C45C06", // Jakub Jelinek
         "7F74F97C103468EE5D750B583AB00996FC26A641", // Recent releases
@@ -495,7 +491,7 @@ async fn verify_gpg(path: &Path, version: &GccVersion) -> Result<bool> {
     }
 
     // Verify signature
-    info!("Verifying GPG signature...");
+    info!("Verifying GPG signature");
     let output = Command::new("gpg")
         .args([
             "--verify",
@@ -508,42 +504,44 @@ async fn verify_gpg(path: &Path, version: &GccVersion) -> Result<bool> {
     let _ = fs::remove_file(&sig_path);
 
     if output.status.success() {
-        info!("GPG signature verified successfully.");
+        info!("GPG signature verified successfully");
         Ok(true)
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        debug!("GPG verification output: {}", stderr);
+        debug!(stderr = %stderr, "GPG verification output");
 
         // Check if it's a key issue vs actual verification failure
         if stderr.contains("No public key") || stderr.contains("unknown key") {
-            warn!("Could not verify GPG signature (key not found). Proceeding anyway.");
+            warn!("Could not verify GPG signature (key not found), proceeding anyway");
             Ok(true)
         } else {
-            warn!("GPG signature verification failed.");
+            warn!("GPG signature verification failed");
             Ok(false)
         }
     }
 }
 
 /// Extract a tarball
+#[instrument(skip(tarball, dest_dir), fields(tarball = %tarball.display(), dest = %dest_dir.display()))]
 pub async fn extract_tarball(tarball: &Path, dest_dir: &Path, dry_run: bool) -> Result<PathBuf> {
     let filename = tarball.file_name().unwrap().to_string_lossy();
 
     if dry_run {
-        info!(
-            "Dry run: would extract {} to {}",
-            filename,
-            dest_dir.display()
-        );
+        info!(filename = %filename, "Dry run: would extract tarball");
         // Return the expected source directory
         let source_name = filename.trim_end_matches(".tar.xz");
         return Ok(dest_dir.join(source_name));
     }
 
-    info!("Extracting {} to {}...", filename, dest_dir.display());
+    info!(filename = %filename, dest = %dest_dir.display(), "Extracting tarball");
 
     // Ensure destination directory exists
-    fs::create_dir_all(dest_dir)?;
+    fs::create_dir_all(dest_dir).with_context(|| {
+        format!(
+            "Failed to create destination directory: {}",
+            dest_dir.display()
+        )
+    })?;
 
     // Use tar with xz decompression
     let output = tokio::process::Command::new("tar")
@@ -555,7 +553,7 @@ pub async fn extract_tarball(tarball: &Path, dest_dir: &Path, dry_run: bool) -> 
         ])
         .output()
         .await
-        .context("Failed to extract tarball")?;
+        .with_context(|| format!("Failed to extract tarball: {}", filename))?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -570,6 +568,6 @@ pub async fn extract_tarball(tarball: &Path, dest_dir: &Path, dry_run: bool) -> 
     let source_name = filename.trim_end_matches(".tar.xz");
     let source_dir = dest_dir.join(source_name);
 
-    info!("Successfully extracted to {}", source_dir.display());
+    info!(source_dir = %source_dir.display(), "Successfully extracted tarball");
     Ok(source_dir)
 }

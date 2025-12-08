@@ -1,3 +1,7 @@
+//! GCC build orchestration module.
+//!
+//! Provides the main build pipeline for GCC: download, extract, configure, make, install.
+
 use crate::config::{BuildConfig, GccVersion, DEFAULT_PREFIX_BASE};
 use crate::download::{download_gcc_source, extract_tarball};
 use crate::environment::get_build_env;
@@ -9,7 +13,7 @@ use anyhow::{Context, Result};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
-use tracing::{debug, info, warn};
+use tracing::{debug, info, instrument, warn};
 
 /// Result of building a single GCC version
 #[derive(Debug)]
@@ -19,6 +23,7 @@ pub struct GccBuildResult {
 }
 
 /// Build a single GCC version
+#[instrument(skip(config), fields(version = %version.full, dry_run = config.dry_run))]
 pub async fn build_gcc_version(
     config: &BuildConfig,
     version: &GccVersion,
@@ -28,9 +33,9 @@ pub async fn build_gcc_version(
 
     print_status("GCC", &version.full, "BUILD_PROCESS_START");
     info!(
-        "Installation prefix for GCC {} will be: {}",
-        version.full,
-        install_dir.display()
+        version = %version.full,
+        install_dir = %install_dir.display(),
+        "Starting GCC build"
     );
 
     // Create installation directory
@@ -45,8 +50,8 @@ pub async fn build_gcc_version(
 
     if config.dry_run {
         info!(
-            "Dry run: Would proceed to extract, configure, build, and install GCC {}",
-            version.full
+            version = %version.full,
+            "Dry run: Would proceed to extract, configure, build, and install"
         );
         print_status("GCC", &version.full, "DRY_RUN_COMPLETE");
 
@@ -73,17 +78,17 @@ pub async fn build_gcc_version(
 
     // Stage 5: Build
     print_status("GCC", &version.full, "MAKE_START");
-    let make_duration = make_gcc(&build_dir).await?;
+    let make_duration = make_gcc(&build_dir, version).await?;
     info!(
-        "GCC {} build completed in {}",
-        version.full,
-        format_duration(make_duration)
+        version = %version.full,
+        duration = format_duration(make_duration),
+        "Build completed"
     );
     print_status("GCC", &version.full, "MAKE_SUCCESS");
 
     // Stage 6: Install
     print_status("GCC", &version.full, "INSTALL_START");
-    install_gcc(&build_dir).await?;
+    install_gcc(&build_dir, version).await?;
     print_status("GCC", &version.full, "INSTALL_SUCCESS");
 
     // Stage 7: Post-install
@@ -99,7 +104,7 @@ pub async fn build_gcc_version(
     .await?;
     print_status("GCC", &version.full, "POST_BUILD_TASKS_SUCCESS");
 
-    info!("Successfully built and installed GCC {}", version.full);
+    info!(version = %version.full, "Successfully built and installed");
     print_status("GCC", &version.full, "BUILD_PROCESS_SUCCESS");
 
     Ok(GccBuildResult {
@@ -109,11 +114,12 @@ pub async fn build_gcc_version(
 }
 
 /// Create the installation directory
+#[instrument(skip(install_dir), fields(install_dir = %install_dir.display()))]
 async fn create_install_directory(install_dir: &Path) -> Result<()> {
     // Create base programs directory if using default
     let base = PathBuf::from(DEFAULT_PREFIX_BASE);
     if install_dir.starts_with(&base) && !base.exists() {
-        info!("Creating default programs directory {}", base.display());
+        info!(base = %base.display(), "Creating default programs directory");
         run_sudo_command("mkdir", &["-p", base.to_str().unwrap()], None).await?;
 
         // Change ownership to current user
@@ -149,17 +155,19 @@ async fn create_install_directory(install_dir: &Path) -> Result<()> {
 }
 
 /// Download GCC prerequisites
+#[instrument(skip(source_dir), fields(source_dir = %source_dir.display()))]
 async fn download_prerequisites(source_dir: &Path) -> Result<()> {
     let script = source_dir.join("contrib/download_prerequisites");
 
     if !script.exists() {
         warn!(
-            "download_prerequisites script not found. Assuming prerequisites will be met by system libraries."
+            script = %script.display(),
+            "download_prerequisites script not found, assuming prerequisites will be met by system libraries"
         );
         return Ok(());
     }
 
-    info!("Downloading GCC prerequisites...");
+    info!("Downloading GCC prerequisites");
 
     let output = tokio::process::Command::new(&script)
         .current_dir(source_dir)
@@ -170,24 +178,25 @@ async fn download_prerequisites(source_dir: &Path) -> Result<()> {
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         warn!(
-            "download_prerequisites failed: {}. Build might still succeed.",
-            stderr
+            stderr = %stderr,
+            "download_prerequisites failed, build might still succeed"
         );
     } else {
-        info!("Successfully downloaded prerequisites.");
+        info!("Successfully downloaded prerequisites");
     }
 
     Ok(())
 }
 
 /// Configure GCC build
+#[instrument(skip(config, source_dir, install_dir), fields(version = %version.full, source_dir = %source_dir.display(), install_dir = %install_dir.display()))]
 async fn configure_gcc(
     config: &BuildConfig,
     version: &GccVersion,
     source_dir: &Path,
     install_dir: &Path,
 ) -> Result<PathBuf> {
-    info!("Configuring GCC {}...", version.full);
+    info!(version = %version.full, "Configuring GCC");
 
     // Create build directory (out-of-source build)
     let build_dir = source_dir.join("build-gcc");
@@ -214,10 +223,10 @@ async fn configure_gcc(
     // Multilib option
     if config.enable_multilib {
         options.push("--enable-multilib".to_string());
-        info!("Multilib support is explicitly enabled.");
+        info!("Multilib support is explicitly enabled");
     } else {
         options.push("--disable-multilib".to_string());
-        info!("Multilib support is explicitly disabled.");
+        info!("Multilib support is explicitly disabled");
     }
 
     // Tuning
@@ -240,7 +249,7 @@ async fn configure_gcc(
     // Log configure command
     info!("Running configure with options:");
     for opt in &options {
-        debug!("  {}", opt);
+        debug!(option = opt, "Configure option");
     }
 
     // Run configure with real-time output
@@ -278,7 +287,7 @@ async fn configure_gcc(
         .into());
     }
 
-    info!("GCC {} configuration completed successfully.", version.full);
+    info!(version = %version.full, "Configuration completed successfully");
     Ok(build_dir)
 }
 
@@ -302,19 +311,19 @@ fn add_version_specific_options(options: &mut Vec<String>, major: u32) {
         }
         _ => {
             warn!(
-                "No version-specific configure options defined for GCC {}. Using common options.",
-                major
+                major,
+                "No version-specific configure options defined, using common options"
             );
         }
     }
 }
 
 /// Build GCC using make with real-time output
-async fn make_gcc(build_dir: &Path) -> Result<u64> {
+#[instrument(skip(build_dir), fields(build_dir = %build_dir.display(), version = %version.full))]
+async fn make_gcc(build_dir: &Path, version: &GccVersion) -> Result<u64> {
     let threads = get_make_threads();
-    info!("Building GCC (make -j{})...", threads);
-    info!("This will take a significant amount of time...");
-    info!("Build output will be shown in real-time below:");
+    info!(threads, version = %version.full, "Building GCC with make");
+    info!("This will take a significant amount of time");
     info!("{}", "─".repeat(60));
 
     let start = Instant::now();
@@ -330,7 +339,7 @@ async fn make_gcc(build_dir: &Path) -> Result<u64> {
         .context("Failed to run make")?;
 
     if !status.success() {
-        warn!("Parallel make failed. Trying single-threaded build...");
+        warn!("Parallel make failed, trying single-threaded build");
 
         let status = tokio::process::Command::new("make")
             .current_dir(build_dir)
@@ -342,7 +351,7 @@ async fn make_gcc(build_dir: &Path) -> Result<u64> {
 
         if !status.success() {
             return Err(BuildError::Make {
-                version: "unknown".to_string(),
+                version: version.full.clone(),
                 message: "Make failed - see output above".to_string(),
             }
             .into());
@@ -354,21 +363,22 @@ async fn make_gcc(build_dir: &Path) -> Result<u64> {
 }
 
 /// Install GCC using sudo make install-strip
-async fn install_gcc(build_dir: &Path) -> Result<()> {
-    info!("Installing GCC (sudo make install-strip)...");
+#[instrument(skip(build_dir), fields(build_dir = %build_dir.display(), version = %version.full))]
+async fn install_gcc(build_dir: &Path, version: &GccVersion) -> Result<()> {
+    info!(version = %version.full, "Installing GCC (sudo make install-strip)");
 
     let output = run_sudo_command("make", &["install-strip"], Some(build_dir)).await?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         return Err(BuildError::Install {
-            version: "unknown".to_string(),
+            version: version.full.clone(),
             message: stderr.to_string(),
         }
         .into());
     }
 
-    info!("GCC installation completed successfully.");
+    info!(version = %version.full, "Installation completed successfully");
     Ok(())
 }
 
