@@ -1,5 +1,11 @@
+//! GCC version detection and selection module.
+//!
+//! Provides functionality to detect available GCC versions from the GNU FTP server,
+//! cache version information, parse version specifications, and interactive selection.
+
 use crate::config::{GccVersion, AVAILABLE_VERSIONS, VERSION_CACHE_TTL_SECS};
 use crate::error::BuildError;
+use crate::http_client::get_client;
 use anyhow::{Context, Result};
 use dialoguer::{theme::ColorfulTheme, MultiSelect, Select};
 use regex::Regex;
@@ -7,7 +13,7 @@ use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
 use std::time::{Duration, SystemTime};
-use tracing::{debug, info, warn};
+use tracing::{debug, info, instrument, warn};
 
 /// Official GCC FTP server (confirmed working)
 const GCC_FTP_URL: &str = "https://gcc.gnu.org/ftp/gcc/releases";
@@ -26,34 +32,35 @@ fn get_known_version(major: u32) -> Option<&'static str> {
 }
 
 /// Fetch the latest release version for a GCC major version
+#[instrument(skip(cache_dir), fields(major, cache_dir = %cache_dir.display()))]
 pub async fn get_latest_gcc_release(major: u32, cache_dir: &Path) -> Result<String> {
     let cache_file = cache_dir.join(".gcc_version_cache");
 
     // Check cache first
     if let Some(cached) = check_cache(&cache_file, major)? {
-        info!("Using cached latest release for GCC {}: {}", major, cached);
+        info!(major, version = %cached, "Using cached latest release");
         return Ok(cached);
     }
 
-    info!("Fetching GCC {} version from official server...", major);
+    info!(major, "Fetching GCC version from official server");
 
     match fetch_version_from_server(major).await {
         Ok(version) => {
-            info!("Found GCC {} version {}", major, version);
+            info!(major, version = %version, "Found GCC version");
             // Update cache
             let _ = update_cache(&cache_file, major, &version);
             return Ok(version);
         }
         Err(e) => {
-            debug!("Server lookup failed: {}", e);
+            debug!(error = %e, "Server lookup failed");
         }
     }
 
     // Server failed, use known fallback versions
     if let Some(fallback) = get_known_version(major) {
         warn!(
-            "Server lookup failed. Using known fallback version for GCC {}: {}",
-            major, fallback
+            major,
+            fallback, "Server lookup failed, using known fallback version"
         );
         return Ok(fallback.to_string());
     }
@@ -67,13 +74,11 @@ pub async fn get_latest_gcc_release(major: u32, cache_dir: &Path) -> Result<Stri
 
 /// Fetch version from official GNU FTP server (matches bash script approach)
 /// Uses curl-style directory listing parse: grep -oP "gcc-${major}[0-9.]+/" | sort -rV | head -n1
+#[instrument(fields(major))]
 async fn fetch_version_from_server(major: u32) -> Result<String> {
-    let client = reqwest::Client::builder()
-        .connect_timeout(Duration::from_secs(5))
-        .timeout(Duration::from_secs(15))
-        .build()?;
+    let client = get_client();
 
-    info!("Fetching GCC {} version from {}...", major, GCC_FTP_URL);
+    info!(url = GCC_FTP_URL, "Fetching GCC directory listing");
 
     let response = client
         .get(format!("{}/", GCC_FTP_URL))
@@ -118,7 +123,7 @@ async fn fetch_version_from_server(major: u32) -> Result<String> {
     });
 
     let latest = versions.first().unwrap().clone();
-    info!("Latest release found for GCC {}: {}", major, latest);
+    info!(major, latest = %latest, "Latest release found");
     Ok(latest)
 }
 
@@ -136,7 +141,7 @@ fn check_cache(cache_file: &Path, major: u32) -> Result<Option<String>> {
         .unwrap_or(Duration::MAX);
 
     if age > Duration::from_secs(VERSION_CACHE_TTL_SECS) {
-        debug!("Cache file is stale (age: {:?})", age);
+        debug!(age_secs = age.as_secs(), "Cache file is stale");
         return Ok(None);
     }
 
@@ -180,6 +185,7 @@ fn update_cache(cache_file: &Path, major: u32, version: &str) -> Result<()> {
 }
 
 /// Parse version specification string into list of major versions
+#[instrument(fields(spec))]
 pub fn parse_version_spec(spec: &str) -> Result<Vec<u32>> {
     let mut versions = HashSet::new();
 
@@ -209,7 +215,7 @@ pub fn parse_version_spec(spec: &str) -> Result<Vec<u32>> {
                 })?;
 
             if start > end {
-                warn!("Invalid range {}-{} (start > end)", start, end);
+                warn!(start, end, "Invalid range (start > end)");
                 continue;
             }
 
@@ -217,7 +223,7 @@ pub fn parse_version_spec(spec: &str) -> Result<Vec<u32>> {
                 if AVAILABLE_VERSIONS.contains(&v) {
                     versions.insert(v);
                 } else {
-                    warn!("Version {} is not available and will be skipped", v);
+                    warn!(version = v, "Version is not available and will be skipped");
                 }
             }
         } else {
@@ -229,7 +235,7 @@ pub fn parse_version_spec(spec: &str) -> Result<Vec<u32>> {
             if AVAILABLE_VERSIONS.contains(&v) {
                 versions.insert(v);
             } else {
-                warn!("Version {} is not available and will be skipped", v);
+                warn!(version = v, "Version is not available and will be skipped");
             }
         }
     }
@@ -240,6 +246,7 @@ pub fn parse_version_spec(spec: &str) -> Result<Vec<u32>> {
 
     let mut sorted: Vec<u32> = versions.into_iter().collect();
     sorted.sort();
+    debug!(versions = ?sorted, "Parsed version specification");
     Ok(sorted)
 }
 
@@ -309,20 +316,18 @@ pub fn select_versions_interactive() -> Result<Vec<u32>> {
 }
 
 /// Resolve major versions to full GccVersion structs
+#[instrument(skip(cache_dir), fields(majors = ?majors, cache_dir = %cache_dir.display()))]
 pub async fn resolve_versions(majors: &[u32], cache_dir: &Path) -> Result<Vec<GccVersion>> {
     let mut versions = Vec::new();
 
     for &major in majors {
         match get_latest_gcc_release(major, cache_dir).await {
             Ok(full) => {
-                info!("Latest release for GCC {} is {}", major, full);
+                info!(major, full = %full, "Resolved latest release");
                 versions.push(GccVersion::new(major, full));
             }
             Err(e) => {
-                warn!(
-                    "Could not determine latest release for GCC {}: {}",
-                    major, e
-                );
+                warn!(major, error = %e, "Could not determine latest release");
                 // Continue with other versions
             }
         }
