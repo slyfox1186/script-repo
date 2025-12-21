@@ -1,14 +1,18 @@
 #!/usr/bin/env bash
 
 if [[ "$EUID" -eq 0 ]]; then
-    echo "You must run this script without root or with sudo."
+    echo "Error: Do not run this script as root or with sudo."
     exit 1
 fi
+
+set +x
 
 DIR="$HOME/.aria2"
 file="$DIR/aria2.conf"
 
-[[ -d "$DIR" ]] && sudo rm -fr "$DIR"
+echo "Setting up aria2 configuration..."
+
+[[ -d "$DIR" ]] && rm -rf "$DIR"
 mkdir -p "$DIR"
 
 touch "$DIR/dht.dat" "$DIR/cookies.txt"
@@ -145,10 +149,11 @@ save-cookies=/home/jman/.aria2/cookies.txt
 seed-ratio=0
 seed-time=0
 split=32
-user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36
+user-agent=Mozilla/5.0 (X11; Linux x86_64; rv:140.0) Gecko/20100101 Firefox/140.0
 EOF
 
-sed -i -e 's/ http/,http/g' -i -e 's/ https/,https/g' -i -e 's/ udp/,udp/g' $file
+sed -i -e 's/ http/,http/g' -i -e 's/ https/,https/g' -i -e 's/ udp/,udp/g' "$file"
 
-sudo chmod -R 700 "$DIR"
-sudo chown -R "$USER:$USER" "$DIR"
+chmod -R 700 "$DIR"
+
+echo "Done! Configuration saved to $file"
