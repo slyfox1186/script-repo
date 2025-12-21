@@ -5,8 +5,6 @@ if [[ "$EUID" -eq 0 ]]; then
     exit 1
 fi
 
-set +x
-
 DIR="$HOME/.aria2"
 file="$DIR/aria2.conf"
 
