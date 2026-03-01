@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
 
-# Examples:
-# python3 source_git_repo_version.py 'https://github.com/ffmpeg/ffmpeg' 2>log.txt
-# python3 source_git_repo_version.py 'https://github.com/REPO/REPO' 2>log.txt
-
 import argparse
 import logging
 import re
@@ -13,6 +9,10 @@ import time
 from urllib.parse import unquote
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+
+# Examples:
+# python3 source_git_repo_version.py https://github.com/ffmpeg/ffmpeg
+# python3 source_git_repo_version.py --url https://github.com/ffmpeg/ffmpeg --version-only
 
 class ColorFormatter(logging.Formatter):
     """Custom formatter with colors and symbols for better readability."""
@@ -169,6 +169,13 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "url",
+        nargs="?",
+        default=None,
+        help="GitHub repository URL (positional)"
+    )
+    parser.add_argument(
+        "-u", "--url",
+        dest="url_flag",
         help="GitHub repository URL (e.g., https://github.com/owner/repo)"
     )
     parser.add_argument(
@@ -181,17 +188,29 @@ if __name__ == "__main__":
         action="store_true",
         help="Suppress all log output"
     )
+    parser.add_argument(
+        "--version-only",
+        action="store_true",
+        help="Output only the version number with no logging or extra output"
+    )
     args = parser.parse_args()
 
-    if not args.quiet:
+    repo_url = args.url_flag or args.url
+    if not repo_url:
+        parser.error("a URL is required (positional or via -u/--url)")
+
+    if args.version_only:
+        logging.disable(logging.CRITICAL)
+    elif not args.quiet:
         setup_logging(verbose=args.verbose)
     else:
         logging.disable(logging.CRITICAL)
 
     session = create_http_session()
-    version = retry_version_fetch(session, args.url)
+    version = retry_version_fetch(session, repo_url)
 
     if version:
         print(version)
     else:
-        sys.exit(1)
+        if not args.version_only:
+            sys.exit(1)
