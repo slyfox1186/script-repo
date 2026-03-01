@@ -7,8 +7,7 @@ set -Eeuo pipefail
 SCRIPT_VERSION="4.1.0"
 INSTALL_ROOT=/usr/local/programs
 BIN_DIR=/usr/local/bin
-CWD="$(pwd)"
-WORK_DIR="${CWD}/build-tools-script"
+WORK_DIR="$(pwd)/build-tools-script"
 SRC_DIR="${WORK_DIR}/src"
 BUILD_DIR="${WORK_DIR}/build"
 
