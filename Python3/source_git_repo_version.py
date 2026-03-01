@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-set -e
-
 # Examples:
 # python3 source_git_repo_version.py 'https://github.com/ffmpeg/ffmpeg' 2>log.txt
 # python3 source_git_repo_version.py 'https://github.com/REPO/REPO' 2>log.txt
