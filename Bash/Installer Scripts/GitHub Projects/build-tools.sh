@@ -4,7 +4,7 @@ set -Eeuo pipefail
 # Purpose: Install or update CMake, Ninja, Meson, and Go.
 # Designed for Debian/Ubuntu systems with sudo access.
 
-SCRIPT_VERSION="4.0.2"
+SCRIPT_VERSION="4.1.0"
 INSTALL_ROOT=/usr/local/programs
 BIN_DIR=/usr/local/bin
 CWD="$(pwd)"
@@ -20,6 +20,8 @@ SKIP_DEP_INSTALL=false
 CONDA_CMD=""
 CONDA_PYTHON=""
 CONDA_MESON_BIN=""
+CONDA_MODE="disabled"
+CONDA_MODE_DETAIL=""
 
 detect_cpu_threads() {
     local threads
@@ -79,6 +81,24 @@ fail() {
     exit 1
 }
 
+log_divider() {
+    printf '%s\n' "----------------------------------------------------------------------"
+}
+
+log_section() {
+    local title="$1"
+    printf '\n'
+    log_divider
+    log "$title"
+    log_divider
+}
+
+log_kv() {
+    local key="$1"
+    local value="$2"
+    printf '%b[INFO]%b %-18s %s\n' "$GREEN" "$NC" "${key}:" "$value"
+}
+
 on_error() {
     local cmd exit_code line_no
     exit_code="$1"
@@ -116,7 +136,7 @@ parse_args() {
 }
 
 run() {
-    log "Running: $*"
+    printf '%b[CMD ]%b %s\n' "$GREEN" "$NC" "$*"
     "$@"
 }
 
@@ -142,7 +162,8 @@ setup_conda_context() {
     if [[ -n "${CONDA_PREFIX:-}" && -x "${CONDA_PREFIX}/bin/python" ]]; then
         CONDA_PYTHON="${CONDA_PREFIX}/bin/python"
         CONDA_MESON_BIN="${CONDA_PREFIX}/bin/meson"
-        log "Conda detected. Using active environment at ${CONDA_PREFIX} for Meson."
+        CONDA_MODE="active"
+        CONDA_MODE_DETAIL="${CONDA_PREFIX}"
         return
     fi
 
@@ -150,11 +171,30 @@ setup_conda_context() {
     if [[ -n "$conda_base" && -x "${conda_base}/bin/python" ]]; then
         CONDA_PYTHON="${conda_base}/bin/python"
         CONDA_MESON_BIN="${conda_base}/bin/meson"
-        log "Conda detected. Using base environment at ${conda_base} for Meson."
+        CONDA_MODE="base"
+        CONDA_MODE_DETAIL="${conda_base}"
         return
     fi
 
-    warn "Conda detected but no usable Python was found. Falling back to system Python for Meson."
+    CONDA_MODE="unusable"
+    CONDA_MODE_DETAIL="conda detected but no usable python found"
+}
+
+describe_conda_mode() {
+    case "$CONDA_MODE" in
+        active)
+            printf 'active env (%s)\n' "$CONDA_MODE_DETAIL"
+            ;;
+        base)
+            printf 'base env (%s)\n' "$CONDA_MODE_DETAIL"
+            ;;
+        unusable)
+            printf '%s; system python fallback\n' "$CONDA_MODE_DETAIL"
+            ;;
+        *)
+            printf 'disabled (system python fallback)\n'
+            ;;
+    esac
 }
 
 set_compiler_flags() {
@@ -217,7 +257,7 @@ install_dependencies_apt() {
 }
 
 download_file() {
-    local  out_files url
+    local output_file url
     url="$1"
     output_file="$2"
 
@@ -327,28 +367,68 @@ cleanup_old_versions() {
 }
 
 should_install() {
-    local current latest name
-    name="$1"
+    local current latest
+    # name is intentionally unused right now; keep call sites descriptive.
+    # shellcheck disable=SC2034
+    local name="$1"
     current="$2"
     latest="$3"
 
     if [[ "$FORCE_REINSTALL" == true ]]; then
-        log "$name will be reinstalled (--latest enabled)."
         return 0
     fi
 
     if [[ -z "$current" ]]; then
-        log "$name is not currently installed."
         return 0
     fi
 
     if [[ "$current" != "$latest" ]]; then
-        log "$name update required: installed=${current}, latest=${latest}"
         return 0
     fi
 
-    log "$name ${latest} is already up-to-date."
     return 1
+}
+
+compute_action() {
+    local current="$1"
+    local latest="$2"
+
+    if [[ "$FORCE_REINSTALL" == true ]]; then
+        printf 'reinstall\n'
+        return
+    fi
+    if [[ -z "$current" ]]; then
+        printf 'install\n'
+        return
+    fi
+    if [[ "$current" != "$latest" ]]; then
+        printf 'update\n'
+        return
+    fi
+    printf 'keep\n'
+}
+
+print_version_plan() {
+    local current_cmake="$1"
+    local current_ninja="$2"
+    local current_meson="$3"
+    local current_go="$4"
+    local latest_cmake="$5"
+    local latest_ninja="$6"
+    local latest_meson="$7"
+    local latest_go="$8"
+    local action_cmake="$9"
+    local action_ninja="${10}"
+    local action_meson="${11}"
+    local action_go="${12}"
+
+    log_section "Version Plan"
+    printf '  %-8s %-16s %-16s %-10s\n' "Tool" "Installed" "Latest" "Action"
+    printf '  %-8s %-16s %-16s %-10s\n' "--------" "----------------" "----------------" "----------"
+    printf '  %-8s %-16s %-16s %-10s\n' "CMake" "${current_cmake:-not installed}" "$latest_cmake" "$action_cmake"
+    printf '  %-8s %-16s %-16s %-10s\n' "Ninja" "${current_ninja:-not installed}" "$latest_ninja" "$action_ninja"
+    printf '  %-8s %-16s %-16s %-10s\n' "Meson" "${current_meson:-not installed}" "$latest_meson" "$action_meson"
+    printf '  %-8s %-16s %-16s %-10s\n' "Go" "${current_go:-not installed}" "$latest_go" "$action_go"
 }
 
 install_cmake() {
@@ -504,11 +584,13 @@ print_versions() {
     meson_version="$(get_installed_meson_version || true)"
     go_version="$(get_installed_go_version || true)"
 
-    log "Installed versions:"
-    printf '  CMake:  %s\n' "${cmake_version:-not installed}"
-    printf '  Ninja:  %s\n' "${ninja_version:-not installed}"
-    printf '  Meson:  %s\n' "${meson_version:-not installed}"
-    printf '  Go:     %s\n' "${go_version:-not installed}"
+    log_section "Final Versions"
+    printf '  %-8s %-16s\n' "Tool" "Version"
+    printf '  %-8s %-16s\n' "--------" "----------------"
+    printf '  %-8s %-16s\n' "CMake" "${cmake_version:-not installed}"
+    printf '  %-8s %-16s\n' "Ninja" "${ninja_version:-not installed}"
+    printf '  %-8s %-16s\n' "Meson" "${meson_version:-not installed}"
+    printf '  %-8s %-16s\n' "Go" "${go_version:-not installed}"
 }
 
 cleanup_workspace() {
@@ -519,18 +601,22 @@ cleanup_workspace() {
     fi
 
     while true; do
+        echo
         read -r -p "Remove build workspace (${WORK_DIR})? [Y/n]: " answer || break
         case "${answer,,}" in
             ""|y|yes)
                 rm -rf "$WORK_DIR"
+                echo
                 log "Removed ${WORK_DIR}"
                 break
                 ;;
             n|no)
+                echo
                 log "Keeping build workspace at ${WORK_DIR}"
                 break
                 ;;
             *)
+                echo
                 warn "Please answer yes or no."
                 ;;
         esac
@@ -538,6 +624,7 @@ cleanup_workspace() {
 }
 
 main() {
+    local action_cmake action_ninja action_meson action_go
     local current_cmake current_ninja current_meson current_go
     local latest_cmake latest_ninja latest_meson latest_go
 
@@ -555,8 +642,16 @@ main() {
     set_compiler_flags
     export PATH="${BIN_DIR}:${PATH}"
     setup_conda_context
+    log_section "Session Start"
+    log_kv "Script Version" "$SCRIPT_VERSION"
+    log_kv "Workspace" "$WORK_DIR"
+    log_kv "Install Root" "$INSTALL_ROOT"
+    log_kv "Binary Dir" "$BIN_DIR"
+    log_kv "CPU Threads" "$CPU_THREADS"
+    log_kv "Conda Mode" "$(describe_conda_mode)"
 
     require_commands awk curl grep jq python3 sed sort sudo tar
+    log_section "Preflight"
     ensure_sudo_access
 
     if command -v apt-get >/dev/null 2>&1; then
@@ -570,12 +665,6 @@ main() {
     current_meson="$(get_installed_meson_version || true)"
     current_go="$(get_installed_go_version || true)"
 
-    log "Current versions:"
-    printf '  CMake:  %s\n' "${current_cmake:-not installed}"
-    printf '  Ninja:  %s\n' "${current_ninja:-not installed}"
-    printf '  Meson:  %s\n' "${current_meson:-not installed}"
-    printf '  Go:     %s\n' "${current_go:-not installed}"
-
     latest_cmake="$(github_latest_tag "Kitware/CMake")"
     latest_cmake="${latest_cmake#v}"
     latest_ninja="$(github_latest_tag "ninja-build/ninja")"
@@ -584,13 +673,19 @@ main() {
     latest_meson="${latest_meson#v}"
     latest_go="$(latest_go_version)"
 
-    log "Latest versions:"
-    printf '  CMake:  %s\n' "$latest_cmake"
-    printf '  Ninja:  %s\n' "$latest_ninja"
-    printf '  Meson:  %s\n' "$latest_meson"
-    printf '  Go:     %s\n' "$latest_go"
+    action_cmake="$(compute_action "${current_cmake:-}" "$latest_cmake")"
+    action_ninja="$(compute_action "${current_ninja:-}" "$latest_ninja")"
+    action_meson="$(compute_action "${current_meson:-}" "$latest_meson")"
+    action_go="$(compute_action "${current_go:-}" "$latest_go")"
+
+    print_version_plan \
+        "${current_cmake:-}" "${current_ninja:-}" "${current_meson:-}" "${current_go:-}" \
+        "$latest_cmake" "$latest_ninja" "$latest_meson" "$latest_go" \
+        "$action_cmake" "$action_ninja" "$action_meson" "$action_go"
 
     # Ninja first — CMake's bootstrap uses it as the generator
+    log_section "Apply Changes"
+
     if should_install "Ninja" "${current_ninja:-}" "$latest_ninja"; then
         install_ninja "$latest_ninja"
     fi
@@ -607,10 +702,15 @@ main() {
         install_go "$latest_go"
     fi
 
+    if [[ "$action_cmake" == "keep" && "$action_ninja" == "keep" && "$action_meson" == "keep" && "$action_go" == "keep" ]]; then
+        log "No tool updates were required."
+    fi
+
     run sudo ldconfig
     print_versions
     cleanup_workspace
     log "Build-tools script completed successfully (v${SCRIPT_VERSION})."
+    echo
 }
 
 parse_args "$@"
