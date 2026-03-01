@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 
-# Execute: python3 source_git_repo_version.py 'https://github.com/ffmpeg/ffmpeg' 2>log.txt
-# Execute: python3 source_git_repo_version.py 'https://github.com/REPO/REPO' 2>log.txt
+set -e
+
+# Examples:
+# python3 source_git_repo_version.py 'https://github.com/ffmpeg/ffmpeg' 2>log.txt
+# python3 source_git_repo_version.py 'https://github.com/REPO/REPO' 2>log.txt
 
 import argparse
 import logging
@@ -12,7 +15,6 @@ import time
 from urllib.parse import unquote
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
-
 
 class ColorFormatter(logging.Formatter):
     """Custom formatter with colors and symbols for better readability."""
@@ -36,7 +38,6 @@ class ColorFormatter(logging.Formatter):
         symbol = self.SYMBOLS.get(record.levelname, '  ')
         reset = self.COLORS['RESET']
         return f"{color}{symbol} {record.getMessage()}{reset}"
-
 
 def setup_logging(verbose=False):
     """Configure logging with clean, readable output."""
@@ -93,7 +94,6 @@ def create_http_session():
     session.mount("http://", adapter)
     session.mount("https://", adapter)
     return session
-
 
 def get_html_content(session, url):
     """Fetch HTML content from the URL with proper error handling."""
