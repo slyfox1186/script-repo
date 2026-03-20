@@ -4,7 +4,7 @@ set -Eeuo pipefail
 # Purpose: Install or update CMake, Ninja, Meson, and Go.
 # Designed for Debian/Ubuntu systems with sudo access.
 
-SCRIPT_VERSION="4.1.0"
+SCRIPT_VERSION="4.1.1"
 INSTALL_ROOT=/usr/local/programs
 BIN_DIR=/usr/local/bin
 WORK_DIR="$(pwd)/build-tools-script"
@@ -21,6 +21,7 @@ CONDA_PYTHON=""
 CONDA_MESON_BIN=""
 CONDA_MODE="disabled"
 CONDA_MODE_DETAIL=""
+RUN_CMD_CONTEXT=""
 
 detect_cpu_threads() {
     local threads
@@ -103,6 +104,9 @@ on_error() {
     exit_code="$1"
     line_no="$2"
     cmd="$3"
+    if [[ "$cmd" == '"$@"' && -n "$RUN_CMD_CONTEXT" ]]; then
+        cmd="$RUN_CMD_CONTEXT"
+    fi
     error "Command failed (exit ${exit_code}) at line ${line_no}: ${cmd}"
 }
 trap 'on_error "$?" "$LINENO" "$BASH_COMMAND"' ERR
@@ -135,8 +139,12 @@ parse_args() {
 }
 
 run() {
-    printf '%b[CMD ]%b %s\n' "$GREEN" "$NC" "$*"
+    local rendered
+    printf -v rendered '%q ' "$@"
+    printf '%b[CMD ]%b %s\n' "$GREEN" "$NC" "${rendered% }"
+    RUN_CMD_CONTEXT="${rendered% }"
     "$@"
+    RUN_CMD_CONTEXT=""
 }
 
 require_commands() {
@@ -212,12 +220,15 @@ ensure_sudo_access() {
 }
 
 install_dependencies_apt() {
+    local -a apt_cmd install_cmd
+
     if [[ "$SKIP_DEP_INSTALL" == true ]]; then
         warn "Skipping dependency installation (--skip-deps)."
         return
     fi
 
     local missing pkg pkgs
+    apt_cmd=(sudo env DEBIAN_FRONTEND=noninteractive apt)
 
     pkgs=(
         autoconf
@@ -251,8 +262,20 @@ install_dependencies_apt() {
     fi
 
     log "Installing apt packages: ${missing[*]}"
-    run sudo apt update
-    run sudo apt install -y "${missing[@]}"
+    install_cmd=("${apt_cmd[@]}" install -y "${missing[@]}")
+
+    # Prefer the existing package cache first so unrelated broken third-party
+    # repositories do not block installation when metadata is already usable.
+    if run "${install_cmd[@]}"; then
+        return
+    fi
+
+    warn "Direct apt install failed; refreshing package metadata and retrying."
+    if ! run "${apt_cmd[@]}" update; then
+        fail "apt update failed. Fix broken APT repositories and rerun. Check stale entries in /etc/apt/sources.list and /etc/apt/sources.list.d/, especially file:/ repositories that no longer exist."
+    fi
+
+    run "${install_cmd[@]}"
 }
 
 download_file() {
@@ -323,7 +346,7 @@ get_installed_ninja_version() {
 get_installed_meson_version() {
     # Prefer managed/system installs over conda/venv wrappers in PATH.
     local meson_bin
-    for meson_bin in "${CONDA_MESON_BIN:-}" "${BIN_DIR}/meson" "/usr/local/local/bin/meson"; do
+    for meson_bin in "${CONDA_MESON_BIN:-}" "${BIN_DIR}/meson" "/usr/bin/meson"; do
         [[ -n "$meson_bin" ]] || continue
         if [[ -x "$meson_bin" ]] && "$meson_bin" --version >/dev/null 2>&1; then
             "$meson_bin" --version
@@ -441,11 +464,14 @@ install_cmake() {
     download_file "https://github.com/Kitware/CMake/archive/refs/tags/v${version}.tar.gz" "$archive"
     extract_tarball "$archive" "$src" 1
 
-    cd "$src" >/dev/null
-    run ./bootstrap --prefix="$prefix" --parallel="$CPU_THREADS" --enable-ccache -- -GNinja
-    run ninja -j"$CPU_THREADS"
-    run sudo ninja install
-    cd - >/dev/null
+    (
+        cd "$src" >/dev/null
+        # CMake's source bootstrap is most reliable with its default Makefile
+        # flow; forcing Ninja here is brittle across environments.
+        run ./bootstrap --prefix="$prefix" --parallel="$CPU_THREADS" --enable-ccache
+        run make -j"$CPU_THREADS"
+        run sudo make install
+    )
 
     run sudo ln -sfn "${prefix}/bin/cmake" "${BIN_DIR}/cmake"
     [[ -x "${prefix}/bin/ctest" ]] && run sudo ln -sfn "${prefix}/bin/ctest" "${BIN_DIR}/ctest"
@@ -649,15 +675,20 @@ main() {
     log_kv "CPU Threads" "$CPU_THREADS"
     log_kv "Conda Mode" "$(describe_conda_mode)"
 
-    require_commands awk curl grep jq python3 sed sort sudo tar
+    require_commands awk curl grep sed sudo tar
+    if command -v apt >/dev/null 2>&1; then
+        require_commands apt dpkg-query
+    fi
     log_section "Preflight"
     ensure_sudo_access
 
-    if command -v apt-get >/dev/null 2>&1; then
+    if command -v apt >/dev/null 2>&1; then
         install_dependencies_apt
     else
-        warn "apt-get not found; skipping dependency installation."
+        warn "apt not found; skipping dependency installation."
     fi
+
+    require_commands jq python3
 
     current_cmake="$(get_installed_cmake_version || true)"
     current_ninja="$(get_installed_ninja_version || true)"
@@ -682,7 +713,7 @@ main() {
         "$latest_cmake" "$latest_ninja" "$latest_meson" "$latest_go" \
         "$action_cmake" "$action_ninja" "$action_meson" "$action_go"
 
-    # Ninja first — CMake's bootstrap uses it as the generator
+    # Install Ninja before CMake so the full toolchain is available afterward.
     log_section "Apply Changes"
 
     if should_install "Ninja" "${current_ninja:-}" "$latest_ninja"; then
