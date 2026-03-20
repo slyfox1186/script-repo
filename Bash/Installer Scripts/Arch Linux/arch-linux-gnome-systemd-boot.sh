@@ -1,14 +1,136 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
+RED='\033[0;31m'
 GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
 NC='\033[0m'
 
-# Verbose logging function
 log() {
-    echo -e "${GREEN}[LOG]${NC} $1"
+    local level="${2:-info}"
+    local color="$GREEN"
+    local label="[LOG]"
+    case "$level" in
+        error)
+            color="$RED"
+            label="[ERROR]"
+            ;;
+        warning)
+            color="$YELLOW"
+            label="[WARN]"
+            ;;
+    esac
+    echo -e "${color}${label}${NC} $1"
 }
 
-# Variables
+require_root() {
+    if [[ "${EUID}" -ne 0 ]]; then
+        log "Run this script as root (or with sudo)." error
+        exit 1
+    fi
+}
+
+require_command() {
+    local cmd
+    for cmd in "$@"; do
+        if ! command -v "$cmd" >/dev/null 2>&1; then
+            log "Missing required command: $cmd" error
+            exit 1
+        fi
+    done
+}
+
+trim() {
+    local value="$1"
+    value="${value#"${value%%[![:space:]]*}"}"
+    value="${value%"${value##*[![:space:]]}"}"
+    printf '%s' "$value"
+}
+
+prompt_variable() {
+    local var_name="$1"
+    local prompt="$2"
+    local -n target="$var_name"
+    local value
+
+    while true; do
+        read -r -p "$prompt: " value
+        value="$(trim "$value")"
+        if [[ -z "$value" ]]; then
+            log "This field is required." warning
+            continue
+        fi
+        target="$value"
+        break
+    done
+}
+
+prompt_yes_no() {
+    local prompt="$1"
+    local answer
+    while true; do
+        read -r -p "$prompt (y/n): " answer
+        case "${answer,,}" in
+            y|yes)
+                return 0
+                ;;
+            n|no)
+                return 1
+                ;;
+            *)
+                echo "Please answer y or n."
+                ;;
+        esac
+    done
+}
+
+normalize_disk() {
+    local disk="$1"
+    if [[ "$disk" != /dev/* ]]; then
+        disk="/dev/$disk"
+    fi
+    echo "$disk"
+}
+
+to_mib() {
+    local input="$1" bytes
+    bytes=$(numfmt --from=iec "$input")
+    if ! [[ "$bytes" =~ ^[0-9]+$ ]]; then
+        log "Invalid size: $input" error
+        exit 1
+    fi
+    echo $((bytes / 1024 / 1024))
+}
+
+size_plus_default() {
+    local value="$1"
+    local default="$2"
+    local trimmed
+    trimmed="$(trim "$value")"
+    if [[ -z "$trimmed" ]]; then
+        trimmed="$default"
+    fi
+    echo "$trimmed"
+}
+
+help() {
+    cat <<EOF
+Arch Linux Gnome + systemd-boot installation helper
+
+Usage: $0 [options]
+  -u USERNAME       Set the non-root username
+  -p USER_PASSWORD  Set the non-root user password
+  -r ROOT_PASSWORD  Set the root password
+  -c COMPUTER_NAME  Set the hostname
+  -t TIMEZONE       Set timezone (default: US/Eastern)
+  -d DISK           Set the target disk (for example: sda or nvme0n1)
+  -h                Show this help
+
+EOF
+    exit 0
+}
+
 USERNAME=""
 USER_PASSWORD=""
 ROOT_PASSWORD=""
@@ -16,53 +138,12 @@ COMPUTER_NAME=""
 TIMEZONE="US/Eastern"
 DISK=""
 
-# Helper function to prompt for missing variables
-prompt_variable() {
-    local prompt_msg var_name var_value
-    var_name="$1"
-    prompt_msg="$2"
-    eval var_value=\$$var_name
-
-    while [[ -z "$var_value" ]]; do
-        read -p "$prompt_msg: " var_value
-        if [[ -z "$var_value" ]]; then
-            printf "\n%s\n\n" "This is a required field. Please enter a value."
-        else
-            eval $var_name='$var_value'
-        fi
-    done
-}
-
-# Partition variables
 PARTITION_COUNT=3
 PARTITION1_SIZE="500M"
 PARTITION2_SIZE="2G"
 PARTITION_SIZES=()
 PARTITION_TYPES=()
 
-# Help function
-help() {
-    echo "Arch Linux Installation Script"
-    echo "This script automates the installation of Arch Linux."
-    echo
-    echo "Usage: $0 [options]"
-    echo
-    echo "Options:"
-    echo "  -u USERNAME       Set the non-root username"
-    echo "  -p USER_PASSWORD  Set the non-root user password"
-    echo "  -r ROOT_PASSWORD  Set the root password"
-    echo "  -c COMPUTER_NAME  Set the computer name"
-    echo "  -t TIMEZONE       Set the timezone (default: US/Eastern)"
-    echo "  -d DISK           Set the target disk (e.g., sdX or nvmeXn1)"
-    echo "  -h                Display this help message"
-    echo
-    echo "Examples:"
-    echo "  $0 -u john -p password123 -r rootpass -c myarch -t Europe/London -d sda"
-    echo "  $0 -u jane -p pass456 -r rootpass789 -c janepc -d nvme0n1"
-    exit 0
-}
-
-# Parse command line arguments
 while getopts ":u:p:r:c:t:d:h" opt; do
     case "$opt" in
         u) USERNAME="$OPTARG" ;;
@@ -72,337 +153,297 @@ while getopts ":u:p:r:c:t:d:h" opt; do
         t) TIMEZONE="$OPTARG" ;;
         d) DISK="$OPTARG" ;;
         h) help ;;
-        \?) echo "Invalid option: -$OPTARG" >&2; exit 1;;
-        :) echo "Option -$OPTARG requires an argument." >&2; exit 1;;
+        \?) log "Invalid option: -$OPTARG" error; exit 1 ;;
+        :) log "Option -$OPTARG requires an argument." error; exit 1 ;;
     esac
 done
 
-# Append '/dev/' to DISK for internal use
-DISK="/dev/$DISK"
+shift "$((OPTIND - 1))"
 
-# Check and prompt for each required variable
-[[ -z "$USERNAME" ]] && clear; prompt_variable USERNAME "Enter the non-root username"
-[[ -z "$USER_PASSWORD" ]] && clear; prompt_variable USER_PASSWORD "Enter the non-root user password"
-[[ -z "$ROOT_PASSWORD" ]] && clear; prompt_variable ROOT_PASSWORD "Enter the root password"
-[[ -z "$COMPUTER_NAME" ]] && clear; prompt_variable COMPUTER_NAME "Enter the computer name"
-[[ -z "$DISK" ]] && clear; prompt_variable DISK "Enter the target disk (e.g., sdX or nvmeXn1)"
-
-# Determine disk partition naming convention
-if [[ "$DISK" == *"nvme"* ]]; then
-    DISK="$DISK"
-    DISK1="${DISK}p1"
-    DISK2="${DISK}p2"
-    DISK3="${DISK}p3"
-else
-    DISK="$DISK"
-    DISK1="${DISK}1"
-    DISK2="${DISK}2"
-    DISK3="${DISK}3"
-fi
-
-# Partition the disk
 setup_disk() {
-    local part1_size part2_size
-    echo "Partition 1 will be set as GPT and EFI."
-    read -p "Enter partition 1 size or hit enter to use the default value (default: 500M): " part1_size
-    PARTITION1_SIZE=${part1_size:-$PARTITION1_SIZE}
+    local part1_size part2_size input_count i part_start part_end
+    local efi_mib swap_mib part_num
 
-    echo "Partition 2 will be set as swap."
-    read -p "Enter partition 2 size or hit enter to use the default value (default: 2G): " part2_size
-    PARTITION2_SIZE=${part2_size:-$PARTITION2_SIZE}
+    read -r -p "EFI partition size (default: ${PARTITION1_SIZE}): " part1_size
+    PARTITION1_SIZE="$(size_plus_default "$part1_size" "$PARTITION1_SIZE")"
 
-    echo "Enter the number of partitions (minimum 3, default 3):"
-    read -p "Number of partitions: " input_partition_count
-    PARTITION_COUNT=${input_partition_count:-$PARTITION_COUNT}
+    read -r -p "Swap partition size (default: ${PARTITION2_SIZE}): " part2_size
+    PARTITION2_SIZE="$(size_plus_default "$part2_size" "$PARTITION2_SIZE")"
 
-    while [[ "$PARTITION_COUNT" -lt 3 ]]; do
-        echo "The minimum number of partitions is 3."
-        read -p "Enter the number of partitions (minimum 3): " PARTITION_COUNT
+    while true; do
+        read -r -p "Number of partitions (minimum 3, default 3): " input_count
+        PARTITION_COUNT="$(size_plus_default "$input_count" "$PARTITION_COUNT")"
+        if [[ "$PARTITION_COUNT" -ge 3 ]]; then
+            break
+        fi
+        log "Minimum number of partitions is 3." warning
     done
 
-    for ((i=3; i<PARTITION_COUNT; i++)); do
-        read -p "Enter SIZE for partition $i: " SIZE
-        PARTITION_SIZES+=("$SIZE")
-
-        echo "Available partition types:"
-        echo
-        echo "1 EFI System"
-        echo "2 MBR Partition Scheme"
-        echo "3 Intel Fast Flash"
-        echo "4 BIOS Boot"
-        echo "5 Sony Boot Partition"
-        echo "6 Lenovo Boot Partition"
-        echo "7 Microsoft Reserved"
-        echo "8 Microsoft Basic Data"
-        echo "9 Microsoft LDM Metadata"
-        echo "10 Microsoft LDM Data"
-        echo "11 Microsoft Recovery"
-        echo "12 HP-UX Data"
-        echo "13 HP-UX Service"
-        echo "14 Linux Filesystem"
-        echo "15 Linux Extended"
-        echo "16 Linux LVM"
-        echo "17 Linux Reserved"
-        echo "18 Linux RAID"
-        echo "19 Linux Swap"
-        echo "20 Linux Filesystem"
-        echo "21 Linux Server Data"
-        echo "22 Linux Root (x86)"
-        echo "23 Linux Root (x86-64)"
-        echo "24 Linux Root (ARM)"
-        echo "25 Linux Root (ARM-64)"
-        echo "26 Linux Root (IA-64)"
-        echo "27-81 Linux Reserved"
-        echo "82 Linux Swap"
-        echo "83 Linux"
-        echo "84-85 Linux Extended"
-        echo "86 NT FAT16"
-        echo "87 NTFS"
-        echo "88 Linux Plaintext"
-        echo "89 Linux LVM"
-        echo "90 Linux RAID"
-        echo "91 Linux Extended"
-        echo "92 Linux Swap"
-        echo "93 Hidden Linux"
-        echo "94 Linux Reserved"
-        echo "95-97 Linux RAID Autodetect"
-        echo "98 Linux Swap"
-        echo "99 Linux LVM"
-        read -p "Enter the partition type number for partition $i: " type
-        PARTITION_TYPES+=("$type")
-    done
-
-    echo "The last partition will be set as Linux x86-64 root and use the remaining disk space."
-
-    echo
-    log "Partitioning disk $DISK..."
-    parted -s "$DISK" mklabel gpt
-
-    parted -s "$DISK" mkpart primary fat32 1 $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g')
-    parted -s "$DISK" set 1 esp on
-    parted -s "$DISK" mkpart primary linux-swap $(echo "$PARTITION1_SIZE" | sed 's/[^0-9]*//g') $(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
-
-    start=$(echo "$(echo "$PARTITION2_SIZE" | sed 's/[^0-9]*//g') * 1024" | bc)
-    for ((i=0; i<${#PARTITION_SIZES[@]}; i++)); do
-        SIZE=$(echo "$(echo "${PARTITION_SIZES[i]}" | sed 's/[^0-9]*//g') * 1024" | bc)
-        end=$((start + SIZE))
-        parted -s "$DISK" mkpart primary $start $end
-        type=${PARTITION_TYPES[i]}
-        case $type in
-            1) parted -s "$DISK" set $((i+3)) esp on ;;
-            2) parted -s "$DISK" set $((i+3)) bios_grub on ;;
-            4) parted -s "$DISK" set $((i+3)) boot on ;;
-            19) parted -s "$DISK" set $((i+3)) swap on ;;
-        esac
-        start=$end
-    done
-
-    parted -s "$DISK" mkpart primary $start 100%
-    parted -s "$DISK" set $PARTITION_COUNT 23
-
-    echo
-    log "Creating filesystems..."
-
-    mkfs.fat -F32 "$DISK1"
-    mkswap "$DISK2"
-    if [[ "$DISK" == *"nvme"* ]]; then
-        mkfs.ext4 "${DISK}p${PARTITION_COUNT}"
-    else
-        mkfs.ext4 "${DISK}${PARTITION_COUNT}"
+    PARTITION_SIZES=()
+    PARTITION_TYPES=()
+    if (( PARTITION_COUNT > 3 )); then
+        local size_input type_choice
+        for ((i = 3; i < PARTITION_COUNT; i++)); do
+            read -r -p "Enter size for partition $i (empty to use 1G): " size_input
+            size_input="$(size_plus_default "$size_input" "1G")"
+            PARTITION_SIZES+=("$size_input")
+            echo "Partition type for partition $i"
+            echo " 1) EFI System"
+            echo " 2) BIOS Boot"
+            echo " 4) BIOS Boot (compatibility)"
+            echo "14) Linux root"
+            echo "19) Linux swap"
+            echo "23) Linux root (x86-64)"
+            echo " 0) none"
+            read -r -p "Select partition type [0]: " type_choice
+            type_choice="$(trim "${type_choice:-0}")"
+            PARTITION_TYPES+=("$type_choice")
+        done
     fi
+
+    log "Partitioning ${FULL_DISK}..."
+    parted -s "$FULL_DISK" mklabel gpt
+
+    efi_mib="$(to_mib "$PARTITION1_SIZE")"
+    swap_mib="$(to_mib "$PARTITION2_SIZE")"
+
+    parted -s "$FULL_DISK" mkpart primary fat32 1MiB "${efi_mib}MiB"
+    parted -s "$FULL_DISK" set 1 esp on
+    parted -s "$FULL_DISK" mkpart primary linux-swap "${efi_mib}MiB" "$((efi_mib + swap_mib))MiB"
+    parted -s "$FULL_DISK" set 2 swap on
+
+    part_num=3
+    part_start="$((efi_mib + swap_mib))"
+    for ((i = 0; i < ${#PARTITION_SIZES[@]}; i++)); do
+        local size_mib
+        size_mib="$(to_mib "${PARTITION_SIZES[i]}")"
+        part_end="$((part_start + size_mib))"
+        parted -s "$FULL_DISK" mkpart primary "${part_start}MiB" "${part_end}MiB"
+
+        case "${PARTITION_TYPES[i]}" in
+            1) parted -s "$FULL_DISK" set "$part_num" esp on ;;
+            2) parted -s "$FULL_DISK" set "$part_num" bios_grub on ;;
+            4) parted -s "$FULL_DISK" set "$part_num" boot on ;;
+            19|82|92|98) parted -s "$FULL_DISK" set "$part_num" swap on ;;
+        esac
+        part_start="$part_end"
+        part_num=$((part_num + 1))
+    done
+
+    parted -s "$FULL_DISK" mkpart primary "${part_start}MiB" 100%
+    PARTITION_COUNT="$part_num"
+    DISK3="${FULL_DISK}${DISK_SUFFIX}${PARTITION_COUNT}"
+
+    mkfs.fat -F 32 "$DISK1"
+    mkswap "$DISK2"
+    mkfs.ext4 "$DISK3"
 }
 
-# Mount the partitions
 mount_partitions() {
-    log "Enabling swap and mounting partitions..."
     swapon "$DISK2"
-
-    if [[ "$DISK" == *"nvme"* ]]; then
-        mount "${DISK}p${PARTITION_COUNT}" /mnt
-    else
-        mount "${DISK}${PARTITION_COUNT}" /mnt
-    fi
-    
+    mkdir -p /mnt
+    mount "$DISK3" /mnt
     mount --mkdir "$DISK1" /mnt/boot/efi
 }
 
-# Prompt for loadkeys
-prompt_loadkeys() {
-    local loadkeys_value
-    while [[ -z "$loadkeys_value" ]]; do
-        clear
-        read -p "Enter the value for loadkeys (press 'l' to list available options): " loadkeys_value
-        if [[ "$loadkeys_value" == "l" ]]; then
-            echo "Available keymaps:"
-            tempfile=$(mktemp)
-            localectl list-keymaps > "$tempfile"
-            more "$tempfile"
-            rm "$tempfile"
-            read -p "Enter the value for loadkeys: " loadkeys_value
-            if [[ -n "$loadkeys_value" ]]; then
-                loadkeys "$loadkeys_value"
-            else
-                echo "You must enter a value to continue. Press l to get a list of available options."
-                echo
-                read -p "Press enter to try again."
-                prompt_loadkeys
-            fi
-        elif [[ -n "$loadkeys_value" ]]; then
-            loadkeys "$loadkeys_value"
-        else
-            break
-        fi
-    done
-}
-
-# Package installation
 install_packages() {
-    local PACKAGES
-    PACKAGES="base efibootmgr linux linux-firmware linux-headers nano networkmanager sudo"
-    echo
-    log "Installing essential packages..."
-    echo "Current package list: $PACKAGES"
-    echo
-    read -p "Enter to continue or, add additional packages to install (spaced separated) with the ability to remove a package by prefixing it with a minus sign '-': " add_pkgs
-    for pkgs in $add_pkgs; do
-        if [[ "$package" == -* ]]; then
-            PACKAGES=$(echo "$PACKAGES" | sed "s/${pkgs#-}//g")
-        else
-            PACKAGES+=" $package"
-        fi
+    local base_packages=(
+        base
+        efibootmgr
+        linux
+        linux-firmware
+        linux-headers
+        nano
+        networkmanager
+        reflector
+        sudo
+    )
+    local -a requested_packages=()
+    local -A selected=()
+    local pkg
+
+    for pkg in "${base_packages[@]}"; do
+        selected["$pkg"]=1
     done
-    pacstrap -K /mnt $PACKAGES
-}
 
-# Set the time and date for the system clock
-set_time_date() {
-    log "Synchronizing system clock..."
-    timedatectl set-ntp true
-    log "System clock synchronized!"
-}
-
-# Create the fstab file in Arch Linux /etc
-generate_fstab() {
     echo
-    log "Generating fstab..."
-    genfstab -U /mnt >> /mnt/etc/fstab
+    log "Current package set: ${base_packages[*]}"
+    read -r -p "Add/remove packages (prefix remove with -). Example: xorg -reflector: " package_input
+    if [[ -n "${package_input}" ]]; then
+        read -r -a requested_packages <<<"${package_input}"
+        for pkg in "${requested_packages[@]}"; do
+            if [[ "$pkg" == -* ]]; then
+                pkg="${pkg#-}"
+                unset "selected[$pkg]"
+            else
+                selected["$pkg"]=1
+            fi
+        done
+    fi
+
+    local -a final_packages=()
+    for pkg in "${!selected[@]}"; do
+        final_packages+=("$pkg")
+    done
+    mapfile -t final_packages < <(printf '%s\n' "${final_packages[@]}" | sort -u)
+
+    pacstrap -K /mnt "${final_packages[@]}"
 }
 
-# Use a heredoc to execute commands using the arch-chroot command
+generate_fstab() {
+    genfstab -U /mnt > /mnt/etc/fstab
+}
+
 configure_chroot() {
-    log "Entering chroot to configure system..."
-    arch-chroot /mnt /bin/bash <<EOF
-# Set timezone and hardware clock
+    log "Entering chroot to configure system."
+    arch-chroot /mnt /usr/bin/env \
+        USERNAME="$USERNAME" \
+        USER_PASSWORD="$USER_PASSWORD" \
+        ROOT_PASSWORD="$ROOT_PASSWORD" \
+        TIMEZONE="$TIMEZONE" \
+        COMPUTER_NAME="$COMPUTER_NAME" \
+        PARTUUID="$PARTUUID" \
+        /bin/bash -s <<'EOF'
+set -euo pipefail
+
 ln -sf "/usr/share/zoneinfo/$TIMEZONE" /etc/localtime
 hwclock --systohc
 
-# Localization
 echo 'en_US.UTF-8 UTF-8' > /etc/locale.gen
 locale-gen
 echo 'LANG=en_US.UTF-8' > /etc/locale.conf
 
-# Network configuration
 echo "$COMPUTER_NAME" > /etc/hostname
-mkinitcpio -P
 echo "127.0.1.1 localhost.localdomain $COMPUTER_NAME" >> /etc/hosts
 
-# Create a new user with user variables
-useradd -mG wheel -s /bin/bash $USERNAME
+mkinitcpio -P
 
-# Set non-root user password
-echo "$USERNAME:$USER_PASSWORD" | chpasswd
+useradd -m -G wheel -s /bin/bash "$USERNAME"
+printf '%s:%s\n' "$USERNAME" "$USER_PASSWORD" | chpasswd
+printf 'root:%s\n' "$ROOT_PASSWORD" | chpasswd
 
-# Set root password
-echo "root:$ROOT_PASSWORD" | chpasswd
+install -d -m 750 /etc/sudoers.d
+cat > /etc/sudoers.d/10-wheel <<'SUDO'
+%wheel ALL=(ALL:ALL) ALL
+SUDO
+chmod 0440 /etc/sudoers.d/10-wheel
 
-# Enable sudo for wheel group
-echo "" >> /etc/sudoers
-echo '%wheel ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
-
-# Copy kernel and initramfs to the ESP
+mkdir -p /boot/efi
 cp /boot/vmlinuz-linux /boot/efi/
 cp /boot/initramfs-linux.img /boot/efi/
 
-mkdir -p /boot/efi
+bootctl --esp-path=/boot/efi install
+mkdir -p /boot/efi/loader/entries
+cat > /boot/efi/loader/loader.conf <<'LOADER'
+default arch
+timeout 20
+editor 0
+LOADER
 
-# Install and configure bootloader
-bootctl --path=/boot/efi install
+cat > /boot/efi/loader/entries/arch.conf <<EOF_ENTRY
+title Arch Linux
+linux /vmlinuz-linux
+initrd /initramfs-linux.img
+options root=PARTUUID=$PARTUUID rw
+EOF_ENTRY
 
-echo "default arch" > /boot/efi/loader/loader.conf
-echo "timeout 20" >> /boot/efi/loader/loader.conf
-echo "editor 0" >> /boot/efi/loader/loader.conf
-
-echo "title Arch Linux" > /boot/efi/loader/entries/arch.conf
-echo "linux /vmlinuz-linux" >> /boot/efi/loader/entries/arch.conf
-echo "initrd /initramfs-linux.img" >> /boot/efi/loader/entries/arch.conf
-
-# Enable NetworkManager so you have access to the internet after rebooting
 systemctl enable NetworkManager
-systemctl start NetworkManager.service
 EOF
 }
 
-# Fetch PARTUUID after exiting arch-chroot and export it to the arch.conf file
-generate_and_set_partuuid() {
-    if [[ "$DISK" == *"nvme"* ]]; then
-        PARTUUID=$(blkid -s PARTUUID -o value "${DISK}p${PARTITION_COUNT}")
-    else
-        PARTUUID=$(blkid -s PARTUUID -o value "${DISK}${PARTITION_COUNT}")
-    fi
-    echo "options root=PARTUUID=$PARTUUID rw" >> /mnt/boot/efi/loader/entries/arch.conf
-}
-
-# Prompt to unmount all of the partitions
 prompt_umount() {
-    local choice
-    echo
-    read -p "Installation complete. Do you want to unmount all partitions? (y/n): " choice
-    case "$choice" in
-        [yY]*|[yY][eE][sS]*)
-            log "Unmounting all partitions..."
-            umount -R /mnt
-            swapoff -a
-            ;;
-        [nN]*|[nN][oO]*)
-            ;;
-        *)  echo "Bad user choice... the script will let you try again..."
-            sleep 4
-            unset choice
-            clear
-            prompt_umount
-            ;;
-    esac
+    if prompt_yes_no "Installation complete. Unmount partitions now"; then
+        umount -R /mnt
+        swapoff -a
+    fi
 }
 
-# Prompt to reboot the pc
 prompt_reboot() {
-    local choice
-    echo
-    read -p "Do you want to reboot now? (y/n): " choice
-    case "$choice" in
-        [yY]*|[yY][eE][sS]*)
-            reboot
-            ;;
-        [nN]*|[nN][oO]*)
-            ;;
-        *)  echo "Bad user choice... the script will let you try again..."
-            sleep 4
-            unset choice
-            clear
-            prompt_reboot
-            ;;
-    esac
+    if prompt_yes_no "Reboot now"; then
+        reboot
+    fi
 }
 
-# Start the installation
-log "Starting installation..."
-prompt_loadkeys
-set_time_date
-setup_disk
-mount_partitions
-install_packages
-generate_fstab
-configure_chroot
-generate_and_set_partuuid
-prompt_umount
-prompt_reboot
+main() {
+    require_root
+    require_command \
+        awk \
+        numfmt \
+        loadkeys \
+        localectl \
+        mkfs.ext4 \
+        mkfs.fat \
+        mkswap \
+        mount \
+        parted \
+        pacstrap \
+        swapon \
+        systemctl \
+        timedatectl \
+        umount \
+        useradd \
+        genfstab \
+        arch-chroot \
+        blkid
+
+    [[ -z "${USERNAME}" ]] && prompt_variable USERNAME "Enter the non-root username"
+    while true; do
+        if [[ "$USERNAME" =~ ^[a-z_][a-z0-9_-]*$ ]]; then
+            break
+        fi
+        log "Invalid username. Use only lowercase letters, digits, underscore and hyphen." error
+        prompt_variable USERNAME "Enter the non-root username"
+    done
+
+    [[ -z "${USER_PASSWORD}" ]] && prompt_variable USER_PASSWORD "Enter the non-root user password"
+    [[ -z "${ROOT_PASSWORD}" ]] && prompt_variable ROOT_PASSWORD "Enter the root password"
+    [[ -z "${COMPUTER_NAME}" ]] && prompt_variable COMPUTER_NAME "Enter the computer name"
+    [[ -z "${DISK}" ]] && prompt_variable DISK "Enter target disk (e.g., sda or nvme0n1)"
+
+    FULL_DISK="$(normalize_disk "$DISK")"
+    if [[ ! -b "$FULL_DISK" ]]; then
+        log "Disk $FULL_DISK does not exist or is not a block device." error
+        exit 1
+    fi
+
+    DISK_SUFFIX=""
+    if [[ "$FULL_DISK" == /dev/nvme* || "$FULL_DISK" == /dev/mmcblk* ]]; then
+        DISK_SUFFIX="p"
+    fi
+
+    DISK1="${FULL_DISK}${DISK_SUFFIX}1"
+    DISK2="${FULL_DISK}${DISK_SUFFIX}2"
+    DISK3="${FULL_DISK}${DISK_SUFFIX}3"
+
+    read -r -p "Enter keyboard layout to load (press 'l' to list): " KEYMAP_CHOICE
+    if [[ "$KEYMAP_CHOICE" == "l" || "$KEYMAP_CHOICE" == "L" ]]; then
+        localectl list-keymaps | sed '/^#/d' || true
+        read -r -p "Enter keyboard layout (or leave empty to skip): " KEYMAP_CHOICE
+    fi
+    if [[ -n "$KEYMAP_CHOICE" ]]; then
+        if ! loadkeys "$KEYMAP_CHOICE"; then
+            log "Could not load keyboard layout '$KEYMAP_CHOICE'." warning
+        fi
+    fi
+
+    log "Synchronizing system clock..."
+    timedatectl set-ntp true
+
+    log "Starting installation..."
+    setup_disk
+    mount_partitions
+    install_packages
+    generate_fstab
+
+    PARTUUID=$(blkid -s PARTUUID -o value "$DISK3")
+    if [[ -z "$PARTUUID" ]]; then
+        log "Failed to retrieve PARTUUID for $DISK3." error
+        exit 1
+    fi
+
+    configure_chroot
+    prompt_umount
+    prompt_reboot
+}
+
+main "$@"
