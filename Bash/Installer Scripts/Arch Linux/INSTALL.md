@@ -90,8 +90,10 @@ This script is meticulously crafted to make Arch Linux installation with Gnome s
 
 The custom download links forward to the GitHub hosted RAW files for each script.
 
-`https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/Arch%20Linux/arch-linux-with-gnome-step-1.sh`
-`https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/Arch%20Linux/arch-linux-with-gnome-step-2.sh`
+```bash
+curl -fsSL https://arch-grub.optimizethis.net > grub_install.sh
+curl -fsSL https://arch-post.optimizethis.net > post_install.sh
+```
 
 We welcome your feedback and contributions to further refine and enhance the script's functionality and user experience.
 
