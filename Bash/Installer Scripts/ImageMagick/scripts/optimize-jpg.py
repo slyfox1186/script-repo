@@ -191,7 +191,7 @@ def process_image(
     base_dir: Path,
     dry_run: bool = False,
 ) -> None:
-    if infile.name.endswith(f'-IM.{output_format}'):
+    if infile.stem.endswith('-IM'):
         logging.debug(colored(f"  Skipped (already optimized): {infile.name}", 'blue'))
         update_progress('skipped')
         return
@@ -347,7 +347,8 @@ def collect_image_files(directory: Path, recursive: bool) -> List[Path]:
             files.extend(list(directory.rglob(ext)))
         else:
             files.extend(list(directory.glob(ext)))
-    # Sort for deterministic processing order
+    # Filter out already-optimized files and sort for deterministic order
+    files = [f for f in files if not f.stem.endswith('-IM')]
     files.sort()
     return files
 
