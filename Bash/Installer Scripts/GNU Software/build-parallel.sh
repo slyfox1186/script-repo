@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 # Purpose: Build GNU Parallel from source code
-# Updated: 06.01.24
-# Script version: 2.7
+# Updated: 03.20.26
+# Script version: 2.8
 
 # ANSI color codes
 RED='\033[0;31m'
@@ -94,8 +94,8 @@ check_dependencies() {
 
     dependencies=(
         autoconf autoconf-archive autogen automake binutils bison
-        build-essential bzip2 ccache libc6-dev libpth-dev
-        libtool libtool-bin lzip lzma-dev m4 nasm texinfo zlib1g-dev
+        build-essential bzip2 ccache libc6-dev
+        libtool libtool-bin lzip liblzma-dev m4 nasm texinfo zlib1g-dev
         wget yasm
     )
 
