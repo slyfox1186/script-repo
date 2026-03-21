@@ -79,35 +79,30 @@ GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01'
 # $HOME/.bash_aliases, instead of adding them here directly.
 # See /usr/share/doc/bash-doc/examples in the bash-doc package.
 
-if [[ -f "$HOME/.bash_aliases" ]]; then
-    source "$HOME/.bash_aliases"
+if [[ -f ~/.bash_aliases ]]; then
+    source ~/.bash_aliases
 fi
 
-####################
-## CUSTOM SECTION ##
-####################
-
-if [[ -f $HOME/.bash_functions ]]; then
-    source $HOME/.bash_functions
+if [[ -f ~/.bash_functions ]]; then
+    source ~/.bash_functions
 fi
 
-if [[ -f $HOME/.cargo/env ]]; then
-    source $HOME/.cargo/env
+if [[ -f ~/.cargo/env ]]; then
+    source ~/.cargo/env
 fi
 
-threads=$(nproc --all)
-cpus=$((threads / 2))
-lan=$(ip route get 1.2.3.4 | awk '{print $7}')
-wan=$(curl --connect-timeout 1 -fsS "https://checkip.amazonaws.com")
+THREADS=$(nproc --all)
+CPUS=$((threads / 2))
+LAN=$(ip route get 1.2.3.4 | awk '{print $7}')
+WAN=$(curl --connect-timeout 1 -fsS "https://checkip.amazonaws.com")
 PS1='\n\[\e[38;5;227m\]\w\n\[\e[38;5;215m\]\u\[\e[38;5;183;1m\]@\[\e[0;38;5;117m\]\h\[\e[97;1m\]\\$\[\e[0m\]'
 PYTHONUTF8=1
 MAGICK_THREAD_LIMIT=16
-export cpus lan PS1 PYTHONUTF8 threads wan MAGICK_THREAD_LIMIT
+export CPUS LAN PS1 PYTHONUTF8 THREADS WAN MAGICK_THREAD_LIMIT
 
 # SET THE SCRIPT'S PATH VARIABLE
 PATH="\
 /usr/lib/ccache/bin:\
-$HOME/perl5/bin:\
 $HOME/.cargo/bin:\
 $HOME/.local/bin:\
 /usr/local/sbin:\
@@ -121,7 +116,3 @@ $HOME/.local/bin:\
 /snap/bin\
 "
 export PATH
-
-if [[ -f /usr/lib/wsl/lib/libcuda.so.1.1 ]] && [[ ! -L /usr/lib/wsl/lib/libcuda.so.1 ]]; then
-    sudo ln -sf /usr/lib/wsl/lib/libcuda.so.1.1 /usr/lib/wsl/lib/libcuda.so.1
-fi
