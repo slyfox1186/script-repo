@@ -416,7 +416,21 @@ show_ver_fn() {
 }
 
 cleanup() {
-    rm -rf "$cwd"
+    [[ -n "$cwd" && -d "$cwd" ]] || return
+
+    if rm -rf "$cwd" 2>/dev/null; then
+        return
+    fi
+
+    case "$cwd" in
+        "${TMPDIR:-/tmp}"/python3-build-script.*)
+            warn "Build workspace contains root-owned artifacts; removing it with sudo."
+            run sudo rm -rf "$cwd"
+            ;;
+        *)
+            fail "Refusing to remove unexpected cleanup path: $cwd"
+            ;;
+    esac
 }
 
 exit_function() {
