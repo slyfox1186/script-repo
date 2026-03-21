@@ -216,20 +216,37 @@ check_disk_space() {
     log "Sufficient disk space available."
 }
 
+# Expand common home-directory shortcuts in interactive path input.
+normalize_install_directory() {
+    local install_dir=$1
+
+    install_dir="${install_dir/#\~/$HOME}"
+    install_dir="${install_dir//\$\{HOME\}/$HOME}"
+    install_dir="${install_dir//\$HOME/$HOME}"
+
+    if [[ "$install_dir" != /* ]]; then
+        install_dir="$(pwd)/$install_dir"
+    fi
+
+    echo "$install_dir"
+}
+
 # Prompt the user for installation directory and handle existing installation
 get_install_directory() {
-    local default_dir="$HOME/miniconda"
+    local default_dir="$HOME/miniconda3"
     local install_dir
     local first_prompt=true
 
     while true; do
         if $first_prompt; then
-            read -rp "Enter the installation directory (default: \$HOME/miniconda): " install_dir
+            read -rp "Enter the installation directory (default: \$HOME/miniconda3): " install_dir
             install_dir=${install_dir:-"$default_dir"}
             first_prompt=false
         else
             read -rp "Enter a different installation directory: " install_dir
         fi
+
+        install_dir=$(normalize_install_directory "$install_dir")
 
         # Check for spaces in the path
         if [[ "$install_dir" =~ \  ]]; then
