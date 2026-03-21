@@ -455,9 +455,7 @@ main() {
         localectl list-keymaps | sed '/^#/d' || true
         read -r -p "Enter keyboard layout (or leave empty for 'us'): " KEYMAP_CHOICE
     fi
-    if [[ -z "$KEYMAP_CHOICE" ]]; then
-        KEYMAP_CHOICE="us"
-    fi
+    [[ -z "$KEYMAP_CHOICE" ]] && KEYMAP_CHOICE="us"
     if ! loadkeys "$KEYMAP_CHOICE"; then
         log "Could not load keyboard layout '$KEYMAP_CHOICE'." warning
     fi
