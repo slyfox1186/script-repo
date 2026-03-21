@@ -25,415 +25,217 @@ log() {
 }
 
 require_root() {
-    if [[ "${EUID}" -ne 0 ]]; then
-        log "Run this script as root (or with sudo)." error
+    if [[ $EUID -ne 0 ]]; then
+        log "This script must be run as root or with sudo." error
         exit 1
     fi
-}
-
-require_command() {
-    local cmd
-    for cmd in "$@"; do
-        if ! command -v "$cmd" >/dev/null 2>&1; then
-            log "Missing required command: $cmd" error
-            exit 1
-        fi
-    done
-}
-
-trim() {
-    local value="$1"
-    value="${value#"${value%%[![:space:]]*}"}"
-    value="${value%"${value##*[![:space:]]}"}"
-    printf '%s' "$value"
-}
-
-prompt_variable() {
-    local var_name="$1"
-    local prompt="$2"
-    local -n target="$var_name"
-    local value
-
-    while true; do
-        read -r -p "$prompt: " value
-        value="$(trim "$value")"
-        if [[ -z "$value" ]]; then
-            log "This field is required." warning
-            continue
-        fi
-        target="$value"
-        break
-    done
 }
 
 prompt_yes_no() {
-    local prompt="$1"
-    local answer
+    local answer prompt
+    prompt=$1
+
     while true; do
         read -r -p "$prompt (y/n): " answer
         case "${answer,,}" in
-            y|yes)
-                return 0
-                ;;
-            n|no)
-                return 1
-                ;;
-            *)
-                echo "Please answer y or n."
-                ;;
+            y|yes) return 0 ;;
+            n|no) return 1 ;;
+            *) echo "Please answer y or n." ;;
         esac
     done
 }
 
-normalize_disk() {
-    local disk="$1"
-    if [[ "$disk" != /dev/* ]]; then
-        disk="/dev/$disk"
+has_package() {
+    local pkg
+    pkg=$1
+    pacman -Qq "$pkg" >/dev/null 2>&1
+}
+
+build_package_list() {
+    local -a add_packages=() remove_packages=() base_packages=("$@")
+    local raw_add raw_remove
+
+    echo "The default packages set to be installed:"
+    printf '  - %s\n' "${base_packages[@]}"
+    echo
+
+    read -r -p "Enter additional packages to install (space-separated) or press Enter to continue: " raw_add
+    read -r -p "Enter packages to remove from the list (space-separated) or press Enter to continue: " raw_remove
+    echo
+
+    if [[ -n "$raw_add" ]]; then
+        read -r -a add_packages <<< "$raw_add"
     fi
-    echo "$disk"
-}
-
-to_mib() {
-    local input="$1" bytes
-    bytes=$(numfmt --from=iec "$input")
-    if ! [[ "$bytes" =~ ^[0-9]+$ ]]; then
-        log "Invalid size: $input" error
-        exit 1
-    fi
-    echo $((bytes / 1024 / 1024))
-}
-
-size_plus_default() {
-    local value="$1"
-    local default="$2"
-    local trimmed
-    trimmed="$(trim "$value")"
-    if [[ -z "$trimmed" ]]; then
-        trimmed="$default"
-    fi
-    echo "$trimmed"
-}
-
-help() {
-    cat <<EOF
-Arch Linux Gnome + GRUB installation helper
-
-Usage: $0 [options]
-  -u USERNAME       Set the non-root username
-  -p USER_PASSWORD  Set the non-root user password
-  -r ROOT_PASSWORD  Set the root password
-  -c COMPUTER_NAME  Set the hostname
-  -t TIMEZONE       Set timezone (default: US/Eastern)
-  -d DISK           Set the target disk (for example: sda or nvme0n1)
-  -h                Show this help
-
-EOF
-    exit 0
-}
-
-USERNAME=""
-USER_PASSWORD=""
-ROOT_PASSWORD=""
-COMPUTER_NAME=""
-TIMEZONE="US/Eastern"
-DISK=""
-
-PARTITION_COUNT=3
-PARTITION1_SIZE="500M"
-PARTITION2_SIZE="2G"
-PARTITION_SIZES=()
-PARTITION_TYPES=()
-
-while getopts ":u:p:r:c:t:d:h" opt; do
-    case "$opt" in
-        u) USERNAME="$OPTARG" ;;
-        p) USER_PASSWORD="$OPTARG" ;;
-        r) ROOT_PASSWORD="$OPTARG" ;;
-        c) COMPUTER_NAME="$OPTARG" ;;
-        t) TIMEZONE="$OPTARG" ;;
-        d) DISK="$OPTARG" ;;
-        h) help ;;
-        \?) log "Invalid option: -$OPTARG" error; exit 1 ;;
-        :) log "Option -$OPTARG requires an argument." error; exit 1 ;;
-    esac
-done
-
-shift "$((OPTIND - 1))"
-
-setup_disk() {
-    local part1_size part2_size input_count i part_start part_end
-    local efi_mib swap_mib part_num
-
-    read -r -p "EFI partition size (default: ${PARTITION1_SIZE}): " part1_size
-    PARTITION1_SIZE="$(size_plus_default "$part1_size" "$PARTITION1_SIZE")"
-
-    read -r -p "Swap partition size (default: ${PARTITION2_SIZE}): " part2_size
-    PARTITION2_SIZE="$(size_plus_default "$part2_size" "$PARTITION2_SIZE")"
-
-    while true; do
-        read -r -p "Number of partitions (minimum 3, default 3): " input_count
-        PARTITION_COUNT="$(size_plus_default "$input_count" "$PARTITION_COUNT")"
-        if [[ "$PARTITION_COUNT" -ge 3 ]]; then
-            break
-        fi
-        log "Minimum number of partitions is 3." warning
-    done
-
-    PARTITION_SIZES=()
-    PARTITION_TYPES=()
-    if (( PARTITION_COUNT > 3 )); then
-        local size_input type_choice
-        for ((i = 3; i < PARTITION_COUNT; i++)); do
-            read -r -p "Enter size for partition $i (empty to use 1G): " size_input
-            size_input="$(size_plus_default "$size_input" "1G")"
-            PARTITION_SIZES+=("$size_input")
-            echo "Partition type for partition $i"
-            echo " 1) EFI System"
-            echo " 2) BIOS Boot"
-            echo " 4) BIOS Boot (compatibility)"
-            echo "14) Linux root"
-            echo "19) Linux swap"
-            echo "23) Linux root (x86-64)"
-            echo " 0) none"
-            read -r -p "Select partition type [0]: " type_choice
-            type_choice="$(trim "${type_choice:-0}")"
-            PARTITION_TYPES+=("$type_choice")
-        done
+    if [[ -n "$raw_remove" ]]; then
+        read -r -a remove_packages <<< "$raw_remove"
     fi
 
-    log "Partitioning ${FULL_DISK}..."
-    parted -s "$FULL_DISK" mklabel gpt
-
-    efi_mib="$(to_mib "$PARTITION1_SIZE")"
-    swap_mib="$(to_mib "$PARTITION2_SIZE")"
-
-    parted -s "$FULL_DISK" mkpart primary fat32 1MiB "${efi_mib}MiB"
-    parted -s "$FULL_DISK" set 1 esp on
-    parted -s "$FULL_DISK" mkpart primary linux-swap "${efi_mib}MiB" "$((efi_mib + swap_mib))MiB"
-    parted -s "$FULL_DISK" set 2 swap on
-
-    part_num=3
-    part_start="$((efi_mib + swap_mib))"
-    for ((i = 0; i < ${#PARTITION_SIZES[@]}; i++)); do
-        local size_mib
-        size_mib="$(to_mib "${PARTITION_SIZES[i]}")"
-        part_end="$((part_start + size_mib))"
-        parted -s "$FULL_DISK" mkpart primary "${part_start}MiB" "${part_end}MiB"
-
-        case "${PARTITION_TYPES[i]}" in
-            1) parted -s "$FULL_DISK" set "$part_num" esp on ;;
-            2) parted -s "$FULL_DISK" set "$part_num" bios_grub on ;;
-            4) parted -s "$FULL_DISK" set "$part_num" boot on ;;
-            19|82|92|98) parted -s "$FULL_DISK" set "$part_num" swap on ;;
-        esac
-        part_start="$part_end"
-        part_num=$((part_num + 1))
-    done
-
-    parted -s "$FULL_DISK" mkpart primary "${part_start}MiB" 100%
-    PARTITION_COUNT="$part_num"
-    DISK3="${FULL_DISK}${DISK_SUFFIX}${PARTITION_COUNT}"
-
-    mkfs.fat -F 32 "$DISK1"
-    mkswap "$DISK2"
-    mkfs.ext4 "$DISK3"
-}
-
-mount_partitions() {
-    swapon "$DISK2"
-    mkdir -p /mnt
-    mount "$DISK3" /mnt
-    mount --mkdir "$DISK1" /mnt/boot/efi
-}
-
-install_packages() {
-    local base_packages=(
-        base
-        efibootmgr
-        grub
-        grub-customizer
-        linux
-        linux-firmware
-        linux-headers
-        nano
-        networkmanager
-        os-prober
-        reflector
-        sudo
-    )
-    local -a requested_packages=()
     local -A selected=()
     local pkg
-
     for pkg in "${base_packages[@]}"; do
         selected["$pkg"]=1
     done
-
-    echo
-    log "Current package set: ${base_packages[*]}"
-    read -r -p "Add/remove packages (prefix remove with -). Example: xorg -nano: " package_input
-    if [[ -n "${package_input}" ]]; then
-        read -r -a requested_packages <<<"${package_input}"
-        for pkg in "${requested_packages[@]}"; do
-            if [[ "$pkg" == -* ]]; then
-                pkg="${pkg#-}"
-                unset "selected[$pkg]"
-            else
-                selected["$pkg"]=1
-            fi
-        done
-    fi
-
-    local -a final_packages=()
-    for pkg in "${!selected[@]}"; do
-        final_packages+=("$pkg")
+    for pkg in "${add_packages[@]}"; do
+        selected["$pkg"]=1
     done
-    mapfile -t final_packages < <(printf '%s\n' "${final_packages[@]}" | sort -u)
+    for pkg in "${remove_packages[@]}"; do
+        unset "selected[$pkg]"
+    done
 
-    pacstrap -K /mnt "${final_packages[@]}"
+    BASE_FINAL_PACKAGES=()
+    for pkg in "${!selected[@]}"; do
+        BASE_FINAL_PACKAGES+=("$pkg")
+    done
+    mapfile -t BASE_FINAL_PACKAGES < <(printf '%s\n' "${BASE_FINAL_PACKAGES[@]}" | sort -u)
 }
 
-generate_fstab() {
-    genfstab -U /mnt > /mnt/etc/fstab
-}
-
-configure_chroot() {
-    log "Entering chroot to configure system."
-    arch-chroot /mnt /usr/bin/env \
-        USERNAME="$USERNAME" \
-        USER_PASSWORD="$USER_PASSWORD" \
-        ROOT_PASSWORD="$ROOT_PASSWORD" \
-        TIMEZONE="$TIMEZONE" \
-        COMPUTER_NAME="$COMPUTER_NAME" \
-        /bin/bash -s <<'EOF'
-set -euo pipefail
-
-ln -sf "/usr/share/zoneinfo/$TIMEZONE" /etc/localtime
-hwclock --systohc
-
-echo 'en_US.UTF-8 UTF-8' > /etc/locale.gen
-locale-gen
-echo 'LANG=en_US.UTF-8' > /etc/locale.conf
-
-echo "$COMPUTER_NAME" > /etc/hostname
-echo "127.0.1.1 localhost.localdomain $COMPUTER_NAME" >> /etc/hosts
-
-mkinitcpio -P
-
-useradd -m -G wheel -s /bin/bash "$USERNAME"
-printf '%s:%s\n' "$USERNAME" "$USER_PASSWORD" | chpasswd
-printf 'root:%s\n' "$ROOT_PASSWORD" | chpasswd
-
-install -d -m 750 /etc/sudoers.d
-cat > /etc/sudoers.d/10-wheel <<'SUDO'
-%wheel ALL=(ALL:ALL) ALL
-SUDO
-chmod 0440 /etc/sudoers.d/10-wheel
-
-mkdir -p /boot/efi
-
-grub-install --target=x86_64-efi --bootloader-id=GRUB --efi-directory=/boot/efi
-grub-mkconfig -o /boot/grub/grub.cfg
-
-mkdir -p /boot/efi/EFI/BOOT
-if [[ -f /boot/efi/EFI/GRUB/grubx64.efi ]]; then
-    cp -f /boot/efi/EFI/GRUB/grubx64.efi /boot/efi/EFI/BOOT/BOOTX64.EFI
-fi
-
-cat > /boot/efi/startup.nsh <<'EOF_NSH'
-bcf boot add 1 fs0:\EFI\GRUB\grubx64.efi "Arch Linux Bootloader"
-exit
-EOF_NSH
-
-systemctl enable NetworkManager
-EOF
-}
-
-prompt_umount() {
-    if prompt_yes_no "Installation complete. Unmount partitions now"; then
-        umount -R /mnt
-        swapoff -a
+detect_nvidia_package() {
+    # FIX: The proprietary 'nvidia' package no longer exists in official repos.
+    # Arch now provides nvidia-open as the standard driver for Turing+ GPUs (GTX 16xx, RTX 20xx+).
+    # Fall back to nvidia-open-dkms if using a non-standard kernel.
+    if pacman -Si nvidia-open &>/dev/null; then
+        echo "nvidia-open"
+    elif pacman -Si nvidia-open-dkms &>/dev/null; then
+        echo "nvidia-open-dkms"
+    else
+        log "Could not find nvidia-open or nvidia-open-dkms in repos." warning
+        log "You may need to install GPU drivers manually." warning
+        echo
     fi
 }
 
-prompt_reboot() {
-    if prompt_yes_no "Reboot now"; then
-        reboot
+enable_nvidia_tweaks() {
+    local nvidia_pkg="$1"
+
+    # Enable DRM kernel modesetting for NVIDIA
+    echo "options nvidia_drm modeset=1" > /etc/modprobe.d/nvidia-drm.conf
+
+    # Pacman hook to rebuild initramfs when NVIDIA driver or kernel is updated
+    mkdir -p /etc/pacman.d/hooks
+    cat > /etc/pacman.d/hooks/nvidia.hook <<EOF
+[Trigger]
+Operation=Install
+Operation=Upgrade
+Operation=Remove
+Type=Package
+Target=$nvidia_pkg
+Target=linux
+
+[Action]
+Description=Rebuilding initramfs after NVIDIA driver update...
+Depends=mkinitcpio
+When=PostTransaction
+NeedsTargets
+Exec=/usr/bin/mkinitcpio -P
+EOF
+
+    log "NVIDIA tweaks applied (DRM modesetting + pacman hook)."
+}
+
+remove_nomodeset() {
+    local grub_default
+    grub_default=/etc/default/grub
+    if grep -q 'nomodeset' "$grub_default"; then
+        sed -i 's/ nomodeset//g' "$grub_default"
+        grub-mkconfig -o /boot/grub/grub.cfg
+        log "Removed nomodeset from GRUB config."
+    else
+        log "nomodeset was not present in GRUB config (already clean)."
     fi
 }
 
 main() {
     require_root
-    require_command \
-        chpasswd \
-        loadkeys \
-        localectl \
-        mkfs.ext4 \
-        mkfs.fat \
-        mkswap \
-        mount \
-        numfmt \
-        parted \
-        pacstrap \
-        swapon \
-        systemctl \
-        timedatectl \
-        umount \
-        useradd \
-        genfstab \
-        arch-chroot
 
-    [[ -z "${USERNAME}" ]] && prompt_variable USERNAME "Enter the non-root username"
-    while true; do
-        if [[ "$USERNAME" =~ ^[a-z_][a-z0-9_-]*$ ]]; then
-            break
+    # Detect CPU microcode
+    log "Detecting CPU microcode package..."
+    local cpu_vendor microcode_package
+    cpu_vendor=$(grep -m 1 'vendor_id' /proc/cpuinfo | awk '{print $3}')
+    case "$cpu_vendor" in
+        GenuineIntel)
+            microcode_package="intel-ucode"
+            log "Intel CPU detected, adding intel-ucode."
+            ;;
+        AuthenticAMD)
+            microcode_package="amd-ucode"
+            log "AMD CPU detected, adding amd-ucode."
+            ;;
+        *)
+            log "Unknown CPU vendor, skipping microcode package." warning
+            ;;
+    esac
+
+    # Detect NVIDIA driver package name
+    local nvidia_pkg
+    nvidia_pkg="$(detect_nvidia_package)"
+    [[ -n "$nvidia_pkg" ]] && log "NVIDIA driver package: $nvidia_pkg"
+
+    # FIX: nvidia replaced with detected nvidia_pkg (nvidia-open),
+    # pulseaudio replaced with pipewire (GNOME default on modern Arch)
+    local -a packages=(
+        base-devel
+        gdm
+        git
+        gnome
+        gnome-tweaks
+        less
+        nvidia-open
+        nvidia-utils
+        nvidia-settings
+        os-prober
+        pipewire
+        pipewire-alsa
+        pipewire-pulse
+        wireplumber
+        reflector
+        trash-cli
+        xorg-server
+    )
+
+    # Add detected packages
+    [[ -n "$nvidia_pkg" ]] && packages+=("$nvidia_pkg")
+    [[ -n "$microcode_package" ]] && packages+=("$microcode_package")
+
+    build_package_list "${packages[@]}"
+
+    log "Installing packages..."
+    pacman -Syu --needed --noconfirm "${BASE_FINAL_PACKAGES[@]}"
+
+    # NVIDIA tweaks
+    if [[ -n "$nvidia_pkg" ]] && has_package "$nvidia_pkg"; then
+        log "NVIDIA driver installed successfully."
+        if prompt_yes_no "Apply NVIDIA tweaks (DRM modesetting + pacman hook)?"; then
+            enable_nvidia_tweaks "$nvidia_pkg"
         fi
-        log "Invalid username. Use only lowercase letters, digits, underscore and hyphen." error
-        prompt_variable USERNAME "Enter the non-root username"
-    done
-
-    [[ -z "${USER_PASSWORD}" ]] && prompt_variable USER_PASSWORD "Enter the non-root user password"
-    [[ -z "${ROOT_PASSWORD}" ]] && prompt_variable ROOT_PASSWORD "Enter the root password"
-    [[ -z "${COMPUTER_NAME}" ]] && prompt_variable COMPUTER_NAME "Enter the computer name"
-    [[ -z "${DISK}" ]] && prompt_variable DISK "Enter target disk (e.g., sda or nvme0n1)"
-
-    FULL_DISK="$(normalize_disk "$DISK")"
-    if [[ ! -b "$FULL_DISK" ]]; then
-        log "Disk $FULL_DISK does not exist or is not a block device." error
-        exit 1
+    else
+        log "No NVIDIA driver was installed. You may need to install GPU drivers manually." warning
     fi
 
-    DISK_SUFFIX=""
-    if [[ "$FULL_DISK" == /dev/nvme* || "$FULL_DISK" == /dev/mmcblk* ]]; then
-        DISK_SUFFIX="p"
+    # Remove nomodeset from GRUB since NVIDIA drivers are now installed
+    log "Updating GRUB to remove nomodeset..."
+    remove_nomodeset
+
+    # Rebuild initramfs with NVIDIA modules
+    log "Rebuilding initramfs..."
+    mkinitcpio -P
+
+    # Enable GDM
+    log "Enabling the GDM display manager..."
+    systemctl enable gdm.service
+
+    echo
+    log "Post-install complete!"
+    log "On next boot, plug your HDMI into the NVIDIA card."
+    echo
+
+    if prompt_yes_no "Start the GNOME desktop now?"; then
+        systemctl start gdm.service
+        exit 0
     fi
 
-    DISK1="${FULL_DISK}${DISK_SUFFIX}1"
-    DISK2="${FULL_DISK}${DISK_SUFFIX}2"
-    DISK3="${FULL_DISK}${DISK_SUFFIX}3"
-
-    read -r -p "Enter keyboard layout to load (press 'l' to list): " KEYMAP_CHOICE
-    if [[ "$KEYMAP_CHOICE" == "l" || "$KEYMAP_CHOICE" == "L" ]]; then
-        localectl list-keymaps | sed '/^#/d' || true
-        read -r -p "Enter keyboard layout (or leave empty to skip): " KEYMAP_CHOICE
+    if prompt_yes_no "Reboot now?"; then
+        reboot
     fi
-    if [[ -n "$KEYMAP_CHOICE" ]]; then
-        if ! loadkeys "$KEYMAP_CHOICE"; then
-            log "Could not load keyboard layout '$KEYMAP_CHOICE'." warning
-        fi
-    fi
-
-    log "Synchronizing system clock..."
-    timedatectl set-ntp true
-
-    log "Starting installation..."
-    setup_disk
-    mount_partitions
-    install_packages
-    generate_fstab
-    configure_chroot
-    prompt_umount
-    prompt_reboot
 }
 
 main "$@"
