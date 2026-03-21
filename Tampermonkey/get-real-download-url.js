@@ -1,21 +1,22 @@
 // ==UserScript==
 // @name         Get Real Download URL
 // @namespace    http://tampermonkey.net/
-// @version      1.0
+// @version      1.1
 // @description  Get the real download URL by right-clicking on a download link while holding the left Alt key.
 // @match        *://*/*
 // @grant        GM_setClipboard
 // @license      MIT
 // ==/UserScript==
- 
+
 (function() {
     'use strict';
- 
+
     document.addEventListener('contextmenu', function(event) {
         if (event.altKey) {
             const link = event.target.closest('a[href]');
             if (link) {
-                // Create the custom menu item as a floating button
+                event.preventDefault();
+
                 const customMenuItem = document.createElement('div');
                 customMenuItem.textContent = 'Get Real Download URL';
                 customMenuItem.style.position = 'fixed';
@@ -28,53 +29,54 @@
                 customMenuItem.style.left = `${event.clientX}px`;
                 customMenuItem.style.boxShadow = '0 2px 10px rgba(0,0,0,0.5)';
                 customMenuItem.style.borderRadius = '3px';
- 
-                const clickHandler = async function() {
+
+                function removeMenu() {
+                    if (customMenuItem.parentNode) {
+                        customMenuItem.parentNode.removeChild(customMenuItem);
+                    }
+                }
+
+                let timeoutId;
+
+                customMenuItem.addEventListener('click', async function(e) {
+                    e.stopPropagation();
                     try {
                         const response = await fetch(link.href, {
                             method: 'HEAD',
-                            redirect: 'manual'
+                            redirect: 'follow'
                         });
- 
-                        const realUrl = response.headers.get('location') || link.href;
- 
+
+                        const realUrl = response.url || link.href;
                         GM_setClipboard(realUrl);
                         showTemporaryMessage(`Real download URL copied to clipboard: ${realUrl}`, true);
                     } catch (error) {
                         console.error('Error fetching the real download URL:', error);
                         showTemporaryMessage('Failed to get the real download URL.', false);
                     } finally {
-                        document.body.removeChild(customMenuItem);
+                        clearTimeout(timeoutId);
+                        removeMenu();
                     }
-                };
- 
-                customMenuItem.addEventListener('click', clickHandler);
- 
-                document.body.appendChild(customMenuItem);
- 
-                const cleanup = () => {
-                    if (customMenuItem.parentNode) {
-                        customMenuItem.removeEventListener('click', clickHandler);
-                        document.body.removeChild(customMenuItem);
-                    }
-                };
- 
-                // Cleanup after 5 seconds or when clicking elsewhere
-                setTimeout(cleanup, 5000);
-                document.addEventListener('click', cleanup, { once: true });
- 
-                // Prevent propagation to avoid closing the default context menu
+                });
+
                 customMenuItem.addEventListener('contextmenu', function(e) {
                     e.stopPropagation();
                     e.preventDefault();
                 });
- 
-                // Prevent default context menu from showing
-                event.preventDefault();
+
+                document.body.appendChild(customMenuItem);
+
+                timeoutId = setTimeout(removeMenu, 5000);
+                document.addEventListener('click', function dismissMenu(e) {
+                    if (e.target !== customMenuItem) {
+                        clearTimeout(timeoutId);
+                        removeMenu();
+                        document.removeEventListener('click', dismissMenu);
+                    }
+                });
             }
         }
     });
- 
+
     function showTemporaryMessage(message, success) {
         const msgDiv = document.createElement('div');
         msgDiv.textContent = message;
@@ -88,7 +90,9 @@
         msgDiv.style.zIndex = '10000';
         document.body.appendChild(msgDiv);
         setTimeout(() => {
-            document.body.removeChild(msgDiv);
+            if (msgDiv.parentNode) {
+                msgDiv.parentNode.removeChild(msgDiv);
+            }
         }, 1000);
     }
 })();
