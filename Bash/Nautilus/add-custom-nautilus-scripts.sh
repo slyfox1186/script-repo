@@ -19,8 +19,8 @@ read -p 'Your choices are (1 or 2): ' choice
 clear
 
 case "$choice" in
-    1)    sudo rm *;
-    2)    clear;
+    1)    sudo rm * ;;
+    2)    clear ;;
     *)
           clear
           printf "%s\n\n" 'Bad user input. Please re-run the script.'
@@ -66,6 +66,7 @@ else
 fi
 fpath="$PWD/$1"
 fname="$(basename "$fpath")"
+fext="${fname##*.}"
 case "$fext" in
     sh)             tilix -w "$PWD" -e bash "$fname";;
     bak|log|txt)    tilix -w "$PWD" -e $editor "$fname";;
