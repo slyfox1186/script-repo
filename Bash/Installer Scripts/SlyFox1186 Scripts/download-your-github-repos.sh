@@ -17,7 +17,7 @@ cd "$github_dir" || exit 1
 repos=$(curl -fsS "https://api.github.com/users/$username/repos?per_page=1000" | grep -o 'https://github.com/[^"]*')
 
 # Clone each repository
-for repo in "$repos"; do
+for repo in $repos; do
     repo_name=$(echo "$repo" | cut -d'/' -f2 | cut -d'.' -f1)
     if [[ ! -d "$repo_name" ]]; then
         git clone "$repo"

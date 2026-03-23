@@ -28,7 +28,9 @@ use_nonfree=false
 use_ftp=false
 country=""
 debug=false
+tests=10
 
+while [[ $# -gt 0 ]]; do
     case "$1" in
         -h|--help)
             display_help

@@ -21,13 +21,15 @@ urls=(
 )
 
 # Loop through the arrays
+download_failed=false
 for i in "${!paths[@]}"; do
     cd "${paths[i]}" || exit 1
-    aria2c --conf-path="$HOME/.aria2/aria2.conf" --out="${filenames[i]}.$ext" "${urls[i]}"
+    if ! aria2c --conf-path="$HOME/.aria2/aria2.conf" --out="${filenames[i]}.$ext" "${urls[i]}"; then
+        download_failed=true
+    fi
 done
 
-# Execute the output file
-if [[ "$?" -eq 0 ]]; then
+if [[ "$download_failed" == false ]]; then
     google_speech "Batch video download completed." &>/dev/null
 else
     google_speech "Batch video download failed." &>/dev/null

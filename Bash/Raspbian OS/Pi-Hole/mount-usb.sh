@@ -12,8 +12,8 @@ read -p 'Please enter the usb device path (/dev/sda1): ' dpath
 clear
 
 case "$mpath" in
-    ''      mnt_path='/mnt';;
-    *)      mnt_path="$mpath"
+    '')     mnt_path='/mnt';;
+    *)      mnt_path="$mpath";;
 esac
 
 sudo mkdir -p "$mnt_path"
