@@ -39,7 +39,7 @@ apply_settings_fn() {
 }
 
 create_dhcp_yaml_fn() {
-    sudo cat > "$yfile" <<EOF
+    sudo tee "$yfile" > /dev/null <<EOF
 network:
   version: 2
   renderer: networkd
@@ -47,13 +47,10 @@ network:
     $con_id:
       dhcp4: yes
 EOF
-
 }
 
 create_static_yaml_fn() {
-    local ip_address_sed
-
-    sudo cat > "$yfile" <<EOF
+    sudo tee "$yfile" > /dev/null <<EOF
 network:
   version: 2
   renderer: networkd
@@ -65,9 +62,6 @@ network:
       nameservers:
           addresses: [$dns_master]
 EOF
-
-    ip_address_sed="$(echo "$ip_address" | sed 's/\//\\\//g')"
-    dns_master_sed="$(echo "$dns_master" | sed 's/,//g')"
 }
 
 sort_method_fn() {
