@@ -55,7 +55,7 @@ create_ssh_keypair_fn()
     echo
     ssh-keygen -b "${SSH_BITS}" -t "${SSH_TYPE}" -C "${SSH_COMMENT}" -f "${SSH_DIR}"
 
-    if [ ${?} -ne '0' ]; then
+    if [ "$?" -ne '0' ]; then
         exit_fail_ssh_keygen_fn
     fi
 
@@ -78,14 +78,12 @@ copy_ssh_key_fn()
     read -p 'IP Address ( 192.168.1.2 | 10.0.1.0 ): ' SSH_IP
     echo
 
-    ssh-copy-id -p "${SSH_PORT}" -i "${HOME}/.ssh/id_rsa.pub" "${SSH_USER}"@"${SSH_IP}"
+    if ! ssh-copy-id -p "${SSH_PORT}" -i "${HOME}/.ssh/id_rsa.pub" "${SSH_USER}"@"${SSH_IP}"; then
+        exit_fail_ssh_copy_fn
+    fi
     echo
     read -p 'Press enter to continue.'
     clear
-
-    if [ ${?} -ne '0' ]; then
-        exit_fail_ssh_copy_fn
-    fi
 
     main_menu_fn
 }
