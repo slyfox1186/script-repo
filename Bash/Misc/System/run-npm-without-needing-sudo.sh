@@ -4,7 +4,7 @@
 NPM_GLOBAL_DIR="$HOME/.npm-global"
 
 # Create the directory if it doesn't exist
-mkdir -p $NPM_GLOBAL_DIR
+mkdir -p "$NPM_GLOBAL_DIR"
 
 # Configure npm to use the new directory for global installations
 npm config set prefix "$NPM_GLOBAL_DIR"

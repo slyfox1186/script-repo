@@ -13,6 +13,8 @@ configs=(
 )
 
 [[ ! -f "$HOME/.nanorc" ]] && touch "$HOME/.nanorc"
-for config in ${configs[@]}; do
-    echo "include /usr/share/nano/$config" >> "$HOME/.nanorc"
+for config in "${configs[@]}"; do
+    if ! grep -qF "include /usr/share/nano/$config" "$HOME/.nanorc"; then
+        echo "include /usr/share/nano/$config" >> "$HOME/.nanorc"
+    fi
 done

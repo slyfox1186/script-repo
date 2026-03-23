@@ -10,7 +10,7 @@ fi
 
 pkgs=(gufw ufw unbound wget xclip)
 
-for pkg in ${pkgs[@]}
+for pkg in "${pkgs[@]}"
 do
     missing_pkg="$(dpkg -l | grep -o "$pkg")"
     
@@ -85,11 +85,10 @@ echo 'edns-packet-max=1232' | tee '/etc/dnsmasq.d/99-edns.conf' >/dev/null
 
 clear
 
-printf "%s\n%s\n\n"                                                                                                                  \
-    'When you are ready we will open the browser to the Pi-Hole GUI and copy required unbound DNS Server 1 text into the clipboard.' \
+printf "%s\n\n" \
+    'When you are ready we will open the browser to the Pi-Hole GUI and copy required unbound DNS Server 1 text into the clipboard.'
 read -p 'Press enter to finish things up.'
 clear
 
-1
 pihole_ip="$(ip route get 1.2.3.4 | awk '{print $7}')"
 firefox "http://$pihole_ip/admin/settings.php?tab=dns"
