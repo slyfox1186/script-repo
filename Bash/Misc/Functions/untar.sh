@@ -27,13 +27,13 @@ untar() {
             gz|tgz|bz2|xz|lz)
                 sudo tar -xf "$archive" -C "$dirname" --strip-components 1 ;;
         esac
+    done
 
-        for dir in *; do
-            if [[ -d "$dir" ]]; then
-                sudo chown -R "$USER":"$USER" "$dir"
-                sudo chmod -R 755 "$dir"
-            fi
-        done
+    for dir in *; do
+        if [[ -d "$dir" ]]; then
+            sudo chown -R "$USER":"$USER" "$dir"
+            sudo chmod -R 755 "$dir"
+        fi
     done
 }
 

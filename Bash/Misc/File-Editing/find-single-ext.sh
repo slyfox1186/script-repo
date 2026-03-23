@@ -21,6 +21,8 @@ prompt_user() {
     esac
 }
 
-for i in ${store_paths[@]}; do
+prompt_user
+
+for i in "${store_paths[@]}"; do
     echo "$PWD/$i:2"
 done
