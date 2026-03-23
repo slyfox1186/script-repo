@@ -184,7 +184,7 @@ install_and_set_compiler() {
     local cpp_compiler="${compiler}++"
     update-alternatives --remove-all "$cpp_compiler" 2>/dev/null || true
     update-alternatives --install "/usr/bin/$cpp_compiler" "$cpp_compiler" "$cpp_binary_path" 100
-    update-alternatives --set "$cpp_compiler" "$cpp_compiler_path"
+    update-alternatives --set "$cpp_compiler" "$cpp_binary_path"
     warn "Set $cpp_compiler-$major_version as default"
 
     log "Successfully set $compiler-$major_version and ${compiler}++-$major_version as default"

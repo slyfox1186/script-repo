@@ -13,7 +13,7 @@ fail() { echo -e "${RED}[FAIL]${NC} $1"; exit 1; }
 
 # Check for root privileges
 if [[ "$EUID" -eq 0 ]]; then
-    fail "This script must be run with root or with sudo."
+    fail "This script must be run without root or sudo."
 fi
 
 # Reboot prompt function
