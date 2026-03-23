@@ -56,7 +56,7 @@ if [[ $update_db == true ]]; then
         printf "\n%s\n" "Error: Failed to update locate database." >&2
         exit 1
     else
-        printf "\n%s\n" "The datebase was successfully updated."
+        printf "\n%s\n" "The database was successfully updated."
         exit 0
     fi
 fi
