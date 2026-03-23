@@ -5,7 +5,7 @@ set -e
 
 # Ensure the script is not run as root
 if [[ "$EUID" -eq 0 ]]; then
-    echo "You must run this script without root or with sudo."
+    echo "You must run this script without root or sudo."
     exit 1
 fi
 

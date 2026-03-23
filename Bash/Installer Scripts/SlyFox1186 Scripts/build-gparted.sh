@@ -37,7 +37,7 @@ installed() { return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok insta
 pkgs=(exfat-fuse exfatprogs f2fs-tools gparted hfsplus hfsprogs hfsutils jfsutils lvm2 \
       nilfs-tools ntfs2btrfs ntfs-3g reiser4progs reiserfsprogs udftools xfsprogs)
 
-for pkg in ${pkgs[@]}
+for pkg in "${pkgs[@]}"
 do
     if ! installed "${pkg}"; then
         missing_pkgs+=" ${pkg}"

@@ -25,14 +25,14 @@ fi
 
 # Check if the first argument passed ends in ".txt"
 if [[ $1 =~ $regex ]]; then
-    yt-dlp --ffmpeg-location $ff           \
+    yt-dlp --ffmpeg-location "$ff"          \
            --audio-quality 3               \
-           -f $format                      \
+           -f "$format"                    \
            --embed-thumbnail               \
            --windows-filenames             \
-           --user-agent $user_agent        \
+           --user-agent "$user_agent"      \
            --progress                      \
-           --paths $ouput_dir              \
+           --paths "$ouput_dir"            \
            --print-traffic                 \
            --abort-on-error                \
            --force-ipv4                    \
@@ -42,14 +42,14 @@ if [[ $1 =~ $regex ]]; then
            --retry-sleep fragment:exp=1:20 \
            --downloader aria2c             \
            --batch-file                    \
-           "$1" >> $logfile
+           "$1" >> "$logfile"
 else
-    yt-dlp --ffmpeg-location $ff           \
+    yt-dlp --ffmpeg-location "$ff"          \
            --audio-quality 3               \
-           -f $format                      \
+           -f "$format"                    \
            --embed-thumbnail               \
            --windows-filenames             \
-           --user-agent $user_agent        \
+           --user-agent "$user_agent"      \
            --progress                      \
            --verbose                       \
            --print-traffic                 \
@@ -61,5 +61,5 @@ else
            --retry-sleep fragment:exp=1:20 \
            --downloader aria2c             \
            -o "$filename"                  \
-           "$@" >> $logfile
+           "$@" >> "$logfile"
 fi

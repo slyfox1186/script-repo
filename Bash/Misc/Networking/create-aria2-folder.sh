@@ -115,7 +115,7 @@ trackers=(
     "udp://wepzone.net:6969/announce"
 )
 
-cat > $file <<EOF
+cat > "$file" <<EOF
 allow-overwrite=true
 allow-piece-length-change=true
 always-resume=true
