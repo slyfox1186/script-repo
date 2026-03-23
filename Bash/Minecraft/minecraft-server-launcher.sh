@@ -2,7 +2,7 @@
 pushd "$PWD" || exit 1
 clear
 IP=192.168.1.40
-PW=47j8a8&
+PW='47j8a8&'
 PORT=25575
 SCRIPT=start.sh
 if [ ! -f '/usr/local/bin/mcrcon' ]; then
@@ -78,7 +78,6 @@ fn_stop_server() {
     htop
 }
 fn_start_server() {
-    local SCRIPT
     echo -e "[i] Executing command: screen -dmS mc ./$SCRIPT\\n    - Please wait for the server to completely load before reconnecting.\\n"
     screen -dmS mc ./"$SCRIPT"
     echo

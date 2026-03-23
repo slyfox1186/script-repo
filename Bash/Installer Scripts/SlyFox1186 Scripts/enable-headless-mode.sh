@@ -53,13 +53,13 @@ update_grub() {
 
 enable_headless_mode() {
     log "Enabling headless mode..."
-    sudo sed -i 's/GRUB_CMDLINE_LINUX=""/GRUB_CMDLINE_LINUX="3"/g' $grub_config
+    sudo sed -i 's/GRUB_CMDLINE_LINUX=""/GRUB_CMDLINE_LINUX="3"/g' "$grub_config"
     update_grub
 }
 
 enable_vga_mode() {
     log "Enabling VGA mode..."
-    sudo sed -i 's/GRUB_CMDLINE_LINUX="3"/GRUB_CMDLINE_LINUX=""/g' $grub_config
+    sudo sed -i 's/GRUB_CMDLINE_LINUX="3"/GRUB_CMDLINE_LINUX=""/g' "$grub_config"
     update_grub
 }
 

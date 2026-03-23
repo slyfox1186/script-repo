@@ -9,7 +9,7 @@ if [ ! -f "$wl_fname" ]; then
     exit 1
 fi
 
-dos2unix $wl_fname
+dos2unix "$wl_fname"
 
 while IFS= read -r url; do
     trimmed_url=$(echo "$url" | xargs)

@@ -3,7 +3,7 @@
 box_out_banner()
 {
     input_char=$(echo "$@" | wc -c)
-    line=$(for i in $(seq 0 $input_char); do printf "-"; done)
+    line=$(for i in $(seq 0 "$input_char"); do printf "-"; done)
     tput bold
     line="$(tput setaf 3)$line"
     space=${line//-/ }

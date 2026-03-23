@@ -137,9 +137,9 @@ acl SSL_ports port 443
 
 
 
-http_access allow !Safe_ports
+http_access deny !Safe_ports
 
-http_access allow !SSL_ports
+http_access deny CONNECT !SSL_ports
 
 http_access allow localhost manager
 http_access deny manager
@@ -570,7 +570,7 @@ site.com
 www.site.com
 EOF
 
-if [ -f "$SQUID_BLACKLIST" ]; then touch "$SQUID_BLACKLIST" ;fi
+if [ ! -f "$SQUID_BLACKLIST" ]; then touch "$SQUID_BLACKLIST" ;fi
 cat > "$SQUID_BLACKLIST" <<'EOF' && echo -e "The blacklist was created successfully!\\n" || echo -e "The blacklist failed to create.\\n"
 <replace with your own list>
 .bytedance.com
