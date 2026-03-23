@@ -40,17 +40,17 @@ create_squid_user() {
 
 backup_configs() {
     echo "Backing up current Squid configuration..." | tee -a "$log_file"
-    cp $squid_conf "$backup_dir/squid.conf.bak"
-    cp $squid_whitelist "$backup_dir/whitelist.txt.bak"
-    cp $squid_blacklist "$backup_dir/blacklist.txt.bak"
+    cp "$squid_conf" "$backup_dir/squid.conf.bak"
+    cp "$squid_whitelist" "$backup_dir/whitelist.txt.bak"
+    cp "$squid_blacklist" "$backup_dir/blacklist.txt.bak"
     echo "Backup completed." | tee -a "$log_file"
 }
 
 restore_configs() {
     echo "Restoring Squid configuration from backup..." | tee -a "$log_file"
-    cp "$backup_dir/squid.conf.bak" $squid_conf
-    cp "$backup_dir/whitelist.txt.bak" $squid_whitelist
-    cp "$backup_dir/blacklist.txt.bak" $squid_blacklist
+    cp "$backup_dir/squid.conf.bak" "$squid_conf"
+    cp "$backup_dir/whitelist.txt.bak" "$squid_whitelist"
+    cp "$backup_dir/blacklist.txt.bak" "$squid_blacklist"
     echo "Restore completed." | tee -a "$log_file"
 }
 
@@ -75,7 +75,7 @@ interactive_config() {
 }
 
 configure_squid() {
-    cat > $squid_conf <<EOF
+    cat > "$squid_conf" <<EOF
 acl localnet src 172.16.0.0/12                  # RFC 1918 local private network [LAN]
 acl localnet src 192.168.0.0/16                 # RFC 1918 local private network [LAN]
 acl localhost src 127.0.0.1/255.255.255.255
@@ -166,7 +166,7 @@ install_dependencies() {
 }
 
 setup_whitelist_blacklist() {
-    cat > $squid_whitelist <<'EOF'
+    cat > "$squid_whitelist" <<'EOF'
 \.7z$
 \.deb$
 \.debb$
@@ -186,7 +186,7 @@ setup_whitelist_blacklist() {
 ^ftp:\/\/
 EOF
 
-    cat > $squid_blacklist <<'EOF'
+    cat > "$squid_blacklist" <<'EOF'
 .facebook.com
 .tiktok.com
 .whatsapp.com
