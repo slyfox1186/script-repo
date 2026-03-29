@@ -12,9 +12,9 @@ trim_this='s/-$//'
 # Function to fetch and parse the latest release version
 get_latest_release_version() {
     local url tags_url html_content main_content tags_content
-    url="$1"
-    releases_url="${url%.*}/releases"
-    tags_url="${url%.*}/tags"
+    url="${1%.git}"
+    releases_url="${url}/releases"
+    tags_url="${url}/tags"
 
     # Fetch HTML content from both URLs
     main_content=$(curl -fsSL "$url")
