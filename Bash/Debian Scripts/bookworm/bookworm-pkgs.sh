@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 pkgs=(alien aptitude aria2 autoconf autoconf-archive autogen automake bat binutils bison build-essential
       ccdiff clang clang-tools cmake cmake-extras colordiff curl dbus dbus-x11 dconf-cli dconf-editor ddclient
       desktopfolder disktype dos2unix exfat-fuse exfatprogs f2fs-tools flatpak flex g++-multilib gawk gcc-multilib
@@ -13,19 +15,23 @@ pkgs=(alien aptitude aria2 autoconf autoconf-archive autogen automake bat binuti
       rpm ruby-all-dev shellcheck slack snapd sqlite3 synaptic texinfo tk-dev trash-cli tty-share udftools unzip uuid-dev wget
       xclip xfsprogs xsel)
 
-for pkg in ${pkgs[@]}; do
-    if ! sudo dpkg | grep "$pkg" &>/dev/null; then
-        missing_pkgs+=" $pkg"
+missing_pkgs=()
+for pkg in "${pkgs[@]}"; do
+    if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q 'install ok installed'; then
+        missing_pkgs+=("$pkg")
     fi
 done
 
-if [ -n "$missing_pkgs" ]; then
-    if sudo apt install $missing_pkgs; then
-        printf "\n%s\n\n" 'The APT packages were successfully installed.'
-    else
-        echo
-        printf "%s\n\n" 'The missing APT packages failed to install.'
-        exit 1
-    fi
-    printf "\n%s\n\n" 'The APT packages are already installed.'
+if [[ ${#missing_pkgs[@]} -eq 0 ]]; then
+    echo "All APT packages are already installed."
+    exit 0
+fi
+
+echo "Installing ${#missing_pkgs[@]} missing package(s)..."
+
+if sudo apt install -y "${missing_pkgs[@]}"; then
+    echo "The APT packages were successfully installed."
+else
+    echo "Failed to install some APT packages." >&2
+    exit 1
 fi

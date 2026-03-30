@@ -1,36 +1,78 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 container_volume1="/share/<FOLDER HERE>/Container"
 container_volume2="/share/<FOLDER HERE>/.qpkg"
 
-if [ -z "$1" ] || [ -z "$2" ]; then
-    echo "Use as $0 [set|unset] <UID>"
+usage() {
+    echo "Usage: $0 <set|unset> <UID>"
+    echo "  set   - Grant read/execute ACL permissions for the given UID"
+    echo "  unset - Remove ACL permissions for the given UID"
+    exit 1
+}
+
+if [[ $# -ne 2 ]]; then
+    usage
+fi
+
+action="$1"
+uid="$2"
+
+if ! [[ "$uid" =~ ^[0-9]+$ ]]; then
+    echo "Error: UID must be a numeric value, got '$uid'" >&2
     exit 1
 fi
 
-if [ "$1" == "set" ]; then
-    setfacl -m "user:$2:rx" "$container_volume1"
-    setfacl -m "user:$2:rx" "$container_volume1/container-station-data/lib"
-    setfacl -m "user:$2:rx" "$container_volume1/container-station-data/lib/lxd"
-    setfacl -m "user:$2:rx" "$container_volume2/container-station"
-    setfacl -m "user:$2:rx" "$container_volume2/container-station/lib"
-    setfacl -m "user:$2:rx" "$container_volume2/container-station/var"
-    setfacl -R -m "user:$2:rx" "$container_volume2/container-station/usr"
-    setfacl -m "user:$2:rx" /var/lib/lxd
-    setfacl -m "user:$2:rx" /var/lib/lxd/containers
-    setfacl -m "user:$2:rx" /var/lib/lxd/devices
-    setfacl -m "user:$2:rx" /var/lib/lxd/shmounts
-    setfacl -m "user:$2:rx" /var/lib/lxd/snapshots
-    setfacl -m "user:$2:rx" /var/lib/lxd/storage-pools
-    setfacl -m "user:$2:rx" /var/lib/lxd/storage-pools/default/containers
-    sleep 2
-elif [ "$1" == "unset" ]; then
-    setfacl -R -x "user:$2" "$container_volume1"
-    setfacl -R -x "user:$2" "$container_volume2/container-station"
-    setfacl -R -x "user:$2" /var/lib/lxd/
-    setfacl -x "user:$2" /var/lib/lxd
-    sleep 2
-else
-    echo "Invalid operation"
+if [[ "$container_volume1" == *'<FOLDER HERE>'* ]]; then
+    echo "Error: Edit this script and replace <FOLDER HERE> with your actual share folder name." >&2
     exit 1
 fi
+
+set_acls() {
+    local paths=(
+        "$container_volume1"
+        "$container_volume1/container-station-data/lib"
+        "$container_volume1/container-station-data/lib/lxd"
+        "$container_volume2/container-station"
+        "$container_volume2/container-station/lib"
+        "$container_volume2/container-station/var"
+        /var/lib/lxd
+        /var/lib/lxd/containers
+        /var/lib/lxd/devices
+        /var/lib/lxd/shmounts
+        /var/lib/lxd/snapshots
+        /var/lib/lxd/storage-pools
+        /var/lib/lxd/storage-pools/default/containers
+    )
+
+    for path in "${paths[@]}"; do
+        if [[ -d "$path" ]]; then
+            setfacl -m "user:$uid:rx" "$path"
+        else
+            echo "Warning: Skipping missing directory: $path" >&2
+        fi
+    done
+
+    # Recursive ACL on usr directory
+    if [[ -d "$container_volume2/container-station/usr" ]]; then
+        setfacl -R -m "user:$uid:rx" "$container_volume2/container-station/usr"
+    fi
+
+    echo "ACL permissions set for UID $uid."
+}
+
+unset_acls() {
+    setfacl -R -x "user:$uid" "$container_volume1" 2>/dev/null || true
+    setfacl -R -x "user:$uid" "$container_volume2/container-station" 2>/dev/null || true
+    setfacl -R -x "user:$uid" /var/lib/lxd/ 2>/dev/null || true
+    setfacl -x "user:$uid" /var/lib/lxd 2>/dev/null || true
+
+    echo "ACL permissions removed for UID $uid."
+}
+
+case "$action" in
+    set)   set_acls ;;
+    unset) unset_acls ;;
+    *)     echo "Error: Invalid operation '$action'" >&2; usage ;;
+esac

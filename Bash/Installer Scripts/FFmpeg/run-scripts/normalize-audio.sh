@@ -1,15 +1,33 @@
 #!/usr/bin/env bash
 
-# Define the input and output file names
-input_video="path/to/your/input_video.mp4"
-output_video="path/to/your/normalized_output_video.mp4"
+set -euo pipefail
 
-# Use ffmpeg with the loudnorm filter to normalize the audio
+if [[ $# -lt 1 || $# -gt 2 ]]; then
+    echo "Usage: $0 <input_video> [output_video]"
+    echo "  If output_video is omitted, writes to <input_basename>_normalized.<ext>"
+    exit 1
+fi
+
+input_video="$1"
+
+if [[ ! -f "$input_video" ]]; then
+    echo "Error: Input file not found: $input_video"
+    exit 1
+fi
+
+if [[ $# -eq 2 ]]; then
+    output_video="$2"
+else
+    base="${input_video%.*}"
+    ext="${input_video##*.}"
+    output_video="${base}_normalized.${ext}"
+fi
+
+# loudnorm filter parameters:
+#   I=-23:  target integrated loudness in LUFS (broadcast standard)
+#   LRA=7:  loudness range target in LU
+#   TP=-2:  true peak target in dBTP (prevents clipping)
+# -c:v copy copies the video stream without re-encoding
 ffmpeg -i "$input_video" -c:v copy -af "loudnorm=I=-23:LRA=7:TP=-2" "$output_video"
 
-# Explanation of the loudnorm filter parameters:
-# I=-23: target integrated loudness in lufs (loudness units relative to full scale). -23 lufs is a common target for broadcast standards.
-# Lra=7: loudness range target in lu. this value helps in controlling the range between the loudest and quietest parts.
-# Tp=-2: true peak target in dbtp. it sets the maximum true peak level, preventing clipping.
-
-# Note: -c:v copy tells ffmpeg to copy the video stream directly without re-encoding, so only the audio stream is processed.
+echo "Normalized audio written to: $output_video"

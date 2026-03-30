@@ -1,32 +1,29 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
 
-clear
-
-if [ "$EUID" -ne '0' ]; then
-    printf "%s\n\n" 'You must run this script as root/sudo.'
+if [[ "$EUID" -ne 0 ]]; then
+    echo "You must run this script as root/sudo."
     exit 1
 fi
 
 pkgs=(gufw ufw unbound wget xclip)
 
-for pkg in "${pkgs[@]}"
-do
-    missing_pkg="$(dpkg -l | grep -o "$pkg")"
-    
-    if [ -z "$missing_pkg" ]; then
-        missing_pkgs+=" $pkg"
+missing_pkgs=()
+for pkg in "${pkgs[@]}"; do
+    if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q 'install ok installed'; then
+        missing_pkgs+=("$pkg")
     fi
 done
 
-if [ -n "$missing_pkgs" ]; then
-    sudo apt update
-    sudo apt -y install $missing_pkgs
-    sudo apt autoclean
+if [[ ${#missing_pkgs[@]} -gt 0 ]]; then
+    apt update
+    apt -y install "${missing_pkgs[@]}"
+    apt autoclean
     clear
 fi
 
-service ufw enable
+ufw enable
 ufw default allow outgoing
 ufw default deny incoming
 ufw allow '80/tcp'
@@ -34,12 +31,11 @@ ufw allow '53/tcp'
 ufw allow '53/udp'
 ufw allow '67/tcp'
 ufw allow '67/udp'
-service ufw restart
-
+ufw reload
 
 echo 'static domain_name_servers=127.0.0.1' | tee -a '/etc/dhcpcd.conf' >/dev/null
 
-wget --show-progress 'https://www.internic.net/domain/named.root' -qO- | sudo tee '/var/lib/unbound/root.hints' >/dev/null
+wget --show-progress 'https://www.internic.net/domain/named.root' -qO- | tee '/var/lib/unbound/root.hints' >/dev/null
 
 cat > '/etc/unbound/unbound.conf.d/pi-hole.conf' <<'EOF'
 server:
@@ -79,7 +75,7 @@ server:
     private-address: fe80::/10
 EOF
 
-service unbound restart
+systemctl restart unbound
 
 echo 'edns-packet-max=1232' | tee '/etc/dnsmasq.d/99-edns.conf' >/dev/null
 
@@ -87,7 +83,7 @@ clear
 
 printf "%s\n\n" \
     'When you are ready we will open the browser to the Pi-Hole GUI and copy required unbound DNS Server 1 text into the clipboard.'
-read -p 'Press enter to finish things up.'
+read -rp 'Press enter to finish things up.'
 clear
 
 pihole_ip="$(ip route get 1.2.3.4 | awk '{print $7}')"
