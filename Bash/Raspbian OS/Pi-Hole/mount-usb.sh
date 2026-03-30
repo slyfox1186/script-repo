@@ -1,29 +1,37 @@
 #!/usr/bin/env bash
 
-clear
+set -euo pipefail
 
+clear
 lsblk
 echo
-read -p 'Enter the mount path (/mnt): ' mpath
-clear
-fdisk -l
-echo
-read -p 'Please enter the usb device path (/dev/sda1): ' dpath
-clear
 
-case "$mpath" in
-    '')     mnt_path='/mnt';;
-    *)      mnt_path="$mpath";;
-esac
+read -rp 'Enter the mount path [/mnt]: ' mpath
+mnt_path="${mpath:-/mnt}"
+
+clear
+sudo fdisk -l
+echo
+
+read -rp 'Enter the USB device path (e.g., /dev/sda1): ' dpath
+
+if [[ -z "$dpath" ]]; then
+    echo "Error: Device path cannot be empty."
+    exit 1
+fi
+
+if [[ ! -b "$dpath" ]]; then
+    echo "Error: '$dpath' is not a valid block device."
+    exit 1
+fi
 
 sudo mkdir -p "$mnt_path"
 
-sudo mount "$dpath" "$mnt_path" -o auto exec,nofail,user,uid=pi,gid=pi,errors=remount-ro 0 0
+current_user="$(id -un)"
+current_group="$(id -gn)"
 
-alias umount_usb="sudo umount $mnt_path"
+sudo mount "$dpath" "$mnt_path" -o auto,exec,nofail,user,"uid=$current_user,gid=$current_group",errors=remount-ro
 
 clear
-printf "%s\n%s\n\n" \
-    "Remember to remove the USB execute the command \"sudo umount $mnt_path\"" \
-    "To make things easier you can use the alias this script created named \"umount_usb\""
-
+printf "%s\n\n" "USB device mounted at: $mnt_path"
+printf "%s\n" "To unmount, run: sudo umount \"$mnt_path\""
