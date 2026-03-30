@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Shellcheck disable=SC2066,SC2068,SC2086,SC2162
+
+set -euo pipefail
 
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -17,40 +18,34 @@ fail() {
 # Check if required Python modules are installed
 if ! python3 -c "import ffpb" &>/dev/null; then
     fail "Python module 'ffpb' is not installed. Please install it and try again."
-    exit 1
 fi
 
 if ! python3 -c "import google_speech" &>/dev/null; then
     fail "Python module 'google_speech' is not installed. Please install it and try again."
-    exit 1
 fi
 
-# Set the PATH variable
-if [ -d "$HOME/.local/bin" ]; then
+if [[ -d "$HOME/.local/bin" ]]; then
     export PATH="$HOME/.local/bin:$PATH"
 fi
 
 # Install required packages
 if command -v apt-get >/dev/null 2>&1; then
-    # Debian-based distributions
     apt_packages=("bc" "ffmpegthumbnailer" "libffmpegthumbnailer-dev" "libsox-fmt-all" "python3-pip" "sox")
     missing_apt_pkgs=()
 
-    # Loop through the array to find missing packages
     for pkg in "${apt_packages[@]}"; do
         if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
             missing_apt_pkgs+=("$pkg")
         fi
     done
 
-    if [ "${#missing_apt_pkgs[@]}" -gt 0 ]; then
-        log "Installing: ${missing_apt_pkgs[@]}"
+    if [[ ${#missing_apt_pkgs[@]} -gt 0 ]]; then
+        log "Installing: ${missing_apt_pkgs[*]}"
         echo
         sudo apt -y install "${missing_apt_pkgs[@]}" || fail "Failed to install required packages."
     fi
 elif command -v pacman >/dev/null 2>&1; then
-    # Arch Linux
-    pacman_packages=("bc" "ffmpegthumbnailer" "libffmpegthumbnailer" "python-pip" "sox")
+    pacman_packages=("bc" "ffmpegthumbnailer" "python-pip" "sox")
     missing_pacman_pkgs=()
 
     for pkg in "${pacman_packages[@]}"; do
@@ -59,8 +54,8 @@ elif command -v pacman >/dev/null 2>&1; then
         fi
     done
 
-    if [ "${#missing_pacman_pkgs[@]}" -gt 0 ]; then
-        log "Installing: ${missing_pacman_pkgs[@]}"
+    if [[ ${#missing_pacman_pkgs[@]} -gt 0 ]]; then
+        log "Installing: ${missing_pacman_pkgs[*]}"
         echo
         sudo pacman -Sy --noconfirm --needed "${missing_pacman_pkgs[@]}" || fail "Failed to install required packages."
     fi
@@ -68,46 +63,57 @@ else
     fail "Unsupported package manager. Please install the required packages manually."
 fi
 
-# Make sure there are videos available to convert
-vid_test=$(find ./ -maxdepth 1 -type f \( -iname \*.mp4 -o -iname \*.mkv \) | xargs -0n1 | head -n1)
+# Check for input videos
+shopt -s nullglob
+vid_files=(*.mp4 *.mkv)
+shopt -u nullglob
 
-if [ -z "$vid_test" ]; then
-    google_speech "No input videos were located." 2>/dev/null
+if [[ ${#vid_files[@]} -eq 0 ]]; then
+    google_speech "No input videos were located." 2>/dev/null || true
     fail "No input videos were located."
 fi
 
-# Create a temporary output folder in the /tmp directory
 random_dir=$(mktemp -d)
+trap 'rm -rf "$random_dir"' EXIT
 
-for vid in *.{mp4,mkv}; do
-    vid_test="$(find ./ -maxdepth 1 -type f \( -iname \*.mp4 -o -iname \*.mkv \) | xargs -0n1 | head -n1)"
-    [[ -z "$vid_test" ]] && exit 0
+for vid in "${vid_files[@]}"; do
+    [[ -f "$vid" ]] || continue
 
-    # Stores the current video width, aspect ratio, profile, bit rate, and total duration in variables for use later in the ffmpeg command line
-    aspect_ratio=$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=display_aspect_ratio -of default=nk=1:nw=1 -pretty "$vid" 2>/dev/null)
-    file_length=$(ffprobe -hide_banner -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$vid" 2>/dev/null)
-    max_rate=$(ffprobe -hide_banner -show_entries format=bit_rate -of default=nk=1:nw=1 -pretty "$vid" 2>/dev/null)
-    file_height=$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=height -of csv=s=x:p=0 -pretty "$vid" 2>/dev/null)
-    file_width=$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=width -of csv=s=x:p=0 -pretty "$vid" 2>/dev/null)
+    # Get video metadata; skip file if ffprobe fails
+    aspect_ratio=$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=display_aspect_ratio -of default=nk=1:nw=1 -pretty "$vid" 2>/dev/null) || { echo "Warning: Skipping $vid (ffprobe failed)"; continue; }
+    file_length=$(ffprobe -hide_banner -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$vid" 2>/dev/null) || continue
+    max_rate=$(ffprobe -hide_banner -show_entries format=bit_rate -of default=nk=1:nw=1 -pretty "$vid" 2>/dev/null) || continue
+    file_height=$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=height -of csv=s=x:p=0 -pretty "$vid" 2>/dev/null) || continue
+    file_width=$(ffprobe -hide_banner -select_streams v:0 -show_entries stream=width -of csv=s=x:p=0 -pretty "$vid" 2>/dev/null) || continue
 
-    # Modify vars to get file input and output names
+    # Validate that we got numeric-ish values
+    if [[ -z "$file_length" || -z "$max_rate" ]]; then
+        echo "Warning: Could not read metadata for $vid, skipping."
+        continue
+    fi
+
     file_in="$vid"
-    fext="${file_in#*.}"
+    fext="${file_in##*.}"
     file_out="$random_dir/${file_in%.*} (x265).$fext"
 
-    # Trim the strings
-    trim=${max_rate::-11}
+    # Extract numeric bitrate (strip trailing units like " kbit/s")
+    trim="${max_rate%% *}"
+    trim="${trim%%[!0-9.]*}"
 
-    # Gets the input videos max datarate and applies logic to determine bitrate, bufsize, and maxrate variables
-    trim=$(bc <<< "scale=2 ; $trim * 1000")
-    br=$(bc <<< "scale=2 ; $trim / 2")
-    bitrate="${br::-3}"
+    if [[ -z "$trim" ]]; then
+        echo "Warning: Could not parse bitrate for $vid, skipping."
+        continue
+    fi
+
+    # Calculate encoding parameters
+    trim=$(bc <<< "scale=2; $trim * 1000")
+    br=$(bc <<< "scale=2; $trim / 2")
+    bitrate="${br%.*}"
     maxrate=$(( bitrate * 2 ))
-    bs=$(bc <<< "scale=2 ; $br * 2")
-    bufsize="${bs::-3}"
-    length=$(( ${file_length::-7} / 60 ))
+    bufsize=$(( bitrate * 2 ))
+    length_raw="${file_length%.*}"
+    length=$(( length_raw / 60 ))
 
-    # Print the video stats in the terminal
     clear
     cat <<EOF
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -118,7 +124,7 @@ Input File:      $file_in
 Output File:     $file_out
 
 Aspect Ratio:    $aspect_ratio
-Dimensions:      ${file_width}x$file_height
+Dimensions:      ${file_width}x${file_height}
 
 Maxrate:         ${maxrate}k
 Bufsize:         ${bufsize}k
@@ -129,15 +135,14 @@ Length:          ${length} mins
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 EOF
 
-    # Execute ffpb
     echo
     if ffpb -y \
             -vsync 0 \
             -hide_banner \
             -hwaccel_output_format cuda \
-            -threads $(nproc --all) \
+            -threads "$(nproc --all)" \
             -i "$file_in" \
-            -threads $(nproc --all) \
+            -threads "$(nproc --all)" \
             -c:v hevc_nvenc \
             -preset medium \
             -profile main10 \
@@ -158,15 +163,11 @@ EOF
             -c:a copy \
             "$file_out"; then
         log "Video conversion completed."
-        google_speech "Video conversion completed." 2>/dev/null
+        google_speech "Video conversion completed." 2>/dev/null || true
         mv "$file_out" "$PWD/${file_in%.*} (x265).$fext"
     else
-        sudo rm -fr "$random_dir"
-        google_speech "Video conversion failed for $file_in." 2>/dev/null
-        fail "Video conversion failed for $file_in."
+        google_speech "Video conversion failed for $file_in." 2>/dev/null || true
+        echo -e "${RED}[ERROR]${NC} Video conversion failed for $file_in."
     fi
     clear
 done
-
-# Remove the temporary directory
-sudo rm -fr "$random_dir"

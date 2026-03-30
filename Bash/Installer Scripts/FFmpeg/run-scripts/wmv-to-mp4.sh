@@ -1,9 +1,18 @@
 #!/usr/bin/env bash
+
+set -euo pipefail
+
 # Recursively search and re-encode all found wmv files to mp4
 
 printf "%s\n\n" "Searching for .wmv files to convert to .mp4 with NVIDIA CUDA acceleration..."
 
-# Define the conversion process as a function for clarity
+for cmd in ffpb; do
+    if ! command -v "$cmd" &>/dev/null; then
+        echo "Error: $cmd is not installed."
+        exit 1
+    fi
+done
+
 convert_to_mp4() {
     local file_in="$1"
     local file_out="${file_in%.wmv}.mp4"
@@ -15,23 +24,22 @@ convert_to_mp4() {
     echo "Name in:  $filename_in"
     echo "Name out: $filename_out"
     echo
-    echo "CWD:      $PWD/${folder_path//.\//}"
+    echo "CWD:      ${folder_path}"
     echo
 
-    # CUDA accelerated conversion
     if ffpb -y -hide_banner -hwaccel cuda -hwaccel_output_format cuda -fflags '+genpts' -i "$file_in" -c:v h264_nvenc -preset slow -c:a libfdk_aac "$file_out"; then
         printf "\n%s\n\n" "Conversion complete: $file_out"
-        read -p "Do you want to delete the input WMV file (y/n)?: " choice
+        read -rp "Do you want to delete the input WMV file? (y/n): " choice
         case "$choice" in
             [yY]*) rm -f "$file_in" ;;
             [nN]*) ;;
         esac
     else
-        echo "Conversion failed: $file_out"
+        echo "Conversion failed: $file_in" >&2
     fi
 }
 
-export -f convert_to_mp4
-
 # Find and convert all .wmv files
-find "${BASH_SOURCE%/*}" -type f -iname "*.wmv" -exec bash -c 'convert_to_mp4 "$1"' _ {} \;
+while IFS= read -r -d '' wmv_file; do
+    convert_to_mp4 "$wmv_file"
+done < <(find . -type f -iname "*.wmv" -print0)

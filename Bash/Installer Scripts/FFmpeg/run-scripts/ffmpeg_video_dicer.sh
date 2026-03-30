@@ -1,41 +1,49 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 # Video path and start/stop times
 video_path="/path/to/video.mp4"
 
 concat_video_segments() {
     local video_path="$1"
-    local start=("${@:2:$(($#/2))}") # First half of arguments are 'starts'
-    local stops=("${@:$(($#/2 + 2))}") # Second half of arguments are 'stops'
+    shift
+
+    if [[ $# -lt 2 || $(( $# % 2 )) -ne 0 ]]; then
+        echo "Error: Must provide an equal number of start and stop times." >&2
+        return 1
+    fi
+
+    local num_segments=$(( $# / 2 ))
+    local starts=("${@:1:$num_segments}")
+    local stops=("${@:$num_segments+1}")
+
+    if [[ ! -f "$video_path" ]]; then
+        echo "Error: Video file not found: $video_path" >&2
+        return 1
+    fi
 
     local ext="${video_path##*.}"
     local output_name="$(basename "$video_path" ."$ext")-OUT.$ext"
-    local tmp_dir=$(mktemp -d)
+    local tmp_dir
+    tmp_dir=$(mktemp -d)
+    trap 'rm -rf "$tmp_dir"' RETURN
 
-    echo "Temporary directory: $tmp_dir"
     local concat_file="$tmp_dir/filelist.txt"
-    > "$concat_file"
 
-    for i in "${!start[@]}"
-    do
-        local segment="$tmp_dir/segment$i.$ext"
-        echo "Processing segment: $segment"
-        ffmpeg -hide_banner -ss "${start[i]}" -to "${stops[i]}" -i "$video_path" -c copy "$segment"
+    for i in "${!starts[@]}"; do
+        local segment="$tmp_dir/segment${i}.$ext"
+        echo "Processing segment $((i+1)): ${starts[i]} -> ${stops[i]}"
+        ffmpeg -hide_banner -ss "${starts[i]}" -to "${stops[i]}" -i "$video_path" -c copy "$segment"
         echo "file '$segment'" >> "$concat_file"
     done
 
-    echo "Concatenation file list:"
-    cat "$concat_file"
-
-    echo "Concatenating to $output_name"
+    echo "Concatenating ${#starts[@]} segments to $output_name"
     ffmpeg -hide_banner -f concat -safe 0 -i "$concat_file" -c copy "$output_name"
-
-# Clean up temporary files
-    rm -r "$tmp_dir"
+    echo "Done: $output_name"
 }
 
-# Each start variable on top corresponds with the stop variable directly below it.
-# Add additional matching start and stop times as needed.
+# Each start time corresponds with the stop time at the same index.
 start=("00:00:00" "00:04:07")
 stops=("00:02:48" "00:22:37")
 
