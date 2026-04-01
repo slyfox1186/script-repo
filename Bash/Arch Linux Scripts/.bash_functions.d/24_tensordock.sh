@@ -24,7 +24,8 @@ deploy_tensor_dock() {
 alias dtd='deploy_tensor_dock'
 
 get_bot_health() {
-    if ! curl -fsSL 'http://***REDACTED_HOST***/health'; then
+    local host="${TENSORDOCK_HOST:?Set TENSORDOCK_HOST environment variable}"
+    if ! curl -fsSL "http://${host}/health"; then
         echo "The command failed!"
     fi
 }
