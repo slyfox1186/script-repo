@@ -1,118 +1,236 @@
-# $HOME/.bashrc: executed by bash(1) for non-login shells.
-# See /usr/share/doc/bash/examples/startup-files (in the package bash-doc) for examples
+#!/usr/bin/env bash
+
+# ===============================================================
+# Enhanced .bashrc for Arch Linux - Modular Version
+# Author: slyfox1186 (https://github.com/slyfox1186/script-repo)
+# ===============================================================
 
 # If not running interactively, don't do anything
-case $- in
+case "$-" in
     *i*) ;;
-      *) return ;;
+    *) return ;;
 esac
 
-# Don't put duplicate lines or lines starting with a space in the history.
-# See bash(1) for more options
-HISTCONTROL=ignoreboth
+# Fix getcwd error if current directory is deleted
+cd ~ 2>/dev/null || true
 
-# For setting history length see HISTSIZE and HISTFILESIZE in bash(1)
-HISTSIZE=10000
-HISTFILESIZE=20000
+# Check if bashrc directory exists, create if not
+BASHRC_DIR="$HOME/.bashrc.d"
+[[ ! -d "$BASHRC_DIR" ]] && mkdir -p "$BASHRC_DIR"
 
-# make less more friendly for non-text input files, see lesspipe(1)
-[[ -x '/usr/bin/lesspipe' ]] && eval "$(SHELL=/bin/sh lesspipe)"
+# System info variables (used in modules and welcome message)
+threads=$(nproc --all 2>/dev/null || echo "unknown")
+cpus=$((threads / 2))
+lan=$(ip route get 1.2.3.4 2>/dev/null | awk '{print $7}' || echo "unknown")
+wan=$(curl --connect-timeout 1 -fsS "https://checkip.amazonaws.com" 2>/dev/null || echo "unknown")
 
-# set variable identifying the chroot you work in (used in the prompt below)
-if [[ -z "$debian_chroot:-" ]] && [[ -r /etc/debian_chroot ]]; then
-    debian_chroot=$(cat /etc/debian_chroot)
-fi
+# Export common variables for modules to use
+export threads cpus lan wan
 
-# set a fancy prompt (non-color, unless we know we "want" color)
-case "$TERM" in
-    xterm-color|*-256color) color_prompt="yes" ;;
-esac
-
-# uncomment for a colored prompt, if the terminal has the capability; turned
-# off by default to not distract the user: the focus in a terminal window
-# should be on the output of commands, not on the prompt
-force_color_prompt=yes
-
-if [[ -n "$force_color_prompt" ]]; then
-    if [ -x /usr/bin/tput ] && tput setaf 1 >&/dev/null; then
-	# We have color support; assume it's compliant with Ecma-48
-	# (ISO/IEC-6429). (Lack of such support is extremely rare, and such
-	# a case would tend to support setf rather than setaf.)
-	color_prompt="yes"
-    else
-	color_prompt=""
+# Source all bashrc modules
+for module in "$BASHRC_DIR"/*.sh; do
+    if [[ -f "$module" ]]; then
+        source "$module"
     fi
-fi
+done
 
-if [[ "$color_prompt" = "yes" ]]; then
-    PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
-else
-    PS1='${debian_chroot:+($debian_chroot)}\u@\h:\w\$ '
-fi
-unset color_prompt force_color_prompt
 
-# If this is an xterm set the title to user@host:dir
-case "$TERM" in
-xterm*|rxvt*)
-    PS1="\[\e]0;${debian_chroot:+($debian_chroot)}\u@\h: \w\a\]$PS1"
-    ;;
-*)
-    ;;
-esac
-
-# enable color support of ls and also add handy aliases
-if [[ -x /usr/bin/dircolors ]]; then
-    if test -r "$HOME/.dircolors"; then
-	eval $(dircolors -b "$HOME/.dircolors")
-    else
-        eval $(dircolors -b)
-    fi
-    alias ls="ls --color=always --group-directories-first"
-    alias grep="grep --color=always"
-fi
-
-# colored GCC warnings and errors
-GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01'
-
-# Alias definitions.
-# You may want to put all your additions into a separate file like
-# $HOME/.bash_aliases, instead of adding them here directly.
-# See /usr/share/doc/bash-doc/examples in the bash-doc package.
-
-if [[ -f ~/.bash_aliases ]]; then
-    source ~/.bash_aliases
-fi
-
-if [[ -f ~/.bash_functions ]]; then
-    source ~/.bash_functions
-fi
-
-if [[ -f ~/.cargo/env ]]; then
-    source ~/.cargo/env
-fi
-
-THREADS=$(nproc --all)
-CPUS=$((threads / 2))
-LAN=$(ip route get 1.2.3.4 | awk '{print $7}')
-WAN=$(curl --connect-timeout 1 -fsS "https://checkip.amazonaws.com")
-PS1='\n\[\e[38;5;227m\]\w\n\[\e[38;5;215m\]\u\[\e[38;5;183;1m\]@\[\e[0;38;5;117m\]\h\[\e[97;1m\]\\$\[\e[0m\]'
-PYTHONUTF8=1
-MAGICK_THREAD_LIMIT=16
-export CPUS LAN PS1 PYTHONUTF8 THREADS WAN MAGICK_THREAD_LIMIT
-
-# SET THE SCRIPT'S PATH VARIABLE
-PATH="\
-/usr/lib/ccache/bin:\
-$HOME/.cargo/bin:\
-$HOME/.local/bin:\
-/usr/local/sbin:\
-/opt/cuda/bin:\
-/usr/local/x86_64-linux-gnu/bin:\
+export PATH="\
+/usr/lib/ccache:\
 /usr/local/bin:\
+/usr/local/sbin:\
+/usr/local/cuda/bin:\
 /usr/sbin:\
 /usr/bin:\
 /sbin:\
-/bin:\
-/snap/bin\
+/bin\
 "
-export PATH
+
+[[ -s "$HOME/.nvm/nvm.sh" ]] && source "$HOME/.nvm/nvm.sh"
+[[ -s "$HOME/.nvm/bash_completion" ]] && source "$HOME/.nvm/bash_completion"
+
+# pnpm
+export PNPM_HOME="$HOME/.local/share/pnpm"
+if [[ -d "$PNPM_HOME" ]]; then
+    case ":$PATH:" in
+      *":$PNPM_HOME:"*) ;;
+      *) export PATH="$PNPM_HOME:$PATH" ;;
+    esac
+fi
+# pnpm end
+
+# Source bash functions and aliases
+if [[ -d "$HOME/.bash_functions.d" ]]; then
+    for f in "$HOME/.bash_functions.d"/*.sh; do
+        [[ -r "$f" ]] && source "$f"
+    done
+fi
+
+if [[ -d "$HOME/.bash_aliases.d" ]]; then
+    for f in "$HOME/.bash_aliases.d"/*.sh; do
+        [[ -r "$f" ]] && source "$f"
+    done
+fi
+
+
+if [[ -n "$PS1" ]]; then
+    echo "Welcome, $(whoami)! Terminal ready at $(date '+%H:%M:%S')"
+    echo "System: $(grep PRETTY_NAME /etc/os-release | cut -d= -f2- | tr -d '"')"
+    echo "Kernel: $(uname -sr)"
+    echo "CPU cores: $threads (Physical: $cpus)"
+    echo -e "IP: $lan (LAN), $wan (WAN)\n"
+fi
+
+LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/local/cuda/lib64"
+export LD_LIBRARY_PATH PATH
+
+remove_path_entry() {
+    local entry new_path path_part
+    entry="$1"
+    new_path=""
+
+    while IFS=: read -r -d ':' path_part; do
+        [[ -n "$path_part" ]] || continue
+        [[ "$path_part" == "$entry" ]] && continue
+        if [[ -n "$new_path" ]]; then
+            new_path+=":$path_part"
+        else
+            new_path="$path_part"
+        fi
+    done < <(printf '%s:' "$PATH")
+
+    PATH="$new_path"
+}
+
+path_prepend() {
+    local entry
+    entry="$1"
+    [[ -n "$entry" ]] || return
+    remove_path_entry "$entry"
+    export PATH="$entry${PATH:+:$PATH}"
+}
+
+path_append() {
+    local entry
+    entry="$1"
+    [[ -n "$entry" ]] || return
+    remove_path_entry "$entry"
+    export PATH="${PATH:+$PATH:}$entry"
+}
+
+# >>> conda initialize >>>
+# !! Contents within this block are managed by 'conda init' !!
+export CONDA_AUTO_ACTIVATE_BASE=false
+__conda_setup="$('/home/jman/miniconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
+if [ $? -eq 0 ]; then
+    eval "$__conda_setup"
+else
+    if [ -f "/home/jman/miniconda3/etc/profile.d/conda.sh" ]; then
+        . "/home/jman/miniconda3/etc/profile.d/conda.sh"
+    else
+        export PATH="/home/jman/miniconda3/bin:$PATH"
+    fi
+fi
+unset __conda_setup
+# <<< conda initialize <<<
+
+# Keep system-installed tools ahead of the Conda base bin directory.
+if [[ -d "$HOME/miniconda3/bin" ]]; then
+    path_append "$HOME/miniconda3/bin"
+fi
+
+### Source rustup
+[[ -s "$HOME/.cargo/env" ]] && source "$HOME/.cargo/env"
+[[ -f "$HOME/.deno/env" ]] && . "$HOME/.deno/env"
+[[ -f "$HOME/.local/share/bash-completion/completions/deno.bash" ]] && source "$HOME/.local/share/bash-completion/completions/deno.bash"
+path_prepend "$HOME/.local/bin"
+
+# ===============================================================
+# Steam/Mesa Shader Cache Configuration
+# ===============================================================
+# Limit Mesa shader cache to 2GB to prevent excessive disk usage
+export MESA_SHADER_CACHE_MAX_SIZE=2G
+
+# ===============================================================
+# Custom PS1 Prompt
+# ===============================================================
+
+__prompt_command() {
+    local exit_code=$?
+
+    # Colors (wrapped in \[ \] for proper cursor positioning)
+    local reset='\[\e[0m\]'
+    local red='\[\e[0;31m\]'
+    local green='\[\e[0;32m\]'
+    local yellow='\[\e[0;33m\]'
+    local blue='\[\e[0;34m\]'
+    local purple='\[\e[0;35m\]'
+    local cyan='\[\e[0;36m\]'
+    local gray='\[\e[0;90m\]'
+
+    # Git info
+    local git_info=""
+    if git rev-parse --is-inside-work-tree &>/dev/null; then
+        local branch=$(git symbolic-ref --short HEAD 2>/dev/null || git rev-parse --short HEAD 2>/dev/null)
+        local dirty=""
+        git diff --quiet 2>/dev/null && git diff --cached --quiet 2>/dev/null || dirty="*"
+        git_info=" ${purple}(${branch}${dirty})${reset}"
+    fi
+
+    # Exit code (only show if non-zero)
+    local exit_info=""
+    [[ $exit_code -ne 0 ]] && exit_info=" ${red}[${exit_code}]${reset}"
+
+    # Virtual env
+    local venv=""
+    if [[ -n "$CONDA_DEFAULT_ENV" ]]; then
+        venv="${yellow}(${CONDA_DEFAULT_ENV})${reset} "
+    elif [[ -n "$VIRTUAL_ENV" ]]; then
+        venv="${yellow}($(basename "$VIRTUAL_ENV"))${reset} "
+    fi
+
+    # Build prompt
+    PS1="${venv}${blue}\w${reset}${git_info}${exit_info}\n${green}\u${reset}@${cyan}\h${reset} \$ "
+}
+
+PROMPT_COMMAND=__prompt_command
+
+# MARVIN - AI Chief of Staff
+marvin() {
+    echo -e '\e[1;33m███╗   ███╗    █████╗    ██████╗   ██╗   ██╗  ██╗   ███╗   ██╗   \e[0m'
+    echo -e '\e[1;33m████╗ ████║   ██╔══██╗   ██╔══██╗  ██║   ██║  ██║   ████╗  ██║   \e[0m'
+    echo -e '\e[1;33m██╔████╔██║   ███████║   ██████╔╝  ██║   ██║  ██║   ██╔██╗ ██║   \e[0m'
+    echo -e '\e[1;33m██║╚██╔╝██║   ██╔══██║   ██╔══██╗  ╚██╗ ██╔╝  ██║   ██║╚██╗██║   \e[0m'
+    echo -e '\e[1;33m██║ ╚═╝ ██║██╗██║  ██║██╗██║  ██║██╗╚████╔╝██╗██║██╗██║ ╚████║██╗\e[0m'
+    echo -e '\e[1;33m╚═╝     ╚═╝╚═╝╚═╝  ╚═╝╚═╝╚═╝  ╚═╝╚═╝ ╚═══╝ ╚═╝╚═╝╚═╝╚═╝  ╚═══╝╚═╝\e[0m'
+    echo ''
+    echo -e '\e[0;36m▖  ▖              ▄▖      ▘  ▗        ▗     \e[0m'
+    echo -e '\e[0;36m▛▖▞▌▀▌▛▌▀▌▛▌█▌▛▘  ▌▌▛▌▛▌▛▌▌▛▌▜▘▛▛▌█▌▛▌▜▘▛▘   \e[0m'
+    echo -e '\e[0;36m▌▝ ▌█▌▌▌█▌▙▌▙▖▄▌  ▛▌▙▌▙▌▙▌▌▌▌▐▖▌▌▌▙▖▌▌▐▖▄▌▗   \e[0m'
+    echo -e '\e[0;36m          ▄▌        ▌ ▌                   ▘    \e[0m'
+    echo -e '\e[0;36m▄▖     ▌    ▖▖    ▘        ▄▖         ▗     ▗   ▖ ▖  ▗ ▘▐▘▘    ▗ ▘      \e[0m'
+    echo -e '\e[0;36m▙▘█▌▀▌▛▌▛▘  ▌▌▀▌▛▘▌▛▌▌▌▛▘  ▐ ▛▛▌▛▌▛▌▛▘▜▘▀▌▛▌▜▘  ▛▖▌▛▌▜▘▌▜▘▌▛▘▀▌▜▘▌▛▌▛▌▛▘\e[0m'
+    echo -e '\e[0;36m▌▌▙▖█▌▙▌▄▌  ▚▘█▌▌ ▌▙▌▙▌▄▌  ▟▖▌▌▌▙▌▙▌▌ ▐▖█▌▌▌▐▖  ▌▝▌▙▌▐▖▌▐ ▌▙▖█▌▐▖▌▙▌▌▌▄▌\e[0m'
+    echo -e '\e[0;36m                                ▌                                       \e[0m'
+    echo ''
+    cd "/home/jman/marvin" && claude
+}
+
+
+# MARVIN - Open in IDE
+mcode() {
+    claude "/home/jman/marvin"
+}
+
+
+# NCCL configuration for distributed vLLM (Ethernet, not InfiniBand)
+export NCCL_IB_DISABLE=1
+export NCCL_NET_GDR_LEVEL=0
+export NCCL_P2P_DISABLE=1
+export NCCL_DEBUG=WARN
+
+# >>> build-tools golang >>>
+export GOROOT="/usr/local/programs/golang-1.26.1"
+export GOROOT
+path_append "$GOROOT/bin"
+# <<< build-tools golang <<<
