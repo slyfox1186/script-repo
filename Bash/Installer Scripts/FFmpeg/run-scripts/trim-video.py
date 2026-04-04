@@ -39,30 +39,51 @@ def print_color(color, msg, end="\n"):
     print(f"{color}{msg}{NC}", end=end)
 
 
-def find_nearest_keyframe(input_file, target_time):
+def _get_keyframe_pts(input_file, read_interval):
+    """Return a sorted list of keyframe PTS values within the given read_interval.
+
+    Uses packet-level queries (flags field) instead of -skip_frame nokey,
+    which is unreliable when combined with -read_intervals.
+    """
     result = subprocess.run(
         [
-            "ffprobe", "-hide_banner", "-v", "error", "-skip_frame", "nokey",
-            "-select_streams", "v:0", "-show_entries", "frame=pkt_pts_time",
-            "-of", "csv=p=0", input_file,
+            "ffprobe", "-hide_banner", "-v", "error",
+            "-select_streams", "v:0",
+            "-show_entries", "packet=pts_time,flags",
+            "-of", "csv=p=0",
+            "-read_intervals", read_interval,
+            input_file,
         ],
         capture_output=True, text=True,
     )
-    nearest = None
-    min_diff = None
+    keyframes = []
     for line in result.stdout.strip().splitlines():
         line = line.strip()
         if not line:
             continue
+        # Output format: "pts_time,flags"  e.g. "18.018000,K__"
+        parts = line.split(",", 1)
+        if len(parts) != 2:
+            continue
+        pts_str, flags = parts
+        if "K" not in flags:
+            continue
         try:
-            pts = float(line)
+            keyframes.append(float(pts_str))
         except ValueError:
             continue
-        diff = abs(pts - target_time)
-        if min_diff is None or diff < min_diff:
-            min_diff = diff
-            nearest = pts
-    return nearest
+    keyframes.sort()
+    return keyframes
+
+
+def find_keyframe_at_or_before(input_file, target_time):
+    """Find the last keyframe at or before target_time."""
+    keyframes = _get_keyframe_pts(input_file, f"0%+{target_time + 10}")
+    best = None
+    for pts in keyframes:
+        if pts <= target_time + 0.001:
+            best = pts
+    return best
 
 
 def seconds_to_hms(seconds):
@@ -101,40 +122,18 @@ def get_duration(input_file):
 
 
 def get_first_keyframe_time(input_file):
-    result = subprocess.run(
-        [
-            "ffprobe", "-hide_banner", "-v", "error", "-of", "default=noprint_wrappers=1:nokey=1",
-            "-select_streams", "v:0", "-skip_frame", "nokey", "-show_frames",
-            "-show_entries", "frame=pkt_dts_time", input_file,
-        ],
-        capture_output=True, text=True,
-    )
-    for line in result.stdout.strip().splitlines():
-        line = line.strip()
-        if re.match(r"^[0-9]+\.[0-9]+$", line):
-            return float(line)
-    return None
+    keyframes = _get_keyframe_pts(input_file, "0%+5")
+    return keyframes[0] if keyframes else None
 
 
-def get_end_keyframe_time(input_file, trim_end):
-    result = subprocess.run(
-        [
-            "ffprobe", "-hide_banner", "-v", "error", "-select_streams", "v",
-            "-of", "csv=p=0", "-show_entries", "frame=best_effort_timestamp_time",
-            "-read_intervals", f"-{trim_end}%-{trim_end}", "-i", input_file,
-        ],
-        capture_output=True, text=True,
-    )
-    times = []
-    for line in result.stdout.strip().splitlines():
-        line = line.strip()
-        if line:
-            try:
-                times.append(float(line))
-            except ValueError:
-                pass
-    if times:
-        return max(times)
+def find_keyframe_at_or_after(input_file, target_time, duration):
+    """Find the first keyframe at or after target_time."""
+    read_start = max(0, target_time - 1)
+    read_dur = min(20, duration - read_start)
+    keyframes = _get_keyframe_pts(input_file, f"{read_start}%+{read_dur}")
+    for pts in keyframes:
+        if pts >= target_time - 0.001:
+            return pts
     return None
 
 
@@ -254,21 +253,30 @@ def main():
                 print_color(RED, f"Error: Could not read duration of {input_file}. Skipping.")
                 continue
 
-            # Calculate start keyframe
+            # Calculate start keyframe — snap to keyframe at or before the
+            # requested time so stream copy produces clean frames.
             if trim_start > 0:
-                formatted_start_time = find_nearest_keyframe(input_file, trim_start)
+                formatted_start_time = find_keyframe_at_or_before(input_file, trim_start)
                 if formatted_start_time is None:
-                    print_color(YELLOW, f"No keyframe found near start time {trim_start}, using the exact time instead.")
-                    formatted_start_time = trim_start
+                    print_color(YELLOW, f"No keyframe found at or before {trim_start}s, using 0.")
+                    formatted_start_time = 0.0
+                elif verbose and abs(formatted_start_time - trim_start) > 0.05:
+                    print_color(YELLOW,
+                        f"Snapped start from {trim_start}s to nearest keyframe at {formatted_start_time}s")
             else:
                 formatted_start_time = get_first_keyframe_time(input_file)
 
-            # Calculate end keyframe
+            # Calculate end keyframe — snap to keyframe at or after the
+            # requested end point so stream copy produces clean frames.
             if trim_end > 0:
-                formatted_end_time = get_end_keyframe_time(input_file, trim_end)
+                end_target = total_duration - trim_end
+                formatted_end_time = find_keyframe_at_or_after(input_file, end_target, total_duration)
                 if formatted_end_time is None:
-                    print_color(YELLOW, f"No keyframe found near end time {trim_end}, using the exact time instead.")
-                    formatted_end_time = total_duration - trim_end
+                    print_color(YELLOW, f"No keyframe found at or after {end_target}s, using duration.")
+                    formatted_end_time = total_duration
+                elif verbose and abs(formatted_end_time - end_target) > 0.05:
+                    print_color(YELLOW,
+                        f"Snapped end from {end_target}s to nearest keyframe at {formatted_end_time}s")
             else:
                 formatted_end_time = total_duration
 
@@ -282,19 +290,20 @@ def main():
                 final_output = input_file
             else:
                 dir_name = os.path.dirname(input_file)
-                base_only = os.path.basename(base_name)
+                base_only = os.path.basename(base_name).rstrip(".")
                 final_output = os.path.join(dir_name, f"{prepend_text}{base_only}{append_text}{extension}")
 
             # Build ffmpeg command
             cmd = ["ffmpeg", "-hide_banner"]
             if overwrite:
                 cmd.append("-y")
+
             if formatted_start_time is not None:
                 cmd.extend(["-ss", str(formatted_start_time)])
-            cmd.extend(["-i", input_file, "-ss", "0"])
+            cmd.extend(["-i", input_file])
             if formatted_end_time is not None:
-                cmd.extend(["-to", str(formatted_end_time)])
-            cmd.extend(["-c", "copy"])
+                cmd.extend(["-to", str(formatted_end_time - (formatted_start_time or 0))])
+            cmd.extend(["-c", "copy", "-avoid_negative_ts", "make_zero"])
 
             if overwrite:
                 temp_dir = os.path.dirname(input_file) or "."
