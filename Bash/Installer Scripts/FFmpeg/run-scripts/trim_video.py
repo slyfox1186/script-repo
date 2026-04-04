@@ -299,7 +299,7 @@ def main():
                 cmd.append("-y")
 
             if formatted_start_time is not None:
-                cmd.extend(["-ss", str(formatted_start_time)])
+                cmd.extend(["-noaccurate_seek", "-ss", str(formatted_start_time)])
             cmd.extend(["-i", input_file])
             if formatted_end_time is not None:
                 cmd.extend(["-to", str(formatted_end_time - (formatted_start_time or 0))])
