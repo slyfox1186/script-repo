@@ -60,7 +60,7 @@ main_menu() {
         4) download 'https://magick.optimizethis.net' ;;
         5) download 'https://build-ffmpeg.optimizethis.net' --build --latest ;;
         6) download 'https://gparted.optimizethis.net' ;;
-        7) download 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer-Scripts/SlyFox1186-Scripts/build-players' ;;
+        7) download 'https://players.optimizethis.net' ;;
         8) custom_user_scripts ;;
         9) extra_mirrors ;;
         10) download 'https://download.optimizethis.net' ;;
@@ -72,7 +72,6 @@ main_menu() {
 # Custom user scripts menu
 custom_user_scripts() {
     local options=(
-        "Ubuntu Lunar"
         "Ubuntu Jammy, Focal, or Bionic"
         "Exit"
     )
@@ -85,9 +84,8 @@ custom_user_scripts() {
     read -p "Choose an option: " choice
 
     case $choice in
-        1) download 'https://lunar-scripts.optimizethis.net' ;;
-        2) download 'https://jammy-scripts.optimizethis.net' ;;
-        3) exit 0 ;;
+        1) download 'https://jammy-scripts.optimizethis.net' ;;
+        2) exit 0 ;;
         *) echo "Invalid option. Please select a valid option." ;;
     esac
 }
@@ -95,7 +93,6 @@ custom_user_scripts() {
 # Extra mirrors menu
 extra_mirrors() {
     local options=(
-        "Ubuntu Lunar"
         "Ubuntu Jammy"
         "Ubuntu Focal"
         "Ubuntu Bionic"
@@ -113,14 +110,13 @@ extra_mirrors() {
     read -p "Choose an option: " choice
 
     case $choice in
-        1) download 'https://lunar-mirrors.optimizethis.net' ;;
-        2) download 'https://jammy-mirrors.optimizethis.net' ;;
-        3) download 'https://focal-mirrors.optimizethis.net' ;;
-        4) download 'https://bionic-mirrors.optimizethis.net' ;;
-        5) download 'https://bullseye-mirrors.optimizethis.net' ;;
-        6) download 'https://bookworm-mirrors.optimizethis.net' ;;
-        7) download 'https://raspi-scripts.optimizethis.net' ;;
-        8) exit 0 ;;
+        1) download 'https://jammy.optimizethis.net' ;;
+        2) download 'https://focal-mirrors.optimizethis.net' ;;
+        3) download 'https://bionic-mirrors.optimizethis.net' ;;
+        4) download 'https://bullseye-mirrors.optimizethis.net' ;;
+        5) download 'https://bookworm-mirrors.optimizethis.net' ;;
+        6) download 'https://raspi-mirrors.optimizethis.net' ;;
+        7) exit 0 ;;
         *) echo "Invalid option. Please select a valid option." ;;
     esac
 }
