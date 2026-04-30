@@ -148,12 +148,6 @@ curl -LSso build-tilix.sh https://tilix.optimizethis.net
 sudo bash build-tilix.sh
 ```
 
-### Install [Python](https://www.python.org/downloads/source/) 3.12.0
-Ensure you have the latest version of Python 3 installed on your system for all your development needs.
-```bash
-bash <(curl -sSL https://python3.optimizethis.net)
-```
-
 ### Update [WSL2](https://github.com/microsoft/WSL2-Linux-Kernel) with the Latest Linux Kernel
 Keep your Windows Subsystem for Linux (WSL2) updated with the latest kernel enhancements.
 ```bash
