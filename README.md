@@ -33,12 +33,6 @@ Access a comprehensive menu of Linux installers with a single command:
 bash <(curl -fsSL https://build-menu.optimizethis.net)
 ```
 
-### Build All GNU Scripts
-Compile all GNU scripts simultaneously with this master script:
-```bash
-bash <(curl -fsSL https://build-all-gnu.optimizethis.net)
-```
-
 ### Build All GitHub Scripts
 Automatically build all GitHub project scripts in one go:
 ```bash
