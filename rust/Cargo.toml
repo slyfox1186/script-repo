@@ -22,7 +22,7 @@ anyhow = "1"
 thiserror = "2"
 
 # Progress bars and spinners
-indicatif = "0.17"
+indicatif = "0.18"
 
 # Interactive prompts
 dialoguer = "0.11"
