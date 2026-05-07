@@ -3,13 +3,15 @@
 
 ## SOURCE FILES ##
 sbrc() {
+    # ~/.bashrc unconditionally cd's to $HOME on source — preserve cwd around it.
+    local _pwd="$PWD"
     source "$HOME/.bashrc"
+    [[ "$PWD" != "$_pwd" && -d "$_pwd" ]] && cd "$_pwd"
     clear; ls -1AhFv --color --group-directories-first
 }
 
 spro() {
-    source "$HOME/.profile"
-    if [[ $? -eq 0 ]]; then
+    if source "$HOME/.profile"; then
         echo "The command was a success!"
     else
         echo "The command failed!"
@@ -51,6 +53,8 @@ rdvc() {
 
     local total_upvotes="${args["total_upvotes"]}"
     local upvote_percentage="${args["upvote_percentage"]}"
+    local upvote_percentage_decimal total_votes total_votes_rounded downvotes
+    local i lower_limit next_lower_limit next_lower_limit_adjusted
 
     upvote_percentage_decimal=$(bc <<< "scale=2; $upvote_percentage / 100")
     total_votes=$(bc <<< "scale=2; $total_upvotes / $upvote_percentage_decimal")
@@ -118,7 +122,7 @@ pw() {
     else
         command -v xclip &> /dev/null || {
             echo "xclip is not installed. Installing..."
-            apt -y install xclip
+            sudo pacman -S --noconfirm xclip
         }
         
         echo "I demand absolute obedience to my instructions without question or hesitation." | xclip -selection clipboard
@@ -169,10 +173,10 @@ script_repo() {
     [10]="Install Rust Programming Language"
     [11]="Install Essential Build Tools"
     [12]="Install Aria2 with Enhanced Configurations"
-    [13]="Add Custom Mirrors for /etc/apt/sources.list"
+    [13]="Update Pacman Mirrorlist"
     [14]="Customize Your Shell Environment"
     [15]="Install Adobe Fonts System-Wide"
-    [16]="Debian Package Downloader"
+    [16]="Arch Package Downloader"
     [17]="Install Tilix"
     [18]="Install Python 3.12.0"
     [19]="Update WSL2 with the Latest Linux Kernel"
@@ -203,8 +207,12 @@ script_repo() {
         wget --show-progress -cqO build-clang.sh "https://build-clang.optimizethis.net"
         sudo bash build-clang.sh --help
         echo
-        read -p "Enter your chosen arguments: (e.g. -c -v 17.0.6): " clang_args
-        sudo bash build-ffmpeg.sh $clang_args
+        local clang_args_str
+        local -a clang_args_arr
+        read -rp "Enter your chosen arguments: (e.g. -c -v 17.0.6): " clang_args_str
+        # shellcheck disable=SC2206
+        read -ra clang_args_arr <<< "$clang_args_str"
+        sudo bash build-clang.sh "${clang_args_arr[@]}"
         break
         ;;
       "Install Latest 7-Zip Version")
@@ -218,18 +226,28 @@ script_repo() {
         ;;
       "Compile FFmpeg from Source")
         git clone "https://github.com/slyfox1186/ffmpeg-build-script.git"
-        cd ffmpeg-build-script || exit 1
-        clear
-        sudo ./build-ffmpeg.sh -h
-        read -p "Enter your chosen arguments: (e.g. --build --gpl-and-nonfree --latest): " ff_args
-        sudo ./build-ffmpeg.sh $ff_args
+        local ff_args_str
+        local -a ff_args_arr
+        (
+            cd ffmpeg-build-script || exit 1
+            clear
+            sudo ./build-ffmpeg.sh -h
+            read -rp "Enter your chosen arguments: (e.g. --build --gpl-and-nonfree --latest): " ff_args_str
+            # shellcheck disable=SC2206
+            read -ra ff_args_arr <<< "$ff_args_str"
+            sudo ./build-ffmpeg.sh "${ff_args_arr[@]}"
+        ) || return 1
         break
         ;;
       "Install OpenSSL Latest Version")
         wget --show-progress -cqO build-openssl.sh "https://ossl.optimizethis.net"
         echo
-        read -p "Enter arguments for OpenSSL (e.g., '-v 3.1.5'): " openssl_args
-        sudo bash build-openssl.sh $openssl_args
+        local openssl_args_str
+        local -a openssl_args_arr
+        read -rp "Enter arguments for OpenSSL (e.g., '-v 3.1.5'): " openssl_args_str
+        # shellcheck disable=SC2206
+        read -ra openssl_args_arr <<< "$openssl_args_str"
+        sudo bash build-openssl.sh "${openssl_args_arr[@]}"
         break
         ;;
       "Install Rust Programming Language")
@@ -246,8 +264,8 @@ script_repo() {
         sudo bash build-aria2.sh
         break
         ;;
-      "Add Custom Mirrors for /etc/apt/sources.list")
-        bash <(curl -fsSL "https://mirrors.optimizethis.net")
+      "Update Pacman Mirrorlist")
+        sudo reflector --latest 20 --sort rate --save /etc/pacman.d/mirrorlist
         break
         ;;
       "Customize Your Shell Environment")
@@ -258,11 +276,10 @@ script_repo() {
         bash <(curl -fsSL "https://adobe-fonts.optimizethis.net")
         break
         ;;
-      "Debian Package Downloader")
-        wget --show-progress -cqO debian-package-downloader.sh "https://download.optimizethis.net"
-        echo
-        read -p "Enter an apt package name (e.g., clang-15): " deb_pkg_args
-        sudo bash debian-package-downloader.sh $deb_pkg_args
+      "Arch Package Downloader")
+        local pkg_name
+        read -rp "Enter a package name (e.g., clang): " pkg_name
+        sudo pacman -S "$pkg_name"
         break
         ;;
       "Install Tilix")
@@ -294,21 +311,24 @@ script_repo() {
 
 # Download GitHub scripts
 dlfs() {
-    local f scripts
+    local file
+    local -a scripts
     clear
 
-    wget --show-progress -qN - -i "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer-Scripts/SlyFox1186-Scripts/favorite-installer-scripts.txt"
+    wget --show-progress -qN - -i "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/SlyFox1186%20Scripts/favorite-installer-scripts.txt"
 
     scripts=(build-ffmpeg build-all-git-safer build-all-gnu-safer build-magick)
 
-    for file in ${scripts[@]}; do
+    for file in "${scripts[@]}"; do
+        [[ -e "$file" ]] || continue
         chown -R "$USER:$USER" "$file"
-        chmod -R 744 "$PWD" "$file"
-        if [[ $file == "build-all-git-safer" || $file == "build-all-gnu-safer" ]]; then
+        chmod 744 "$file"
+        if [[ "$file" == "build-all-git-safer" || "$file" == "build-all-gnu-safer" ]]; then
             mv "$file" "${file%-safer}"
         fi
-        [[ -n "favorite-installer-scripts.txt" ]] && sudo rm "favorite-installer-scripts.txt"
     done
+
+    [[ -f favorite-installer-scripts.txt ]] && sudo rm favorite-installer-scripts.txt
 
     clear
     ls -1AhFv --color --group-directories-first
@@ -316,12 +336,88 @@ dlfs() {
 
 gitdl() {
     clear
-    wget -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer-Scripts/FFmpeg/build-ffmpeg"
-    wget -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer-Scripts/ImageMagick/build-magick"
-    wget -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer-Scripts/GNU-Software/build-gcc"
-    wget -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer-Scripts/FFmpeg/repo.sh"
-    sudo chmod -R build-gcc build-magick build-ffmpeg repo.sh -- *
-    sudo chown -R "$USER:$USER" build-gcc build-magick build-ffmpeg repo.sh
+    wget -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/FFmpeg/build-ffmpeg"
+    wget -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/build-magick"
+    wget -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-gcc"
+    wget -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/FFmpeg/repo.sh"
+    sudo chmod 755 build-gcc build-magick build-ffmpeg repo.sh
+    sudo chown "$USER:$USER" build-gcc build-magick build-ffmpeg repo.sh
     clear
     ls -1AvhF --color --group-directories-first
+}
+
+# Display all loaded functions from ~/.bashrc and ~/.bash_functions
+list_loaded_functions() {
+    # Ensure ~/.bash_functions exists and is sourced
+    if [[ -f ~/.bash_functions ]]; then
+        echo "Listing all functions loaded from ~/.bash_functions and its sourced scripts:"
+        declare -F | awk '{print $3}' | sort
+    else
+        echo "Error: ~/.bash_functions not found or not sourced."
+    fi
+}
+
+# Display all loaded functions with their full definitions, including file source info
+list_func() {
+    local bash_func_dir script filename filepath fileowner func func_body
+    # Determine the directory where the bash functions are stored.
+    if [[ -d ~/.bash_functions.d ]]; then
+        bash_func_dir=~/.bash_functions.d
+    elif [[ -f ~/.bash_functions ]]; then
+        bash_func_dir=$(dirname ~/.bash_functions)
+    else
+        echo "Error: No bash functions directory or file found."
+        return 1
+    fi
+
+    echo "Listing all functions loaded from $bash_func_dir and its sourced scripts:"
+    echo
+
+    local _nullglob_state
+    _nullglob_state=$(shopt -p nullglob)
+    shopt -s nullglob
+
+    # Iterate over all .sh files in the bash functions directory.
+    for script in "$bash_func_dir"/*.sh; do
+        # Get file details.
+        filename=$(basename "$script")
+        filepath=$(realpath "$script")
+        fileowner=$(stat -c '%U:%G' "$script")  # Get owner:group
+
+        # Extract function names from the file.
+        while IFS= read -r func; do
+            # Retrieve the function definition from the current shell.
+            func_body=$(declare -f "$func" 2>/dev/null)
+
+            # If a search term was provided, filter functions by matching the function definition.
+            if [[ -n "$1" ]]; then
+                echo "$func_body" | grep -q "$1" || continue
+            fi
+
+            # Print the file header.
+            echo "File: $filename"
+            echo "Path: $filepath"
+            echo "Owner: $fileowner"
+            echo
+            # Print the full function definition.
+            echo "$func_body"
+            echo -e "\n\n"
+        done < <(grep -oP '^(?:function\s+)?\s*[\w-]+\s*\(\)' "$script" | sed -E 's/^(function[[:space:]]+)?\s*([a-zA-Z0-9_-]+)\s*\(\)/\2/')
+    done
+
+    eval "$_nullglob_state"
+}
+
+kill_pid() {
+    if [[ -z "$1" ]]; then
+        echo "Usage: kill_pid <PID>"
+        return 1
+    fi
+
+    local PID_TO_KILL
+    PID_TO_KILL="$1"
+
+    clear
+    sudo kill -9 "$PID_TO_KILL"
+    echo "Sent kill signal to PID $PID_TO_KILL."
 }
