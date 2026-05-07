@@ -1,38 +1,54 @@
 #!/usr/bin/env python3
 
-import os
+"""Prefix every regular file in a directory with a chosen string."""
+
+import argparse
 import sys
+from pathlib import Path
 
-def rename_files(directory, prefix):
-    try:
-        for filename in os.listdir(directory):
-            old_file = os.path.join(directory, filename)
-            new_file = os.path.join(directory, f"{prefix}_{filename}")
-            os.rename(old_file, new_file)
-        print("Files renamed successfully.")
-    except Exception as e:
-        print(f"Error: {e}")
 
-def main():
-    if len(sys.argv) != 3:
-        print_help()
-        sys.exit(1)
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("directory", type=Path, help="Directory containing files to rename.")
+    parser.add_argument("prefix", help="Prefix to prepend (a single underscore is added between prefix and original name).")
+    parser.add_argument(
+        "-n",
+        "--dry-run",
+        action="store_true",
+        help="Show what would happen without renaming anything.",
+    )
+    return parser.parse_args()
 
-    directory = sys.argv[1]
-    prefix = sys.argv[2]
 
-    if not os.path.isdir(directory):
-        print("Error: Directory does not exist.")
-        sys.exit(1)
+def main() -> int:
+    args = parse_args()
+    if not args.directory.is_dir():
+        print(f"Error: not a directory: {args.directory}", file=sys.stderr)
+        return 1
 
-    rename_files(directory, prefix)
+    prefix = args.prefix
+    files = sorted(p for p in args.directory.iterdir() if p.is_file())
+    if not files:
+        print("No regular files to rename.")
+        return 0
 
-def print_help():
-    print("Usage: rename_files.py <directory> <prefix>")
-    print("Renames all files in the specified directory by appending the given prefix.")
-    print("Arguments:")
-    print("  <directory>  Path to the directory containing files to rename")
-    print("  <prefix>     Prefix to append to each file name")
+    renamed = 0
+    for src in files:
+        if src.name.startswith(f"{prefix}_"):
+            continue  # Already renamed; idempotent re-run.
+        dst = src.with_name(f"{prefix}_{src.name}")
+        if dst.exists():
+            print(f"Skipping '{src.name}': '{dst.name}' already exists.", file=sys.stderr)
+            continue
+        if args.dry_run:
+            print(f"DRY-RUN: {src.name} -> {dst.name}")
+        else:
+            src.rename(dst)
+            renamed += 1
+    if not args.dry_run:
+        print(f"Renamed {renamed} file(s) in {args.directory}.")
+    return 0
+
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

@@ -141,13 +141,6 @@ def fetch_url(url):
     return response_html
 
 def scroll_and_type(driver):
-    """Performs random scrolling actions to mimic human behavior."""
-    for _ in range(random.randint(1, 3)):
-        scroll_amount = random.uniform(-0.5, 0.5)
-        driver.execute_script("window.scrollBy(0, window.innerHeight * arguments[0]);", scroll_amount)
-        time.sleep(random.uniform(0.5, 1.5))
-
-def scroll_and_type(driver):
     """Performs random scrolling and typing actions to mimic human behavior."""
     for _ in range(random.randint(1, 3)):
         scroll_amount = random.uniform(-0.5, 0.5)

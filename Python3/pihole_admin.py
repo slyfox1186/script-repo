@@ -34,7 +34,7 @@ class PiholeDBAdmin:
     def optimize_database(self) -> None:
         self.logger.info("Starting database optimization...")
 
-        with self._get_connection() as conn:
+        with self._get_connection(self.gravity_db_path) as conn:
             cursor = conn.cursor()
 
             cursor.execute("PRAGMA page_count")
@@ -97,7 +97,7 @@ Changes Made:
     def backup_database(self, backup_path: str) -> None:
         self.logger.info(f"Backing up database to {backup_path}")
         start_time = time.time()
-        with self._get_connection() as conn:
+        with self._get_connection(self.gravity_db_path) as conn:
             backup = sqlite3.connect(backup_path)
             conn.backup(backup)
             backup.close()
@@ -166,7 +166,7 @@ Changes Made:
         list_name = "whitelist" if list_type == 0 else "blacklist"
         self.logger.info(f"Adding domains to {list_name}...")
         added_count = 0
-        with self._get_connection() as conn:
+        with self._get_connection(self.gravity_db_path) as conn:
             cursor = conn.cursor()
             for domain in domains:
                 cursor.execute(
@@ -182,7 +182,7 @@ Changes Made:
         list_name = "whitelist" if list_type == 0 else "blacklist"
         self.logger.info(f"Removing domains from {list_name}...")
         removed_count = 0
-        with self._get_connection() as conn:
+        with self._get_connection(self.gravity_db_path) as conn:
             cursor = conn.cursor()
             for domain in domains:
                 cursor.execute(
@@ -297,7 +297,7 @@ Changes Made:
 
     def remove_duplicate_domains(self):
         self.logger.info("Searching for and removing duplicate domains...")
-        with self._get_connection() as conn:
+        with self._get_connection(self.gravity_db_path) as conn:
             cursor = conn.cursor()
 
             # Get domains from domainlist with their types

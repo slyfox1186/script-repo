@@ -1280,4 +1280,4 @@ if __name__ == '__main__':
         if '-v' in sys.argv or '--verbose' in sys.argv:
             import traceback
             traceback.print_exc()
-        sys.exit(1)(base)
+        sys.exit(1)
