@@ -105,6 +105,11 @@ untar() {
     return 1
   fi
 
+  # Strip trailing slashes so basename extraction yields "name" not "" for inputs like "tmp/" or "~/tmp/"
+  while [[ "$source_dir" == */ && "$source_dir" != "/" ]]; do
+    source_dir="${source_dir%/}"
+  done
+
   archive_name="${source_dir##*/}.7z"
 
   7z a -y -t7z -m0=lzma2 -mx"$compression_level" "$archive_name" "$source_dir"/*
