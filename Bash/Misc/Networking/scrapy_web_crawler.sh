@@ -4,29 +4,33 @@
 # Purpose: Crawl webpages and output to results.txt
 # Updated: 06.22.24
 
-# Function to prompt the user for input
+set -euo pipefail
+
 prompt() {
     local prompt_text=$1
-    local variable_name=$2
-    local default_value=$3
+    local default_value=${2-}
     local user_input
 
-    if [ -n "$default_value" ]; then
-        read -p "$prompt_text ($default_value): " user_input
-        eval "$variable_name=\"${user_input:-$default_value}\""
+    if [[ -n "$default_value" ]]; then
+        read -r -p "$prompt_text ($default_value): " user_input
+        printf '%s' "${user_input:-$default_value}"
     else
-        read -p "$prompt_text: " user_input
-        eval "$variable_name=\"$user_input\""
+        read -r -p "$prompt_text: " user_input
+        printf '%s' "$user_input"
     fi
 }
 
-# Prompt user for inputs
-prompt "Enter the Scrapy project name (letters, numbers, and underscores only)" project_name
-prompt "Enter the initial URL to start scraping (e.g., http://example.com)" start_url
-prompt "Enter the output file name (e.g., results.json)" output_file "results.json"
+project_name=$(prompt "Enter the Scrapy project name (letters, numbers, and underscores only)")
+start_url=$(prompt "Enter the initial URL to start scraping (e.g., http://example.com)")
+output_file=$(prompt "Enter the output file name (e.g., results.json)" "results.json")
 
-# Create info_spider.py
-cat > info_spider.py << EOL
+[[ -n "$project_name" ]] || { echo "Project name is required." >&2; exit 1; }
+[[ "$project_name" =~ ^[A-Za-z0-9_]+$ ]] || { echo "Project name must contain only letters, numbers, and underscores." >&2; exit 1; }
+[[ -n "$start_url" ]] || { echo "Start URL is required." >&2; exit 1; }
+[[ "$start_url" =~ ^https?://[^[:space:]\'\"]+$ ]] || { echo "Start URL must begin with http:// or https:// and contain no whitespace or quotes." >&2; exit 1; }
+[[ -n "$output_file" ]] || { echo "Output file name is required." >&2; exit 1; }
+
+cat > info_spider.py <<EOL
 import scrapy
 from scrapy.crawler import CrawlerProcess
 from scrapy.utils.project import get_project_settings
@@ -35,8 +39,8 @@ import time
 
 class InfoSpider(scrapy.Spider):
     name = 'info_spider'
-    start_urls = ['$start_url']
-    
+    start_urls = ['${start_url}']
+
     user_agents = [
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
         'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
@@ -91,7 +95,7 @@ class InfoSpider(scrapy.Spider):
 if __name__ == "__main__":
     process = CrawlerProcess(settings={
         'FEEDS': {
-            '$output_file': {
+            '${output_file}': {
                 'format': 'json',
                 'encoding': 'utf8',
                 'store_empty': False,
