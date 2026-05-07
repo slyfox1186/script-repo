@@ -261,12 +261,3 @@ if not selected_scripts:
 download_scripts(output_dir)
 
 colorecho("green", "Script execution completed.")
-
-if not selected_scripts:
-    colorecho("red", "No scripts selected. Exiting.")
-    sys.exit(0)
-
-# Download selected scripts
-download_scripts(output_dir)
-
-colorecho("green", "Script execution completed.")

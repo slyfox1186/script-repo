@@ -20,7 +20,7 @@ class CudaInstaller:
         self.api_url = "https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64"
         self.session = requests.Session()
         self.session.headers.update({
-            'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:141.0) Gecko/20100101 Firefox/141.0'
+            'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:150.0) Gecko/20100101 Firefox/150.0'
         })
         self.packages_content = None
 

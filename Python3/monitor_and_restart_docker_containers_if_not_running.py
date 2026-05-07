@@ -1,70 +1,68 @@
 #!/usr/bin/env python3
 
-import subprocess
-import logging
-import os
+"""Restart any Docker container that exists but is no longer running."""
 
-def setup_logger():
-    """Setup a logger for the script."""
-    logger = logging.getLogger('DockerMonitor')
-    logger.setLevel(logging.ERROR)
-    handler = logging.FileHandler(os.path.join(os.path.dirname(__file__), 'monitor.log'))
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
+import logging
+import subprocess
+from pathlib import Path
+
+LOG_FILE = Path(__file__).resolve().parent / "monitor.log"
+
+
+def setup_logger() -> logging.Logger:
+    logger = logging.getLogger("DockerMonitor")
+    logger.setLevel(logging.INFO)
+    if not logger.handlers:
+        handler = logging.FileHandler(LOG_FILE)
+        handler.setFormatter(
+            logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+        )
+        logger.addHandler(handler)
     return logger
 
-def get_non_running_containers(logger):
-    """
-    Get a list of all Docker containers that exist but are not running.
-    
-    :param logger: Logger object for logging messages.
-    :return: A list of container names that are not running.
-    """
+
+def get_non_running_containers(logger: logging.Logger) -> list[str]:
+    """Return container names that exist but are not in 'running' state."""
     try:
-        # Get all container names
-        all_containers = subprocess.check_output(["docker", "ps", "-a", "--format", "{{.Names}}"]).decode().splitlines()
-        
-        # Filter out the running containers
-        non_running_containers = []
-        for container in all_containers:
-            status = subprocess.check_output(["docker", "inspect", "-f", "{{.State.Running}}", container]).strip()
-            if status == b'false':
-                non_running_containers.append(container)
-        
-        return non_running_containers
-    except subprocess.CalledProcessError as e:
-        logger.error(f"Error: {e}")
+        output = subprocess.check_output(
+            ["docker", "ps", "-a", "--format", "{{.Names}}\t{{.State}}"],
+            text=True,
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError) as exc:
+        logger.error("Failed to list containers: %s", exc)
         return []
 
-def restart_containers(containers, logger):
-    """
-    Restart a list of Docker containers.
+    not_running: list[str] = []
+    for line in output.splitlines():
+        name, _, state = line.partition("\t")
+        if name and state and state != "running":
+            not_running.append(name)
+    return not_running
 
-    :param containers: A list of container names to restart.
-    :param logger: Logger object for logging messages.
-    """
+
+def restart_containers(containers: list[str], logger: logging.Logger) -> None:
     for container in containers:
         try:
-            logger.debug(f"Attempting to restart container '{container}'.")
-            subprocess.check_output(["docker", "restart", container])
-            logger.debug(f"Container '{container}' has been restarted.")
-        except subprocess.CalledProcessError as e:
-            logger.error(f"Failed to restart container '{container}'. Error: {e}")
+            subprocess.check_output(
+                ["docker", "restart", container], stderr=subprocess.STDOUT
+            )
+            logger.info("Restarted container '%s'.", container)
+        except subprocess.CalledProcessError as exc:
+            logger.error(
+                "Failed to restart container '%s': %s",
+                container,
+                exc.output.decode(errors="replace") if exc.output else exc,
+            )
 
-def monitor_and_restart_containers(logger):
-    """
-    Monitor all Docker containers and restart them if they are not running.
-    :param logger: Logger object for logging messages.
-    """
-    non_running_containers = get_non_running_containers(logger)
-    if non_running_containers:
-        restart_containers(non_running_containers, logger)
+
+def main() -> None:
+    logger = setup_logger()
+    not_running = get_non_running_containers(logger)
+    if not_running:
+        restart_containers(not_running, logger)
     else:
         logger.info("All containers are running.")
 
-# Setup logger
-logger = setup_logger()
 
-# Run the monitor and restart function once
-monitor_and_restart_containers(logger)
+if __name__ == "__main__":
+    main()

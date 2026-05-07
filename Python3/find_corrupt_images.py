@@ -1,69 +1,109 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-import os
-import sys
-import subprocess
+"""Walk a directory tree and report image files that ImageMagick can't decode."""
+
+import argparse
 import concurrent.futures
 import multiprocessing
+import os
+import subprocess
+import sys
+from pathlib import Path
+
 from tqdm import tqdm
 
-# Constants
-OUTPUT_FILE = "corrupted_images_by_color.txt"
-NUM_CPUS = multiprocessing.cpu_count()
+DEFAULT_EXTENSIONS = (".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".tif", ".webp")
 
-def check_image_validity(image_path):
+
+def check_image_validity(image_path: str) -> str | None:
     try:
         result = subprocess.run(
             ["identify", "-regard-warnings", image_path],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
         )
-        if result.returncode != 0:
-            return image_path  # Return the path if there's an error
-        return None
-    except Exception as e:
-        return image_path  # Return the path if there's an error
+    except FileNotFoundError:
+        raise SystemExit(
+            "ImageMagick's 'identify' is not installed or not on PATH."
+        )
+    return image_path if result.returncode != 0 else None
 
-def get_all_jpg_images(directory):
-    jpg_files = []
+
+def find_images(directory: Path, extensions: tuple[str, ...]) -> list[str]:
+    matches: list[str] = []
+    lowered = tuple(e.lower() for e in extensions)
     for root, _, files in os.walk(directory):
-        for file in files:
-            if file.lower().endswith(".jpg"):
-                jpg_files.append(os.path.join(root, file))
-    return jpg_files
+        for name in files:
+            if name.lower().endswith(lowered):
+                matches.append(os.path.join(root, name))
+    return matches
 
-def main():
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    output_file_path = os.path.join(script_dir, OUTPUT_FILE)
-    
-    print("Starting the image validation process")
-    
-    # Get all JPG images
-    jpg_images = get_all_jpg_images(script_dir)
-    print(f"Found {len(jpg_images)} JPG images to validate")
-    
-    # Create a ThreadPoolExecutor
-    with concurrent.futures.ThreadPoolExecutor(max_workers=NUM_CPUS) as executor:
-        futures = {executor.submit(check_image_validity, img): img for img in jpg_images}
-        
-        corrupted_images = []
-        for future in tqdm(concurrent.futures.as_completed(futures), total=len(futures), desc="Validating images", unit="image"):
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "directory",
+        nargs="?",
+        type=Path,
+        default=Path(__file__).resolve().parent,
+        help="Directory to scan (default: this script's directory).",
+    )
+    parser.add_argument(
+        "-o",
+        "--output",
+        type=Path,
+        default=Path(__file__).resolve().parent / "corrupted_images.txt",
+        help="Output file path.",
+    )
+    parser.add_argument(
+        "-e",
+        "--extensions",
+        nargs="+",
+        default=list(DEFAULT_EXTENSIONS),
+        help=f"Image extensions to scan (default: {', '.join(DEFAULT_EXTENSIONS)}).",
+    )
+    parser.add_argument(
+        "-j",
+        "--jobs",
+        type=int,
+        default=multiprocessing.cpu_count(),
+        help="Worker threads (default: CPU count).",
+    )
+    return parser.parse_args()
+
+
+def main() -> int:
+    args = parse_args()
+    if not args.directory.is_dir():
+        print(f"Not a directory: {args.directory}", file=sys.stderr)
+        return 1
+
+    print(f"Scanning {args.directory} for image files...")
+    images = find_images(args.directory, tuple(args.extensions))
+    if not images:
+        print("No image files found.")
+        return 0
+    print(f"Found {len(images)} candidate image(s); validating with 'identify'...")
+
+    corrupted: list[str] = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=args.jobs) as executor:
+        futures = [executor.submit(check_image_validity, p) for p in images]
+        for future in tqdm(
+            concurrent.futures.as_completed(futures),
+            total=len(futures),
+            desc="Validating",
+            unit="img",
+        ):
             result = future.result()
             if result:
-                corrupted_images.append(result)
+                corrupted.append(result)
 
-    # Sort the corrupted image paths
-    corrupted_images.sort()
+    corrupted.sort()
+    args.output.write_text("\n".join(corrupted) + ("\n" if corrupted else ""), encoding="utf-8")
+    print(f"Found {len(corrupted)} corrupted image(s); list written to {args.output}")
+    return 0
 
-    # Write the sorted paths to the output file
-    with open(output_file_path, 'w') as output_file:
-        for image_path in corrupted_images:
-            output_file.write(f"{image_path}\n")
-
-    print("Image validation process completed")
 
 if __name__ == "__main__":
-    try:
-        main()
-    except Exception as e:
-        print(f"Critical error: {e}", file=sys.stderr)
-        sys.exit(1)
+    sys.exit(main())

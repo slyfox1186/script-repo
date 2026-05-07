@@ -23,7 +23,7 @@ warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(name)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-DEFAULT_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:130.0) Gecko/20100101 Firefox/130.0'
+DEFAULT_USER_AGENT = 'Mozilla/5.0 (X11; Linux x86_64; rv:150.0) Gecko/20100101 Firefox/150.0'
 DEFAULT_POOL_SIZE = 100
 
 def create_session(user_agent, pool_size):

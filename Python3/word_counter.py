@@ -1,38 +1,42 @@
 #!/usr/bin/env python3
 
+"""Count occurrences of each word in a text file."""
+
+import argparse
 import sys
 from collections import Counter
+from pathlib import Path
 
-def count_words(file_path):
-    try:
-        with open(file_path, 'r') as file:
-            text = file.read().lower()
-            words = text.split()
-            word_count = Counter(words)
-        
-        for word, count in word_count.items():
-            print(f"{word}: {count}")
-    except Exception as e:
-        print(f"Error: {e}")
 
-def main():
-    if len(sys.argv) != 2:
-        print_help()
-        sys.exit(1)
+def count_words(path: Path) -> Counter:
+    text = path.read_text(encoding="utf-8", errors="replace")
+    return Counter(text.lower().split())
 
-    file_path = sys.argv[1]
 
-    if not os.path.isfile(file_path):
-        print("Error: File does not exist.")
-        sys.exit(1)
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Count occurrences of each word in a text file."
+    )
+    parser.add_argument("file", type=Path, help="Path to the text file")
+    parser.add_argument(
+        "-n",
+        "--top",
+        type=int,
+        default=0,
+        help="Show only the top N most common words (default: all).",
+    )
+    args = parser.parse_args()
 
-    count_words(file_path)
+    if not args.file.is_file():
+        print(f"Error: file does not exist: {args.file}", file=sys.stderr)
+        return 1
 
-def print_help():
-    print("Usage: count_words.py <file_path>")
-    print("Counts the occurrences of each word in the specified text file.")
-    print("Arguments:")
-    print("  <file_path> Path to the text file to count words in")
+    counts = count_words(args.file)
+    items = counts.most_common(args.top) if args.top > 0 else counts.most_common()
+    for word, count in items:
+        print(f"{word}: {count}")
+    return 0
+
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

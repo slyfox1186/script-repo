@@ -1,46 +1,58 @@
 #!/usr/bin/env python3
 
+"""Append a video record to video_data.json (creating it if missing)."""
+
+import argparse
 import json
-import os
 import sys
+from pathlib import Path
 
-# Check if the correct number of arguments is provided
-if len(sys.argv) != 5:
-    print("Usage: python add_video_to_json.py <filename> <extension> <path> <url>")
-    sys.exit(1)
 
-# Get the command-line arguments
-filename = sys.argv[1]
-extension = sys.argv[2]
-path = sys.argv[3]
-url = sys.argv[4]
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("filename", help="Output filename for the video.")
+    parser.add_argument("extension", help="Container/extension (e.g. mp4).")
+    parser.add_argument("path", help="Local path the video should be saved to.")
+    parser.add_argument("url", help="Source URL of the video.")
+    parser.add_argument(
+        "-o",
+        "--output",
+        type=Path,
+        default=Path("video_data.json"),
+        help="JSON file to append into (default: video_data.json).",
+    )
+    return parser.parse_args()
 
-# JSON file path
-json_file = "video_data.json"
 
-# Create the JSON object for the video
-video_json = {
-    "filename": filename,
-    "path": path,
-    "url": url,
-    "extension": extension
-}
+def main() -> int:
+    args = parse_args()
+    record = {
+        "filename": args.filename,
+        "path": args.path,
+        "url": args.url,
+        "extension": args.extension,
+    }
 
-# Read the existing JSON data from the file
-existing_data = []
-if os.path.exists(json_file):
-    try:
-        with open(json_file, "r") as file:
-            existing_data = json.load(file)
-    except json.JSONDecodeError:
-        print(f"Error: The JSON file '{json_file}' is not properly formatted. Creating a new file.")
-        existing_data = []
+    existing: list[dict] = []
+    if args.output.exists():
+        try:
+            with args.output.open("r", encoding="utf-8") as fh:
+                existing = json.load(fh)
+            if not isinstance(existing, list):
+                raise ValueError("expected a JSON array")
+        except (json.JSONDecodeError, ValueError) as exc:
+            print(
+                f"Warning: '{args.output}' is not a valid JSON list ({exc}); starting fresh.",
+                file=sys.stderr,
+            )
+            existing = []
 
-# Append the new video JSON object to the existing data
-existing_data.append(video_json)
+    existing.append(record)
+    with args.output.open("w", encoding="utf-8") as fh:
+        json.dump(existing, fh, indent=2)
+    print(f"Video details added to {args.output}.")
+    return 0
 
-# Write the updated JSON data back to the file with indentation
-with open(json_file, "w") as file:
-    json.dump(existing_data, file, indent=2)
 
-print(f"Video details added to {json_file}.")
+if __name__ == "__main__":
+    sys.exit(main())

@@ -1,81 +1,97 @@
 #!/usr/bin/env python3
 
+"""Download every linked image (.jpg/.jpeg/.png) on a single web page."""
+
+import argparse
 import os
 import re
+import sys
+from pathlib import Path
+from urllib.parse import urljoin, urlparse
+
 import requests
 from bs4 import BeautifulSoup
-from urllib.parse import urljoin, urlparse
-from fuzzywuzzy import fuzz, process
-import spacy
 
-# Load spaCy model for NER
-nlp = spacy.load("en_core_web_sm")
+USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64; rv:150.0) Gecko/20100101 Firefox/150.0"
+IMAGE_EXTENSIONS_RE = re.compile(r"\.(jpg|jpeg|png)$", re.IGNORECASE)
+INVALID_NAME_RE = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
+COLLAPSE_UNDERSCORES_RE = re.compile(r"_{2,}")
 
-def sanitize_filename(filename):
-    # Replace invalid characters and clean up filename
-    filename = re.sub(r'[<>:"/\\|?*]', '', filename)  # Remove invalid characters
-    filename = re.sub(r'_{2,}', '_', filename)  # Replace multiple underscores with a single underscore
-    filename = filename.strip('_')  # Remove leading/trailing underscores
-    return filename
 
-def download_image(url, folder):
+def sanitize_filename(filename: str) -> str:
+    cleaned = INVALID_NAME_RE.sub("", filename)
+    cleaned = COLLAPSE_UNDERSCORES_RE.sub("_", cleaned).strip("_")
+    return cleaned or "image.jpg"
+
+
+def download_image(session: requests.Session, url: str, folder: Path) -> bool:
     try:
-        response = requests.get(url, stream=True)
-        if response.status_code == 200:
-            # Extract filename from URL
-            filename = os.path.basename(urlparse(url).path)
-            if not filename:
-                filename = "image.jpg"  # Fallback if filename is empty
-            filename = sanitize_filename(filename)
-            file_path = os.path.join(folder, filename)
-            with open(file_path, 'wb') as file:
-                for chunk in response.iter_content(1024):
-                    file.write(chunk)
-            print(f"Downloaded: {filename}")
-        else:
-            print(f"Failed to retrieve {url}. Status code: {response.status_code}")
-    except Exception as e:
-        print(f"Error downloading {url}: {e}")
-
-def extract_image_links(page_url):
-    try:
-        response = requests.get(page_url)
+        response = session.get(url, stream=True, timeout=30)
         response.raise_for_status()
-        soup = BeautifulSoup(response.text, 'html.parser')
-        
-        image_urls = []
-        for a_tag in soup.find_all('a'):
-            href = a_tag.get('href')
-            if href:
-                img_tag = a_tag.find('img')
-                if img_tag and re.search(r'\.(jpg|jpeg|png)$', href, re.IGNORECASE):
-                    full_url = urljoin(page_url, href)
-                    image_urls.append(full_url)
-        
-        return image_urls
-    except Exception as e:
-        print(f"Error fetching image links: {e}")
+    except requests.RequestException as exc:
+        print(f"Error downloading {url}: {exc}", file=sys.stderr)
+        return False
+
+    name = os.path.basename(urlparse(url).path) or "image.jpg"
+    target = folder / sanitize_filename(name)
+    with target.open("wb") as fh:
+        for chunk in response.iter_content(8192):
+            fh.write(chunk)
+    print(f"Downloaded: {target.name}")
+    return True
+
+
+def extract_image_links(session: requests.Session, page_url: str) -> list[str]:
+    try:
+        response = session.get(page_url, timeout=30)
+        response.raise_for_status()
+    except requests.RequestException as exc:
+        print(f"Error fetching page: {exc}", file=sys.stderr)
         return []
 
-def main():
-    url = input("Enter the URL of the website to scan: ").strip()
-    if not url.startswith(('http://', 'https://')):
-        print("Invalid URL. Please ensure it starts with 'http://' or 'https://'.")
-        return
-    
-    output_folder = 'output_pics'
-    os.makedirs(output_folder, exist_ok=True)
-    
-    print("Extracting image links...")
-    image_links = extract_image_links(url)
-    
-    if not image_links:
-        print("No images found or error occurred.")
-        return
-    
-    print("Downloading images...")
-    for img_url in image_links:
-        download_image(img_url, output_folder)
+    soup = BeautifulSoup(response.text, "html.parser")
+    urls: list[str] = []
+    for a in soup.find_all("a", href=True):
+        href = a["href"]
+        if a.find("img") and IMAGE_EXTENSIONS_RE.search(href):
+            urls.append(urljoin(page_url, href))
+    return urls
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("url", nargs="?", help="Page URL to scan.")
+    parser.add_argument(
+        "-o",
+        "--output",
+        type=Path,
+        default=Path("output_pics"),
+        help="Folder to save images into (default: ./output_pics).",
+    )
+    return parser.parse_args()
+
+
+def main() -> int:
+    args = parse_args()
+    url = args.url or input("Enter the URL of the website to scan: ").strip()
+    if not url.startswith(("http://", "https://")):
+        print("URL must start with http:// or https://", file=sys.stderr)
+        return 1
+
+    args.output.mkdir(parents=True, exist_ok=True)
+
+    with requests.Session() as session:
+        session.headers["User-Agent"] = USER_AGENT
+        print("Extracting image links...")
+        links = extract_image_links(session, url)
+        if not links:
+            print("No images found.")
+            return 0
+        print(f"Found {len(links)} image link(s); downloading...")
+        succeeded = sum(download_image(session, u, args.output) for u in links)
+    print(f"Done. {succeeded}/{len(links)} downloaded into {args.output}.")
+    return 0
+
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
