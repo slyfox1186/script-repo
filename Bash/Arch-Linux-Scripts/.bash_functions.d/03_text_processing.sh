@@ -26,43 +26,43 @@ fsed() {
     echo
 
     if [[ -z "$1" ]]; then
-        read -p "Enter the original text: " otext
-        read -p "Enter the replacement text: " rtext
+        read -rp "Enter the original text: " otext
+        read -rp "Enter the replacement text: " rtext
         echo
     else
         otext=$1
         rtext=$2
     fi
 
-     sudo sed -i "s/${otext}/${rtext}/g" "$(find . -maxdepth 1 -type f)"
+    # Use a delimiter unlikely in input; properly handles filenames with spaces
+    sudo find . -maxdepth 1 -type f -exec sed -i "s|${otext}|${rtext}|g" {} +
 }
 
 # REGEX COMMANDS
 bvar() {
-    local choice fext flag fname
+    local choice fname fname_tmp
     clear
 
     if [[ -z "$1" ]]; then
-        read -p "Please enter the file path: " fname
+        read -rp "Please enter the file path: " fname
         fname_tmp="$fname"
     else
         fname="$1"
         fname_tmp="$fname"
     fi
 
-    fext="${fname#*.}"
     if [[ -f "$fname" ]]; then
         fname+=".txt"
         mv "${fname_tmp}" "$fname"
     fi
 
-    cat < "$fname" | sed -e "s/\(\$\)\([A-Za-z0-9\_]*\)/\1{\2}/g" -e "s/\(\$\)\({}\)/\1/g" -e "s/\(\$\)\({}\)\({\)/\1\3/g"
+    sed -e "s/\(\$\)\([A-Za-z0-9\_]*\)/\1{\2}/g" -e "s/\(\$\)\({}\)/\1/g" -e "s/\(\$\)\({}\)\({\)/\1\3/g" "$fname"
 
     printf "%s\n\n%s\n%s\n\n" \
         "Do you want to permanently change this file?" \
         "[1] Yes" \
         "[2] Exit"
-    read -p "Your choices are ( 1 or 2): " choice
+    read -rp "Your choices are ( 1 or 2): " choice
     clear
     case "$choice" in
         1)
@@ -122,7 +122,7 @@ cc() {
         echo
         return 1
     else
-        pipe=$@
+        pipe="$*"
     fi
     echo "$pipe" | xclip -i -rmlastnl -selection clipboard
 }
@@ -139,7 +139,7 @@ cfp() {
         echo
         return 1
     else
-        pipe=$@
+        pipe="$*"
     fi
 
     readlink -fn "$pipe" | xclip -i -selection clipboard
@@ -149,7 +149,6 @@ cfp() {
 # COPY THE CONTENT OF A FILE
 # USAGE: cf <file name here>
 cfc() {
-    local file
     clear
 
     if [[ -z "$1" ]]; then
@@ -160,7 +159,7 @@ cfc() {
         echo
         return 1
     else
-        cat "$1" | xclip -i -rmlastnl -select clipboard
+        xclip -i -rmlastnl -select clipboard < "$1"
     fi
 }
 
@@ -188,7 +187,7 @@ findtext() {
         ;;
       *)
         # The first non-option argument is the search pattern
-        if [ -z "$pattern" ]; then
+        if [[ -z "$pattern" ]]; then
           pattern="$arg"
         else
           echo "Unexpected argument: $arg"
@@ -200,7 +199,7 @@ findtext() {
   done
 
   # Make sure a pattern was provided
-  if [ -z "$pattern" ]; then
+  if [[ -z "$pattern" ]]; then
     echo "Usage: findtext [options] \"<search string>\""
     return 1
   fi
@@ -214,15 +213,16 @@ findtext() {
   local args=( "-rn" "--color=always" )
 
   # By default, search is case-insensitive unless a case‑exact flag is given.
-  if [ $case_exact -eq 0 ]; then
+  if [[ $case_exact -eq 0 ]]; then
     args+=( "-i" )
   fi
 
   # If whole-word matching is enabled, add the ‑w flag.
-  if [ $whole_word -eq 1 ]; then
+  if [[ $whole_word -eq 1 ]]; then
     args+=( "-w" )
   fi
 
+  local ext exts
   # Specify file extensions to search: ts, tsx, and js.
   local ext_list="ts;tsx;js;py"
   IFS=';' read -ra exts <<< "$ext_list"
@@ -239,9 +239,10 @@ findtext() {
 }
 
 # BATCAT COMMANDS
+# `type -P` returns the on-disk binary path, ignoring this function shadow
 bat() {
-    if command -v bat &>/dev/null; then
-        bat "$@"
+    if type -P bat &>/dev/null; then
+        command bat "$@"
     else
         echo "Installing bat now."
         sudo pacman -S --noconfirm bat
@@ -249,8 +250,8 @@ bat() {
 }
 
 batn() {
-    if command -v bat &>/dev/null; then
-        bat -n "$@"
+    if type -P bat &>/dev/null; then
+        command bat -n "$@"
     else
         echo "Installing bat now."
         sudo pacman -S --noconfirm bat
@@ -346,7 +347,7 @@ ripgrep() {
     return 1
   fi
 
-  if [ -z "$1" ]; then
+  if [[ -z "$1" ]]; then
     echo "Usage: _rg \"<search_pattern>\" [\"<exclude_type1;exclude_type2>\"]" >&2
     return 1
   fi
@@ -355,14 +356,15 @@ ripgrep() {
   local search_term="$1"
   local exclude_types_string="$2"
   local rg_args=()
+  local type
 
   # If an exclude string is provided, process it
-  if [ -n "$exclude_types_string" ]; then
+  if [[ -n "$exclude_types_string" ]]; then
     local exclude_types
     IFS=';' read -ra exclude_types <<< "$exclude_types_string"
 
     for type in "${exclude_types[@]}"; do
-      if [ -n "$type" ]; then
+      if [[ -n "$type" ]]; then
         # Use ripgrep's built-in type system to exclude file types
         rg_args+=(--type-not "$type")
       fi

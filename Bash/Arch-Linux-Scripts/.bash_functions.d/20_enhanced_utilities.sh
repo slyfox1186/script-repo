@@ -72,32 +72,39 @@ find_large() {
 
 # Quick system cleanup
 sys_cleanup() {
+    local orphans
     echo "🧹 System Cleanup Starting..."
     echo "============================="
     echo
-    
-    # Clean pacman cache
-    echo "📦 Cleaning pacman cache..."
-    sudo pacman -Rns $(pacman -Qdtq) 2>/dev/null || true
+
+    # Clean orphaned packages
+    echo "📦 Removing orphaned packages..."
+    orphans=$(pacman -Qdtq 2>/dev/null)
+    if [[ -n "$orphans" ]]; then
+        # shellcheck disable=SC2086
+        sudo pacman -Rns --noconfirm $orphans
+    else
+        echo "  (no orphaned packages)"
+    fi
     sudo pacman -Scc --noconfirm
-    
+
     # Clean systemd journal logs
     echo "📜 Cleaning old journal logs..."
     sudo journalctl --vacuum-time=7d
-    
+
     # Clean temporary files
     echo "🗂️  Cleaning temporary files..."
     sudo find /tmp -type f -atime +7 -delete 2>/dev/null
-    
+
     # Clean thumbnail cache
     echo "🖼️  Cleaning thumbnail cache..."
     rm -rf "$HOME/.cache/thumbnails"/*
-    
-    # Clean browser caches (if they exist)
+
+    # Clean browser caches (if they exist) — globs must be outside quotes to expand
     echo "🌐 Cleaning browser caches..."
     [[ -d "$HOME/.cache/google-chrome" ]] && rm -rf "$HOME/.cache/google-chrome/Default/Cache"/*
-    [[ -d "$HOME/.cache/mozilla" ]] && rm -rf "$HOME/.cache/mozilla/firefox/*/cache2"/*
-    
+    [[ -d "$HOME/.cache/mozilla" ]] && rm -rf "$HOME"/.cache/mozilla/firefox/*/cache2/*
+
     echo
     echo "✅ System cleanup completed!"
     echo "💾 Disk space freed:"
@@ -263,36 +270,40 @@ git_status_all() {
     echo "📋 Git Status for All Repositories"
     echo "=================================="
     echo
-    
+
     local found_repos=0
-    
+    local dir unpushed
+    local _nullglob_state
+    _nullglob_state=$(shopt -p nullglob)
+    shopt -s nullglob
+
     for dir in */; do
         if [[ -d "$dir/.git" ]]; then
             ((found_repos++))
             echo "📁 Repository: $dir"
             echo "$(printf '─%.0s' {1..40})"
-            
-            cd "$dir" || continue
-            
-            # Check if repo is clean
-            if git diff-index --quiet HEAD --; then
-                echo "✅ Clean working directory"
-            else
-                echo "⚠️  Uncommitted changes:"
-                git status --porcelain | head -5
-            fi
-            
-            # Check for unpushed commits
-            local unpushed=$(git log --oneline @{u}.. 2>/dev/null | wc -l)
-            if [[ $unpushed -gt 0 ]]; then
-                echo "📤 Unpushed commits: $unpushed"
-            fi
-            
-            cd ..
+
+            (
+                cd "$dir" || exit 1
+
+                if git diff-index --quiet HEAD --; then
+                    echo "✅ Clean working directory"
+                else
+                    echo "⚠️  Uncommitted changes:"
+                    git status --porcelain | head -5
+                fi
+
+                unpushed=$(git log --oneline @{u}.. 2>/dev/null | wc -l)
+                if [[ $unpushed -gt 0 ]]; then
+                    echo "📤 Unpushed commits: $unpushed"
+                fi
+            )
             echo
         fi
     done
-    
+
+    eval "$_nullglob_state"
+
     if [[ $found_repos -eq 0 ]]; then
         echo "❌ No Git repositories found in current directory"
     else
@@ -328,30 +339,37 @@ git_quick_commit() {
 
 # Enhanced Docker cleanup
 docker_cleanup() {
+    local running
     echo "🐳 Docker Cleanup"
     echo "================"
     echo
-    
+
     # Stop all running containers
     echo "⏹️  Stopping all running containers..."
-    docker stop $(docker ps -q) 2>/dev/null || echo "No running containers"
-    
+    running=$(docker ps -q)
+    if [[ -n "$running" ]]; then
+        # shellcheck disable=SC2086
+        docker stop $running
+    else
+        echo "  No running containers"
+    fi
+
     # Remove all stopped containers
     echo "🗑️  Removing stopped containers..."
     docker container prune -f
-    
+
     # Remove unused images
     echo "🖼️  Removing unused images..."
     docker image prune -f
-    
+
     # Remove unused volumes
     echo "💾 Removing unused volumes..."
     docker volume prune -f
-    
+
     # Remove unused networks
     echo "🌐 Removing unused networks..."
     docker network prune -f
-    
+
     echo
     echo "✅ Docker cleanup completed!"
     echo "📊 Remaining Docker usage:"
@@ -360,30 +378,31 @@ docker_cleanup() {
 
 # Docker container manager
 docker_manager() {
+    local containers container_name action
     echo "🐳 Docker Container Manager"
     echo "============================"
     echo
-    
-    local containers=$(docker ps -a --format "table {{.Names}}\t{{.Status}}\t{{.Image}}")
-    
+
+    containers=$(docker ps -a --format "table {{.Names}}\t{{.Status}}\t{{.Image}}")
+
     if [[ $(echo "$containers" | wc -l) -eq 1 ]]; then
         echo "❌ No Docker containers found"
         return 0
     fi
-    
+
     echo "$containers"
     echo
-    
-    read -p "Enter container name to manage (or 'q' to quit): " container_name
-    
+
+    read -rp "Enter container name to manage (or 'q' to quit): " container_name
+
     if [[ "$container_name" == "q" ]]; then
         return 0
     fi
-    
+
     echo
     echo "Container: $container_name"
     echo "Actions: [s]tart [st]op [r]estart [l]ogs [e]xec [d]elete"
-    read -p "Choose action: " action
+    read -rp "Choose action: " action
     
     case "$action" in
         s) docker start "$container_name" ;;

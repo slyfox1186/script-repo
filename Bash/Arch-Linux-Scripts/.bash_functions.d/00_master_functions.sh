@@ -184,23 +184,27 @@ func_help() {
     
     local bash_func_dir="$HOME/.bash_functions.d"
     [[ ! -d "$bash_func_dir" ]] && { echo "❌ Bash functions directory not found"; return 1; }
-    
+
+    local _nullglob_state
+    _nullglob_state=$(shopt -p nullglob)
     shopt -s nullglob
     for script in "$bash_func_dir"/*.sh; do
-        local filename=$(basename "$script")
+        local filename
+        filename=$(basename "$script")
         local category="${categories[$filename]:-📄 Unknown Category}"
-        
+
         echo
         echo "$category ($filename)"
         echo "$(printf '─%.0s' {1..50})"
-        
+
         # Extract function names and show with descriptions
         while IFS= read -r func_name; do
             local desc="${func_descriptions[$func_name]:-📌 Function: $func_name}"
             printf "  %-20s %s\n" "$func_name" "$desc"
         done < <(grep -oP '^(?:function\s+)?\s*[\w-]+\s*\(\)' "$script" | sed -E 's/^(function[[:space:]]+)?\s*([a-zA-Z0-9_-]+)\s*\(\)/\2/' | sort)
     done
-    
+    eval "$_nullglob_state"
+
     echo
     echo "💡 Tip: Use 'func_help <search_term>' to find specific functions"
     echo "💡 Tip: Use 'func_help '' <category>' to show specific category"
@@ -236,11 +240,14 @@ _search_functions() {
     local search_term="$1"
     local bash_func_dir="$HOME/.bash_functions.d"
     local found=0
-    
+
+    local _nullglob_state
+    _nullglob_state=$(shopt -p nullglob)
     shopt -s nullglob
     for script in "$bash_func_dir"/*.sh; do
-        local filename=$(basename "$script")
-        
+        local filename
+        filename=$(basename "$script")
+
         # Search function names
         while IFS= read -r func_name; do
             if [[ "$func_name" =~ $search_term ]]; then
@@ -249,12 +256,13 @@ _search_functions() {
                 ((found++))
             fi
         done < <(grep -oP '^(?:function\s+)?\s*[\w-]+\s*\(\)' "$script" | sed -E 's/^(function[[:space:]]+)?\s*([a-zA-Z0-9_-]+)\s*\(\)/\2/')
-        
+
         # Search function content if function name doesn't match
         if grep -q "$search_term" "$script" 2>/dev/null; then
             while IFS= read -r func_name; do
                 if ! [[ "$func_name" =~ $search_term ]]; then
-                    local func_body=$(sed -n "/^$func_name()/,/^}/p" "$script" 2>/dev/null)
+                    local func_body
+                    func_body=$(sed -n "/^$func_name()/,/^}/p" "$script" 2>/dev/null)
                     if [[ "$func_body" =~ $search_term ]]; then
                         local desc="${func_descriptions[$func_name]:-📌 Contains '$search_term' in $filename}"
                         printf "  %-20s %s\n" "$func_name" "$desc"
@@ -264,7 +272,8 @@ _search_functions() {
             done < <(grep -oP '^(?:function\s+)?\s*[\w-]+\s*\(\)' "$script" | sed -E 's/^(function[[:space:]]+)?\s*([a-zA-Z0-9_-]+)\s*\(\)/\2/')
         fi
     done
-    
+    eval "$_nullglob_state"
+
     if [[ $found -eq 0 ]]; then
         echo "❌ No functions found matching '$search_term'"
     else
@@ -277,24 +286,29 @@ _search_functions() {
 _show_category() {
     local category="$1"
     local bash_func_dir="$HOME/.bash_functions.d"
-    
+
     # Find the file matching the category
+    local _nullglob_state
+    _nullglob_state=$(shopt -p nullglob)
     shopt -s nullglob
     for script in "$bash_func_dir"/*.sh; do
-        local filename=$(basename "$script")
+        local filename
+        filename=$(basename "$script")
         if [[ "$filename" =~ $category ]] || [[ "${categories[$filename]}" =~ $category ]]; then
             echo "📁 Functions in $filename:"
             echo
-            
+
             while IFS= read -r func_name; do
                 local desc="${func_descriptions[$func_name]:-📌 Function: $func_name}"
                 printf "  %-20s %s\n" "$func_name" "$desc"
             done < <(grep -oP '^(?:function\s+)?\s*[\w-]+\s*\(\)' "$script" | sed -E 's/^(function[[:space:]]+)?\s*([a-zA-Z0-9_-]+)\s*\(\)/\2/' | sort)
-            
+
+            eval "$_nullglob_state"
             return 0
         fi
     done
-    
+    eval "$_nullglob_state"
+
     echo "❌ Category '$category' not found"
 }
 
@@ -316,7 +330,9 @@ func_info() {
     # Find the source file
     local bash_func_dir="$HOME/.bash_functions.d"
     local source_file=""
-    
+
+    local _nullglob_state
+    _nullglob_state=$(shopt -p nullglob)
     shopt -s nullglob
     for script in "$bash_func_dir"/*.sh; do
         if grep -q "^$func_name()" "$script" 2>/dev/null; then
@@ -324,6 +340,7 @@ func_info() {
             break
         fi
     done
+    eval "$_nullglob_state"
     
     if [[ -n "$source_file" ]]; then
         echo "📄 Source file: $(basename "$source_file")"
@@ -354,21 +371,50 @@ func_stats() {
     echo "📊 Bash Function Library Statistics"
     echo "==================================="
     echo
-    
+
     local bash_func_dir="$HOME/.bash_functions.d"
     local total_files=0
     local total_functions=0
-    
+    # Declare local associative array so non-numeric filename keys work in this scope
+    local -A stats_categories=(
+        ["00_master_functions.sh"]="🎯 Master Functions"
+        ["01_gui_apps.sh"]="🖥️  GUI Applications"
+        ["02_filesystem.sh"]="📁 File System Operations"
+        ["03_text_processing.sh"]="📝 Text Processing"
+        ["04_compression.sh"]="🗜️  Archive & Compression"
+        ["06_process_management.sh"]="⚙️  Process Management"
+        ["07_dev_tools.sh"]="🔧 Development Tools"
+        ["08_file_analysis.sh"]="🔍 File Analysis"
+        ["09_security.sh"]="🔒 Security Functions"
+        ["10_networking.sh"]="🌐 Network Tools"
+        ["11_multimedia.sh"]="🎵 Multimedia"
+        ["12_utilities.sh"]="🛠️  System Utilities"
+        ["13_database.sh"]="🗃️  Database Functions"
+        ["14_docker.sh"]="🐳 Docker Utilities"
+        ["15_package_manager.sh"]="📦 Package Management"
+        ["16_redis_and_npm.sh"]="🔄 Redis & NPM"
+        ["17_other.sh"]="🔧 Miscellaneous"
+        ["18_sed.sh"]="✂️  Advanced Sed"
+        ["19_grep.sh"]="🔎 Enhanced Grep"
+        ["20_enhanced_utilities.sh"]="⚡ Enhanced Utilities"
+        ["21_optimized_functions.sh"]="🚀 Optimized Functions"
+    )
+
+    local _nullglob_state
+    _nullglob_state=$(shopt -p nullglob)
     shopt -s nullglob
     for script in "$bash_func_dir"/*.sh; do
         ((total_files++))
-        local func_count=$(grep -c '^[[:space:]]*[a-zA-Z_][a-zA-Z0-9_]*[[:space:]]*()' "$script" 2>/dev/null || echo 0)
+        local func_count
+        func_count=$(grep -c '^[[:space:]]*[a-zA-Z_][a-zA-Z0-9_]*[[:space:]]*()' "$script" 2>/dev/null || echo 0)
         total_functions=$((total_functions + func_count))
-        
-        local filename=$(basename "$script")
-        local category="${categories[$filename]:-📄 Unknown}"
+
+        local filename
+        filename=$(basename "$script")
+        local category="${stats_categories[$filename]:-📄 Unknown}"
         printf "  %-30s %2d functions\n" "$category" "$func_count"
     done
+    eval "$_nullglob_state"
     
     echo
     echo "📈 Summary:"

@@ -27,7 +27,7 @@ rpt() {
   fi
 
   # need at least 3 args
-  if [ $# -lt 3 ]; then
+  if [[ $# -lt 3 ]]; then
     printf "Error: too few arguments.\n\n%s\n" "$usage" >&2
     return 1
   fi
@@ -36,10 +36,12 @@ rpt() {
   local replace_text="$2"
   local ext_list="$3"
   local exclude_list="${4:-}"
+  local ext file
+  local -a excludes exts
 
   # build exclude regex if provided
   local exclude_regex=""
-  if [ -n "$exclude_list" ]; then
+  if [[ -n "$exclude_list" ]]; then
     IFS=';' read -ra excludes <<< "$exclude_list"
     exclude_regex=$(printf "%s|" "${excludes[@]}")
     exclude_regex=${exclude_regex%|}
@@ -52,7 +54,7 @@ rpt() {
   for ext in "${exts[@]}"; do
     find . -type f -name "*.${ext}" \
       | {
-          if [ -n "$exclude_regex" ]; then
+          if [[ -n "$exclude_regex" ]]; then
             grep -Ev "$exclude_regex"
           else
             cat
@@ -66,7 +68,7 @@ rpt() {
 
 mysed() {
   # Check for help flag when passed as the only argument
-  if [ "$#" -eq 1 ] && { [ "$1" = "--help" ] || [ "$1" = "-h" ]; }; then
+  if [[ "$#" -eq 1 ]] && { [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; }; then
     echo "Usage: mysed 'search_pattern' 'replacement' 'ext1;ext2;...'"
     echo ""
     echo "This function recursively finds files with the specified extensions and"
@@ -78,7 +80,7 @@ mysed() {
     return 0
   fi
 
-  if [ "$#" -ne 3 ]; then
+  if [[ "$#" -ne 3 ]]; then
     echo "Usage: mysed 'search_pattern' 'replacement' 'ext1;ext2;...'"
     return 1
   fi
@@ -86,6 +88,8 @@ mysed() {
   local search="$1"
   local replace="$2"
   local extList="$3"
+  local i ext
+  local -a exts
 
   # Convert the semicolon-separated list to an array.
   IFS=';' read -r -a exts <<< "$extList"
@@ -93,14 +97,14 @@ mysed() {
   # Build the find command parameters dynamically.
   local -a find_args=(.)
   find_args+=(-type f)
-  
+
   # Begin the grouped file extension tests.
   find_args+=( \( )
   for i in "${!exts[@]}"; do
     # Trim any whitespace in the extension in case it exists.
     ext="${exts[$i]//[[:space:]]/}"
     find_args+=(-name "*.${ext}")
-    if [ "$i" -lt $(( ${#exts[@]} - 1 )) ]; then
+    if [[ "$i" -lt $(( ${#exts[@]} - 1 )) ]]; then
       find_args+=(-o)
     fi
   done

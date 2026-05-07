@@ -36,7 +36,7 @@
         done
         shift $((OPTIND - 1))
 
-        if [ $# -eq 0 ]; then
+        if [[ $# -eq 0 ]]; then
             echo "❌ Error: No service names provided." >&2
             echo "Usage: kill_service [-d] service1.service [service2.service ...]" >&2
             return 1
@@ -45,14 +45,15 @@
         local stopped_count=0
         local disabled_count=0
         local services_processed=0
+        local service
 
         # --- Service Processing Loop ---
         for service in "$@"; do
             services_processed=$((services_processed + 1))
             echo "--- Processing '$service' ---"
 
-            # 1. Check if the service unit file exists
-            if ! sudo systemctl list-unit-files | grep -q "^$service"; then
+            # 1. Check if the service unit file exists (exact-name, no regex surprises)
+            if ! sudo systemctl list-unit-files --no-legend | awk '{print $1}' | grep -Fxq "$service"; then
                 echo "⚠️ Warning: Service '$service' does not exist. Skipping."
                 continue
             fi
@@ -72,7 +73,7 @@
             fi
 
             # 3. Disable the service if -d flag was passed
-            if [ "$disable" = true ]; then
+            if [[ "$disable" == true ]]; then
                 if sudo systemctl is-enabled --quiet "$service"; then
                     echo "➡️ Disabling service..."
                     if sudo systemctl disable "$service"; then
@@ -93,11 +94,11 @@
         echo "📊 Task Complete. Processed $services_processed service(s)."
         echo "👍 Confirmation: Successfully stopped $stopped_count service(s)."
 
-        if [ "$disable" = true ]; then
+        if [[ "$disable" == true ]]; then
             echo "👍 Confirmation: Successfully disabled $disabled_count service(s)."
         fi
 
-        if [ "$error_occurred" = true ]; then
+        if [[ "$error_occurred" == true ]]; then
             echo "⚠️ Warning: One or more errors occurred during the operation."
             return 1
         fi
@@ -156,7 +157,7 @@
         done
 
         # If -h was passed, show the help menu and exit immediately.
-        if [ "$show_help" = true ]; then
+        if [[ "$show_help" == true ]]; then
             _start_service_usage
             return 0
         fi
@@ -164,14 +165,14 @@
         shift $((OPTIND - 1))
 
         # --- Argument Validation ---
-        if [ $# -eq 0 ]; then
+        if [[ $# -eq 0 ]]; then
             echo "❌ Error: No service names provided." >&2
             _start_service_usage
             return 1
         fi
 
         # Check if no action flags were provided.
-        if [[ "$start" = false && "$enable" = false ]]; then
+        if [[ "$start" == false && "$enable" == false ]]; then
             echo "🤔 No action flags (-s or -e) provided. Nothing to do." >&2
             _start_service_usage
             return 1
@@ -180,20 +181,21 @@
         local started_count=0
         local enabled_count=0
         local services_processed=0
+        local service
 
         # --- Service Processing Loop ---
         for service in "$@"; do
             services_processed=$((services_processed + 1))
             echo "--- Processing '$service' ---"
 
-            # 1. Check if the service unit file exists
-            if ! sudo systemctl list-unit-files | grep -q "^$service"; then
+            # 1. Check if the service unit file exists (exact-name, no regex surprises)
+            if ! sudo systemctl list-unit-files --no-legend | awk '{print $1}' | grep -Fxq "$service"; then
                 echo "⚠️ Warning: Service '$service' does not exist. Skipping."
                 continue
             fi
 
             # 2. Start the service if -s was passed and it's not already active
-            if [ "$start" = true ]; then
+            if [[ "$start" == true ]]; then
                 if ! sudo systemctl is-active --quiet "$service"; then
                     echo "➡️ Starting service..."
                     if sudo systemctl start "$service"; then
@@ -209,7 +211,7 @@
             fi
 
             # 3. Enable the service if -e was passed and it's not already enabled
-            if [ "$enable" = true ]; then
+            if [[ "$enable" == true ]]; then
                 if ! sudo systemctl is-enabled --quiet "$service"; then
                     echo "➡️ Enabling service..."
                     if sudo systemctl enable "$service"; then
@@ -229,14 +231,14 @@
         echo "========================================"
         echo "📊 Task Complete. Processed $services_processed service(s)."
 
-        if [ "$start" = true ]; then
+        if [[ "$start" == true ]]; then
             echo "👍 Started $started_count service(s)."
         fi
-        if [ "$enable" = true ]; then
+        if [[ "$enable" == true ]]; then
             echo "👍 Enabled $enabled_count service(s)."
         fi
 
-        if [ "$error_occurred" = true ]; then
+        if [[ "$error_occurred" == true ]]; then
             echo "⚠️ Warning: One or more errors occurred during the operation."
             return 1
         fi

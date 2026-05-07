@@ -10,7 +10,7 @@ new_key() {
 
     echo "Encryption type: [[ rsa | dsa | ecdsa ]]"
     echo
-    read -p "Your choice: " type
+    read -rp "Your choice: " type
     clear
 
     echo "[i] Choose the key bit size"
@@ -28,31 +28,32 @@ new_key() {
         echo
     fi
 
-    read -p "Your choice: " bits
+    read -rp "Your choice: " bits
     clear
 
     echo "[i] Choose a password"
     echo "[i] For no password just press enter"
     echo
-    read -p "Your choice: " pass
+    read -rsp "Your choice: " pass
+    echo
     clear
 
     echo "[i] For no comment just press enter"
-    read -p "Your choice: " comment
+    read -rp "Your choice: " comment
     clear
 
     echo "[i] Enter the ssh key name"
-    read -p "Your choice: " name
+    read -rp "Your choice: " name
     clear
 
     echo "[i] Your choices"
     echo "[i] Type: $type"
     echo "[i] bits: $bits"
-    echo "[i] Password: $pass"
+    echo "[i] Password: <hidden>"
     echo "[i] comment: $comment"
     echo "[i] Key name: $name"
     echo
-    read -p "Press enter to continue or ^c to exit"
+    read -rp "Press enter to continue or ^c to exit"
     clear
 
     ssh-keygen -q -b "$bits" -t "$type" -N "$pass" -C "$comment" -f "$name"
@@ -77,26 +78,27 @@ keytopub() {
 
     echo "Enter the full paths for each file"
     echo
-    read -p "Private key: " okey
-    read -p "Public key: " opub
+    read -rp "Private key: " okey
+    read -rp "Public key: " opub
     echo
     if [[ -f "$okey" ]]; then
         chmod 600 "$okey"
     else
         echo "Warning: FILE missing = $okey"
-        read -p "Press Enter to exit."
-        exit 1
+        read -rp "Press Enter to exit."
+        return 1
     fi
     ssh-keygen -b "4096" -y -f "$okey" > "$opub"
     chmod 644 "$opub"
     cp -f "$opub" "$HOME/.ssh/authorized_keys"
     chmod 600 "$HOME/.ssh/authorized_keys"
-    unset "$okey" "$opub"
+    unset okey opub
 }
 
 # Clear Bash History
 clearh() {
+    local green='\033[0;32m' reset='\033[0m'
     history -c
     clear; ls -1AhFv
-    echo -e "\n${GREEN}Bash History Cleared${NC}"
+    echo -e "\n${green}Bash History Cleared${reset}"
 }
