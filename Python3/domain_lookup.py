@@ -1,174 +1,184 @@
 #!/usr/bin/env python3
 
-#  Improved script features with the below-added functionality
-#   - Added separators for each domain to make for easier reading.
-#   - Added Batch processing for passing multiple domains at once to the script
-#   - Added the ability to create an output file at the end of the command using '-o filename.ext'
-#   - Added IP address lookup for each domain
-#  -  Added Reverse IP lookup to find the hostname associated with the IP address.
-#  -  Added Geolocation information of the IP address.
-#  -  Added SSL certificate information, including its validity period.
-#  -  Usage: python3 domain_lookup.py reddit.com google.com -o output.txt
+"""Domain lookup tool: WHOIS, DNS, geolocation, SSL, and HTTP headers.
 
-import os
-import sys
+Features:
+- Batch lookup for multiple domains in a single invocation
+- Visual separators between domains for readability
+- IP address resolution and reverse DNS lookup
+- IP geolocation via ipinfo.io over HTTPS
+- SSL certificate validity (TLSv1.2+ only)
+- Key HTTP response headers (HTTPS preferred, HTTP fallback)
+- Optional output to a file via -o
+
+Usage: python3 domain_lookup.py reddit.com google.com -o output.txt
+"""
+
+import argparse
+import re
 import socket
 import ssl
+import sys
 from datetime import datetime
+
+import certifi
 import requests
 import whois
-import certifi
 
-def safe_open_write(path, default_path='/default/path'):
-    """ Safely open a file for writing, avoiding path traversal vulnerabilities. """
-    if os.path.commonpath([os.path.abspath(path), default_path]) != default_path:
-        raise ValueError("Unauthorized file path")
-    return open(path, 'w')
+DOMAIN_RE = re.compile(
+    r"^(?=.{1,253}$)(?!-)[A-Za-z0-9-]{1,63}(?<!-)"
+    r"(?:\.(?!-)[A-Za-z0-9-]{1,63}(?<!-))+$"
+)
+IPV4_RE = re.compile(r"^(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)$")
+HTTP_TIMEOUT = 10
+SOCKET_TIMEOUT = 10
+
 
 def validate_domain(domain):
-    """ Validate the domain to ensure it does not contain any unexpected characters that could lead to SSRF. """
-    import re
-    if not re.match(r"^[a-zA-Z0-9-\.]+$", domain):
-        raise ValueError("Invalid domain name")
+    """Validate a domain name before interpolating it into URLs or sockets."""
+    if not DOMAIN_RE.match(domain):
+        raise ValueError(f"Invalid domain name: {domain!r}")
     return domain
 
+
+def validate_ipv4(ip):
+    """Validate an IPv4 string before interpolating it into a URL."""
+    if not IPV4_RE.match(ip):
+        raise ValueError(f"Invalid IPv4 address: {ip!r}")
+    return ip
+
+
 def format_dates(dates):
-    """ Format date objects for output. """
+    """Format a whois date (or list of dates) for output."""
     if isinstance(dates, list):
-        return dates[0].strftime('%m-%d-%Y %H:%M:%S UTC')
-    elif dates:
-        return dates.strftime('%m-%d-%Y %H:%M:%S UTC')
-    else:
-        return "N/A"
+        dates = dates[0] if dates else None
+    if dates:
+        return dates.strftime("%m-%d-%Y %H:%M:%S UTC")
+    return "N/A"
+
 
 def get_reverse_ip(ip_address):
-    """ Get the reverse DNS record for an IP address. """
+    """Return the reverse DNS hostname for an IP address."""
     try:
         return socket.gethostbyaddr(ip_address)[0]
     except socket.herror:
         return "No reverse DNS record found"
-    except Exception as e:
+    except OSError as e:
         return f"Error retrieving hostname - {e}"
 
-def get_geolocation(ip_address):
-    """ Fetch geolocation information for an IP address. """
+
+def get_geolocation(session, ip_address):
+    """Look up geolocation for an IP address via ipinfo.io over HTTPS."""
     try:
-        response = requests.get(f"http://ip-api.com/json/{validate_domain(ip_address)}")
+        validate_ipv4(ip_address)
+        response = session.get(
+            f"https://ipinfo.io/{ip_address}/json", timeout=HTTP_TIMEOUT
+        )
+        response.raise_for_status()
         data = response.json()
-        return f"Country: {data['country']}, City: {data['city']}, ISP: {data['isp']}"
-    except Exception as e:
+        country = data.get("country") or "Unknown"
+        city = data.get("city") or "Unknown"
+        org = data.get("org") or "Unknown"
+        return f"Country: {country}, City: {city}, ISP/Org: {org}"
+    except (requests.RequestException, ValueError):
         return "Error retrieving geolocation"
 
+
 def get_ssl_info(domain_name):
-    """ Retrieve SSL certificate information for a domain using specified CA bundle. """
+    """Return SSL certificate validity period over a TLSv1.2+ connection."""
     try:
-        # Create a default SSL context with higher security settings
-        context = ssl.create_default_context()
-        # Load CA certificates from certifi
-        context.load_verify_locations(certifi.where())
+        context = ssl.create_default_context(cafile=certifi.where())
+        context.minimum_version = ssl.TLSVersion.TLSv1_2
 
-        # Create a secure socket connection
-        with socket.create_connection((domain_name, 443), timeout=10) as sock:
+        with socket.create_connection((domain_name, 443), timeout=SOCKET_TIMEOUT) as sock:
             with context.wrap_socket(sock, server_hostname=domain_name) as ssock:
-                cert = ssock.getpeercert()  # Retrieve the peer's certificate
-                if 'notBefore' in cert and 'notAfter' in cert:
-                    # Parse and format the validity dates
-                    valid_from = datetime.strptime(cert['notBefore'], '%b %d %H:%M:%S %Y %Z').strftime('%m-%d-%Y %H:%M:%S UTC')
-                    valid_until = datetime.strptime(cert['notAfter'], '%b %d %H:%M:%S %Y %Z').strftime('%m-%d-%Y %H:%M:%S UTC')
-                    return f"SSL Valid from: {valid_from}, until: {valid_until}"
-                else:
-                    return "SSL Information: Validity dates not available"
-    except ssl.CertificateError as e:
-        return f"SSL Information: Error - {e}"
-    except Exception as e:
+                cert = ssock.getpeercert() or {}
+
+        not_before = cert.get("notBefore")
+        not_after = cert.get("notAfter")
+        if not (not_before and not_after):
+            return "SSL Information: Validity dates not available"
+
+        valid_from = datetime.strptime(not_before, "%b %d %H:%M:%S %Y %Z").strftime(
+            "%m-%d-%Y %H:%M:%S UTC"
+        )
+        valid_until = datetime.strptime(not_after, "%b %d %H:%M:%S %Y %Z").strftime(
+            "%m-%d-%Y %H:%M:%S UTC"
+        )
+        return f"SSL Information: Valid from {valid_from} until {valid_until}"
+    except (ssl.SSLError, socket.gaierror, OSError, ValueError) as e:
         return f"SSL Information: Error - {e}"
 
-def get_http_headers(domain_name):
-    """ Fetch HTTP headers for a domain. """
-    try:
-        response = requests.get(f"http://{validate_domain(domain_name)}", timeout=10)
-        headers = response.headers
-        key_headers = ['Server', 'Content-Type', 'Last-Modified']
-        header_info = "\n".join([f"  - {header}: {headers.get(header, 'Not Available')}" for header in key_headers])
-        return header_info
-    except requests.ConnectionError:
-        return "Could not establish a connection"
-    except requests.Timeout:
-        return "Connection timed out"
-    except Exception as e:
-        return f"Error: {e}"
 
-def get_alexa_rank(domain_name):
-    """ Retrieve Alexa rank for a domain. """
-    try:
-        response = requests.get(f"http://data.alexa.com/data?cli=10&url={validate_domain(domain_name)}")
-        rank = response.text.split('<POPULARITY URL')[1].split('TEXT="')[1].split('"')[0]
-        return f"Alexa Traffic Rank: {rank}"
-    except Exception:
-        return "Alexa Traffic Rank: N/A"
+def get_http_headers(session, domain_name):
+    """Fetch a few key response headers, preferring HTTPS."""
+    for scheme in ("https", "http"):
+        try:
+            response = session.get(f"{scheme}://{domain_name}", timeout=HTTP_TIMEOUT)
+            keys = ("Server", "Content-Type", "Last-Modified")
+            return "\n".join(
+                f"  - {k}: {response.headers.get(k, 'Not Available')}" for k in keys
+            )
+        except requests.RequestException:
+            continue
+    return "Could not fetch HTTP headers"
+
 
 def calculate_domain_age(creation_date):
-    """ Calculate the age of a domain from its creation date. """
+    """Calculate the age of a domain from its creation date."""
     if isinstance(creation_date, list):
-        creation_date = creation_date[0]
-    if creation_date:
-        age = datetime.now() - creation_date
-        return f"Domain Age: {age.days // 365} Years, {age.days % 365} Days"
-    return "Domain Age: N/A"
+        creation_date = creation_date[0] if creation_date else None
+    if not creation_date:
+        return "Domain Age: N/A"
+    age = datetime.now() - creation_date
+    return f"Domain Age: {age.days // 365} Years, {age.days % 365} Days"
 
-def display_info(domain_info, domain_name, verbose=False):
-    """ Compile detailed domain information for display. """
+
+def display_info(session, domain_info, domain_name, verbose=False):
+    """Compile detailed domain information for display."""
     output = [f"\n{'=' * 40}\n\nDomain: {domain_name}"]
 
-    # Additional domain info like registrant and registrar
     output.append(f"Registrant Name: {domain_info.name}")
     output.append(f"Registrant Organization: {domain_info.org}")
     output.append(f"Registrar: {domain_info.registrar}")
 
-    # Date formatting and name servers
     output.append(f"\nCreation Date: {format_dates(domain_info.creation_date)}")
     output.append(f"Expiration Date: {format_dates(domain_info.expiration_date)}")
     output.append(f"Updated Date: {format_dates(domain_info.updated_date)}")
 
-    nameservers = sorted(set([ns.lower() for ns in domain_info.name_servers]))
-    if nameservers:
+    if domain_info.name_servers:
+        nameservers = sorted({ns.lower() for ns in domain_info.name_servers})
         output.append("\nName Servers:")
-        for ns in nameservers:
-            output.append(f"  - {ns}")
+        output.extend(f"  - {ns}" for ns in nameservers)
 
     if domain_info.dnssec:
         output.append(f"\nDNSSEC: {domain_info.dnssec}")
 
     if domain_info.emails:
+        emails = (
+            domain_info.emails
+            if isinstance(domain_info.emails, list)
+            else [domain_info.emails]
+        )
         output.append("\nContact Emails:")
-        if isinstance(domain_info.emails, list):
-            output.extend([f"  - {email}" for email in domain_info.emails])
-        else:
-            output.append(f"  - {domain_info.emails}")
+        output.extend(f"  - {email}" for email in emails)
 
+    ip_address = None
     try:
-        ip_address = socket.gethostbyname(validate_domain(domain_name))
+        ip_address = socket.gethostbyname(domain_name)
         output.append(f"\nIP Address: {ip_address}")
         output.append(f"Reverse IP: {get_reverse_ip(ip_address)}")
-    except Exception as e:
+    except socket.gaierror as e:
         output.append(f"\nIP Address: Error retrieving IP - {e}")
 
-    output.append(f"\n{get_alexa_rank(domain_name)}")
-    output.append(f"{calculate_domain_age(domain_info.creation_date)}")
-    output.append(f"Geolocation: {get_geolocation(ip_address)}")
+    output.append(f"\n{calculate_domain_age(domain_info.creation_date)}")
+    if ip_address:
+        output.append(f"Geolocation: {get_geolocation(session, ip_address)}")
 
-    http_headers = get_http_headers(domain_name)
-    if http_headers.startswith("Error") or http_headers.startswith("Could not") or http_headers.startswith("Connection timed"):
-        output.append(f"\nHTTP Header Information: {http_headers}")
-    else:
-        output.append("\nHTTP Header Information:")
-        output.append(http_headers)
+    output.append("\nHTTP Header Information:")
+    output.append(get_http_headers(session, domain_name))
 
-    ssl_info = get_ssl_info(domain_name)
-    if "SSL Valid:" in ssl_info:
-        output.append("\n" + ssl_info)
-    else:
-        output.append("\nSSL Information: " + ssl_info)
+    output.append(f"\n{get_ssl_info(domain_name)}")
 
     if verbose:
         output.append("\n[Verbose Mode]")
@@ -177,45 +187,56 @@ def display_info(domain_info, domain_name, verbose=False):
 
     return "\n".join(output)
 
+
 def is_domain_available(domain):
-    """ Check if a domain is available for registration. """
+    """Check whether a domain appears to be available for registration."""
     try:
         whois_result = whois.whois(domain)
         return not whois_result.domain_name
-    except:
+    except Exception:
         return True
 
-def process_domains(domains, verbose=False, output_file=None):
-    """ Process a list of domains and compile information. """
-    results = []
-    for domain in domains:
-        try:
-            domain_info = whois.whois(domain)
-            if not domain_info.status or "No match for domain" in str(domain_info.status):
-                availability = is_domain_available(domain)
-                result = f"Domain '{domain}' is {'available' if availability else 'not available'} for registration."
-            else:
-                result = display_info(domain_info, domain, verbose)
-        except Exception as e:
-            result = f"An error occurred while processing '{domain}': {e}"
 
-        results.append(result)
+def process_domains(domains, verbose=False, output_file=None):
+    """Process a list of domains and compile information."""
+    results = []
+    with requests.Session() as session:
+        for domain in domains:
+            try:
+                domain_info = whois.whois(domain)
+                if not domain_info.status or "No match for domain" in str(
+                    domain_info.status
+                ):
+                    available = is_domain_available(domain)
+                    state = "available" if available else "not available"
+                    result = f"Domain '{domain}' is {state} for registration."
+                else:
+                    result = display_info(session, domain_info, domain, verbose)
+            except Exception as e:
+                result = f"An error occurred while processing '{domain}': {e}"
+            results.append(result)
 
     final_output = "\n".join(results)
     print(final_output)
 
     if output_file:
-        with safe_open_write(output_file) as file:
-            file.write(final_output)
+        with open(output_file, "w", encoding="utf-8") as f:
+            f.write(final_output)
+
+
+def parse_args(argv):
+    parser = argparse.ArgumentParser(
+        description="Look up WHOIS, DNS, SSL, and HTTP info for one or more domains.",
+    )
+    parser.add_argument("domains", nargs="+", help="Domain names to look up")
+    parser.add_argument(
+        "-v", "--verbose", action="store_true", help="Show extra status fields"
+    )
+    parser.add_argument("-o", "--output", help="Write the report to this file")
+    return parser.parse_args(argv)
+
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print(f"Usage: python3 {sys.argv[0]} <domain/subdomain> [-v] [-o output_file]")
-        sys.exit(1)
-
-    verbose = "-v" in sys.argv
-    output_file_flag = "-o" in sys.argv
-    output_file = sys.argv[sys.argv.index("-o") + 1] if output_file_flag and sys.argv.index("-o") + 1 < len(sys.argv) else None
-    domain_list = [validate_domain(arg) for arg in sys.argv[1:] if arg != "-v" and arg != "-o"]
-
-    process_domains(domain_list, verbose, output_file)
+    args = parse_args(sys.argv[1:])
+    domain_list = [validate_domain(d) for d in args.domains]
+    process_domains(domain_list, verbose=args.verbose, output_file=args.output)
