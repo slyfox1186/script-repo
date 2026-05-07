@@ -211,8 +211,8 @@ padl() {
 
 # Aria2c batch downloader
 adt() {
-    local json_script="add-video-to-json.py"
-    local run_script="batch-downloader.py"
+    local json_script="add_video_to_json.py"
+    local run_script="batch_downloader.py"
     local repo_base="https://raw.githubusercontent.com/slyfox1186/script-repo/main/Python3/aria2"
     local script filename extension path url output
 
@@ -312,8 +312,8 @@ rsrd() {
 
 # The master script download menu for github repository script-repo
 dlmaster() {
-    local script_path="/usr/local/bin/download-master.py"
-    local script_url="https://raw.githubusercontent.com/slyfox1186/script-repo/main/Python3/download-master.py"
+    local script_path="/usr/local/bin/download_master.py"
+    local script_url="https://raw.githubusercontent.com/slyfox1186/script-repo/main/Python3/download_master.py"
 
     # Check if the script exists
     if [[ ! -f "$script_path" ]]; then
