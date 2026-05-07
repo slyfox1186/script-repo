@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Link Copier with Redirects
 // @namespace    http://tampermonkey.net/
-// @version      1.1
+// @version      1.2
 // @description  Copies all links on a page to the clipboard, including redirects
 // @match        *://*/*
 // @grant        GM_setClipboard
@@ -10,84 +10,140 @@
 // @license      MIT
 // ==/UserScript==
 
-(function() {
+(function () {
     'use strict';
 
+    const REQUEST_TIMEOUT_MS = 10000;
+    const MAX_REDIRECT_HOPS = 5;
+    const CONCURRENCY = 8;
+
     window.addEventListener('keydown', handleKeydown);
+    console.log('Link Copier with Redirects script loaded. Press Alt+1 to copy links.');
+
+    let running = false;
 
     function handleKeydown(event) {
         if (event.altKey && event.key === '1') {
+            if (running) {
+                console.log('Link copy already in progress; ignoring trigger.');
+                return;
+            }
             console.log('Alt+1 detected, starting to copy links to clipboard.');
             startLinkCopying();
         }
     }
 
-    function startLinkCopying() {
-        GM_notification({
-            title: 'Link Copier with Redirects',
-            text: 'Link copying process started!',
-            timeout: 2500,
-        });
-
-        copyLinksToClipboard();
+    async function startLinkCopying() {
+        running = true;
+        try {
+            GM_notification({
+                title: 'Link Copier with Redirects',
+                text: 'Link copying process started!',
+                timeout: 2500,
+            });
+            await copyLinksToClipboard();
+        } finally {
+            running = false;
+        }
     }
 
     async function copyLinksToClipboard() {
-        const links = Array.from(document.querySelectorAll('a[href]'));
-        const uniqueLinks = Array.from(new Set(links.map(link => link.href).filter(Boolean)));
+        const all = Array.from(document.querySelectorAll('a[href]'), a => a.href).filter(Boolean);
+        const uniqueLinks = Array.from(new Set(all));
         console.log(`Found ${uniqueLinks.length} unique links.`);
 
-        const linkResults = await Promise.all(uniqueLinks.map(link => followRedirect(link)));
+        const linkResults = await mapWithConcurrency(uniqueLinks, CONCURRENCY, followRedirect);
 
-        const clipboardText = linkResults.map((redirectChain) => {
-            const originalLink = redirectChain[0];
-            const redirectText = redirectChain.slice(1).map(link => `  - ${link}`).join('\n');
-            return `${originalLink}\n${redirectText}`;
-        }).join('\n').trim().replace(/\n\n+/g, '\n');
+        const clipboardText = linkResults
+            .map(chain => {
+                const original = chain[0];
+                const tail = chain.slice(1).map(link => `  - ${link}`).join('\n');
+                return tail ? `${original}\n${tail}` : original;
+            })
+            .filter(Boolean)
+            .join('\n');
 
         GM_setClipboard(clipboardText);
-
         GM_notification({
             title: 'Link Copier with Redirects',
-            text: 'Links successfully copied to clipboard!',
+            text: `Copied ${uniqueLinks.length} link(s) to clipboard!`,
             timeout: 2500,
         });
     }
 
-    async function followRedirect(url, maxRedirects = 5) {
-        const seenUrls = [url];
-        let currentUrl = url;
-
-        while (maxRedirects > 0) {
-            try {
-                const response = await fetchUrl(currentUrl);
-
-                if (response.finalUrl === currentUrl || seenUrls.includes(response.finalUrl)) {
-                    break;
+    // Run `worker` over `items` with at most `limit` in flight at once.
+    async function mapWithConcurrency(items, limit, worker) {
+        const results = new Array(items.length);
+        let nextIndex = 0;
+        const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
+            while (true) {
+                const i = nextIndex++;
+                if (i >= items.length) return;
+                try {
+                    results[i] = await worker(items[i]);
+                } catch (err) {
+                    console.error(`Worker error on ${items[i]}:`, err);
+                    results[i] = [items[i]];
                 }
+            }
+        });
+        await Promise.all(runners);
+        return results;
+    }
 
-                seenUrls.push(response.finalUrl);
-                currentUrl = response.finalUrl;
-                maxRedirects--;
+    async function followRedirect(url) {
+        const seen = [url];
+        let current = url;
+        for (let hop = 0; hop < MAX_REDIRECT_HOPS; hop++) {
+            let response;
+            try {
+                response = await fetchUrl(current);
             } catch (error) {
-                console.error(`Error following redirect for link: ${currentUrl}`, error);
+                console.error(`Error following redirect for ${current}:`, error);
                 break;
             }
+            const finalUrl = response && response.finalUrl;
+            if (!finalUrl || finalUrl === current || seen.includes(finalUrl)) {
+                break;
+            }
+            seen.push(finalUrl);
+            current = finalUrl;
         }
-
-        return seenUrls;
+        return seen;
     }
 
     function fetchUrl(url) {
         return new Promise((resolve, reject) => {
-            GM.xmlHttpRequest({
-                method: "GET",
-                url: url,
-                onload: (response) => resolve(response),
-                onerror: (error) => reject(error)
+            let settled = false;
+            const handle = GM.xmlHttpRequest({
+                method: 'GET',
+                url,
+                timeout: REQUEST_TIMEOUT_MS,
+                onload: (response) => {
+                    if (settled) return;
+                    settled = true;
+                    resolve(response);
+                },
+                onerror: (error) => {
+                    if (settled) return;
+                    settled = true;
+                    reject(error || new Error(`network error for ${url}`));
+                },
+                ontimeout: () => {
+                    if (settled) return;
+                    settled = true;
+                    reject(new Error(`timeout after ${REQUEST_TIMEOUT_MS}ms for ${url}`));
+                },
             });
+            // Belt-and-suspenders timeout in case GM.xmlHttpRequest ignores `timeout`.
+            setTimeout(() => {
+                if (settled) return;
+                settled = true;
+                if (handle && typeof handle.abort === 'function') {
+                    try { handle.abort(); } catch (_) { /* ignore */ }
+                }
+                reject(new Error(`hard timeout after ${REQUEST_TIMEOUT_MS}ms for ${url}`));
+            }, REQUEST_TIMEOUT_MS + 500);
         });
     }
-
-    console.log('Link Copier with Redirects script loaded. Press Alt+1 to copy links.');
 })();
