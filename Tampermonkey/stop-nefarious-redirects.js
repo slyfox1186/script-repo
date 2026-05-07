@@ -1,18 +1,17 @@
 // ==UserScript==
 // @name         Stop Nefarious Redirects
 // @namespace    http://tampermonkey.net/
-// @version      4.2
+// @version      4.3
 // @description  Block unauthorized redirects and prevent history manipulation
 // @match        http://*/*
 // @match        https://*/*
 // @grant        GM_setValue
 // @grant        GM_getValue
-// @grant        GM_xmlhttpRequest
 // @license      MIT
 // @run-at       document-start
 // ==/UserScript==
 
-(function() {
+(function () {
     'use strict';
 
     const LOG_PREFIX = '[Nefarious Redirect Blocker]';
@@ -61,58 +60,68 @@
         }
     }
 
-    function isDomainAllowed(hostname) {
+    function hostnameMatchesSet(hostname, siteSet) {
         if (!hostname) return false;
-        return [...allowedSites].some(domain => hostname === domain || hostname.endsWith('.' + domain));
+        for (const site of siteSet) {
+            if (hostname === site || hostname.endsWith('.' + site)) return true;
+        }
+        return false;
+    }
+
+    function isDomainAllowed(hostname) {
+        return hostnameMatchesSet(hostname, allowedSites);
     }
 
     function isUrlBlocked(url) {
         const hostname = getHostname(url);
         if (!hostname) return false;
-
-        const automatedBlacklist = getAutomatedBlacklist();
-        for (const blocked of manualBlacklist) {
-            if (hostname === blocked || hostname.endsWith('.' + blocked)) return true;
-        }
-        for (const blocked of automatedBlacklist) {
-            if (hostname === blocked || hostname.endsWith('.' + blocked)) return true;
-        }
-        return false;
+        return hostnameMatchesSet(hostname, manualBlacklist) ||
+               hostnameMatchesSet(hostname, getAutomatedBlacklist());
     }
 
-    function isNavigationAllowed(url) {
+    // Pure side-effect-free check: is this URL blocked?
+    function isPopupAllowed(url) {
+        const hostname = getHostname(url);
+        if (isDomainAllowed(hostname)) return true;
+        return !isUrlBlocked(url);
+    }
+
+    // Used only for navigation events on the *current* page (popstate, history methods).
+    // It mutates lastKnownGoodUrl on allow and redirects the current page on block.
+    function isCurrentPageNavigationAllowed(url) {
         if (!isUrlBlocked(url)) {
             console.log(`${LOG_PREFIX} Navigation allowed to:`, url);
             lastKnownGoodUrl = url;
             return true;
-        } else {
-            console.error(`${LOG_PREFIX} Blocked navigation to:`, url);
-            const hostname = getHostname(url);
-            if (hostname) addToAutomatedBlacklist(hostname);
-            if (lastKnownGoodUrl) {
-                window.location.replace(lastKnownGoodUrl);
-            }
-            return false;
         }
+        console.error(`${LOG_PREFIX} Blocked navigation to:`, url);
+        const hostname = getHostname(url);
+        if (hostname) addToAutomatedBlacklist(hostname);
+        if (lastKnownGoodUrl && lastKnownGoodUrl !== url) {
+            window.location.replace(lastKnownGoodUrl);
+        }
+        return false;
     }
 
     const originalOpen = window.open;
-    window.open = function(url, name, features) {
+    window.open = function (url, name, features) {
         if (!url) return originalOpen.call(this, url, name, features);
         console.log(`${LOG_PREFIX} Popup attempt detected:`, url);
-        const hostname = getHostname(url);
-        if (isDomainAllowed(hostname) || isNavigationAllowed(url)) {
+        if (isPopupAllowed(url)) {
             console.log(`${LOG_PREFIX} Popup allowed for:`, url);
             return originalOpen.call(this, url, name, features);
         }
-        console.log(`${LOG_PREFIX} Blocked a popup from:`, url);
+        const hostname = getHostname(url);
+        if (hostname) addToAutomatedBlacklist(hostname);
+        console.log(`${LOG_PREFIX} Blocked popup from:`, url);
         return null;
     };
 
-    window.addEventListener('popstate', function() {
-        if (!isNavigationAllowed(window.location.href)) {
-            console.error(`${LOG_PREFIX} Blocked navigation to:`, window.location.href);
-            history.pushState(null, "", lastKnownGoodUrl);
+    window.addEventListener('popstate', function () {
+        const here = window.location.href;
+        if (!isCurrentPageNavigationAllowed(here)) {
+            console.error(`${LOG_PREFIX} Reverting blocked popstate navigation.`);
+            history.pushState(null, '', lastKnownGoodUrl);
             window.location.replace(lastKnownGoodUrl);
         }
     });
@@ -127,11 +136,11 @@
     const originalPushState = history.pushState;
     const originalReplaceState = history.replaceState;
 
-    history.pushState = function(data, title, url) {
+    history.pushState = function (data, title, url) {
         return handleHistoryManipulation(originalPushState, data, title, url);
     };
 
-    history.replaceState = function(data, title, url) {
+    history.replaceState = function (data, title, url) {
         return handleHistoryManipulation(originalReplaceState, data, title, url);
     };
 
