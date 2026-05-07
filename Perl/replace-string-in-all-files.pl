@@ -2,27 +2,49 @@
 
 use strict;
 use warnings;
+use Getopt::Long qw(:config bundling);
+use File::Temp qw(tempfile);
 
-my $search = shift || die "Usage: $0 search_string replace_string\n";
-my $replace = shift || die "Usage: $0 search_string replace_string\n";
+my ($regex, $ignore_case) = (0, 0);
+GetOptions(
+    'e|regex'       => \$regex,
+    'i|ignore-case' => \$ignore_case,
+) or die_usage();
 
-@ARGV = glob("*") unless @ARGV;
+die_usage() unless @ARGV >= 2;
+my $search  = shift @ARGV;
+my $replace = shift @ARGV;
 
-foreach my $file (@ARGV) {
-    open my $in, '<', $file or die "Cannot open $file: $!";
+my $pattern = $regex ? $search : quotemeta $search;
+my $re      = $ignore_case ? qr/$pattern/i : qr/$pattern/;
+
+@ARGV = grep { -f && ! -l } glob('*') unless @ARGV;
+
+for my $file (@ARGV) {
+    next unless -f $file;
+    next if -B $file;
+
+    open my $in, '<', $file or die "Cannot open '$file' for reading: $!";
     my $content = do { local $/; <$in> };
-    close $in;
+    close $in or die "Cannot close '$file': $!";
 
-    $content =~ s/$search/$replace/g;
+    next unless defined $content;
+    (my $modified = $content) =~ s/$re/$replace/g;
+    next if $modified eq $content;
 
-    open my $out, '>', $file or die "Cannot open $file: $!";
-    print $out $content;
-    close $out;
+    spew_atomic($file, $modified);
 }
 
-    $content =~ s/\n{2,}/\n\n/g;
+sub spew_atomic {
+    my ($path, $data) = @_;
+    my ($fh, $tmp) = tempfile("$path.XXXXXX", UNLINK => 0);
+    print {$fh} $data or do { unlink $tmp; die "write to '$tmp': $!" };
+    close $fh        or do { unlink $tmp; die "close '$tmp': $!"     };
+    rename $tmp, $path or do { unlink $tmp; die "rename '$tmp' -> '$path': $!" };
+}
 
-    open my $out, '>', $file or die "Cannot open $file: $!";
-    print $out $content;
-    close $out;
+sub die_usage {
+    die "Usage: $0 [-e] [-i] <search> <replace> [file...]\n" .
+        "  -e  Treat <search> as a regex (default: literal substring)\n" .
+        "  -i  Case-insensitive\n";
 }

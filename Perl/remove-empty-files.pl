@@ -3,8 +3,12 @@
 use strict;
 use warnings;
 
-foreach my $file (glob("*")) {
-    if (-z $file) {
-        unlink $file or warn "Could not delete $file: $!";
+for my $file (sort glob('*')) {
+    next unless -f $file && ! -l $file;
+    next unless -z $file;
+    if (unlink $file) {
+        print "Removed: $file\n";
+    } else {
+        warn "Could not delete '$file': $!\n";
     }
 }

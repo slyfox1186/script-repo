@@ -2,59 +2,45 @@
 
 use strict;
 use warnings;
+use File::Temp qw(tempfile);
 
-# Verify an input file was provided
 die "Usage: $0 <path_to_script>\n" unless @ARGV == 1;
-
 my $file_path = $ARGV[0];
+die "File does not exist: $file_path\n" unless -f $file_path;
 
-# Verify the file exists
-die "File does not exist: $file_path\n" unless -e $file_path;
-
-# Read the file content
-open my $fh, '<', $file_path or die "Cannot open file $file_path: $!";
+open my $fh, '<', $file_path or die "Cannot open '$file_path': $!";
 my @lines = <$fh>;
-close $fh;
+close $fh or die "Cannot close '$file_path': $!";
 
-my @processed_lines;
-
-foreach my $line (@lines) {
-    # Skip processing shebang lines
-    if ($line =~ /^#!/) {
-        push @processed_lines, $line;
+my @processed;
+for my $line (@lines) {
+    if ($line =~ /^#!/ || $line !~ /#/) {
+        push @processed, $line;
         next;
     }
 
-    # Check for inline comments or comments after code, excluding shebang lines
-    if ($line =~ /#/) {
-        $line =~ s{
-            (                   # Capture code before comment (if any)
-                ^.*?            # Non-greedy match from start of line to comment
-            )
-            \#                  # Match the comment marker
-            (\s*)               # Capture any space after the hash before comment text
-            (.*)                # Capture the actual comment text
-        }
-        {
-            my $code = $1;     # Code before comment
-            my $space = $2;    # Space after hash
-            my $comment = $3;  # Comment text
+    $line =~ s{
+        (^.*?)              # code (or whitespace) before the comment
+        \#                  # the hash
+        (\s*)               # optional space after the hash
+        (.*)                # the comment text
+    }{
+        my ($code, $space, $comment) = ($1, $2, $3);
+        $comment = lc $comment;
+        $comment =~ s/\b(\w)/\u$1/;
+        "$code#$space$comment";
+    }ex;
 
-            # Transform comment to sentence case
-            $comment = lc($comment);              # Lowercase the entire comment
-            $comment =~ s/\b(\w)/\u$1/;           # Capitalize the first word
-
-            $code . "#" . $space . $comment;      # Reconstruct the line
-        }ex;
-    } else {
-        # For lines that do not start with a shebang or do not contain a hash, add them directly
-        push @processed_lines, $line;
-    }
+    push @processed, $line;
 }
 
-# Write the modified content back to the file
-open my $fh_out, '>', $file_path or die "Cannot write to file $file_path: $!";
-print $fh_out @processed_lines;
-close $fh_out;
+spew_atomic($file_path, join('', @processed));
+print "Comments transformed to sentence case (shebangs preserved).\n";
 
-print "All relevant comments have been transformed to sentence case, excluding shebang lines.\n";
+sub spew_atomic {
+    my ($path, $data) = @_;
+    my ($out, $tmp) = tempfile("$path.XXXXXX", UNLINK => 0);
+    print {$out} $data or do { unlink $tmp; die "write to '$tmp': $!" };
+    close $out         or do { unlink $tmp; die "close '$tmp': $!"     };
+    rename $tmp, $path or do { unlink $tmp; die "rename '$tmp' -> '$path': $!" };
+}

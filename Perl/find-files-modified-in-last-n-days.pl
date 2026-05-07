@@ -3,12 +3,10 @@
 use strict;
 use warnings;
 
-my $days = shift || die "Usage: $0 <days>\n";
+die "Usage: $0 <days>\n" unless @ARGV == 1;
+my $days = $ARGV[0];
+die "Days must be a non-negative number.\n" unless $days =~ /^\d+(?:\.\d+)?$/;
 
-my $time = time - $days * 24 * 60 * 60;
-
-foreach my $file (glob("*")) {
-    if ((stat($file))[9] > $time) {
-        print "$file\n";
-    }
+for my $file (sort grep { -f && ! -l } glob('*')) {
+    print "$file\n" if -M $file <= $days;
 }
