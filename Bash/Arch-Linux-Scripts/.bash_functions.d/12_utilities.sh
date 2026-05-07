@@ -3,7 +3,10 @@
 
 ## SOURCE FILES ##
 sbrc() {
+    # ~/.bashrc unconditionally cd's to $HOME on source — preserve cwd around it.
+    local _pwd="$PWD"
     source "$HOME/.bashrc"
+    [[ "$PWD" != "$_pwd" && -d "$_pwd" ]] && cd "$_pwd"
     clear; ls -1AhFv --color --group-directories-first
 }
 
