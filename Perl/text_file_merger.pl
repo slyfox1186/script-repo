@@ -1,29 +1,39 @@
 #!/usr/bin/env perl
+
 use strict;
 use warnings;
-use File::Slurp;
+use File::Spec;
 
-# Custom variables
-my $directory = $ARGV[0];
-my $output_file = $ARGV[1];
-
-# Check if directory and output file are provided
 die "Usage: $0 <directory> <output_file>\n" unless @ARGV == 2;
+my ($directory, $output_file) = @ARGV;
+die "Not a directory: '$directory'\n" unless -d $directory;
 
-# Open output file
-open(my $out_fh, '>', $output_file) or die "Could not open '$output_file' for writing: $!\n";
+my $abs_output = File::Spec->rel2abs($output_file);
 
-# Read and merge files
-opendir(my $dh, $directory) or die "Could not open '$directory' for reading: $!\n";
-while (my $file = readdir($dh)) {
-    next unless $file =~ /\.txt$/;
-    my $content = read_file("$directory/$file");
-    print $out_fh $content;
+opendir(my $dh, $directory) or die "Could not open '$directory': $!\n";
+my @files = sort grep {
+    /\.txt$/i
+        && -f File::Spec->catfile($directory, $_)
+        && File::Spec->rel2abs(File::Spec->catfile($directory, $_)) ne $abs_output
+} readdir($dh);
+closedir($dh);
+
+die "No .txt files found in '$directory'.\n" unless @files;
+
+open(my $out_fh, '>', $output_file)
+    or die "Could not open '$output_file' for writing: $!\n";
+
+for my $file (@files) {
+    my $path = File::Spec->catfile($directory, $file);
+    open my $in, '<', $path or die "Could not read '$path': $!\n";
+    while (my $chunk = <$in>) {
+        print {$out_fh} $chunk;
+    }
+    close $in;
 }
 
-closedir($dh);
-close($out_fh);
-print "Files merged successfully into '$output_file'.\n";
+close $out_fh or die "Could not close '$output_file': $!\n";
+printf "Merged %d file(s) into '%s'.\n", scalar @files, $output_file;
 
 __END__
 

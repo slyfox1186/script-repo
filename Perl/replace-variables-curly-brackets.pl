@@ -2,34 +2,41 @@
 
 use strict;
 use warnings;
+use File::Temp qw(tempfile);
 
-# Verify an input file was provided
 die "Usage: $0 <path_to_script>\n" unless @ARGV == 1;
-
 my $file_path = $ARGV[0];
+die "File does not exist: $file_path\n" unless -f $file_path;
 
-# Verify the file exists
-die "File does not exist: $file_path\n" unless -e $file_path;
-
-# Read the file content
-open my $fh, '<', $file_path or die "Cannot open file $file_path: $!";
+open my $fh, '<', $file_path or die "Cannot open '$file_path': $!";
 my @lines = <$fh>;
-close $fh;
+close $fh or die "Cannot close '$file_path': $!";
 
-foreach my $line (@lines) {
-    # Correct previously incorrect conversion specifically for ${var:+($var)} pattern
+my $modified = 0;
+for my $line (@lines) {
+    my $original = $line;
+
     $line =~ s/\$(\w+):\+\(\$\1\)/\${$1:+(\$$1)}/g;
 
-    # Refine the skipping logic to also exclude patterns like ${NAME//TEXT/TEXT}
     unless ($line =~ /\$\{\w+[:+?@\/]/) {
-        # Perform replacements on simpler variable references
         $line =~ s/\$\{(\w+)\}/\$$1/g;
     }
+
+    $modified ||= ($line ne $original);
 }
 
-# Write the modified content back to the file
-open my $fh_out, '>', $file_path or die "Cannot write to file $file_path: $!";
-print $fh_out @lines;
-close $fh_out;
+if (!$modified) {
+    print "No changes needed.\n";
+    exit 0;
+}
 
-print "Corrected and refined curly brackets surrounding variables handling, excluding specific patterns.\n";
+spew_atomic($file_path, join('', @lines));
+print "Bash variable braces simplified (skipping ':+', ':-', ':?', '@', '//' patterns).\n";
+
+sub spew_atomic {
+    my ($path, $data) = @_;
+    my ($out, $tmp) = tempfile("$path.XXXXXX", UNLINK => 0);
+    print {$out} $data or do { unlink $tmp; die "write to '$tmp': $!" };
+    close $out         or do { unlink $tmp; die "close '$tmp': $!"     };
+    rename $tmp, $path or do { unlink $tmp; die "rename '$tmp' -> '$path': $!" };
+}

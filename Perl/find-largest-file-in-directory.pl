@@ -3,21 +3,35 @@
 use strict;
 use warnings;
 
-my $largest_file;
-my $largest_size = 0;
+@ARGV = grep { -f && ! -l } glob('*') unless @ARGV;
 
-@ARGV = glob("*") unless @ARGV;
-
-foreach my $file (@ARGV) {
+my ($largest_file, $largest_size);
+for my $file (@ARGV) {
+    next unless -f $file;
     my $size = -s $file;
-    if ($size > $largest_size) {
+    next unless defined $size;
+    if (!defined $largest_size || $size > $largest_size) {
         $largest_size = $size;
         $largest_file = $file;
     }
 }
 
-if ($largest_file) {
-    print "Largest file: $largest_file ($largest_size bytes)\n";
+if (defined $largest_file) {
+    printf "Largest file: %s (%s, %d bytes)\n",
+        $largest_file, format_bytes($largest_size), $largest_size;
 } else {
-    print "No files found.\n";
+    print "No regular files found.\n";
+    exit 1;
+}
+
+sub format_bytes {
+    my $bytes = shift;
+    my @units = qw(B KB MB GB TB PB);
+    my $i     = 0;
+    while ($bytes >= 1024 && $i < $#units) {
+        $bytes /= 1024;
+        $i++;
+    }
+    return $i == 0 ? sprintf('%d %s', $bytes, $units[$i])
+                   : sprintf('%.2f %s', $bytes, $units[$i]);
 }

@@ -1,30 +1,35 @@
 #!/usr/bin/env perl
+
 use strict;
 use warnings;
-use File::Find;
+use File::Find ();
 
-# Custom variables
-my $directory = $ARGV[0];
-
-# Check if directory is provided
 die "Usage: $0 <directory>\n" unless @ARGV == 1;
+my $directory = $ARGV[0];
+die "Not a directory: $directory\n" unless -d $directory;
 
-# Initialize total size
 my $total_size = 0;
+File::Find::find(
+    {
+        wanted    => sub { $total_size += -s _ if -f _ && ! -l _ },
+        no_chdir  => 1,
+        follow    => 0,
+    },
+    $directory,
+);
 
-# Find files and accumulate size
-find(sub {
-    return unless -f;
-    $total_size += -s _;
-}, $directory);
+printf "Total disk usage in '%s': %s\n", $directory, format_bytes($total_size);
 
-# Print report
-print "Total disk usage in '$directory': " . format_bytes($total_size) . "\n";
-
-# Function to format bytes
 sub format_bytes {
     my $bytes = shift;
-    return sprintf("%.2f MB", $bytes / (1024 * 1024));
+    my @units = qw(B KB MB GB TB PB);
+    my $i     = 0;
+    while ($bytes >= 1024 && $i < $#units) {
+        $bytes /= 1024;
+        $i++;
+    }
+    return $i == 0 ? sprintf('%d %s', $bytes, $units[$i])
+                   : sprintf('%.2f %s', $bytes, $units[$i]);
 }
 
 __END__
