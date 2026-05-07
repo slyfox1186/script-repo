@@ -3,27 +3,27 @@
 
 ## WHEN LAUNCHING CERTAIN PROGRAMS FROM THE TERMINAL, SUPPRESS ANY WARNING MESSAGES ##
 gedit() {
-    eval $(command -v gedit) "$@" &>/dev/null
+    command gedit "$@" &>/dev/null
 }
 
 geds() {
-    sudo -Hu root $(command -v gedit) "$@" &>/dev/null
+    sudo -Hu root "$(command -v gedit)" "$@" &>/dev/null
 }
 
 gted() {
-    [[ ! -f /usr/bin/gted ]] && sudo ln -s /usr/bin/gnome-text-editor /usr/bin/gted
-    eval $(command -v gnome-text-editor) "$@" &>/dev/null
+    [[ ! -e /usr/bin/gted ]] && sudo ln -s /usr/bin/gnome-text-editor /usr/bin/gted
+    command gnome-text-editor "$@" &>/dev/null
 }
 
 gteds() {
-    [[ ! -f /usr/bin/gted ]] && sudo ln -s /usr/bin/gnome-text-editor /usr/bin/gted
-    sudo -Hu root $(command -v gnome-text-editor) "$@" &>/dev/null
+    [[ ! -e /usr/bin/gted ]] && sudo ln -s /usr/bin/gnome-text-editor /usr/bin/gted
+    sudo -Hu root "$(command -v gnome-text-editor)" "$@" &>/dev/null
 }
 
 # Open a browser and search the string passed to the function
 www() {
     local browser input keyword url urlRegex
-    if [ "$#" -eq 0 ]; then
+    if [[ "$#" -eq 0 ]]; then
         echo "Usage: www <url or keywords>"
         return 1
     fi
@@ -76,7 +76,7 @@ gc() {
     if [[ -n "$1" ]]; then
         nohup google-chrome "$1"
     else
-        read -p "Enter a URL: " url
+        read -rp "Enter a URL: " url
         nohup google-chrome "$url" 2>&1
     fi
 }
@@ -99,7 +99,7 @@ tkan() {
 update_icons() {
     local pkg pkgs
     pkgs=(gtk-update-icon-cache hicolor-icon-theme)
-    for pkg in ${pkgs[@]}; do
+    for pkg in "${pkgs[@]}"; do
         if ! pacman -Qi "$pkg" &>/dev/null; then
             sudo pacman -S --noconfirm "$pkg"
             echo

@@ -12,7 +12,7 @@ ffdl() {
 }
 
 ffs() {
-    wget --show-progress -cqO "https://raw.githubusercontent.com/slyfox1186/ffmpeg-build-script/main/build-ffmpeg.sh"
+    wget --show-progress -cqO "build-ffmpeg.sh" "https://raw.githubusercontent.com/slyfox1186/ffmpeg-build-script/main/build-ffmpeg.sh"
     clear
     ffr build-ffmpeg.sh
 }
@@ -21,8 +21,10 @@ ffstaticdl() {
     if wget --connect-timeout=2 --tries=2 --show-progress -cqO ffmpeg-n7.0.tar.xz https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n7.0-latest-linux64-lgpl-7.0.tar.xz; then
         mkdir ffmpeg-n7.0
         tar -Jxf ffmpeg-n7.0.tar.xz -C ffmpeg-n7.0 --strip-components 1
-        cd ffmpeg-n7.0/bin || exit 1
-        sudo cp -f ffmpeg ffplay ffprobe /usr/local/bin/
+        (
+            cd ffmpeg-n7.0/bin || exit 1
+            sudo cp -f ffmpeg ffplay ffprobe /usr/local/bin/
+        ) || return 1
         clear
         ffmpeg -version
     else
@@ -69,7 +71,7 @@ imow() {
     elif [[ -f "$local_script" ]]; then
         echo "Using test directory script: $local_script"
         cp "$local_script" "$script_name"
-    elif wget --timeout=2 --tries=2 -cqO "$script_name" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer-Scripts/ImageMagick/scripts/optimize-jpg.py"; then
+    elif wget --timeout=2 --tries=2 -cqO "$script_name" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/scripts/optimize-jpg.py"; then
         echo "Downloaded script from repository"
     else
         printf "\n%s\n" "Failed to download the jpg optimization script."
@@ -80,8 +82,7 @@ imow() {
     fi
 
     chmod +x "$script_name"
-    LD_PRELOAD="libtcmalloc.so"
-    if ! python "$script_name" -o; then
+    if ! LD_PRELOAD="libtcmalloc.so" python "$script_name" -o; then
         printf "\n%s\n" "Failed to optimize images."
         if command -v google_speech &>/dev/null; then
             google_speech "Failed to optimize images." &>/dev/null
@@ -96,9 +97,19 @@ imow() {
 
 # Downsample image to 50% of the original dimensions using sharper settings
 magick50() {
-    local pic
+    local pic _nullglob_state
+    _nullglob_state=$(shopt -p nullglob)
+    shopt -s nullglob
 
-    for pic in *.jpg; do
+    local -a pics=(*.jpg)
+    eval "$_nullglob_state"
+
+    if (( ${#pics[@]} == 0 )); then
+        echo "No .jpg files in the current directory."
+        return 0
+    fi
+
+    for pic in "${pics[@]}"; do
         convert "$pic" -colorspace sRGB -filter LanczosRadius -distort Resize 50% -colorspace sRGB "${pic%.jpg}-50.jpg"
     done
 }

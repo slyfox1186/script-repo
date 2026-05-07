@@ -51,5 +51,5 @@ gettime() {
 }
 
 # Optional shortcut:
-alias ti='timeinfo'
+alias ti='gettime'
 

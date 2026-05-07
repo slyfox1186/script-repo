@@ -18,14 +18,14 @@ mf_enhanced() {
     )
     
     if [[ -z "$file" ]]; then
-        read -p "Enter filename: " file
+        read -rp "Enter filename: " file
         echo "Available templates: ${!templates[*]}"
-        read -p "Enter template type (or press Enter for none): " template
+        read -rp "Enter template type (or press Enter for none): " template
     fi
     
     if [[ -f "$file" ]]; then
         echo "⚠️  File already exists: $file"
-        read -p "Overwrite? (y/N): " confirm
+        read -rp "Overwrite? (y/N): " confirm
         [[ "$confirm" != "y" ]] && return 1
     fi
     
@@ -48,13 +48,13 @@ mdir_enhanced() {
     local init_git="$2"
     
     if [[ -z "$dir" ]]; then
-        read -p "Enter directory name: " dir
-        read -p "Initialize git repository? (y/N): " init_git
+        read -rp "Enter directory name: " dir
+        read -rp "Initialize git repository? (y/N): " init_git
     fi
     
     if [[ -d "$dir" ]]; then
         echo "⚠️  Directory already exists: $dir"
-        read -p "Continue anyway? (y/N): " confirm
+        read -rp "Continue anyway? (y/N): " confirm
         [[ "$confirm" != "y" ]] && return 1
     fi
     
@@ -111,12 +111,12 @@ ffind_enhanced() {
     if [[ "$#" -eq 0 ]]; then
         echo "🔍 Enhanced Find Utility"
         echo "======================="
-        read -p "Search term: " fname
+        read -rp "Search term: " fname
         echo "File types: [f]ile, [d]irectory, [l]ink, [any]"
-        read -p "Type (default: any): " ftype
-        read -p "Search path (default: current dir): " fpath
-        read -p "Max depth (default: unlimited): " max_depth
-        read -p "Case sensitive? (y/N): " case_sensitive
+        read -rp "Type (default: any): " ftype
+        read -rp "Search path (default: current dir): " fpath
+        read -rp "Max depth (default: unlimited): " max_depth
+        read -rp "Case sensitive? (y/N): " case_sensitive
         
         fpath="${fpath:-.}"
     fi
@@ -277,9 +277,10 @@ proc_manager() {
         echo "🔧 Process Manager"
         echo "=================="
         echo "Actions: list, kill, monitor, info"
-        read -p "Choose action: " action
+        read -rp "Choose action: " action
     fi
     
+    local pids confirm
     case "$action" in
         list)
             echo "📋 Running Processes:"
@@ -287,19 +288,19 @@ proc_manager() {
             ;;
         kill)
             if [[ -z "$process_name" ]]; then
-                read -p "Enter process name or PID: " process_name
+                read -rp "Enter process name or PID: " process_name
             fi
-            
+
             if [[ "$process_name" =~ ^[0-9]+$ ]]; then
                 # It's a PID
                 echo "Killing process PID: $process_name"
                 kill "$process_name"
             else
                 # It's a process name
-                local pids=$(pgrep "$process_name")
+                pids=$(pgrep "$process_name")
                 if [[ -n "$pids" ]]; then
                     echo "Found processes: $pids"
-                    read -p "Kill all? (y/N): " confirm
+                    read -rp "Kill all? (y/N): " confirm
                     if [[ "$confirm" == "y" ]]; then
                         pkill "$process_name"
                         echo "✅ Processes killed"
@@ -311,13 +312,13 @@ proc_manager() {
             ;;
         monitor)
             if [[ -z "$process_name" ]]; then
-                read -p "Enter process name: " process_name
+                read -rp "Enter process name: " process_name
             fi
             monitor_process "$process_name"
             ;;
         info)
             if [[ -z "$process_name" ]]; then
-                read -p "Enter process name or PID: " process_name
+                read -rp "Enter process name or PID: " process_name
             fi
             
             echo "📊 Process Information: $process_name"
@@ -345,7 +346,7 @@ git_utils() {
         echo "🔧 Git Utilities"
         echo "==============="
         echo "Commands: status-all, clean-branches, create-branch, quick-commit"
-        read -p "Choose command: " command
+        read -rp "Choose command: " command
     fi
     
     case "$command" in
@@ -354,14 +355,15 @@ git_utils() {
             ;;
         clean-branches)
             echo "🧹 Cleaning merged branches..."
-            git branch --merged | grep -v "\*\|main\|master" | xargs -n 1 git branch -d
+            git branch --merged | grep -Ev '^\s*\*|^\s*(main|master)$' | xargs -n 1 git branch -d
             echo "✅ Cleaned merged branches"
             ;;
         create-branch)
-            read -p "Branch name: " branch_name
-            read -p "Base branch (default: main): " base_branch
+            local branch_name base_branch
+            read -rp "Branch name: " branch_name
+            read -rp "Base branch (default: main): " base_branch
             base_branch="${base_branch:-main}"
-            
+
             git checkout "$base_branch"
             git pull origin "$base_branch"
             git checkout -b "$branch_name"
@@ -391,9 +393,9 @@ create_project() {
     )
     
     if [[ -z "$project_name" ]]; then
-        read -p "Project name: " project_name
+        read -rp "Project name: " project_name
         echo "Available templates: ${!templates[*]}"
-        read -p "Project type: " project_type
+        read -rp "Project type: " project_type
     fi
     
     if [[ -d "$project_name" ]]; then

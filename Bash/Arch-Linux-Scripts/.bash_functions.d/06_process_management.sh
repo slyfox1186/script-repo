@@ -42,7 +42,7 @@ kill_process() {
     pids=$(pgrep -f "$program")
 
     if [[ -z "$pids" ]]; then
-        echo "No instances of "$program" are running."
+        echo "No instances of '$program' are running."
         return 0
     fi
 
@@ -62,40 +62,40 @@ kill_process() {
 
 ## nohup commands
 nh() {
-    nohup "$1" &>/dev/null &
+    nohup "$@" &>/dev/null &
     echo
     ls -1AvhF --color --group-directories-first
 }
 
 nhs() {
-    nohup sudo "$1" &>/dev/null &
+    nohup sudo "$@" &>/dev/null &
     echo
     ls -1AvhF --color --group-directories-first
 }
 
 nhe() {
-    nohup "$1" &>/dev/null &
+    nohup "$@" &>/dev/null &
     exit
 }
 
 nhse() {
-    nohup sudo "$1" &>/dev/null &
+    nohup sudo "$@" &>/dev/null &
     exit
 }
 
 # Run Python scripts with options
 run_py() {
-    local cmd_prefix="clear; "
-    local flush_cmd=""
+    local do_clear=true
+    local do_flush=false
 
     # Parse arguments
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
             -v|--verbose)
-                cmd_prefix=""  # Disable screen clearing
+                do_clear=false
                 ;;
             -f|--flush)
-                flush_cmd="redis-cli flushall && "  # Add Redis flush command
+                do_flush=true
                 ;;
             -h|--help)
                 echo "Usage: run_app [OPTIONS]"
@@ -114,11 +114,16 @@ run_py() {
         shift
     done
 
+    $do_clear && clear
+    if $do_flush; then
+        redis-cli flushall || return 1
+    fi
+
     # Run the appropriate Python script
     if [[ -f "app.py" ]]; then
-        eval "${cmd_prefix}${flush_cmd}python3 app.py"
+        python3 app.py
     elif [[ -f "main.py" ]]; then
-        eval "${cmd_prefix}${flush_cmd}python3 main.py"
+        python3 main.py
     else
         echo "No app.py or main.py found."
         return 1

@@ -38,12 +38,12 @@ find_large() {
         du -h -d 1 . 2>/dev/null | sort -hr | head -n "${count}"
     else
         echo "Searching for files..."
-        local find_cmd="find . -type f"
-        [[ -n "$type_filter" ]] && find_cmd+=" -name '*.${type_filter}'"
-        [[ -n "$min_size" ]] && find_cmd+=" -size +${min_size}"
+        local -a find_cmd=(find . -type f)
+        [[ -n "$type_filter" ]] && find_cmd+=(-name "*.${type_filter}")
+        [[ -n "$min_size" ]] && find_cmd+=(-size "+${min_size}")
 
         # -printf is efficient. We sort by size (%s) and then format output.
-        eval "$find_cmd" -printf '%s %p\n' 2>/dev/null |
+        "${find_cmd[@]}" -printf '%s %p\n' 2>/dev/null |
         sort -rn |
         head -n "${count}" |
         awk '{
@@ -64,13 +64,13 @@ find_large() {
 big_files() {
   local num_results full_path size folder file suffix
   # Check if an argument is provided
-  if [ -n "$1" ] && [[ "$1" =~ ^[0-9]+$ ]]; then
+  if [[ -n "$1" && "$1" =~ ^[0-9]+$ ]]; then
     num_results=$1
   else
     # Prompt the user to enter the number of results
-    read -p "Enter the number of results to display: " num_results
+    read -rp "Enter the number of results to display: " num_results
     while ! [[ "$num_results" =~ ^[0-9]+$ ]]; do
-      read -p "Invalid input. Enter a valid number: " num_results
+      read -rp "Invalid input. Enter a valid number: " num_results
     done
   fi
   echo "Largest Folders:"
@@ -91,7 +91,7 @@ big_files() {
 }
 
 big_file() {
-    find . -type f -print0 | du -ha --files0-from=- | LC_ALL='C' sort -rh | head -n $1
+    find . -type f -print0 | du -ha --files0-from=- | LC_ALL='C' sort -rh | head -n "$1"
 }
 
 big_vids() {
@@ -99,12 +99,12 @@ big_vids() {
     if [[ -n "$1" ]]; then
         count=$1
     else
-        read -p "Enter the max number of results: " count
+        read -rp "Enter the max number of results: " count
         echo
     fi
     echo "Listing the $count largest videos"
     echo
-    sudo find "$PWD" -type f \( -iname "*.mkv" -o -iname "*.mp4" \) -exec du -Sh {} + | grep -Ev "\(x265\)" | sort -hr | head -n"$count"
+    sudo find "$PWD" -type f \( -iname "*.mkv" -o -iname "*.mp4" \) -exec du -Sh {} + | grep -Ev "\(x265\)" | sort -hr | head -n "$count"
 }
 
 big_img() {
@@ -116,7 +116,7 @@ jpgsize() {
     local random_dir size
 
     random_dir=$(mktemp -d)
-    read -p "Enter the image size (units in MB): " size
+    read -rp "Enter the image size (units in MB): " size
     find . -size +"$size"M -type f -iname "*.jpg" > "$random_dir/img-sizes.txt"
     sed -i "s/^..//g" "$random_dir/img-sizes.txt"
     sed -i "s|^|$PWD\/|g" "$random_dir/img-sizes.txt"
@@ -150,7 +150,7 @@ large_files() {
 
     if [[ -z "$1" ]]; then
         echo "Input the FILE extension to search for without a dot: "
-        read -p "Enter your choice: " choice
+        read -rp "Enter your choice: " choice
         clear
     else
         choice=$1
@@ -171,7 +171,7 @@ mi() {
     if [[ -z "$1" ]]; then
         ls -1AhFv --color --group-directories-first
         echo
-        read -p "Please enter the relative FILE path: " file
+        read -rp "Please enter the relative FILE path: " file
         echo
         mediainfo "$file"
     else

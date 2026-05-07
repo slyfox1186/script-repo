@@ -6,7 +6,7 @@ claude_code_search() {
   # --- Pre-flight Checks ---
 
   # Check if package.json exists
-  if [ ! -f "package.json" ]; then
+  if [[ ! -f "package.json" ]]; then
     echo "Error: package.json not found in the current directory." >&2
     return 1
   fi
@@ -34,7 +34,7 @@ claude_code_search() {
   # --- Output Filtering ---
 
   # Check if a search pattern was provided
-  if [ -n "$search_pattern" ]; then
+  if [[ -n "$search_pattern" ]]; then
     # If yes, filter the output with grep, using the provided pattern.
     # The '--color=auto' flag adds color to the matched text.
     echo "Filtering for lines containing: '$search_pattern'"

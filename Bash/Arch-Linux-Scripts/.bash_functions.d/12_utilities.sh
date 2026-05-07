@@ -8,8 +8,7 @@ sbrc() {
 }
 
 spro() {
-    source "$HOME/.profile"
-    if [[ $? -eq 0 ]]; then
+    if source "$HOME/.profile"; then
         echo "The command was a success!"
     else
         echo "The command failed!"
@@ -51,6 +50,8 @@ rdvc() {
 
     local total_upvotes="${args["total_upvotes"]}"
     local upvote_percentage="${args["upvote_percentage"]}"
+    local upvote_percentage_decimal total_votes total_votes_rounded downvotes
+    local i lower_limit next_lower_limit next_lower_limit_adjusted
 
     upvote_percentage_decimal=$(bc <<< "scale=2; $upvote_percentage / 100")
     total_votes=$(bc <<< "scale=2; $total_upvotes / $upvote_percentage_decimal")
@@ -203,8 +204,12 @@ script_repo() {
         wget --show-progress -cqO build-clang.sh "https://build-clang.optimizethis.net"
         sudo bash build-clang.sh --help
         echo
-        read -p "Enter your chosen arguments: (e.g. -c -v 17.0.6): " clang_args
-        sudo bash build-ffmpeg.sh $clang_args
+        local clang_args_str
+        local -a clang_args_arr
+        read -rp "Enter your chosen arguments: (e.g. -c -v 17.0.6): " clang_args_str
+        # shellcheck disable=SC2206
+        read -ra clang_args_arr <<< "$clang_args_str"
+        sudo bash build-clang.sh "${clang_args_arr[@]}"
         break
         ;;
       "Install Latest 7-Zip Version")
@@ -218,18 +223,28 @@ script_repo() {
         ;;
       "Compile FFmpeg from Source")
         git clone "https://github.com/slyfox1186/ffmpeg-build-script.git"
-        cd ffmpeg-build-script || exit 1
-        clear
-        sudo ./build-ffmpeg.sh -h
-        read -p "Enter your chosen arguments: (e.g. --build --gpl-and-nonfree --latest): " ff_args
-        sudo ./build-ffmpeg.sh $ff_args
+        local ff_args_str
+        local -a ff_args_arr
+        (
+            cd ffmpeg-build-script || exit 1
+            clear
+            sudo ./build-ffmpeg.sh -h
+            read -rp "Enter your chosen arguments: (e.g. --build --gpl-and-nonfree --latest): " ff_args_str
+            # shellcheck disable=SC2206
+            read -ra ff_args_arr <<< "$ff_args_str"
+            sudo ./build-ffmpeg.sh "${ff_args_arr[@]}"
+        ) || return 1
         break
         ;;
       "Install OpenSSL Latest Version")
         wget --show-progress -cqO build-openssl.sh "https://ossl.optimizethis.net"
         echo
-        read -p "Enter arguments for OpenSSL (e.g., '-v 3.1.5'): " openssl_args
-        sudo bash build-openssl.sh $openssl_args
+        local openssl_args_str
+        local -a openssl_args_arr
+        read -rp "Enter arguments for OpenSSL (e.g., '-v 3.1.5'): " openssl_args_str
+        # shellcheck disable=SC2206
+        read -ra openssl_args_arr <<< "$openssl_args_str"
+        sudo bash build-openssl.sh "${openssl_args_arr[@]}"
         break
         ;;
       "Install Rust Programming Language")
@@ -259,7 +274,8 @@ script_repo() {
         break
         ;;
       "Arch Package Downloader")
-        read -p "Enter a package name (e.g., clang): " pkg_name
+        local pkg_name
+        read -rp "Enter a package name (e.g., clang): " pkg_name
         sudo pacman -S "$pkg_name"
         break
         ;;
@@ -292,21 +308,24 @@ script_repo() {
 
 # Download GitHub scripts
 dlfs() {
-    local f scripts
+    local file
+    local -a scripts
     clear
 
-    wget --show-progress -qN - -i "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer-Scripts/SlyFox1186-Scripts/favorite-installer-scripts.txt"
+    wget --show-progress -qN - -i "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/SlyFox1186%20Scripts/favorite-installer-scripts.txt"
 
     scripts=(build-ffmpeg build-all-git-safer build-all-gnu-safer build-magick)
 
-    for file in ${scripts[@]}; do
+    for file in "${scripts[@]}"; do
+        [[ -e "$file" ]] || continue
         chown -R "$USER:$USER" "$file"
-        chmod -R 744 "$PWD" "$file"
-        if [[ $file == "build-all-git-safer" || $file == "build-all-gnu-safer" ]]; then
+        chmod 744 "$file"
+        if [[ "$file" == "build-all-git-safer" || "$file" == "build-all-gnu-safer" ]]; then
             mv "$file" "${file%-safer}"
         fi
-        [[ -n "favorite-installer-scripts.txt" ]] && sudo rm "favorite-installer-scripts.txt"
     done
+
+    [[ -f favorite-installer-scripts.txt ]] && sudo rm favorite-installer-scripts.txt
 
     clear
     ls -1AhFv --color --group-directories-first
@@ -314,12 +333,12 @@ dlfs() {
 
 gitdl() {
     clear
-    wget -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer-Scripts/FFmpeg/build-ffmpeg"
-    wget -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer-Scripts/ImageMagick/build-magick"
-    wget -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer-Scripts/GNU-Software/build-gcc"
-    wget -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer-Scripts/FFmpeg/repo.sh"
-    sudo chmod -R build-gcc build-magick build-ffmpeg repo.sh -- *
-    sudo chown -R "$USER:$USER" build-gcc build-magick build-ffmpeg repo.sh
+    wget -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/FFmpeg/build-ffmpeg"
+    wget -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/build-magick"
+    wget -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-gcc"
+    wget -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/FFmpeg/repo.sh"
+    sudo chmod 755 build-gcc build-magick build-ffmpeg repo.sh
+    sudo chown "$USER:$USER" build-gcc build-magick build-ffmpeg repo.sh
     clear
     ls -1AvhF --color --group-directories-first
 }
@@ -337,6 +356,7 @@ list_loaded_functions() {
 
 # Display all loaded functions with their full definitions, including file source info
 list_func() {
+    local bash_func_dir script filename filepath fileowner func func_body
     # Determine the directory where the bash functions are stored.
     if [[ -d ~/.bash_functions.d ]]; then
         bash_func_dir=~/.bash_functions.d
@@ -350,7 +370,8 @@ list_func() {
     echo "Listing all functions loaded from $bash_func_dir and its sourced scripts:"
     echo
 
-    # Enable nullglob so that if no files match, the glob expands to nothing.
+    local _nullglob_state
+    _nullglob_state=$(shopt -p nullglob)
     shopt -s nullglob
 
     # Iterate over all .sh files in the bash functions directory.
@@ -380,6 +401,8 @@ list_func() {
             echo -e "\n\n"
         done < <(grep -oP '^(?:function\s+)?\s*[\w-]+\s*\(\)' "$script" | sed -E 's/^(function[[:space:]]+)?\s*([a-zA-Z0-9_-]+)\s*\(\)/\2/')
     done
+
+    eval "$_nullglob_state"
 }
 
 kill_pid() {
@@ -391,8 +414,7 @@ kill_pid() {
     local PID_TO_KILL
     PID_TO_KILL="$1"
 
-    sudo killall -9 vllm
     clear
     sudo kill -9 "$PID_TO_KILL"
-    echo "Sent kill signal to PID $PID_TO_KILL and all python3 processes."
+    echo "Sent kill signal to PID $PID_TO_KILL."
 }

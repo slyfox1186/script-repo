@@ -2,7 +2,7 @@
 # Package management aliases (Arch Linux / pacman)
 
 # Pacman commands
-alias install='clear; sudo pacman -S --noconfirm'
+# `install` is now a function (see ~/.bash_functions.d/15_package_manager.sh)
 alias remove='clear; sudo pacman -Rns'
 alias search='clear; pacman -Ss'
 alias clean='clear; sudo pacman -Rns $(pacman -Qdtq) 2>/dev/null; sudo pacman -Scc --noconfirm'

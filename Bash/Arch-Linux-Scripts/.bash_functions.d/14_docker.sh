@@ -11,7 +11,7 @@ drp() {
         "[2] Restart Unless Stopped " \
         "[3] On Failure" \
         "[4] No"
-    read -p "Your choices are (1 to 4): " choice
+    read -rp "Your choices are (1 to 4): " choice
     clear
 
     case "$choice" in

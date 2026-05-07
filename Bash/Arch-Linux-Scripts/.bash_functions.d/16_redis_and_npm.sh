@@ -3,36 +3,34 @@
 function rbi() {
     clear
     if [[ -d frontend ]]; then
-        pushd frontend
+        pushd frontend >/dev/null || return 1
+        if [[ -d node_modules ]]; then
+            rm -fr node_modules
+        fi
+        npm install
+        if [[ -d build ]]; then
+            rm -fr build
+        fi
+        npm run dev
+        popd >/dev/null || return 1
     fi
-    if [[ -d node_modules ]]; then
-        rm -fr node_modules
-    fi
-    npm install
-    if [[ -d build ]]; then
-        rm -fr build 
-    fi
-    npm run dev
-    popd
     if [[ -d backend ]]; then
-        pushd backend
+        pushd backend >/dev/null || return 1
+        if [[ -f app.py ]]; then
+            python3 app.py
+        fi
+        popd >/dev/null || return 1
     fi
-    if [[ -f app.py ]]; then
-        python3 app.py
-    fi
-    popd
 }
 
 function rbl() {
     if [[ -d frontend ]]; then
-        FLAG=1
-	    pushd frontend
+        pushd frontend >/dev/null || return 1
+        npm run lint
+        popd >/dev/null || return 1
+    else
+        npm run lint
     fi
-    npm run lint
-    if [[ "${FLAG}" -eq 1 ]]; then
-        popd
-    fi
-    unset FLAG
 }
 
 
@@ -76,7 +74,7 @@ killpy() {
 rsearch() {
     clear
     redis-cli KEYS "memory_b:*" |
-    while read key; do redis-cli --raw JSON.GET "$key" |
+    while read -r key; do redis-cli --raw JSON.GET "$key" |
     jq -r '.text + " (Importance: " + (.importance|tostring) + ")"'; done |
     sort -V
 }

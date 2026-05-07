@@ -3,11 +3,18 @@
 
 ## UNCOMPRESS FILES ##
 untar() {
-    local archive dirname ext flag USER=$(whoami) supported_ext="7z bz2 gz lz tgz xz zip"
+    local archive dirname ext temp_dir item_dirname
+    local -a items
+    local user_owner="${USER:-$(whoami)}"
+    local supported_ext="7z bz2 gz lz tgz xz zip"
+
+    local _nullglob_state
+    _nullglob_state=$(shopt -p nullglob)
+    shopt -s nullglob
 
     for archive in *; do
         ext="${archive##*.}"
-        [[ ! " $supported_ext " =~ " $ext " ]] && continue
+        [[ ! " $supported_ext " =~ \ $ext\  ]] && continue
 
         dirname="${archive%.*}"
         [[ "$archive" =~ \.tar\.(gz|bz2|lz|xz)$ ]] && dirname="${dirname%.*}"
@@ -30,13 +37,13 @@ untar() {
                 sudo tar -xf "$archive" -C "$dirname" --strip-components 1 ;;
         esac
 
-        for dir in *; do
-            if [[ -d "$dir" ]]; then
-                sudo chown -R "$USER":"$USER" "$dir"
-                sudo chmod -R 755 "$dir"
-            fi
-        done
+        if [[ -d "$dirname" ]]; then
+            sudo chown -R "$user_owner":"$user_owner" "$dirname"
+            sudo chmod -R 755 "$dirname"
+        fi
     done
+
+    eval "$_nullglob_state"
 }
 
 
@@ -49,8 +56,8 @@ untar() {
         fi
         7z a -ttar -so -an "$1" | 7z a -tgzip -mx9 -mpass1 -si "$1.tar.gz"
     else
-        read -p "Please enter the source folder path: " source
-        read -p "Please enter the destination archive path (w/o extension): " output
+        read -rp "Please enter the source folder path: " source
+        read -rp "Please enter the destination archive path (w/o extension): " output
         echo
         if [[ -f "$output.tar.gz" ]]; then
             sudo rm "$output.tar.gz"
@@ -68,8 +75,8 @@ untar() {
         fi
         7z a -ttar -so -an "$1" | 7z a -txz -mx9 -si "$1.tar.xz"
     else
-        read -p "Please enter the source folder path: " source
-        read -p "Please enter the destination archive path (w/o extension): " output
+        read -rp "Please enter the source folder path: " source
+        read -rp "Please enter the destination archive path (w/o extension): " output
         echo
         if [[ -f "$output.tar.xz" ]]; then
             sudo rm "$output.tar.xz"
@@ -97,7 +104,7 @@ untar() {
   if [[ -d "$2" ]]; then
     source_dir="$2"
   else
-    read -p "Please enter the source folder path: " source_dir
+    read -rp "Please enter the source folder path: " source_dir
   fi
 
   if [[ ! -d "$source_dir" ]]; then
@@ -112,18 +119,30 @@ untar() {
 
   archive_name="${source_dir##*/}.7z"
 
-  7z a -y -t7z -m0=lzma2 -mx"$compression_level" "$archive_name" "$source_dir"/*
+  # Collect entries (incl. dotfiles) without persisting shell-option changes
+  local _shopt_state
+  _shopt_state=$(shopt -p nullglob dotglob)
+  shopt -s nullglob dotglob
+  local -a entries=("$source_dir"/*)
+  eval "$_shopt_state"
+
+  if (( ${#entries[@]} == 0 )); then
+    echo "Source directory is empty: $source_dir"
+    return 1
+  fi
+
+  7z a -y -t7z -m0=lzma2 -mx"$compression_level" "$archive_name" "${entries[@]}"
 
   echo
   echo "Do you want to delete the original directory?"
   echo "[1] Yes"
   echo "[2] No"
   echo
-  read -p "Your choice is (1 or 2): " choice
+  read -rp "Your choice is (1 or 2): " choice
   echo
 
   case $choice in
-    1) rm -fr "$source_dir" && echo "Original directory deleted." ;;
+    1) rm -fr -- "$source_dir" && echo "Original directory deleted." ;;
     2|"") echo "Original directory not deleted." ;;
     *) echo "Bad user input. Original directory not deleted." ;;
   esac
@@ -145,6 +164,6 @@ untar() {
 ## RECURSIVELY UNZIP ZIP FILES AND NAME THE OUTPUT FOLDER THE SAME NAME AS THE ZIP FILE
 zipr() {
     clear
-    sudo find . -type f -iname "*.zip" -exec sh -c "unzip -o -d "${0%.*}" "$0"" "{}" \;
-    sudo find . -type f -iname "*.zip" -exec trash-put "{}" \;
+    sudo find . -type f -iname "*.zip" -exec sh -c 'unzip -o -d "${1%.*}" "$1"' _ {} \;
+    sudo find . -type f -iname "*.zip" -exec trash-put {} +
 }

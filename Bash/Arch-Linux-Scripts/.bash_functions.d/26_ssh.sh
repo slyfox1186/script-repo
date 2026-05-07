@@ -89,21 +89,21 @@ sss() {
         return 0
     fi
 
-    # Execute the rsync command.
-    sshpass -p "$MY_PW" rsync -avz -e "ssh -p 28500" "$HOME/Pictures/Screenshots/" "jman@192.168.50.169:$destination"
+    # Execute the rsync command. Pass password via env (sshpass -e) so it doesn't appear in argv.
+    SSHPASS="$MY_PW" sshpass -e rsync -avz -e "ssh -p 28500" "$HOME/Pictures/Screenshots/" "jman@192.168.50.169:$destination"
 }
 
 cssh() {
     clear
     if [[ $# -eq 0 ]]; then
         # No arguments - interactive SSH session
-        if ! sshpass -p "$MY_PW" ssh -o StrictHostKeyChecking=accept-new jman@192.168.50.169 -p 28500; then
-            sshpass -p "$MY_PW" ssh -o StrictHostKeyChecking=accept-new jman@192.168.50.169 -p 28500
-        fi
+        SSHPASS="$MY_PW" sshpass -e ssh -o StrictHostKeyChecking=accept-new jman@192.168.50.169 -p 28500
     else
-        # Arguments provided - run command then stay in interactive shell
-        if ! sshpass -p "$MY_PW" ssh -t -o StrictHostKeyChecking=accept-new jman@192.168.50.169 -p 28500 "bash -ic '${*}; exec bash'"; then
-            sshpass -p "$MY_PW" ssh -t -o StrictHostKeyChecking=accept-new jman@192.168.50.169 -p 28500 "bash -ic '${*}; exec bash'"
-        fi
+        # Arguments provided - run command then stay in interactive shell.
+        # printf '%q' shell-quotes each arg, preventing injection via '$' or quotes.
+        local quoted_cmd
+        printf -v quoted_cmd '%q ' "$@"
+        SSHPASS="$MY_PW" sshpass -e ssh -t -o StrictHostKeyChecking=accept-new jman@192.168.50.169 -p 28500 \
+            "${quoted_cmd}; exec bash"
     fi
 }

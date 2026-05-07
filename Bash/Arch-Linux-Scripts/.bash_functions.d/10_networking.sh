@@ -58,12 +58,12 @@ aria2_off() {
 mywget() {
     local outfile url
     if [[ -z "$1" ]] || [[ -z "$2" ]]; then
-        read -p "Please enter the output file name: " outfile
-        read -p "Please enter the URL: " url
+        read -rp "Please enter the output file name: " outfile
+        read -rp "Please enter the URL: " url
         echo
-        wget --out-file="$outfile" "$url"
+        wget --output-document="$outfile" "$url"
     else
-        wget --out-file="$1" "$2"
+        wget --output-document="$1" "$2"
     fi
 }
 
@@ -184,6 +184,9 @@ aria2_download() {
 alias adl='aria2_download'
 
 padl() {
+    local clipboard output_file url
+    local -a args
+
     # Get the clipboard contents using PowerShell
     clipboard=$(pwsh.exe -Command "Get-Clipboard")
 
@@ -191,7 +194,7 @@ padl() {
     IFS=' ' read -r -a args <<< "$clipboard"
 
     # Check if the number of arguments is less than 2
-    if [ ${#args[@]} -lt 2 ]; then
+    if [[ ${#args[@]} -lt 2 ]]; then
         echo "Error: Two arguments are required: output file and download URL"
         return 1
     fi
@@ -211,10 +214,11 @@ adt() {
     local json_script="add-video-to-json.py"
     local run_script="batch-downloader.py"
     local repo_base="https://raw.githubusercontent.com/slyfox1186/script-repo/main/Python3/aria2"
+    local script filename extension path url output
 
     # Check and download Python scripts if they don't exist
     for script in "$json_script" "$run_script"; do
-        if [ ! -f "$script" ]; then
+        if [[ ! -f "$script" ]]; then
             echo "Downloading $script from GitHub..."
             if ! wget --show-progress -cqO "$script" "$repo_base/$script"; then
                 echo "Error: Failed to download $script from GitHub." >&2
@@ -226,10 +230,10 @@ adt() {
 
     # Prompt for video details
     echo "Enter the video details:"
-    read -p "Filename: " filename
-    read -p "Extension: " extension
-    read -p "Path: " path
-    read -p "URL: " url
+    read -rp "Filename: " filename
+    read -rp "Extension: " extension
+    read -rp "Path: " path
+    read -rp "URL: " url
 
     # Validate input
     if [[ -z "$filename" || -z "$extension" || -z "$path" || -z "$url" ]]; then
@@ -274,9 +278,11 @@ rsr() {
     echo "Please enter the full paths of the source and destination directories."
     echo
 
-    read -p "Enter the source path: " source
-    read -p "Enter the destination path: " destination
-    modified_source=$(echo "$source" | sed 's:/[^/]*$::')"'/./'"$(echo "$source" | sed 's:.*/::')
+    read -rp "Enter the source path: " source
+    read -rp "Enter the destination path: " destination
+    # Trailing slash is stripped, then split into parent + basename joined by /./
+    source="${source%/}"
+    modified_source="${source%/*}/./${source##*/}"
     echo
 
     rsync -aqvR --acls --perms --mkpath --info=progress2 "$modified_source" "$destination"
@@ -295,9 +301,10 @@ rsrd() {
     echo "Please enter the full paths of the source and destination directories."
     echo
 
-    read -p "Enter the source path: " source
-    read -p "Enter the destination path: " destination
-    modified_source=$(echo "$source" | sed 's:/[^/]*$::')"'/./'"$(echo "$source" | sed 's:.*/::')
+    read -rp "Enter the source path: " source
+    read -rp "Enter the destination path: " destination
+    source="${source%/}"
+    modified_source="${source%/*}/./${source##*/}"
     echo
 
     rsync -aqvR --acls --perms --mkpath --remove-source-files "$modified_source" "$destination"
@@ -326,9 +333,10 @@ dlmaster() {
 }
 
 kill_ports() {
+    local port pid
     # Check if at least one port number is provided.
-    if [ ${#} -eq 0 ]; then
-        echo "Usage: ${0} <port1> [port2] [port3] ..."
+    if [[ ${#} -eq 0 ]]; then
+        echo "Usage: kill_ports <port1> [port2] [port3] ..."
         return 1
     fi
 
@@ -338,14 +346,11 @@ kill_ports() {
 
         # Find the PID of the process using the specified port.
         # The '-t' option for lsof outputs only the PID.
-        # The output is suppressed to avoid errors if no process is found.
-        local pid=$(lsof -t -i:${port} 2>/dev/null)
+        pid=$(lsof -t -i:"${port}" 2>/dev/null)
 
         # Check if a PID was found.
         if [[ -n "$pid" ]]; then
             echo "    Process with PID ${pid} found on port ${port}. Terminating..."
-            # Kill the process. Using kill -9 sends the SIGKILL signal,
-            # which is a forceful way to terminate the process.
             kill -9 "$pid"
             echo "    Process ${pid} terminated."
         else

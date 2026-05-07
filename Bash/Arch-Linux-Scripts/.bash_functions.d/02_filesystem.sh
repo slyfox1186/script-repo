@@ -9,9 +9,9 @@ ffind() {
 
     # Check if any argument is passed
     if [[ "$#" -eq 0 ]]; then
-        read -p "Enter the name to search for: " fname
-        read -p "Enter a type of FILE (d|f|blank for any): " ftype
-        read -p "Enter the starting path (blank for current directory): " fpath
+        read -rp "Enter the name to search for: " fname
+        read -rp "Enter a type of FILE (d|f|blank for any): " ftype
+        read -rp "Enter the starting path (blank for current directory): " fpath
     fi
 
     # Default to the current directory if fpath is empty
@@ -38,7 +38,7 @@ mf() {
     local file
 
     if [[ -z "$1" ]]; then
-        read -p "Enter filename: " file
+        read -rp "Enter filename: " file
         [[ ! -f "$file" ]] && touch "$file"
         chmod 744 "$file"
     else
@@ -53,13 +53,13 @@ mdir() {
     local dir
 
     if [[ -z "$1" ]]; then
-        read -p "Enter directory name: " dir
-        mkdir -p "$PWD/$dir"
-        cd "$PWD/$dir" || return 1
+        read -rp "Enter directory name: " dir
     else
-        mkdir -p "$1"
-        cd "$PWD/$1" || return 1
+        dir="$1"
     fi
+
+    mkdir -p -- "$dir"
+    cd -- "$dir" || return 1
 
     clear; ls -1AhFv --color --group-directories-first
 }
@@ -86,34 +86,59 @@ mvf() {
 
 # RM COMMANDS ##
 
+_rm_safety_check() {
+    # Reject empty/root/single-segment paths to avoid catastrophic deletes
+    local p="$1"
+    [[ -z "$p" ]] && { echo "Refusing to delete empty path." >&2; return 1; }
+    [[ "$p" == "/" ]] && { echo "Refusing to delete '/'." >&2; return 1; }
+    [[ "$p" == "$HOME" ]] && { echo "Refusing to delete \$HOME." >&2; return 1; }
+    return 0
+}
+
 # Remove directory (optimized version - combines the duplicate functions)
 rmd() {
-    local dir
-    if [[ -z "$*" ]]; then
+    local -a dirs
+    local input
+    if [[ "$#" -eq 0 ]]; then
         clear
         ls -1AvhF --color --group-directories-first
         echo
-        read -p "Enter the directory path(s) to delete: " dir
+        read -rp "Enter the directory path(s) to delete: " input
+        # shellcheck disable=SC2206
+        read -ra dirs <<< "$input"
     else
-        dir=$*
+        dirs=("$@")
     fi
-    sudo rm -fr "$dir"
+
+    local d
+    for d in "${dirs[@]}"; do
+        _rm_safety_check "$d" || continue
+        sudo rm -fr -- "$d"
+    done
     echo
     ls -1AvhF --color --group-directories-first
 }
 
 # Remove file
 rmf() {
-    local files
-    if [[ -z "$*" ]]; then
+    local -a files
+    local input
+    if [[ "$#" -eq 0 ]]; then
         clear
         ls -1AvhF --color --group-directories-first
         echo
-        read -p "Enter the FILE path(s) to delete: " files
+        read -rp "Enter the FILE path(s) to delete: " input
+        # shellcheck disable=SC2206
+        read -ra files <<< "$input"
     else
-        files=$*
+        files=("$@")
     fi
-    sudo rm "$files"
+
+    local f
+    for f in "${files[@]}"; do
+        _rm_safety_check "$f" || continue
+        sudo rm -- "$f"
+    done
     echo
     ls -1AvhF --color --group-directories-first
 }
@@ -177,7 +202,7 @@ count_dirr() {
 countf() {
     local folder_count
     clear
-    folder_count=$(ls -1 | wc -l)
+    folder_count=$(find . -maxdepth 1 -mindepth 1 | wc -l)
     echo "There are $folder_count files in this folder"
 }
 
@@ -227,10 +252,11 @@ fs_info() {
     # Display file system usage (human-readable) using process substitution
     echo -e "\nFilesystem usage:"
     echo -e "Filesystem\tSize\tUsed\tAvail\tUse%\tMounted on"
+    local source size used avail pcent mount usage color inodes iused ifree
     while read -r source size used avail pcent mount; do
          # Remove the '%' sign for numeric comparison
          usage=${pcent%\%}
-         if [ "$usage" -ge "$threshold" ]; then
+         if [[ "$usage" -ge "$threshold" ]]; then
              color="\033[0;31m"  # Red if usage is at or above threshold
          else
              color="\033[0;32m"  # Green if below threshold
@@ -239,12 +265,12 @@ fs_info() {
     done < <(df -h --output=source,size,used,avail,pcent,target | tail -n +2)
 
     # Optionally display inode usage if the -i flag is provided
-    if [ "$show_inode" -eq 1 ]; then
+    if [[ "$show_inode" -eq 1 ]]; then
          echo -e "\nInode usage:"
          echo -e "Filesystem\tInodes\tIUsed\tIFree\tIUse%\tMounted on"
          while read -r source inodes iused ifree pcent mount; do
               usage=${pcent%\%}
-              if [ "$usage" -ge "$threshold" ]; then
+              if [[ "$usage" -ge "$threshold" ]]; then
                   color="\033[0;31m"
               else
                   color="\033[0;32m"
@@ -254,7 +280,7 @@ fs_info() {
     fi
 
     # Optionally display an overall summary if the -s flag is used
-    if [ "$show_summary" -eq 1 ]; then
+    if [[ "$show_summary" -eq 1 ]]; then
          echo -e "\nOverall summary:"
          df -h --total | tail -n 1
     fi
@@ -262,12 +288,13 @@ fs_info() {
 
 # Display files in a directory with various sort options
 ls_interactive() {
-  if [ -z "$1" ]; then
+  local choice
+  if [[ -z "$1" ]]; then
     echo "Please provide the full path of a folder as an argument."
     return 1
   fi
 
-  if [ ! -d "$1" ]; then
+  if [[ ! -d "$1" ]]; then
     echo "The provided path is not a valid directory."
     return 1
   fi
@@ -280,7 +307,7 @@ ls_interactive() {
   echo "5. By date created"
   echo "6. By size"
 
-  read -p "Enter your choice (1-6): " choice
+  read -rp "Enter your choice (1-6): " choice
 
   case $choice in
     1)
