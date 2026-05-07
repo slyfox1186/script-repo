@@ -1,12 +1,13 @@
 // ==UserScript==
 // @name         Stop Nefarious Redirects
 // @namespace    http://tampermonkey.net/
-// @version      5.0
+// @version      5.1
 // @description  Block unauthorized redirects and prevent history manipulation
 // @match        http://*/*
 // @match        https://*/*
 // @grant        GM_setValue
 // @grant        GM_getValue
+// @grant        unsafeWindow
 // @license      MIT
 // @run-at       document-start
 // ==/UserScript==
@@ -16,12 +17,18 @@
 
     /* eslint-disable no-console */
 
+    // Hook the page's actual realm where possible -- on Firefox the
+    // userscript runs in a sandbox whose Location.prototype is NOT the
+    // page's; on Chrome the two are identical.
+    const PAGE = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
+
     // ============================================================
     // Configuration
     // ============================================================
 
     // Always-blocked hostnames (and their subdomains).
     const manualBlacklist = new Set([
+        'alexatracker.com',
         'getrunkhomuto.info',
     ]);
 
@@ -35,10 +42,11 @@
         'twitter.com', 'wikipedia.org', 'youtube.com',
     ]);
 
-    // Cross-origin navigations attempted within this many ms of a real user
-    // gesture (click / keydown / submit / touchstart) are allowed even if
-    // they aren't on the allowlist. Lower = stricter.
-    const USER_INTERACTION_WINDOW_MS = 1500;
+    // After a user clicks an anchor (or submits a form), we grant a
+    // navigation consent for that *specific origin* for this many ms.
+    // The previous "any user gesture allows any cross-origin nav for X ms"
+    // was the leak that let alexatracker through.
+    const NAV_CONSENT_TTL_MS = 2000;
 
     // ============================================================
     // State
@@ -46,7 +54,7 @@
 
     const LOG_PREFIX = '[Nefarious Redirect Blocker]';
     let lastKnownGoodUrl = window.location.href;
-    let lastInteractionAt = 0;
+    const navConsent = { origin: null, expiresAt: 0 };
 
     function log(...args)  { console.log(LOG_PREFIX, ...args); }
     function warn(...args) { console.warn(LOG_PREFIX, ...args); }
@@ -77,15 +85,25 @@
     }
 
     // ============================================================
-    // Hostname matching helpers
+    // URL helpers
     // ============================================================
 
-    function getHostname(url) {
+    function urlOrNull(input) {
         try {
-            return new URL(url, location.href).hostname;
+            return new URL(input, location.href);
         } catch (_) {
             return null;
         }
+    }
+
+    function getHostname(input) {
+        const u = urlOrNull(input);
+        return u ? u.hostname : null;
+    }
+
+    function getOrigin(input) {
+        const u = urlOrNull(input);
+        return u ? u.origin : null;
     }
 
     function hostnameMatchesSet(hostname, set) {
@@ -108,77 +126,76 @@
     }
 
     function isSameOrigin(url) {
-        try {
-            return new URL(url, location.href).origin === location.origin;
-        } catch (_) {
-            // Relative URLs and javascript: count as same-origin (let the page handle them).
-            return true;
-        }
+        const origin = getOrigin(url);
+        return origin == null || origin === location.origin;
     }
 
-    function isUserRecentlyActive() {
-        return Date.now() - lastInteractionAt < USER_INTERACTION_WINDOW_MS;
+    // ============================================================
+    // Per-origin navigation consent
+    // ============================================================
+
+    function grantNavConsent(forUrl) {
+        const origin = getOrigin(forUrl);
+        if (!origin) return;
+        navConsent.origin = origin;
+        navConsent.expiresAt = Date.now() + NAV_CONSENT_TTL_MS;
+    }
+
+    function hasNavConsentFor(url) {
+        if (Date.now() > navConsent.expiresAt) return false;
+        if (!navConsent.origin) return false;
+        return getOrigin(url) === navConsent.origin;
     }
 
     // ============================================================
     // Central policy decision
     // ============================================================
-    //
-    // Default-deny for cross-origin navigations that aren't tied to a real
-    // user gesture, even if the destination isn't on the blacklist yet --
-    // that's the difference from the old version, which only blocked
-    // explicitly-blacklisted hosts and was therefore reactive instead of
-    // preventive.
-    //
-    // Returns true to allow the navigation, false to block it.
 
     function shouldAllowNavigation(url, source) {
         if (!url) return true; // No URL = same-page reload or fragment.
+        const target = urlOrNull(url);
+        if (!target) return true; // Junk URLs - let the browser deal.
 
-        // 1. Always block blacklisted destinations.
+        // Block javascript: / data: regardless of source unless it's the
+        // current page already running them.
+        if (target.protocol === 'javascript:' || target.protocol === 'data:') {
+            warn(`Blocked ${target.protocol} [${source}]: ${url}`);
+            return false;
+        }
+
         if (isInBlacklist(url)) {
-            const h = getHostname(url);
+            const h = target.hostname;
             if (h) addToAutomatedBlacklist(h);
             warn(`Blocked (blacklist) [${source}]: ${url}`);
             return false;
         }
 
-        // 2. Same-origin always allowed.
         if (isSameOrigin(url)) return true;
 
-        // 3. Allowlisted cross-origin destinations.
         if (isInAllowlist(url)) return true;
 
-        // 4. User just clicked / typed / submitted -> their intent.
-        if (isUserRecentlyActive()) {
-            log(`Allowed (user-initiated) [${source}]: ${url}`);
+        if (hasNavConsentFor(url)) {
+            log(`Allowed (anchor/form consent) [${source}]: ${url}`);
             return true;
         }
 
-        // 5. Cross-origin without user interaction = nefarious by default.
-        const h = getHostname(url);
-        if (h) addToAutomatedBlacklist(h);
-        warn(`Blocked (no user interaction) [${source}]: ${url}`);
+        // Cross-origin without explicit per-origin consent = nefarious.
+        // The previous "recent gesture = allow everything" rule was what
+        // let alexatracker laundering attempts through.
+        if (target.hostname) addToAutomatedBlacklist(target.hostname);
+        warn(`Blocked (no per-origin consent) [${source}]: ${url}`);
         return false;
     }
 
     // ============================================================
-    // User-gesture tracking + anchor/form click capture
+    // Anchor / form gesture capture
     // ============================================================
-
-    function noteInteraction() {
-        lastInteractionAt = Date.now();
-    }
-
-    document.addEventListener('keydown', noteInteraction, true);
-    document.addEventListener('touchstart', noteInteraction, true);
+    //
+    // A click on <a href="https://example.com/x"> consents to navigations
+    // whose destination is the *example.com origin*. A click on a button
+    // grants no navigation consent at all -- that's the policy change.
 
     document.addEventListener('click', (event) => {
-        // Note: we set the timestamp BEFORE the policy check because the
-        // click itself is the gesture; subsequent JS that reads
-        // lastInteractionAt should see "yes, user just interacted".
-        noteInteraction();
-
         const target = event.target;
         const anchor = target && target.closest && target.closest('a[href]');
         if (!anchor) return;
@@ -189,34 +206,60 @@
         if (!shouldAllowNavigation(href, 'anchor click')) {
             event.preventDefault();
             event.stopPropagation();
+            return;
         }
+        grantNavConsent(href);
     }, true);
 
     document.addEventListener('submit', (event) => {
-        noteInteraction();
         const form = event.target;
         const action = form && form.action;
         if (action && !shouldAllowNavigation(action, 'form submit (event)')) {
             event.preventDefault();
             event.stopPropagation();
+            return;
         }
+        if (action) grantNavConsent(action);
     }, true);
 
     // ============================================================
-    // Override Location methods/setter
+    // Navigation API hook -- the silver bullet on modern browsers
     // ============================================================
     //
-    // In modern browsers Location.prototype.{assign,replace,href} are
-    // non-configurable, so the defineProperty/assignment below may throw.
-    // That's fine -- we catch and fall back to the other hooks. Even when
-    // these succeed, they're a strong front-line defense against scripted
-    // `location.href = '...'` redirects, which the old version missed.
+    // The 'navigate' event fires for EVERY navigation initiated from this
+    // window, including programmatic location.href = '...', location
+    // .assign/replace, anchor clicks, form submits, history.* calls, and
+    // back/forward. event.preventDefault() cancels it cleanly. Available
+    // in Chrome >= 102, Edge >= 102, Firefox >= 137, Safari >= 18.4.
 
-    function tryWrapLocationMethod(method) {
+    const nav = (typeof PAGE !== 'undefined' && PAGE.navigation) || window.navigation;
+    if (nav && typeof nav.addEventListener === 'function') {
+        nav.addEventListener('navigate', (event) => {
+            try {
+                if (event.destination.sameDocument) return;
+                const url = event.destination.url;
+                if (!shouldAllowNavigation(url, `navigation.${event.navigationType || 'navigate'}`)) {
+                    event.preventDefault();
+                }
+            } catch (e) {
+                warn('Navigation event handler threw:', e);
+            }
+        });
+        log('Navigation API hook installed (modern browser).');
+    } else {
+        warn('Navigation API not available; relying on legacy hooks.');
+    }
+
+    // ============================================================
+    // Override Location methods/setter (best-effort fallback for
+    // browsers without the Navigation API, or where it misses)
+    // ============================================================
+
+    function tryWrapLocationMethod(LocationProto, method) {
         try {
-            const original = Location.prototype[method];
+            const original = LocationProto[method];
             if (typeof original !== 'function') return false;
-            Location.prototype[method] = function (url) {
+            LocationProto[method] = function (url) {
                 if (!shouldAllowNavigation(url, `location.${method}`)) return undefined;
                 return original.call(this, url);
             };
@@ -227,15 +270,16 @@
         }
     }
 
-    tryWrapLocationMethod('assign');
-    tryWrapLocationMethod('replace');
+    const LocationProto = (PAGE && PAGE.Location && PAGE.Location.prototype) || Location.prototype;
+    tryWrapLocationMethod(LocationProto, 'assign');
+    tryWrapLocationMethod(LocationProto, 'replace');
 
     try {
-        const desc = Object.getOwnPropertyDescriptor(Location.prototype, 'href');
-        if (desc && desc.set && desc.configurable !== false) {
+        const desc = Object.getOwnPropertyDescriptor(LocationProto, 'href');
+        if (desc && desc.set && desc.configurable) {
             const originalSetter = desc.set;
             const originalGetter = desc.get;
-            Object.defineProperty(Location.prototype, 'href', {
+            Object.defineProperty(LocationProto, 'href', {
                 configurable: true,
                 enumerable: desc.enumerable,
                 get() { return originalGetter.call(this); },
@@ -253,32 +297,43 @@
     // window.open
     // ============================================================
 
-    const originalWindowOpen = window.open;
-    window.open = function (url, name, features) {
+    const originalWindowOpen = PAGE.open || window.open;
+    const openWrapper = function (url, name, features) {
         if (!url) return originalWindowOpen.call(this, url, name, features);
         if (!shouldAllowNavigation(url, 'window.open')) return null;
         return originalWindowOpen.call(this, url, name, features);
     };
+    try { PAGE.open = openWrapper; } catch (_) { /* ignore */ }
+    try { window.open = openWrapper; } catch (_) { /* ignore */ }
 
     // ============================================================
     // history.pushState / replaceState
     // ============================================================
 
-    function wrapHistoryMethod(method) {
-        const original = history[method];
-        history[method] = function (data, title, url) {
-            if (url && !shouldAllowNavigation(url, `history.${method}`)) {
-                return undefined;
-            }
-            return original.apply(this, arguments);
-        };
+    function wrapHistoryMethod(historyObj, method) {
+        try {
+            const original = historyObj[method];
+            historyObj[method] = function (data, title, url) {
+                if (url && !shouldAllowNavigation(url, `history.${method}`)) {
+                    return undefined;
+                }
+                return original.apply(this, arguments);
+            };
+        } catch (e) {
+            warn(`Could not wrap history.${method}:`, e);
+        }
     }
 
-    wrapHistoryMethod('pushState');
-    wrapHistoryMethod('replaceState');
+    if (PAGE && PAGE.history) {
+        wrapHistoryMethod(PAGE.history, 'pushState');
+        wrapHistoryMethod(PAGE.history, 'replaceState');
+    } else {
+        wrapHistoryMethod(history, 'pushState');
+        wrapHistoryMethod(history, 'replaceState');
+    }
 
     // ============================================================
-    // popstate revert
+    // popstate revert (last-resort safety net)
     // ============================================================
 
     window.addEventListener('popstate', () => {
@@ -288,18 +343,20 @@
             return;
         }
         if (lastKnownGoodUrl && lastKnownGoodUrl !== here) {
-            history.pushState(null, '', lastKnownGoodUrl);
+            try { history.pushState(null, '', lastKnownGoodUrl); } catch (_) { /* ignore */ }
             window.location.replace(lastKnownGoodUrl);
         }
     });
 
     // ============================================================
-    // HTMLFormElement.prototype.submit (programmatic form submission)
+    // HTMLFormElement.prototype.submit (programmatic submission)
     // ============================================================
 
     try {
-        const originalSubmit = HTMLFormElement.prototype.submit;
-        HTMLFormElement.prototype.submit = function () {
+        const FormProto = (PAGE && PAGE.HTMLFormElement && PAGE.HTMLFormElement.prototype) ||
+                          HTMLFormElement.prototype;
+        const originalSubmit = FormProto.submit;
+        FormProto.submit = function () {
             const action = this.action || '';
             if (action && !shouldAllowNavigation(action, 'form.submit()')) return undefined;
             return originalSubmit.call(this);
@@ -311,11 +368,6 @@
     // ============================================================
     // <meta http-equiv="refresh"> interceptor
     // ============================================================
-    //
-    // Pattern: `content="3;url=https://evil.com"` (or `URL=`, `Url =`, etc.)
-    // We pull the URL out, run it through the policy, and remove the node
-    // if it's blocked. This is one of the most common nefarious-redirect
-    // patterns and the old version did nothing about it.
 
     const META_REFRESH_URL_RE = /url\s*=\s*['"]?([^'">\s]+)/i;
 
@@ -347,7 +399,6 @@
                 inspectMetaRefresh(node);
                 scanForMetaRefresh(node);
             }
-            // Attribute changes on existing meta nodes (e.g. setAttribute('content', ...))
             if (mutation.type === 'attributes' && mutation.target) {
                 inspectMetaRefresh(mutation.target);
             }
@@ -365,7 +416,9 @@
     // Done
     // ============================================================
 
-    log('Initialized v5.0. Hooks: window.open, location.{assign,replace,href=},',
+    log('Initialized v5.1. Hooks: Navigation API (if available),',
+        'window.open, location.{assign,replace,href=},',
         'history.{pushState,replaceState,popstate}, form.submit(),',
-        'anchor/form click capture, <meta http-equiv="refresh">.');
+        'anchor click, form submit, <meta http-equiv="refresh">. Per-origin',
+        'consent model in effect.');
 })();
