@@ -1,67 +1,91 @@
 #!/usr/bin/env python3
 
-from twilio.rest import Client
-import time
-import sys
+"""Place repeated Twilio voice calls reading a fixed message via TwiML.
 
-# Twilio Account SID and Auth Token from your Twilio account
-account_sid = '<ACCOUNT_SID_HERE>'
-auth_token = '<AUTH_TOKEN_HERE>'
+Credentials and phone numbers are read from environment variables so they
+never live in source control.
 
-# Twilio phone number (purchased or verified on Twilio)
-twilio_number = '<TWILIO_NUMBER_HERE>'
-
-# Phone number to call (recipient's number)
-to_number = '<NUMBER_TO_CALL_HERE>'
-
-# Number of loops to execute (set to 'inf' for infinite loops)
-MAX_LOOPS = 'inf'  # Set to 'inf' for infinite loops, or a number for a finite number of loops
-
-# Sleep duration between each call (in seconds)
-SLEEP_DURATION = 1  # Adjust as needed, e.g., 0.5 for half a second, 2 for two seconds, etc.
-
-# Message to say during the call (multi-line text)
-SAY_MESSAGE = """
-This is an important message from your automated system.
-Please listen carefully as we provide important information.
-Thank you for your attention.
+Required env vars:
+    TWILIO_ACCOUNT_SID
+    TWILIO_AUTH_TOKEN
+    TWILIO_FROM_NUMBER
+    TWILIO_TO_NUMBER
 """
 
-# Function to initiate the call
-def make_calls(max_loops):
-    # Initialize Twilio client outside the loop
+import argparse
+import os
+import sys
+import time
+
+from twilio.rest import Client
+
+DEFAULT_MESSAGE = (
+    "This is an important message from your automated system. "
+    "Please listen carefully as we provide important information. "
+    "Thank you for your attention."
+)
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "-n",
+        "--max-calls",
+        type=int,
+        default=0,
+        help="Stop after this many calls (default: 0 = unlimited).",
+    )
+    parser.add_argument(
+        "-i",
+        "--interval",
+        type=float,
+        default=1.0,
+        help="Seconds to sleep between calls (default: 1.0).",
+    )
+    parser.add_argument(
+        "-m",
+        "--message",
+        default=DEFAULT_MESSAGE,
+        help="The text to read during the call.",
+    )
+    return parser.parse_args()
+
+
+def get_required_env(name: str) -> str:
+    value = os.environ.get(name)
+    if not value:
+        raise SystemExit(f"Missing required environment variable: {name}")
+    return value
+
+
+def main() -> int:
+    args = parse_args()
+    if args.interval < 0:
+        print("Interval must be non-negative.", file=sys.stderr)
+        return 1
+
+    account_sid = get_required_env("TWILIO_ACCOUNT_SID")
+    auth_token = get_required_env("TWILIO_AUTH_TOKEN")
+    from_number = get_required_env("TWILIO_FROM_NUMBER")
+    to_number = get_required_env("TWILIO_TO_NUMBER")
+
     client = Client(account_sid, auth_token)
+    twiml = f"<Response><Say>{args.message}</Say></Response>"
 
-    loop_count = 0
-
+    placed = 0
     try:
         while True:
-            # Make a call using Twilio API with SAY_MESSAGE
-            call = client.calls.create(
-                twiml=f'<Response><Say>{SAY_MESSAGE}</Say></Response>',
-                to=to_number,
-                from_=twilio_number
-            )
-
-            print(f"Calling {to_number}... Call SID: {call.sid}")
-
-            # Increment loop count
-            loop_count += 1
-
-            # Check if reached maximum loops
-            if max_loops != 'inf' and loop_count >= int(max_loops):
-                print(f"Reached maximum loops ({max_loops}). Stopping the autodialer.")
+            call = client.calls.create(twiml=twiml, to=to_number, from_=from_number)
+            placed += 1
+            print(f"Call {placed} placed -> {to_number}, SID={call.sid}")
+            if args.max_calls and placed >= args.max_calls:
+                print(f"Reached --max-calls={args.max_calls}; stopping.")
                 break
-
-            # Wait for a specified duration before making the next call
-            time.sleep(SLEEP_DURATION)
-
+            time.sleep(args.interval)
     except KeyboardInterrupt:
         print("\nStopping the autodialer.")
-        sys.exit(0)
-    except Exception as e:
-        print(f"Error occurred: {str(e)}")
-        sys.exit(1)
+    return 0
+
 
 if __name__ == "__main__":
-    make_calls(MAX_LOOPS)
+    sys.exit(main())
