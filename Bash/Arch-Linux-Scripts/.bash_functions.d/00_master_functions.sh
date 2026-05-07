@@ -49,6 +49,7 @@ func_help() {
         # System monitoring & diagnostics
         ["sys_monitor"]="📊 Real-time system monitoring dashboard"
         ["find_large"]="🔍 Find large files consuming disk space"
+        ["file_size"]="📏 Line/word/byte counts for specific target files"
         ["sys_cleanup"]="🧹 Comprehensive system cleanup"
         ["sys_info"]="🖥️  Advanced system information display"
         ["perf_snapshot"]="📸 System performance snapshot"
