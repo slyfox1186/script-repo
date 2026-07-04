@@ -176,7 +176,7 @@ pkgs=(
     nasm ninja-build texinfo yasm yasm1g-dev
 )
 
-for pkg in ${pkgs[@]}; do
+for pkg in "${pkgs[@]}"; do
     missing_pkg="$(sudo dpkg -l | grep -o "$pkg")"
 
     [[ -z "$missing_pkg" ]] && missing_pkgs+="$pkg "

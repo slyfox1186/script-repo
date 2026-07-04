@@ -64,7 +64,7 @@ def get_image_signature(file_path, file_size):
 
 def get_partial_hash(file_path, file_size):
     """Calculate a partial MD5 hash of a file."""
-    hasher = hashlib.md5()
+    hasher = hashlib.md5(usedforsecurity=False)
     with open(file_path, 'rb') as f:
         # Read first 64KB, middle 64KB, and last 64KB
         for offset in (0, max(0, file_size // 2 - 32768), max(0, file_size - 65536)):

@@ -94,13 +94,13 @@ sc() {
     local -f box_out_banner
 
     if [[ -z "$*" ]]; then
-        read -p "Input the FILE path to check: " files
+        read -rp "Input the FILE path to check: " -a files
         echo
     else
-        files=$@
+        files=("$@")
     fi
 
-    for file in ${files[@]}; do
+    for file in "${files[@]}"; do
         box_out_banner "Parsing: $file"
         echo
         shellcheck --color=always -x --severity=warning --source-path="$PATH:$HOME/tmp:/etc:/usr/local/lib64:/usr/local/lib:/usr/local64:/usr/lib:/lib64:/lib:/lib32" "$file"

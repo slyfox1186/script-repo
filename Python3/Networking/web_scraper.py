@@ -12,9 +12,8 @@ import re
 from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from requests.adapters import HTTPAdapter
-from requests.packages.urllib3.util.retry import Retry
+from urllib3.util.retry import Retry
 from urllib.parse import urljoin
-from urllib3 import connectionpool
 
 # Suppress XMLParsedAsHTMLWarning
 warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)

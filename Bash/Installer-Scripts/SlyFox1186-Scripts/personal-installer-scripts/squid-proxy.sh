@@ -5,7 +5,7 @@ if [[ "$EUID" -ne 0 ]]; then
     exit 1
 fi
 
-if [[ ! -d /etc/squid ]] && mkdir -p /etc/squid
+[[ -d /etc/squid ]] || mkdir -p /etc/squid
 
 if ! systemctl status squid.service; then
     echo "The squid service needs to be running to continue."

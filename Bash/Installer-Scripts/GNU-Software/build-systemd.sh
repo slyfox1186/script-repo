@@ -108,7 +108,7 @@ install_dependencies() {
           libzstd-dev libiptc-dev libxen-dev libzip-dev bzip2 libbpf-dev libelf-dev)
 
     missing_pkgs=""
-    for pkg in ${pkgs[@]}; do
+    for pkg in "${pkgs[@]}"; do
         if ! dpkg -s "$pkg" &> /dev/null; then
             missing_pkgs+=" $pkg"
         fi

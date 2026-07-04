@@ -30,4 +30,4 @@ alias fft='clear; ./repo.sh'
 alias ffc='clear; ./configure --help'
 
 # Wine
-alias wine32='env WINEARCH=win32 WINEPREFIX=~/.wine32 wine $*'
+alias wine32='env WINEARCH=win32 WINEPREFIX=~/.wine32 wine'

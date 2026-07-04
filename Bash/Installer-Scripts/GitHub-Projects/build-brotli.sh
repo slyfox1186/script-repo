@@ -210,7 +210,7 @@ check_dependencies() {
     pkgs=(asciidoc binutils bison build-essential cmake curl ninja-build)
 
     missing_pkgs=()
-    for pkg in ${pkgs[@]}; do
+    for pkg in "${pkgs[@]}"; do
         if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
             missing_pkgs+=("$pkg")
         fi

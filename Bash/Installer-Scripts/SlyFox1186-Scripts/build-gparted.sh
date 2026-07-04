@@ -47,12 +47,10 @@ done
 if [ -n "$missing_pkgs" ]; then
     echo '$ Installing missing packages'
     echo
-    for i in "$missing_pkgs"
-        do
-            if ! sudo apt install ${i}; then
-                fail_fn 'Failed to run APT package manager.'
-            fi
-        done
+    # shellcheck disable=SC2086 # missing_pkgs is an intentionally space-separated list
+    if ! sudo apt install $missing_pkgs; then
+        fail_fn 'Failed to run APT package manager.'
+    fi
 else
     echo '$ The packages are already installed.'
     echo

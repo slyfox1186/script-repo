@@ -151,7 +151,7 @@ while IFS= read -r line; do
         country_key="${country_codes[$country]}"
 
         # Check if the country key is in the list of desired countries
-        if [[ " ${@^^} " =~ " $country_key " ]]; then
+        if [[ " ${*^^} " =~ " $country_key " ]]; then
             inside_desired_country=true
             echo "$line" >> "$filtered_file"
         else

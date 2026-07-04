@@ -1,4 +1,4 @@
-#!/Usr/bin/env bash
+#!/usr/bin/env bash
 
 
 clear
@@ -255,12 +255,13 @@ execute() {
 download() {
     dl_path="$packages"
     dl_url="$1"
+    dl_file="${2:-"${1##*/}"}"
 
     if [[ "$dl_file" =~ tar. ]]; then
-        output_dir="$dl_file%.*"
-        output_dir="$3:-"${output_dir%.*"}"
+        output_dir="${dl_file%.*}"
+        output_dir="${3:-"${output_dir%.*}"}"
     else
-        output_dir="$3:-"${dl_file%.*"}"
+        output_dir="${3:-"${dl_file%.*}"}"
     fi
 
     target_file="$dl_path/$dl_file"
@@ -307,7 +308,8 @@ download_git() {
 
     dl_path="$packages"
     dl_url="$1"
-    dl_file="$dl_file//\./-"
+    dl_file="${2:-"${1##*/}"}"
+    dl_file="${dl_file//\./-}"
     target_dir="$dl_path/$dl_file"
 
     if [ -n "$3" ]; then
@@ -380,7 +382,7 @@ pkgs_fn() {
           python3-pytest python3-setuptools python3-wheel re2c rsync sudo unzip wget zip zlib1g
           zlib1g-dev)
 
-    for pkg in ${pkgs[@]}
+    for pkg in "${pkgs[@]}"
     do
         if ! installed "$pkg"; then
             missing_pkgs+=" $pkg"

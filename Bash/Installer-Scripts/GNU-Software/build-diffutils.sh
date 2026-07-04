@@ -74,7 +74,7 @@ pkgs=(autoconf autoconf-archive autogen automake binutils build-essential ccache
       cmake curl git libgmp-dev libintl-perl libmpfr-dev libreadline-dev libsigsegv-dev
       libtool libtool-bin lzip m4 nasm ninja-build texinfo zlib1g-dev yasm)
 
-for pkg in ${pkgs[@]}
+for pkg in "${pkgs[@]}"
 do
     missing_pkg="$(sudo dpkg -l | grep -o "$pkg")"
     if [[ -z "$missing_pkg" ]]; then

@@ -4,12 +4,22 @@ import os
 import sys
 import subprocess
 import requests
-import glob
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 from urllib.parse import urlparse
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 from colorama import init, Fore, Style
 from simple_term_menu import TerminalMenu
 
 init()  # Initialize colorama for color support
+
+# Shared HTTP session with automatic retries and connection reuse
+session = requests.Session()
+retry_strategy = Retry(total=3, backoff_factor=1, status_forcelist=[429, 500, 502, 503, 504])
+adapter = HTTPAdapter(max_retries=retry_strategy)
+session.mount("https://", adapter)
+session.mount("http://", adapter)
 
 # Function to display colorized messages
 def colorecho(color, message):
@@ -33,31 +43,40 @@ def check_wget():
                 colorecho("red", "Failed to install wget. Please install it manually.")
                 sys.exit(1)
 
-# Function to download scripts
+# Function to download a single script; returns the script name on failure, None on success
+def download_script(url, output_path):
+    script_name = Path(urlparse(url).path).name
+    if url in ffmpeg_scripts:
+        repo_name = Path(urlparse(url).path).parent.name
+        script_name_with_repo = f"{Path(script_name).stem}_{repo_name}{Path(script_name).suffix}"
+    else:
+        script_name_with_repo = script_name
+    colorecho("blue", f"Downloading {script_name} ...")
+    try:
+        response = session.get(url, timeout=30)
+        response.raise_for_status()
+    except requests.RequestException:
+        colorecho("red", f"Failed to download {script_name}.")
+        return script_name
+    script_path = output_path / script_name_with_repo
+    script_path.parent.mkdir(parents=True, exist_ok=True)
+    script_path.write_bytes(response.content)
+    colorecho("green", f"{script_name_with_repo} downloaded successfully.")
+    return None
+
+# Function to download scripts; returns the list of failed script names
 def download_scripts(output_dir):
-    colorecho("cyan", f"Downloading scripts to {output_dir} ...")
-    os.makedirs(output_dir, exist_ok=True)
-    for url in selected_scripts:
-        script_name = os.path.basename(url)
-        if url in ffmpeg_scripts:
-            repo_name = os.path.basename(os.path.dirname(urlparse(url).path))
-            script_name_with_repo = f"{os.path.splitext(script_name)[0]}_{repo_name}{os.path.splitext(script_name)[1]}"
-        else:
-            script_name_with_repo = script_name
-        colorecho("blue", f"Downloading {script_name} ...")
-        response = requests.get(url)
-        if response.status_code == 200:
-            script_path = os.path.join(output_dir, script_name_with_repo)
-            os.makedirs(os.path.dirname(script_path), exist_ok=True)
-            with open(script_path, "wb") as file:
-                file.write(response.content)
-            colorecho("green", f"{script_name_with_repo} downloaded successfully.")
-        else:
-            colorecho("red", f"Failed to download {script_name}.")
+    output_path = Path(output_dir)
+    colorecho("cyan", f"Downloading scripts to {output_path} ...")
+    output_path.mkdir(parents=True, exist_ok=True)
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        results = executor.map(lambda url: download_script(url, output_path), selected_scripts)
+    failures = [name for name in results if name is not None]
     colorecho("cyan", "Setting ownership and permissions for downloaded scripts...")
-    script_files = glob.glob(os.path.join(output_dir, "**", "*.sh"), recursive=True)
-    subprocess.run(["chown", f"{os.getuid()}:{os.getgid()}"] + script_files, check=True)
-    subprocess.run(["chmod", "644"] + script_files, check=True)
+    for script_file in output_path.glob("**/*.sh"):
+        os.chown(script_file, os.getuid(), os.getgid())
+        script_file.chmod(0o644)
+    return failures
 
 # Parse command-line arguments
 output_dir = os.getcwd()  # Default output directory is the current directory
@@ -258,6 +277,10 @@ if not selected_scripts:
     sys.exit(0)
 
 # Download selected scripts
-download_scripts(output_dir)
+failed_scripts = download_scripts(output_dir)
+
+if failed_scripts:
+    colorecho("red", f"Failed to download {len(failed_scripts)} script(s): {', '.join(failed_scripts)}")
+    sys.exit(1)
 
 colorecho("green", "Script execution completed.")

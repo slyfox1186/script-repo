@@ -8,6 +8,11 @@ set -euo pipefail
 
 trap 'echo "Error occurred at line: $LINENO"; exit 1' ERR
 
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+RED='\033[0;31m'
+NC='\033[0m'
+
 version="2.71" # Default version
 program_name="autoconf" 
 install_prefix="/usr/local/programs/${program_name}-${version}"

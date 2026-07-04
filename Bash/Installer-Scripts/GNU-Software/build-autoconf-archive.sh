@@ -86,7 +86,7 @@ pkgs=(
       libtool-bin lzip lzma-dev m4 nasm texinfo zlib1g-dev yasm
   )
 
-for pkg in ${pkgs[@]}; do
+for pkg in "${pkgs[@]}"; do
     missing_pkg="$(dpkg -l | grep -o "$pkg")"
     if [[ -z "$missing_pkg" ]]; then
         missing_pkgs+="$pkg "

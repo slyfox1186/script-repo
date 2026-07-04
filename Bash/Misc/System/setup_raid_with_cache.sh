@@ -127,7 +127,7 @@ ssd_partitions=("${ssds[@]/%/1}")
 
 # Create RAID 10 array with the new HDD partitions
 log "Creating RAID 10 array with HDDs..."
-if ! mdadm --create --verbose /dev/md0 --level=10 --raid-devices=4 ${hdd_partitions[@]}; then
+if ! mdadm --create --verbose /dev/md0 --level=10 --raid-devices=4 "${hdd_partitions[@]}"; then
     echo "Failed to create RAID 10 array"
     exit 1
 else
@@ -143,7 +143,7 @@ done
 
 # Create RAID 0 array with the new SSD partitions
 log "Creating RAID 0 array with SSDs..."
-if ! mdadm --create --verbose /dev/md1 --level=0 --raid-devices=2 ${ssd_partitions[@]}; then
+if ! mdadm --create --verbose /dev/md1 --level=0 --raid-devices=2 "${ssd_partitions[@]}"; then
     echo "Failed to create RAID 0 array"
     exit 1
 else

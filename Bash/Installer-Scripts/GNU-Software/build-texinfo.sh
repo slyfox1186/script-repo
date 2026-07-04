@@ -103,7 +103,7 @@ cleanup() {
 install_dependencies() {
     pkgs=(autoconf automake curl build-essential libtool libtool-bin m4 tar xz-utils)
     missing_pkgs=""
-    for pkg in ${pkgs[@]}; do
+    for pkg in "${pkgs[@]}"; do
         if ! dpkg -s "$pkg" &> /dev/null; then
             missing_pkgs+=" $pkg"
         fi

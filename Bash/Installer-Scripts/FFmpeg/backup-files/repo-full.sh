@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Pull the latest versions of each package from the website api
 curl_timeout='10'
 

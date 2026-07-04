@@ -15,15 +15,18 @@ Usage:
 
 import os
 import sys
-import json
 import zipfile
 import tempfile
-import requests
 import subprocess
 import re
 import argparse
 import shutil
 from pathlib import Path
+
+try:
+    import requests
+except ImportError:
+    requests = None
 
 
 def get_chrome_version():
@@ -257,13 +260,11 @@ def verify_installation(chromedriver_path):
 
 def check_dependencies():
     """Check if required dependencies are available."""
-    try:
-        import requests
+    if requests is not None:
         return True
-    except ImportError:
-        print("Error: 'requests' library is required. Install it with:")
-        print("pip install requests")
-        return False
+    print("Error: 'requests' library is required. Install it with:")
+    print("pip install requests")
+    return False
 
 
 def main():

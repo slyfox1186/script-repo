@@ -35,7 +35,7 @@ pkgs_fn() {
           ppa-purge pristine-tar psensor python3 python3-pip quilt reiser4progs reiserfsprogs rpm ruby-all-dev samba shellcheck smbclient sox \
           sqlite3 subversion synaptic texinfo tk-dev tofrodos trash-cli udftools unzip uuid-dev wget xclip xfsprogs xsel yasm)
 
-    for pkg in ${pkgs[@]}
+    for pkg in "${pkgs[@]}"
     do
         if ! installed "$pkg"; then
             missing_pkgs+=" $pkg"
@@ -43,10 +43,8 @@ pkgs_fn() {
     done
 
     if [ -n "$missing_pkgs" ]; then
-        for i in "$missing_pkgs"
-        do
-            apt -y install $i
-        done
+        # shellcheck disable=SC2086 # missing_pkgs is an intentionally space-separated list
+        apt -y install $missing_pkgs
         echo
         echo '$ Any missing apt packages were installed'
     else
@@ -62,21 +60,18 @@ ppa_fn() {
         mkdir -p '/etc/apt/sources.list.d'
     fi
 
-    ppa_repo='danielrichter2007/grub-customizer videolan/master-daily git-core/ppa'
+    ppa_repo=(danielrichter2007/grub-customizer videolan/master-daily git-core/ppa)
 
-    for pkg in ${ppa_repo[@]}
+    for pkg in "${ppa_repo[@]}"
     do
         ppa_list="$(grep -Eo "^deb .*$pkg" /etc/apt/sources.list /etc/apt/sources.list.d/*)"
         if [ -z "$ppa_list" ]; then
-            add-apt-repository -y ppa:$pkg
-            for i in "$pkg"
-            do
-                case "$i" in
-                    'danielrichter2007/grub-customizer')      apt_ppa+='grub-customizer';;
-                    'videolan/master-daily')                  apt_ppa+=' vlc';;
-                    'git')                                    apt_ppa+=' git';;
-                 esac
-            done
+            add-apt-repository -y "ppa:$pkg"
+            case "$pkg" in
+                'danielrichter2007/grub-customizer')      apt_ppa+='grub-customizer';;
+                'videolan/master-daily')                  apt_ppa+=' vlc';;
+                'git-core/ppa')                           apt_ppa+=' git';;
+            esac
         fi
     done
 

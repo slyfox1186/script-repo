@@ -107,7 +107,7 @@ pkgs=(apt-transport-https apt-utils autoconf autoconf-archive autogen automake a
       default-jdk-headless openssh-server pkg-config python3-dev python3-numpy python3-packaging python3-pip
       python3-pytest python3-setuptools python3-wheel re2c rsync unzip valgrind winbind zip zlib1g-dev)
 
-for pkg in ${pkgs[@]}
+for pkg in "${pkgs[@]}"
 do
     missing_pkg="$(sudo dpkg -l | grep -o "${pkg}")"
 

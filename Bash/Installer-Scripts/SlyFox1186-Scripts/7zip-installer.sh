@@ -61,7 +61,7 @@ box_out_banner() {
     tput bold
     line="$(tput setaf 3)$line"
     space="${line//-/ }"
-    printf "\n %s\n|%s|\n| %s |\n|%s|\n %s\n\n" "$line" "$space" "$(tput setaf 4)$@$(tput setaf 3)" "$space" "$line"
+    printf "\n %s\n|%s|\n| %s |\n|%s|\n %s\n\n" "$line" "$space" "$(tput setaf 4)$*$(tput setaf 3)" "$space" "$line"
     tput sgr 0
 }
 

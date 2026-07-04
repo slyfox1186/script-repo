@@ -163,7 +163,7 @@ if [[ -z $fg_arg ]] || [[ -z $bg_arg ]]; then
     fi
 else
     # Validate foreground and background color arguments
-    if [[ " ${FG_COLORS[@]} " =~ " $fg_arg " ]] && [[ " ${BG_COLORS[@]} " =~ " $bg_arg " ]]; then
+    if [[ " ${FG_COLORS[*]} " =~ " $fg_arg " ]] && [[ " ${BG_COLORS[*]} " =~ " $bg_arg " ]]; then
         display_color_combinations "$fg_arg" "$bg_arg"
     else
         echo "Invalid foreground or background color."

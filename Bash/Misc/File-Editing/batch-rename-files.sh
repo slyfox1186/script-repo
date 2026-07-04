@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 INPUT_FILE="/tmp/folder-paths.txt"
-OUPUT_FOLDER="/path/to/output/folder"
+OUTPUT_FOLDER="/path/to/output/folder"
 
 CYAN='\033[0;36m'
 GREEN='\033[0;32m'
@@ -18,12 +18,12 @@ EOF
 process_file_path() {
     local file_path=$1
 
-    echo -e "$CYANProcessing file$YELLOW: $PURPLE$file_path$NC"
+    echo -e "${CYAN}Processing file${YELLOW}: ${PURPLE}${file_path}${NC}"
 
-    if sudo mv "$file_path" "$OUPUT_FOLDER"; then
-        echo -e "$GREEN[LOG]$NC Command executed successfully\\n"
+    if sudo mv "$file_path" "$OUTPUT_FOLDER"; then
+        echo -e "${GREEN}[LOG]${NC} Command executed successfully\\n"
     else
-        echo -e "$RED[ERROR]$NC Failed to execute command\\n" >&2
+        echo -e "${RED}[ERROR]${NC} Failed to execute command\\n" >&2
     fi
 }
 

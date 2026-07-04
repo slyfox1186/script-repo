@@ -41,7 +41,7 @@ untar() {
 
 # Gzip
 gzip() {
-    gzip -d "$@"
+    command gzip -d "$@"
 }
 
 # Create a tar.gz file with max compression settings

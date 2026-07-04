@@ -900,7 +900,7 @@ pkgs_fn()
           libxss-dev libxvidcore-dev libyuv-dev libzmq3-dev libzstd-dev libzvbi-dev libzzip-dev lshw lzma-dev m4 meson nasm
           ninja-build pandoc python3 python3-pip ragel re2c scons sudo texi2html texinfo tk-dev unzip valgrind wget xmlto zlib1g-dev)
 
-    for pkg in ${pkgs[@]}
+    for pkg in "${pkgs[@]}"
     do
         if ! installed "${pkg}"; then
             missing_pkgs+=" ${pkg}"
@@ -981,7 +981,7 @@ ffmpeg_install_test()
 
     binaries=(ffmpeg ffplay ffprobe)
 
-    for i in ${binaries[@]}
+    for i in "${binaries[@]}"
     do
         if [ ! -f "$install_dir/bin/${i}" ]; then
             printf "\n%s\n%s\n\n"                                                \

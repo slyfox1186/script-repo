@@ -6,8 +6,6 @@ import json
 import base64
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
-import requests
-import re
 import win32crypt  # Import for Windows Crypt API
 import argparse  # Import argparse for command-line parsing
 
@@ -38,7 +36,7 @@ def get_chrome_cookies(url):
     conn = sqlite3.connect(path)
     cursor = conn.cursor()
     cursor.execute('SELECT host_key, name, value, encrypted_value FROM cookies WHERE host_key LIKE ?', ('%' + url + '%',))
-    for host_key, name, value, encrypted_value in cursor.fetchall():
+    for _host_key, name, value, encrypted_value in cursor.fetchall():
         if value:
             cookies[name] = value
         elif encrypted_value:

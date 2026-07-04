@@ -12,7 +12,7 @@ alias reboot-uefi='sudo systemctl reboot --firmware-setup'
 # Process and resource monitoring
 alias tk='kill -9'
 alias tka='killall -9'
-alias tkpid='clear; lsof +D ./ | awk '\''{print $2}'\'' | tail -n +2 | xargs -I{} sudo kill -9 {}'
+tkpid() { clear; lsof +D ./ | awk '{print $2}' | tail -n +2 | xargs -I{} sudo kill -9 {}; }
 
 # Temperature and system monitoring
 alias twatch='clear; watch -n0.5 sudo sensors -u k10temp-pci-00c3'

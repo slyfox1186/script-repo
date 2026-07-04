@@ -95,7 +95,7 @@ pkgs_fn() {
           libpeas-dev libpeasd-3-dev libtool libtool-bin m4 packaging-dev python3 valgrind
           yasm zlib1g-dev)
 
-    for pkg in ${pkgs[@]}
+    for pkg in "${pkgs[@]}"
     do
         if ! installed "${pkg}"; then
             missing_pkgs+=" ${pkg}"
@@ -106,12 +106,10 @@ pkgs_fn() {
         printf "%s\n%s\n\n" \
             "Installing missing APT packages" \
             "======================================"
-        for i in "$missing_pkgs"
-            do
-                if ! sudo apt install ${i}; then
-                    fail_fn "Failed to install the following APT packages: ${i}. Line: ${LINENO}"
-                fi
-            done
+        # shellcheck disable=SC2086 # missing_pkgs is an intentionally space-separated list
+        if ! sudo apt install $missing_pkgs; then
+            fail_fn "Failed to install the following APT packages: ${missing_pkgs}. Line: ${LINENO}"
+        fi
     else
         printf "%s\n\n" "\$ The APT packages are already installed."
     fi

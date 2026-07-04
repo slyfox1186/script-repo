@@ -169,7 +169,7 @@ pkgs_fn() {
           curl libc6-dev libintl-perl libpth-dev libtool libtool-bin lzip lzma-dev
           nasm ninja-build texinfo xmlto yasm zlib1g-dev)
 
-    for i in ${pkgs[@]}
+    for i in "${pkgs[@]}"
     do
         missing_pkg="$(sudo dpkg -l | grep -q "$i")"
     

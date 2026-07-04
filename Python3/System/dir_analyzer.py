@@ -132,7 +132,6 @@ def save_to_excel(file_df, dir_df, output_file):
         file_df.to_excel(writer, index=False, sheet_name='File Info')
         dir_df.to_excel(writer, index=False, sheet_name='Directory Info')
 
-        workbook = writer.book
         file_worksheet = writer.sheets['File Info']
         dir_worksheet = writer.sheets['Directory Info']
 

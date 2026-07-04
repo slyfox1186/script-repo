@@ -39,7 +39,7 @@ pkgs=(
       nasm python3 python3-pip texinfo xz-utils zlib1g-dev zstd yasm
 )
 
-for pkg in ${pkgs[@]}
+for pkg in "${pkgs[@]}"
 do
     if ! sudo dpkg -l | grep -q "$pkg"; then
         missing_pkgs="$pkg "
