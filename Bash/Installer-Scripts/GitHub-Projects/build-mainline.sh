@@ -91,7 +91,7 @@ pkgs=(autoconf autoconf-archive autogen automake build-essential curl
       libtool libtool-bin git-all libgee-0.8-dev libvte-2.91-dev m4
       pkg-config valac)
 
-for i in ${pkgs[@]}
+for i in "${pkgs[@]}"
 do
     missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
 

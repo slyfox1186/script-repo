@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# shellcheck disable=sc2016,sc2034,sc2046,sc2066,sc2068,sc2086,SC2162,SC2317
+# shellcheck disable=SC2016,SC2034,SC2046,SC2066,SC2068,SC2086,SC2162,SC2317
 
 ##  Install libgcrypt LTS + libgcrypt-error
 ##  Updated: 07.03.23

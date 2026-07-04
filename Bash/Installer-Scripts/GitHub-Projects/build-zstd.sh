@@ -121,7 +121,7 @@ create_soft_links() {
     local -a files
     local file
     files=(zstd zstdgrep zstdless zstd-frugal)
-    for file in ${files[@]}; do
+    for file in "${files[@]}"; do
         sudo ln -sf "$install_dir/bin/$file" "/usr/local/bin/"
     done
 

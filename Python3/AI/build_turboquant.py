@@ -547,7 +547,7 @@ def install_python_packages():
     run(f"{pip} install torch torchvision torchaudio --index-url {PYTORCH_INDEX_URL}")
 
     if PYTHON_PACKAGES_EXTRA:
-        log.info(f"Installing TurboQuant ecosystem packages...")
+        log.info("Installing TurboQuant ecosystem packages...")
         run(f"{pip} install {' '.join(PYTHON_PACKAGES_EXTRA)}")
 
     # Verify PyTorch CUDA
@@ -575,7 +575,6 @@ def clone_or_update(install_dir: Path) -> Path:
         run("git fetch origin", cwd=repo_dir)
 
         current = get_cmd_output(f"git -C {repo_dir} branch --show-current")
-        target_branch = BRANCH.split("/")[-1] if "/" in BRANCH else BRANCH
         if current != BRANCH:
             log.info(f"  Switching to branch {BRANCH}...")
             run(f"git checkout {BRANCH}", cwd=repo_dir)
@@ -1005,9 +1004,9 @@ llama-server --version 2>&1 | head -1 || true
     rebuild_script.chmod(0o755)
 
     log.info(f"Launcher scripts written to {scripts_dir}/")
-    log.info(f"  start-server.sh            — symmetric turbo3 (recommended for Q8_0+ models)")
-    log.info(f"  start-server-asymmetric.sh — q8_0 K + turbo4 V (for Q4_K_M models)")
-    log.info(f"  rebuild.sh                 — pull latest + rebuild")
+    log.info("  start-server.sh            — symmetric turbo3 (recommended for Q8_0+ models)")
+    log.info("  start-server-asymmetric.sh — q8_0 K + turbo4 V (for Q4_K_M models)")
+    log.info("  rebuild.sh                 — pull latest + rebuild")
 
 
 # ─── Optional: launch server ────────────────────────────────────────────────
@@ -1027,7 +1026,7 @@ def launch_server(build_dir: Path, model_path: Optional[str], context: int = 131
     if not model_path:
         log.info("")
         log.info("No --model specified. To launch the server, run:")
-        log.info(f"  llama-server -m <model.gguf> \\")
+        log.info("  llama-server -m <model.gguf> \\")
         log.info(f"    -ctk turbo3 -ctv turbo3 -ngl 99 -c {context} -fa on")
         return
 
@@ -1036,12 +1035,12 @@ def launch_server(build_dir: Path, model_path: Optional[str], context: int = 131
         log.error(f"Model file not found: {model}")
         return
 
-    log.info(f"Launching llama-server with TurboQuant...")
+    log.info("Launching llama-server with TurboQuant...")
     log.info(f"  Model:   {model}")
     log.info(f"  Context: {context}")
-    log.info(f"  KV:      turbo3/turbo3")
-    log.info(f"  URL:     http://localhost:8080")
-    log.info(f"  Press Ctrl+C to stop\n")
+    log.info("  KV:      turbo3/turbo3")
+    log.info("  URL:     http://localhost:8080")
+    log.info("  Press Ctrl+C to stop\n")
 
     env = {"TURBO_LAYER_ADAPTIVE": "1"}
     cmd = [
@@ -1155,7 +1154,7 @@ Examples:
 
     log.info("=" * 60)
     log.info("  TurboQuant llama.cpp — Automated Builder")
-    log.info(f"  Target: RTX 4090 (sm_89) + Ryzen 7900X")
+    log.info("  Target: RTX 4090 (sm_89) + Ryzen 7900X")
     log.info(f"  Install to: {INSTALL_BIN_DIR}/")
     log.info("=" * 60)
 
@@ -1229,8 +1228,8 @@ Examples:
     log.info("")
     log.info("  Quick start:")
     log.info(f"    conda activate {CONDA_ENV_NAME}")
-    log.info(f"    llama-server -m <model.gguf> \\")
-    log.info(f"      -ctk turbo3 -ctv turbo3 -ngl 99 -c 131072 -fa on")
+    log.info("    llama-server -m <model.gguf> \\")
+    log.info("      -ctk turbo3 -ctv turbo3 -ngl 99 -c 131072 -fa on")
     log.info("")
     log.info("  Or use the launcher scripts (they activate conda for you):")
     log.info(f"    {args.install_dir / 'scripts' / 'start-server.sh'} <model.gguf>")

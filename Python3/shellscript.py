@@ -158,6 +158,7 @@ def run_shellcheck(target_files, directory, recursive, exclusions, color, verbos
     print(colored(f"Warnings: {warning_count}", "yellow"))
     print(colored(f"Info: {info_count}", "blue"))
     print(colored(f"Style: {style_count}", "cyan"))
+    print(colored(f"Total issues: {total_issues}", "magenta"))
 
     return error_free_files
 
@@ -192,7 +193,7 @@ def get_default_target(verbose, recursive):
     target_files = []
 
     if recursive:
-        for root, dirs, files in os.walk(script_directory):
+        for root, _dirs, files in os.walk(script_directory):
             for file_name in files:
                 file_path = os.path.join(root, file_name)
                 if os.path.isfile(file_path) and (os.path.splitext(file_name)[1] in ['.sh', ''] or '.' not in file_name):

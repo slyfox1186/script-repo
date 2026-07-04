@@ -55,7 +55,7 @@ pkgs=(asciidoc autoconf autoconf-archive autogen automake
       curl libtool libtool-bin lzip m4 meson nasm ninja-build
       yasm wget zlib1g-dev)
 
-for pkg in ${pkgs[@]}; do
+for pkg in "${pkgs[@]}"; do
     missing_pkg="$(sudo dpkg -l | grep -o "$pkg")"
 
     if [[ -z "$missing_pkg" ]]; then
@@ -84,7 +84,7 @@ scripts=(
      )
 
 count=0
-for script in ${scripts[@]}; do
+for script in "${scripts[@]}"; do
     ((count++))
     wget --show-progress -t 2 -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer-Scripts/GitHub-Projects/build-$script.sh"
     mv "build-$script.sh" "$count-build-$script.sh" || fail "Failed to move the file build-$script.sh"

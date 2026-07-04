@@ -4,7 +4,6 @@
 
 import argparse
 import os
-import platform
 import re
 import subprocess
 import sys
@@ -13,7 +12,7 @@ import xml.dom.minidom
 import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from urllib.parse import quote, unquote
+from urllib.parse import quote
 import shlex
 
 # Import colorama for cross-platform colored output
@@ -117,7 +116,7 @@ def get_video_files(start_dir, video_extensions, recursive=True, verbose=False):
     if recursive:
         if verbose:
             print(f"{CYAN}Scanning directories recursively in '{start_dir}' for video files...{RESET_ALL}")
-        for root, dirs, files in os.walk(start_dir):
+        for root, _dirs, files in os.walk(start_dir):
             for file in files:
                 if file.lower().endswith(video_extensions):
                     full_path = Path(os.path.join(root, file)).resolve()
@@ -191,7 +190,7 @@ def get_video_info(path, verbose=False):
         try:
             num, denom = map(int, r_frame_rate.split('/'))
             fps = num / denom if denom != 0 else 0
-        except:
+        except (ValueError, ZeroDivisionError):
             fps = 0.0
         bit_depth = int(video_stream.get('bits_per_raw_sample', 8))  # Default to 8 if not available
 
@@ -355,7 +354,7 @@ def create_xspf_playlist(paths, durations, distro_name, environment, verbose=Fal
     # VLC extension for playlist items
     playlist_extension = ET.SubElement(playlist, 'extension', application="http://www.videolan.org/vlc/playlist/ns/0/")
     for idx in range(len(paths)):
-        vlc_item = ET.SubElement(playlist_extension, f"{{{NS_VLC}}}item", tid=str(idx))
+        ET.SubElement(playlist_extension, f"{{{NS_VLC}}}item", tid=str(idx))
     
     if verbose:
         print(f"{CYAN}Creating XSPF playlist with {len(paths)} tracks...{RESET_ALL}")

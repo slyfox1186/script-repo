@@ -25,9 +25,9 @@ import logging
 import os
 import re
 import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Iterator, Sequence
+from typing import Iterator, Sequence
 
 EXTENSION_CATEGORIES: dict[str, tuple[str, ...]] = {
     "archives":   (".zip", ".rar", ".tar", ".gz", ".bz2", ".xz", ".zst", ".7z"),

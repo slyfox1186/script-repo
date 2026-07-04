@@ -197,7 +197,7 @@ main_menu() {
     configure_build
     compile_build  
     install_build
-    if [[ ! -f "$install_dir/$archive_name/lib/"*.so ]]; then
+    if ! compgen -G "$install_dir/$archive_name/lib/*.so" > /dev/null; then
         warn "Failed to located any \".so\" files so no custom ld linking will occur."
     else
         ld_linker_path

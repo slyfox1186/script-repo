@@ -100,7 +100,7 @@ pkgs_fn()
           libc6-dev libintl-perl libpth-dev libticonv-dev libtool libtool-bin lzip lzma-dev m4 nasm texinfo
           zlib1g-dev yasm)
 
-    for i in ${pkgs[@]}
+    for i in "${pkgs[@]}"
     do
         missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
 

@@ -98,5 +98,5 @@ keytopub() {
 clearh() {
     history -c
     clear; ls -1AhFv
-    echo -e "\n${GREEN}Bash History Cleared${NC}"
+    echo -e "\n\033[0;32mBash History Cleared\033[0m"
 }

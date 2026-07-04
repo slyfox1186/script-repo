@@ -4,8 +4,6 @@ from flask import Flask, request, render_template_string, abort
 from datetime import datetime, timedelta
 import argparse
 import sys
-import math
-import re
 from functools import lru_cache
 from math import ceil
 
@@ -89,7 +87,7 @@ SUGGESTED_PURCHASES = [
 # Update this list to use formatted money values
 SUGGESTED_PURCHASES = [(amount, f"{item} ({format_money(amount)})") for amount, item in SUGGESTED_PURCHASES]
 
-HTML_TEMPLATE = '''
+HTML_TEMPLATE = r'''
 <!DOCTYPE html>
 <html lang="en">
 <head>

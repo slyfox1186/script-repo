@@ -6,7 +6,6 @@ import nltk
 import os
 import random
 import re
-import requests
 import string
 import subprocess
 import sys
@@ -286,10 +285,10 @@ def display_menu(results, show_output_option):
         logger.info(colored("No results found.", NO_RESULTS_COLOR))
         sys.exit(0)
 
-    print(colored(f"Search Results:", 'green', attrs=['bold']))
+    print(colored("Search Results:", 'green', attrs=['bold']))
     print('-' * 80)  # Add a separator for visual clarity
 
-    for i, (title, url, price, contains_desired_word) in enumerate(results, start=1):
+    for i, (title, url, price, _contains_desired_word) in enumerate(results, start=1):
         # Price display adjustment
         price_display = colored(price, RESULT_PRICE_COLOR) if price != "N/A" else colored("Price Not Available", RESULT_PRICE_COLOR)
 

@@ -52,7 +52,7 @@ fn_restart_server() {
     echo -e "[i] Server restarting...\\n"
     mcrcon -H $IP -P $PORT -p $PW -w 10 "say Server restarting!" save-all stop && \
     sudo killall java && \
-    echo -e "[i] Executing command: screen -dmS mc ./"$SCRIPT"\\n    - Please wait for the server to completely load before reconnecting.\\n"
+    echo -e "[i] Executing command: screen -dmS mc ./$SCRIPT\\n    - Please wait for the server to completely load before reconnecting.\\n"
     screen -dmS mc ./"$SCRIPT"
     echo
     sleep 3

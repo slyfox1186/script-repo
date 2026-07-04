@@ -22,15 +22,14 @@ if [ -z "${1}" ]; then
         "This script will download debian packages to the current directory." \
         "To download, enter a space-separated list of APT packages" \
         "Example: aptitude curl gedit gedit-plugins synaptic"
-    read -p "Enter your list here: " pkgs
-    
+    read -rp "Enter your list here: " pkgs
 else
-    pkgs="${1}"
+    pkgs="$*"
 fi
 
-for pkg in ${pkgs[@]}; do
-    printf "\n%s\n" "Downloading..."
-    wget -cq "$(apt-get install --reinstall --print-uris -qq $pkg 2>/dev/null | cut -d""" -f2)"
+for pkg in $pkgs; do
+    printf "\n%s\n" "Downloading $pkg..."
+    wget -cq "$(apt-get install --reinstall --print-uris -qq "$pkg" 2>/dev/null | cut -d"'" -f2)"
 done
 
 printf "\n%s\n\n" "The script has finished."

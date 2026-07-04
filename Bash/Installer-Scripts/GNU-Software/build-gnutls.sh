@@ -63,7 +63,7 @@ install_dependencies() {
 
     if [ ${#missing_pkgs[@]} -gt 0 ]; then
         apt-get update
-        apt-get install ${missing_pkgs[@]}
+        apt-get install "${missing_pkgs[@]}"
     fi
 }
 

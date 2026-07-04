@@ -49,7 +49,7 @@ pkgs=(asciidoc autogen autoconf autoconf-archive automake binutils bison
       libpth-dev libtool libtool-bin lzip lzma-dev m4 meson nasm ninja-build
       texinfo xmlto yasm zlib1g-dev)
 
-for pkg in ${pkgs[@]}
+for pkg in "${pkgs[@]}"
 do
     missing_pkg="$(sudo dpkg -l | grep -o "$pkg")"
 
@@ -67,9 +67,9 @@ fi
 install_scripts() {
     local script scripts
 
-    scripts="$(sudo find ./ -maxdepth 1 -type f | sort -V)"
+    mapfile -t scripts < <(sudo find ./ -maxdepth 1 -type f | sort -V)
 
-    for script in ${scripts[@]}; do
+    for script in "${scripts[@]}"; do
         if bash "$script"; then
             sudo find ./ -maxdepth 1 -type f -name "$script" -exec mv {} completed \;
             echo
@@ -109,7 +109,7 @@ scripts=(aria2 brotli clang-16 garbage-collector git libpng
          zstd)
 count=0
 
-for script in ${scripts[@]}; do
+for script in "${scripts[@]}"; do
     ((count++))
     wget --show-progress -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer-Scripts/GitHub-Projects/build-${script}.sh"
     mv "build-${script}" "0$count-build-${script}"
@@ -120,7 +120,7 @@ files=(openssl python3 terminator-terminal tools wsl2-kernel yasm zlib zstd)
 count=9
 
 for i in 1; do
-    for file in ${files[@]}; do
+    for file in "${files[@]}"; do
         ((count++)) # << start counting here
         mv "0$count-build-${file}" "$count-build-${file}" # << move the files, thus renaming them
     done

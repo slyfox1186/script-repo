@@ -1,18 +1,25 @@
 #!/usr/bin/env python3
 
+from __future__ import annotations
+
 import argparse
 import logging
-import matplotlib.pyplot as plt
 import os
+import re
 import requests
 import sqlite3
+import subprocess
 import sys
 import time
 from collections import defaultdict
 from datetime import datetime, timedelta
-from fuzzywuzzy import fuzz
 from tabulate import tabulate
 from typing import List, Dict, Any
+
+try:
+    from thefuzz import fuzz
+except ImportError:
+    from fuzzywuzzy import fuzz
 
 class PiholeDBAdmin:
     def __init__(self, gravity_db_path: str = "/etc/pihole/gravity.db", query_db_path: str = "/etc/pihole/pihole-FTL.db"):
@@ -196,9 +203,13 @@ Changes Made:
     def update_gravity(self) -> None:
         self.logger.info("Updating gravity...")
         start_time = time.time()
-        result = os.system("pihole -g")
+        try:
+            result = subprocess.run(["pihole", "-g"], capture_output=True, text=True, timeout=30, check=False)
+        except FileNotFoundError:
+            self.logger.error("Gravity update failed: 'pihole' command not found.")
+            return
         update_time = time.time() - start_time
-        if result == 0:
+        if result.returncode == 0:
             self.logger.info(f"Gravity updated successfully in {update_time:.2f} seconds.")
         else:
             self.logger.error(f"Gravity update failed after {update_time:.2f} seconds.")
@@ -279,12 +290,21 @@ Changes Made:
     def check_for_updates(self) -> None:
         self.logger.info("Checking for Pi-hole updates...")
         try:
-            result = os.popen("pihole -v").read()
-            self.logger.info(f"Raw version output: {result}")
-            current_version = result.split("Pi-hole version is ")[1].split("\n")[0].split()[0].strip()
+            try:
+                result = subprocess.run(["pihole", "-v"], capture_output=True, text=True, timeout=30, check=False)
+            except FileNotFoundError:
+                self.logger.error("Error checking for updates: 'pihole' command not found.")
+                return
+            output = result.stdout
+            self.logger.info(f"Raw version output: {output}")
+            match = re.search(r"Pi-hole version is (v?[\w.-]+)", output)
+            if not match:
+                self.logger.error("Could not parse Pi-hole version from command output.")
+                return
+            current_version = match.group(1).strip()
             self.logger.info(f"Extracted current version: {current_version}")
 
-            response = requests.get("https://api.github.com/repos/pi-hole/pi-hole/releases/latest")
+            response = requests.get("https://api.github.com/repos/pi-hole/pi-hole/releases/latest", timeout=30)
             latest_version = response.json()["tag_name"].strip()
             self.logger.info(f"Extracted latest version: {latest_version}")
 

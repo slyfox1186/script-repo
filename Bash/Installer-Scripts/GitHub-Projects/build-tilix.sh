@@ -61,7 +61,7 @@ is_installed() {
 }
 
 # Check each package and add to the install list if not installed
-for pkg in ${packages[@]}; do
+for pkg in "${packages[@]}"; do
     if ! is_installed "$pkg"; then
         to_install+=("$pkg")
     fi

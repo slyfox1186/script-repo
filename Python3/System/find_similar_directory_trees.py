@@ -21,7 +21,7 @@ def setup_logging(log_file=None, verbose=False):
 def get_dir_tree(root_dir, logger):
     dir_tree = {}
     try:
-        for dirpath, dirnames, filenames in tqdm(os.walk(root_dir), desc=f"Scanning {root_dir}", unit="dirs", leave=False):
+        for dirpath, dirnames, _filenames in tqdm(os.walk(root_dir), desc=f"Scanning {root_dir}", unit="dirs", leave=False):
             # Create a relative path for each directory
             rel_path = os.path.relpath(dirpath, root_dir)
             if rel_path == '.':

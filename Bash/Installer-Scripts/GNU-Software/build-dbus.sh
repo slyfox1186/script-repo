@@ -1,4 +1,4 @@
-#!/Usr/bin/env bash
+#!/usr/bin/env bash
 
 ##  Github script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer-Scripts/GNU-Software/build-dbus
 ##  Purpose: build gnu dbus
@@ -79,7 +79,7 @@ pkgs=(apparmor apparmor-utils autoconf autoconf-archive autogen automake autopoi
       librust-polling-dev libsystemd-dev libtool libtool-bin libx11-dev lzip pkg-config valgrind
       zlib1g-dev)
 
-for pkg in ${pkgs[@]}
+for pkg in "${pkgs[@]}"
 do
     missing_pkg="$(sudo dpkg -l | grep -o "$pkg")"
 

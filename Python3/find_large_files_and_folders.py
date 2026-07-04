@@ -955,7 +955,7 @@ def _sort_by_arg(s: str) -> SortBy:
         return SortBy(s.lower())
     except ValueError:
         valid = ", ".join(e.value for e in SortBy)
-        raise argparse.ArgumentTypeError(f"Invalid sort key '{s}'. Valid: {valid}")
+        raise argparse.ArgumentTypeError(f"Invalid sort key '{s}'. Valid: {valid}") from None
 
 
 def _size_unit_arg(s: str) -> SizeUnit:
@@ -963,7 +963,7 @@ def _size_unit_arg(s: str) -> SizeUnit:
         return SizeUnit(s if s == "auto" else s.upper())
     except ValueError:
         valid = ", ".join(e.value for e in SizeUnit)
-        raise argparse.ArgumentTypeError(f"Invalid unit '{s}'. Valid: {valid}")
+        raise argparse.ArgumentTypeError(f"Invalid unit '{s}'. Valid: {valid}") from None
 
 
 def parse_args():
@@ -1192,7 +1192,7 @@ def _print_banner(args, formatter: OutputFormatter):
         depth_str = f" (max depth: {args.max_depth})" if args.max_depth is not None else ""
         print(f"  Mode:      Recursive{depth_str}")
     else:
-        print(f"  Mode:      Top-level only")
+        print("  Mode:      Top-level only")
 
     filters = []
     if args.min_size is not None:
@@ -1222,7 +1222,7 @@ def main() -> int:
     # Validate paths exist
     valid_paths = [p for p in args.paths if p.exists()]
     if not valid_paths:
-        print(f"[!] No valid paths to scan.", file=sys.stderr)
+        print("[!] No valid paths to scan.", file=sys.stderr)
         return 1
 
     # Run scan

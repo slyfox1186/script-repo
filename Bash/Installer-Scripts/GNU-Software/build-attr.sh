@@ -83,7 +83,7 @@ pkgs=(autoconf autoconf-archive autogen automake autopoint autotools-dev binutil
       build-essential bzip2 bzip2 ccache curl libc6-dev libpth-dev git libtool libtool-bin
       lzip pkg-config m4 nasm texinfo zlib1g-dev yasm zlib1g-dev)
 
-for pkg in ${pkgs[@]}
+for pkg in "${pkgs[@]}"
 do
     missing_pkg="$(sudo dpkg -l | grep -o "$pkg")"
 

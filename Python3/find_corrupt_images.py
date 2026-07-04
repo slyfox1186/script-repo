@@ -26,7 +26,7 @@ def check_image_validity(image_path: str) -> str | None:
     except FileNotFoundError:
         raise SystemExit(
             "ImageMagick's 'identify' is not installed or not on PATH."
-        )
+        ) from None
     return image_path if result.returncode != 0 else None
 
 

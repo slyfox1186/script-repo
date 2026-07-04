@@ -104,7 +104,7 @@ cleanup_fn() {
 install_dependencies() {
     pkgs=(automake gcc make curl tar)
     missing_pkgs=""
-    for pkg in ${pkgs[@]}; do
+    for pkg in "${pkgs[@]}"; do
         if ! dpkg -s "$pkg" &> /dev/null; then
             missing_pkgs+=" $pkg"
         fi

@@ -4,7 +4,6 @@ import sys
 import os
 from pathlib import Path
 from concurrent.futures import ProcessPoolExecutor
-from functools import partial
 import multiprocessing
 from fuzzywuzzy import fuzz
 from Levenshtein import distance as levenshtein_distance

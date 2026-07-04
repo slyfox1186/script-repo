@@ -159,7 +159,7 @@ pkgs=(
       libtool libxml2-dev m4 nasm ninja-build yasm zlib1g-dev
 )
 
-for pkg in ${pkgs[@]}; do
+for pkg in "${pkgs[@]}"; do
     missing_pkg="$(sudo dpkg -l | grep -o "$pkg")"
 
     if [[ -z "$missing_pkg" ]]; then
