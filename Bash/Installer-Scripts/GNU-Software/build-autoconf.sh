@@ -15,7 +15,7 @@ NC='\033[0m'
 
 version="2.71" # Default version
 program_name="autoconf" 
-install_prefix="/usr/local/programs/${program_name}-${version}"
+install_prefix="/usr/local/programs"
 verbose="0"
 build_dir=""
 

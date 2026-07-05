@@ -17,7 +17,7 @@ archive_url=https://ftp.gnu.org/gnu/diffutils/diffutils-3.10.tar.xz
 archive_ext="${archive_url//*.}"
 archive_name="$archive_dir.tar.${archive_ext}"
 cwd="$PWD/diffutils-build-script"
-install_dir="/usr/local/programs"
+install_dir="/usr/local/programs/$archive_dir"
 
 echo "diffutils build script version $script_ver"
 echo "==============================================="
