@@ -17,7 +17,7 @@ archive_url="https://dbus.freedesktop.org/releases/dbus/$archive_dir.tar.xz"
 archive_ext="${archive_url//*./}"
 archive_name="$archive_dir.tar.$archive_ext"
 cwd="$PWD/dbus-build-script"
-install_dir="/usr/local/programs"
+install_dir="/usr/local/programs/$archive_dir"
 
 echo "dbus build script version $script_ver"
 echo "==============================================="
