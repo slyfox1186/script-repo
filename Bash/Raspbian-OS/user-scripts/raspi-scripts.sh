@@ -10,7 +10,7 @@ fail() {
     exit 1
 }
 
-if ! dpkg -l | grep -o wget &>/dev/null; then
+if ! dpkg-query -W -f='${Status}' wget 2>/dev/null | grep -q 'ok installed'; then
     sudo apt-get -y install wget
     clear
 fi

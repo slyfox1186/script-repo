@@ -21,6 +21,7 @@ version=$(curl -fsS "https://yasm.tortall.net/releases/Release1.3.0.html" | grep
 archive_name="$prog_name-$version"
 install_dir="/usr/local/programs/$archive_name"
 debug=OFF # Change THE DEBUG VARIABLE TO "ON" FOR HELP TROUBLESHOOTING ISSUES
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
 
 echo
 echo "yasm build script - v$script_ver"
@@ -177,7 +178,7 @@ pkgs=(
 )
 
 for pkg in "${pkgs[@]}"; do
-    missing_pkg="$(sudo dpkg -l | grep -o "$pkg")"
+    missing_pkg="$(dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -o 'ok installed')"
 
     [[ -z "$missing_pkg" ]] && missing_pkgs+="$pkg "
 done

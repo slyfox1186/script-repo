@@ -435,7 +435,7 @@ build_done() {
 }
 
 installed() {
-    return $(dpkg-query -W -f '$Status\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}')
+    return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}')
 }
 
 

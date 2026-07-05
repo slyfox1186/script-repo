@@ -2,6 +2,8 @@
 
 clear
 
+web_repo='https://github.com/slyfox1186/script-repo'
+
 # Create functions
 
 exit_fn()

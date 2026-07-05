@@ -119,7 +119,7 @@ else
 fi
 
 # Change to the tilix directory
-cd "$program_name-$version"
+cd "$program_name-$version" || exit 1
 
 # Build the tilix executable
 echo "Building Tilix executable..."

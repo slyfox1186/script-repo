@@ -142,8 +142,10 @@ set_namservers_fn() {
         read -p "Enter Nameserver: (1.1.1.1): "  nameserver$cnt
         while true
         do
-            if [[ "$nameserver1" == '0' ]]; then
-                unset nameserver1
+            ns_var="nameserver$cnt"
+            if [[ "${!ns_var}" == '0' ]]; then
+                unset "nameserver$cnt"
+                ((cnt--))
                 clear
                 break 2
             fi
@@ -165,6 +167,7 @@ set_namservers_fn() {
 }
 set_namservers_fn
 
+# shellcheck disable=SC2154 # nameserver1-4 are assigned dynamically via "read ... nameserver$cnt"
 case "$cnt" in
     1)      ns_cnt="$nameserver1";;
     2)      ns_cnt="$nameserver1 $nameserver2";;

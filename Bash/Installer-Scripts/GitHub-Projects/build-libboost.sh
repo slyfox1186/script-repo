@@ -92,7 +92,7 @@ pkgs=(autoconf autoconf-archive autogen automake binutils build-essential ccache
 
 for i in "${pkgs[@]}"
 do
-    missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
+    missing_pkg="$(dpkg-query -W -f='${Status}' "${i}" 2>/dev/null | grep -o 'ok installed')"
 
     if [ -z "${missing_pkg}" ]; then
         missing_pkgs+=" ${i}"

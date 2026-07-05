@@ -37,8 +37,6 @@ install_other_fn() {
 
 install_apt_fn()
 {
-    local missing_pkgs=()
-    
     # Define packages to install
     pkgs=(alien apt-file aptitude aria2 autoconf autoconf-archive autogen automake bat binutils bison
           build-essential ccache ccdiff checkinstall clang cmake cmake-extras cmake-qt-gui colordiff cpu-checker

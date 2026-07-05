@@ -15,7 +15,9 @@ import subprocess
 import sys
 
 # Configuration
-LOG_DIR = Path("/tmp/cuda_updater_log")
+# Per-user cache dir: the version logs persist between runs, and a fixed
+# path under the shared /tmp risks collisions between users
+LOG_DIR = Path.home() / ".cache" / "cuda_updater"
 LOG_FILE = LOG_DIR / "last_installed_version.log"
 BASE_URL = "https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&Distribution="
 

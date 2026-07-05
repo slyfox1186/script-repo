@@ -128,7 +128,7 @@ required_packages() {
                     pkgs+=("$MAKE_PKGS")
                     ;;
                 nano)
-                    pkks+=("$NANO_PKGS")
+                    pkgs+=("$NANO_PKGS")
                     ;;
                 pkg-config)
                     pkgs+=("$PKG_CONFIG_PKGS")
@@ -260,10 +260,6 @@ configure_build() {
             ;;
         which)
             autoconf || fail "Failed to execute: autoconf. Line: $LINENO"
-            ./configure --prefix="$install_dir" || fail "Failed to execute: configure. Line: $LINENO"
-            ;;
-        make|wget)
-            autoreconf -fi -I /usr/share/aclocal || fail "Failed to execute: autoreconf. Line: $LINENO"
             ./configure --prefix="$install_dir" || fail "Failed to execute: configure. Line: $LINENO"
             ;;
         *)

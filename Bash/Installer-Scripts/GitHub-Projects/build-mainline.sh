@@ -69,9 +69,6 @@ cleanup_fn() {
         1)
                 sudo rm -fr "$cwd"
                 cd "${parent_dir}" || exit 1
-                if [ -f "$pem_file" ]; then
-                    sudo rm "$pem_file"
-                fi
                 ;;
         2)      clear;;
         *)
@@ -93,7 +90,7 @@ pkgs=(autoconf autoconf-archive autogen automake build-essential curl
 
 for i in "${pkgs[@]}"
 do
-    missing_pkg="$(sudo dpkg -l | grep -o "${i}")"
+    missing_pkg="$(dpkg-query -W -f='${Status}' "${i}" 2>/dev/null | grep -o 'ok installed')"
 
     if [ -z "${missing_pkg}" ]; then
         missing_pkgs+=" ${i}"
@@ -122,7 +119,7 @@ if ! make "-j$(nproc --all)"; then
     fail_fn "The command \"make -j$(nproc --all)\" failed. Line: ${LINENO}"
 fi
 
-if sudo make "-j$(nproc --all)" install; then
+if ! sudo make "-j$(nproc --all)" install; then
     fail_fn "The command \"sudo make -j$(nproc --all) install\" failed. Line: ${LINENO}"
 fi
 

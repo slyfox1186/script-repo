@@ -139,4 +139,4 @@ cleanup
 
 log "gnutls build script completed successfully!"
 log "Make sure to star this repository to show your support!"
-log "$web_repo"
+log "https://github.com/slyfox1186/script-repo"

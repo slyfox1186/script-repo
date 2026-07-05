@@ -122,7 +122,7 @@ cc() {
         echo
         return 1
     else
-        pipe=$@
+        pipe="$*"
     fi
     echo "$pipe" | xclip -i -rmlastnl -selection clipboard
 }
@@ -139,7 +139,7 @@ cfp() {
         echo
         return 1
     else
-        pipe=$@
+        pipe="$*"
     fi
 
     readlink -fn "$pipe" | xclip -i -selection clipboard
@@ -195,9 +195,9 @@ sst() {
 # BATCAT COMMANDS
 bat() {
     if command -v batcat &>/dev/null; then
-        eval "$(command -v batcat)" "$@"
+        command batcat "$@"
     elif command -v bat &>/dev/null; then
-        eval "$(command -v bat)" "$@"
+        command bat "$@"
     else
         echo "Installing batcat now."
         sudo apt update
@@ -207,9 +207,9 @@ bat() {
 
 batn() {
     if command -v batcat &>/dev/null; then
-        eval "$(command -v batcat)" -n "$@"
+        command batcat -n "$@"
     elif command -v bat &>/dev/null; then
-        eval "$(command -v bat)" -n "$@"
+        command bat -n "$@"
     else
         echo "Installing batcat now."
         sudo apt update

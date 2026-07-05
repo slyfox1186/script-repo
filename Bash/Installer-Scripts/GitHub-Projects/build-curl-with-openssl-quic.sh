@@ -26,6 +26,7 @@ pem_file=cacert.pem
 pem_out="${cert_dir}/$pem_file"
 pc_type=$(gcc -dumpmachine)
 web_repo=https://github.com/slyfox1186/script-repo
+user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
 
 printf "%s\n%s\n\n" \
     "cURL Build Script - v${script_ver}" \
@@ -109,7 +110,7 @@ pkgs=(apt-transport-https apt-utils autoconf autoconf-archive autogen automake a
 
 for pkg in "${pkgs[@]}"
 do
-    missing_pkg="$(sudo dpkg -l | grep -o "${pkg}")"
+    missing_pkg="$(dpkg-query -W -f='${Status}' "${pkg}" 2>/dev/null | grep -o 'ok installed')"
 
     if [ -z "${missing_pkg}" ]; then
         missing_pkgs+=" ${pkg}"
@@ -222,10 +223,10 @@ fi
 
 # Create output directory http 2/3
 
-if [ -d "$cwd/ngtcp2-1.58.0" ]; then
-    sudo rm -fr "$cwd/ngtcp2-1.58.0"
+if [ -d "$cwd/nghttp2-1.58.0" ]; then
+    sudo rm -fr "$cwd/nghttp2-1.58.0"
 fi
-mkdir -p "$cwd/ngtcp2-1.58.0"
+mkdir -p "$cwd/nghttp2-1.58.0"
 
 if [ -d "$cwd/nghttp3-1.1.0" ]; then
     sudo rm -fr "$cwd/nghttp3-1.1.0"
@@ -237,14 +238,14 @@ mkdir -p "$cwd/nghttp3-1.1.0"
 if [ ! -f "$cwd/nghttp3-1.1.0.tar.xz" ]; then
     curl -A "$user_agent" -Lso "$cwd/nghttp3-1.1.0.tar.xz" 'https://github.com/ngtcp2/nghttp3/releases/download/v1.1.0/nghttp3-1.1.0.tar.xz'
 fi
-if [ ! -f "$cwd/ngtcp2-1.58.0.tar.xz" ]; then
-    curl -A "$user_agent" -Lso "$cwd/ngtcp2-1.58.0.tar.xz" 'https://github.com/nghttp2/nghttp2/releases/download/v1.58.0/nghttp2-1.58.0.tar.xz'
+if [ ! -f "$cwd/nghttp2-1.58.0.tar.xz" ]; then
+    curl -A "$user_agent" -Lso "$cwd/nghttp2-1.58.0.tar.xz" 'https://github.com/nghttp2/nghttp2/releases/download/v1.58.0/nghttp2-1.58.0.tar.xz'
 fi
 
 # Extract the archive file http 2/3
 
-if ! tar -xf "$cwd/ngtcp2-1.58.0.tar.xz" -C "$cwd/ngtcp2-1.58.0" --strip-components 1; then
-    fail_fn "Failed to extract: $cwd/ngtcp2-1.58.0.tar.xz"
+if ! tar -xf "$cwd/nghttp2-1.58.0.tar.xz" -C "$cwd/nghttp2-1.58.0" --strip-components 1; then
+    fail_fn "Failed to extract: $cwd/nghttp2-1.58.0.tar.xz"
 fi
 if ! tar -xf "$cwd/nghttp3-1.1.0.tar.xz" -C "$cwd/nghttp3-1.1.0" --strip-components 1; then
     fail_fn "Failed to extract: $cwd/nghttp3-1.1.0.tar.xz"
@@ -280,14 +281,14 @@ mkdir -p "$cwd/ngtcp2-1.1.0/build"
 
 # Download the archive file ngtcp2
 
-if [ ! -f "$cwd/ngtcp2-1.1.0.tar.gz" ]; then
-    curl -A "$user_agent" -Lso "$cwd/ngtcp2-1.1.0.tar.gz" 'https://github.com/ngtcp2/ngtcp2/releases/download/v1.1.0/ngtcp2-1.1.0.tar.xz'
+if [ ! -f "$cwd/ngtcp2-1.1.0.tar.xz" ]; then
+    curl -A "$user_agent" -Lso "$cwd/ngtcp2-1.1.0.tar.xz" 'https://github.com/ngtcp2/ngtcp2/releases/download/v1.1.0/ngtcp2-1.1.0.tar.xz'
 fi
 
 # Extract the archive file ngtcp2
 
-if ! tar -xf "$cwd/ngtcp2-1.1.0.tar.gz" -C "$cwd/ngtcp2-1.1.0" --strip-components 1; then
-    fail_fn "Failed to extract: $cwd/ngtcp2-1.1.0.tar.gz"
+if ! tar -xf "$cwd/ngtcp2-1.1.0.tar.xz" -C "$cwd/ngtcp2-1.1.0" --strip-components 1; then
+    fail_fn "Failed to extract: $cwd/ngtcp2-1.1.0.tar.xz"
 fi
 
 # Install ngtcp2
@@ -323,7 +324,7 @@ printf "\n%s\n%s\n\n" \
     "Installing HTTP2 - v1.58.0" \
     '==============================================='
 
-cd "$cwd/ngtcp2-1.58.0" || exit 1
+cd "$cwd/nghttp2-1.58.0" || exit 1
 autoreconf -fi
 ./configure --prefix="$install_dir" \
             --{build,host,target}="${pc_type}" \
@@ -437,7 +438,7 @@ printf "\n%s\n%s\n\n" \
 
 cd "$cwd/$archive_dir" || exit 1
 dopts=('--disable-'{get-easy-options,shared,verbose,versioned-symbols})
-eopts=('--enable-'{alt-svc,ares="$workspace",cookies})
+eopts=('--enable-'{alt-svc,ares="$install_dir",cookies})
 eopts+=('--enable-'{dict,dnsshuffle,doh,file,ftp,gopher})
 eopts+=('--enable-'{headers-api,hsts,http,http-auth,imap})
 eopts+=('--enable-'{ipv6,ldap,ldaps,libcurl-option,libgcc,manual})
@@ -453,8 +454,7 @@ cd build || exit 1
 ../configure --prefix="$install_dir" \
             "${dopts[@]}" \
             "${eopts[@]}" \
-            "${wopts[@]}" \
-            "${csuffix}"
+            "${wopts[@]}"
 if ! make "-j$(nproc --all)"; then
     fail_fn "Failed to execute: make -j$(nproc --all). Line: ${LINENO}"
     exit 1

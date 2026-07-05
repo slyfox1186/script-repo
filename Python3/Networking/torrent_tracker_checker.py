@@ -71,7 +71,7 @@ def check_udp_tracker(tracker_url, retries, timeout):
                 res = sock.recv(16)
                 if len(res) < 16:
                     return tracker_url, 'Failed'
-                action, transaction_id_res, conn_id = struct.unpack("!LLQ", res)
+                action, transaction_id_res, _ = struct.unpack("!LLQ", res)
                 if action == 0 and transaction_id == transaction_id_res.to_bytes(4, 'big'):
                     return tracker_url, 'Passed'
             except socket.timeout:

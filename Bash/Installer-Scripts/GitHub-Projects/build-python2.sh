@@ -20,6 +20,7 @@ archive_ext="${archive_url//*.}"
 archive_name="$archive_dir.tar.${archive_ext}"
 install_dir="/usr/local/programs/$archive_dir"
 working="$PWD/python2-build-script"
+pc_type=$(gcc -dumpmachine)
 
 # Start the python2 build
 echo "Python2 Build Script -- version ${script_ver}"

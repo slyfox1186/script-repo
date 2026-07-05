@@ -128,8 +128,8 @@ WORKSPACE="/tmp/grub-customizer"
 if [[ "$INSTALL_MODE" == "install" ]]; then
     log "Building grub-customizer..."
     rm -fr "$WORKSPACE"
-    git clone "https://git.launchpad.net/grub-customizer" "$WORKSPACE"
-    cd "$WORKSPACE"
+    git clone "https://git.launchpad.net/grub-customizer" "$WORKSPACE" || fail "Failed to clone grub-customizer."
+    cd "$WORKSPACE" || fail "Failed to enter $WORKSPACE."
 
     # Get the version from the changelog file
     VERSION=$(cat changelog | head -n1 | awk '{print $2}')

@@ -223,7 +223,7 @@ if build "libgpg-error" "$version2"; then
                          --with-pic
     execute make "-j$cpu_threads"
     execute sudo make install
-    execute sudo cp -f "src/gpg-error-config" "$install_dir/bin"
+    execute sudo cp -f "src/gpg-error-config" "/usr/local/programs/$archive_name2/bin"
     execute ln -sf "/usr/local/programs/$archive_name2/lib/pkgconfig/"*.pc "/usr/local/lib/pkgconfig/"
     build_done "libgpg-error" "$version2"
 fi

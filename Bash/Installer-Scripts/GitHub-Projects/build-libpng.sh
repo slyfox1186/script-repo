@@ -19,6 +19,19 @@ version=$(curl -fsS "https://github.com/pnggroup/libpng/tags/" | grep -oP '/tag/
 archive_name="$prog_name-$version"
 install_dir="/usr/local/programs/$archive_name"
 debug=OFF
+latest=false
+
+# Parse command line arguments
+for arg in "$@"; do
+    case "$arg" in
+        --latest) latest=true ;;
+        *)
+            echo "Unknown option: $arg"
+            echo "Usage: $0 [--latest]"
+            exit 1
+            ;;
+    esac
+done
 
 echo "libpng build script - v${script_ver}"
 echo "==============================================="
@@ -87,7 +100,7 @@ build() {
             echo "$1 version $2 already built. Remove $cwd/$1.done lockfile to rebuild it."
             return 1
         elif ${latest}; then
-            echo "$1 is oudebugtdated and will be rebuilt using version $2"
+            echo "$1 is outdated and will be rebuilt using version $2"
             return 0
         else
             echo "$1 is outdated, but will not be rebuilt. Pass in --latest to rebuild it or remove $cwd/$1.done lockfile."

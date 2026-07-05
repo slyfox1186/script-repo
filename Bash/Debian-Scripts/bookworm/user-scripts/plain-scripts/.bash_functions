@@ -1440,7 +1440,7 @@ fsed() {
 
 cmf() {
     local rel_sdir
-    if ! sudo dpkg -l | grep -o cmake-curses-gui; then
+    if ! dpkg-query -W -f='${Status}' cmake-curses-gui 2>/dev/null | grep -q 'ok installed'; then
         sudo apt -y install cmake-curses-gui
     fi
     clear

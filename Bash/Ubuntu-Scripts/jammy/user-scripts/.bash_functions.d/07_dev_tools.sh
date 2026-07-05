@@ -118,17 +118,23 @@ pkg-config-path() {
 
 ## SHOW BINARY RUNPATH IF IT EXISTS ##
 show_rpath() {
-    local find_rpath
+    local find_rpath resolved
     clear
 
     if [[ -z "$1" ]]; then
-        read -p "Enter the full path to the binary/program: " find_rpath
+        read -rp "Enter the full path to the binary/program: " find_rpath
     else
         find_rpath="$1"
     fi
 
+    resolved="$(command -v "$find_rpath")"
+    if [[ -z "$resolved" ]]; then
+        echo "Could not resolve: $find_rpath" >&2
+        return 1
+    fi
+
     clear
-    sudo chrpath -l "$(command -v ${find_rpath})"
+    sudo chrpath -l "$resolved"
 }
 
 ## DOWNLOAD CLANG INSTALLER SCRIPTS ##
@@ -167,13 +173,14 @@ pipu() {
 
 # Python Virtual Environment
 venv() {
-    local choice arg random_dir
+    local choice pkgs random_dir
+    local -a venv_args extra_pkgs
     random_dir=$(mktemp -d)
     wget -cqO "$random_dir/pip-venv-installer.sh" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Misc/Python3/pip-venv-installer.sh"
 
     case "$#" in
         0)
-            printf "\n%s\%s\%s\%s\%s\%s\%s\%s\%s\%s\n\n" \
+            printf "\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n\n" \
                 "[h]elp" \
                 "[l]ist" \
                 "[i]mport" \
@@ -184,26 +191,27 @@ venv() {
                 "[U]pgrade" \
                 "[r]emove" \
                 "[p]ath"
-            read -p "Choose a letter: " choice
+            read -rp "Choose a letter: " choice
             case "$choice" in
-                h) arg="-h" ;;
-                l) arg="-l" ;;
-                i) arg="-i" ;;
-                c) arg="-c" ;;
-                u) arg="-u" ;;
-                d) arg="-d" ;;
+                h) venv_args=("-h") ;;
+                l) venv_args=("-l") ;;
+                i) venv_args=("-i") ;;
+                c) venv_args=("-c") ;;
+                u) venv_args=("-u") ;;
+                d) venv_args=("-d") ;;
                 a|U|r)
-                    read -p "Enter package names (space-separated): " pkgs
-                    arg="-$choice $pkgs"
+                    read -rp "Enter package names (space-separated): " pkgs
+                    read -ra extra_pkgs <<< "$pkgs"
+                    venv_args=("-$choice" "${extra_pkgs[@]}")
                     ;;
-                p) arg="-p" ;;
-                *) clear && venv ;;
+                p) venv_args=("-p") ;;
+                *) clear && venv && return ;;
             esac
             ;;
         *)
-            arg="$@"
+            venv_args=("$@")
             ;;
     esac
 
-    bash "$random_dir/pip-venv-installer.sh" $arg
+    bash "$random_dir/pip-venv-installer.sh" "${venv_args[@]}"
 }
