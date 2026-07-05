@@ -1135,8 +1135,9 @@ arch_os_ver_fn()
 
 debian_os_ver_fn()
 {
+    # Under WSL, add the WSL-specific packages but keep $VER intact so the
+    # release checks later in the script still see the real version number
     if [[ "$2" = 'yes_wsl' ]]; then
-        VER=msft
         debian_wsl_pkgs="$1"
     fi
 
@@ -1144,17 +1145,17 @@ debian_os_ver_fn()
     debian_pkgs+=' libyuv-utils libyuv0 libsharp-dev libdmalloc5'
 
     case "${VER}" in
-        12|trixie|sid)      pkgs_fn "${debian_pkgs} librist-dev";;
-        11)                 pkgs_fn "${debian_pkgs}";;
-        msft)               pkgs_fn "${debian_wsl_pkgs} ${debian_pkgs} librist-dev";;
+        12|trixie|sid)      pkgs_fn "${debian_wsl_pkgs} ${debian_pkgs} librist-dev";;
+        11)                 pkgs_fn "${debian_wsl_pkgs} ${debian_pkgs}";;
         *)                  fail_fn "Could not detect the Debian version. Line: ${LINENO}";;
     esac
 }
 
 ubuntu_os_ver_fn()
 {
+    # Under WSL, add the WSL-specific packages but keep $VER intact so the
+    # release checks later in the script still see the real version number
     if [[ "$2" = 'yes_wsl' ]]; then
-        VER=msft
         ubuntu_wsl_pkgs="$1"
     fi
 
@@ -1167,8 +1168,8 @@ ubuntu_os_ver_fn()
 
     case "${VER}" in
         23.04|22.10)        pkgs_fn "${ubuntu_common_pkgs} ${lunar_kenetic_pkgs} ${jammy_pkgs}";;
-        22.04|msft)         pkgs_fn "${ubuntu_common_pkgs} ${ubuntu_wsl_pkgs} ${jammy_pkgs}";;
-        20.04|msft)         pkgs_fn "${ubuntu_common_pkgs} ${ubuntu_wsl_pkgs} ${focal_pkgs}";;
+        22.04)              pkgs_fn "${ubuntu_common_pkgs} ${ubuntu_wsl_pkgs} ${jammy_pkgs}";;
+        20.04)              pkgs_fn "${ubuntu_common_pkgs} ${ubuntu_wsl_pkgs} ${focal_pkgs}";;
         *)                  fail_fn "Could not detect the Ubuntu version. Line: ${LINENO}";;
     esac
 }
@@ -1201,6 +1202,7 @@ if [ "$(grep -i 'microsoft' '/proc/version')" ]; then
 fi
 
 if [ "${wsl_switch}" = 'yes_wsl' ]; then
+    orig_os="${OS}"
     OS=WSL2
 fi
 
@@ -1210,8 +1212,8 @@ case "${OS}" in
     'Arch')             arch_os_ver_fn;;
     'Debian'|'n/a')     debian_os_ver_fn "${nvidia_encode_var} ${nvidia_utils_var}";;
     'Ubuntu')           ubuntu_os_ver_fn "${nvidia_encode_var} ${nvidia_utils_var}";;
-    'WSL2')             
-                        case "${OS}" in
+    'WSL2')
+                        case "${orig_os}" in
                             'Debian'|'n/a')     debian_os_ver_fn "${nvidia_encode_var} ${nvidia_utils_var}" "${wsl_switch}";;
                             'Ubuntu')           ubuntu_os_ver_fn "${nvidia_encode_var} ${nvidia_utils_var}" "${wsl_switch}";;
                         esac
@@ -1635,7 +1637,7 @@ if build 'libhwy' "$g_ver"; then
     CFLAGS+=' -DHWY_COMPILE_ALL_ATTAINABLE'
     CXXFLAGS+=' -DHWY_COMPILE_ALL_ATTAINABLE'
     execute cmake -B build                                   \
-                  -DCMAKE_INSTALL_PREFIX="$install_prefix" \
+                  -DCMAKE_INSTALL_PREFIX="$workspace"      \
                   -DCMAKE_BUILD_TYPE=Release                 \
                   -DHWY_ENABLE_TESTS=OFF                     \
                   -DBUILD_TESTING=OFF                        \
@@ -2643,7 +2645,7 @@ if [ -n "${iscuda}" ]; then
     fi
 
     if [ "${OS}" != 'Arch' ]; then
-        if ! sudo dpkg -l | grep -o nvidia-smi &>/dev/null; then
+        if ! command -v nvidia-smi &>/dev/null; then
             sudo apt install nvidia-smi &>/dev/null
         fi
     fi
@@ -2859,12 +2861,6 @@ box_out_banner_ffmpeg()
     tput sgr 0
 }
 box_out_banner_ffmpeg 'Building FFmpeg'
-
-if [ -n "${ffmpeg_archive}" ]; then
-    ff_cmd="${ffmpeg_url} ${ffmpeg_archive}"
-else
-    ff_cmd="${ffmpeg_url}"
-fi
 
 if [[ "${OS}" == 'Arch' ]]; then
     ladspa_switch='--disable-ladspa'

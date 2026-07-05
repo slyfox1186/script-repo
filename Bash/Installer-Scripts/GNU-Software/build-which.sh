@@ -73,7 +73,7 @@ set_path_variables() {
 exit_fn() {
     echo
     log "Make sure to star this repository to show your support!"
-    log "$web_repo"
+    log "https://github.com/slyfox1186/script-repo"
     exit 0
 }
 
@@ -155,7 +155,7 @@ build_program() {
     autoupdate
     autoreconf -fi
     cd build || exit 1
-    ../configure --prefix="$install_dir" --enable-silent-rules
+    ../configure --prefix="$install_dir" ${silent_rules:+"$silent_rules"}
     make "-j$(nproc --all)" || fail "Failed to execute: make -j$(nproc --all). Line: ${LINENO}"
     if ! sudo make install; then
         fail "Failed to execute: sudo make install. Line: ${LINENO}"

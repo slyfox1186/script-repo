@@ -201,7 +201,7 @@ def parse_results(response, query):
                         elif '.' not in price:
                             price += '.00'
                         else:
-                            dollars, cents = price.split('.')
+                            _, cents = price.split('.')
                             if len(cents) == 1:
                                 price += '0'
 

@@ -33,7 +33,7 @@ class SquidProxyManager:
     def execute_command(self, command):
         logging.info(colored("Executing command: {}".format(command), 'cyan'))
         try:
-            stdin, stdout, stderr = self.client.exec_command(command)
+            _, stdout, stderr = self.client.exec_command(command)
             stdout.channel.recv_exit_status()
             out = stdout.read().decode()
             err = stderr.read().decode()

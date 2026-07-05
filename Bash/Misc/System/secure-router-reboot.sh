@@ -13,7 +13,7 @@ user_regex='^[a-zA-Z0-9_-]+$'
 
 # Create necessary directory and start logging
 mkdir -p "$HOME/router_config"
-cd "$HOME/router_config"
+cd "$HOME/router_config" || exit 1
 touch "$log_file"
 echo "$(date) - Started setup script" >> "$log_file"
 

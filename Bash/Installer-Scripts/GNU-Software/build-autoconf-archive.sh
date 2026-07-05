@@ -82,13 +82,12 @@ cleanup() {
 # Install required apt packages
 pkgs=(
       autoconf autoconf-archive autogen automake autopoint autotools-dev binutils
-      bison build-essential bzip2 bzip2 ccache curl libc6-dev libpth-dev libtool
+      bison build-essential bzip2 ccache curl libc6-dev libpth-dev libtool
       libtool-bin lzip lzma-dev m4 nasm texinfo zlib1g-dev yasm
   )
 
 for pkg in "${pkgs[@]}"; do
-    missing_pkg="$(dpkg -l | grep -o "$pkg")"
-    if [[ -z "$missing_pkg" ]]; then
+    if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
         missing_pkgs+="$pkg "
     fi
 done

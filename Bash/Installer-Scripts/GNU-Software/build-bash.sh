@@ -101,7 +101,7 @@ configure_build() {
     cd build || exit 1
     ../configure --prefix="$install_dir/$archive_name" --disable-nls --disable-profiling --enable-brace-expansion \
                  --enable-history --enable-separate-helpfiles --enable-threads=posix --with-bash-malloc \
-                 --with-libiconv-prefix="$libiconv_prefix" --with-libintl-prefix=/usr --with-libpth-prefix=/usr \
+                 --with-libiconv-prefix=/usr --with-libintl-prefix=/usr --with-libpth-prefix=/usr \
                  --without-included-gettext || fail "Failed to execute: configure. Line: $LINENO"
 }
 

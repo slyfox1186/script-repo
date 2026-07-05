@@ -11,7 +11,11 @@ from pathlib import Path
 
 # Configuration and setup
 Image.MAX_IMAGE_PIXELS = None
-output_directory = Path("/tmp")
+# Use a per-user cache dir instead of the shared, world-writable /tmp: the
+# folder info persists between runs and the generated script gets executed,
+# so a predictable shared path would be a symlink-race / collision hazard.
+output_directory = Path.home() / ".cache" / "image_quality_ranker"
+output_directory.mkdir(parents=True, exist_ok=True)
 valid_extensions = (".jpg", ".jpeg", ".png", ".tif", ".gif", ".bmp")
 
 def normalize_input(input_str):

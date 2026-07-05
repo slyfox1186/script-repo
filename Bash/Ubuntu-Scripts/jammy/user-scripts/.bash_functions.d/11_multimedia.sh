@@ -54,8 +54,7 @@ imow() {
     fi
     sudo chmod +x "optimize-jpg.py"
     source "$HOME/python-venv/myenv/bin/activate"
-    LD_PRELOAD="libtcmalloc.so"
-    if ! python3 optimize-jpg.py -o; then
+    if ! LD_PRELOAD="libtcmalloc.so" python3 optimize-jpg.py -o; then
         printf "\n%s\n" "Failed to optimize images."
         if command -v google_speech &>/dev/null; then
             google_speech "Failed to optimize images." &>/dev/null

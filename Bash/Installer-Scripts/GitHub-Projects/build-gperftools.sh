@@ -107,7 +107,7 @@ export CC CXX CFLAGS CXXFLAGS LDFLAGS
 echo
 echo "Configuring, building, and installing gperftools..."
 autoreconf -fi
-cd build
+cd build || exit 1
 ../configure --prefix="$prefix" --with-pic --with-tcmalloc-pagesize=128 --enable-optimizations
 make "-j$(nproc --all)"
 sudo make install
@@ -126,7 +126,7 @@ sudo ln -sf "$prefix/share/man/man3/"* "/usr/local/share/man/man3/"
 # Clean up the build files
 echo
 echo "Cleaning up build files..."
-cd "$cwd"
+cd "$cwd/.." || exit 1
 sudo rm -fr "$cwd"
 
 # Update linker libraries

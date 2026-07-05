@@ -359,7 +359,7 @@ build_done() {
 }
 
 installed() {
-    return $(dpkg-query -W -f '$Status\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}')
+    return $(dpkg-query -W -f '${Status}\n' "$1" 2>&1 | awk '/ok installed/{print 0;exit}{print 1}')
 }
 
 
@@ -481,8 +481,7 @@ if build 'gsasl' '2.2.0'; then
 fi
 
 git_ver_fn 'c-ares/c-ares' '1' 'R'
-g_ver="$g_ver//cares-/"
-g_tag="$g_ver//\./_"
+g_ver="${g_ver//cares-/}"
 if build 'c-ares' "$g_ver"; then
     download "$g_url" "c-ares-$g_ver.tar.gz"
     execute autoupdate
@@ -593,7 +592,7 @@ if build 'aria2' '1.36.0'; then
     execute sed -i 's/1, 16/1, 128/g' 'src/OptionHandlerFactory.cc'
     mkdir build
     cd build || exit 1
-    ../configure --prefix="$install_dir"               \
+    ../configure --prefix="$install_prefix"            \
                  --{build,host,target}="$pc_type"      \
                  --disable-nls                           \
                  --disable-shared                        \

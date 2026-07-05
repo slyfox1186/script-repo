@@ -104,7 +104,7 @@ configure_build() {
     autoreconf -fi
     cd build || exit 1
     ../configure --prefix="$install_dir/$archive_name" --disable-nls --enable-threads=posix \
-                 --with-libsigsegv --with-libsigsegv-prefix=/usr --with-libiconv-prefix="$libiconv_prefix" \
+                 --with-libsigsegv --with-libsigsegv-prefix=/usr --with-libiconv-prefix=/usr \
                  --with-libintl-prefix=/usr || fail "Failed to execute: configure. Line: $LINENO"
 }
 

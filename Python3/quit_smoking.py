@@ -293,7 +293,7 @@ def generate_tracking_page(quit_date, saved_per_day):
         )
         
     except Exception as e:
-        app.logger.error(f"Error processing tracking page: {str(e)}")
+        app.logger.error(f"Error processing tracking page: {e!s}")
         abort(500, description="There was an error processing your information. Please try again.")
 
 @app.route('/')

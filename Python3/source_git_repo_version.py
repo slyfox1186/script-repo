@@ -6,6 +6,7 @@ import re
 import requests
 import sys
 import time
+from typing import ClassVar
 from urllib.parse import unquote
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
@@ -17,14 +18,14 @@ from urllib3.util.retry import Retry
 class ColorFormatter(logging.Formatter):
     """Custom formatter with colors and symbols for better readability."""
 
-    COLORS = {
+    COLORS: ClassVar[dict[str, str]] = {
         'DEBUG': '\033[90m',     # Gray
         'INFO': '\033[94m',      # Blue
         'WARNING': '\033[93m',   # Yellow
         'ERROR': '\033[91m',     # Red
         'RESET': '\033[0m',
     }
-    SYMBOLS = {
+    SYMBOLS: ClassVar[dict[str, str]] = {
         'DEBUG': '  ',
         'INFO': '->',
         'WARNING': '!!',

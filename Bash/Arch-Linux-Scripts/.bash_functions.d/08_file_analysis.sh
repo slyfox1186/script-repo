@@ -322,9 +322,12 @@ jpgsize() {
 ##########################
 
 jpgs() {
-    sudo find . -type f -iname "*.jpg" -exec identify -format " $PWD/%f: %wx%h " {} > /tmp/img-sizes.txt \;
-    cat /tmp/img-sizes.txt | sed 's/\s\//\n\//g' | sort -h
-    sudo rm /tmp/img-sizes.txt
+    local random_dir
+    random_dir=$(mktemp -d)
+    # shellcheck disable=SC2024 # writing to the user-owned mktemp dir is intentional; only find needs sudo
+    sudo find . -type f -iname "*.jpg" -exec identify -format " $PWD/%f: %wx%h " {} \; > "$random_dir/img-sizes.txt"
+    sed 's/\s\//\n\//g' "$random_dir/img-sizes.txt" | sort -h
+    rm -fr "$random_dir"
 }
 
 ###################################
@@ -333,7 +336,7 @@ jpgs() {
 
 ffp() {
     [[ -f 00-pic-sizes.txt ]] && sudo rm 00-pic-sizes.txt
-    sudo find "$PWD" -type f -iname "*.jpg" -exec bash -c "identify -format '%wx%h' {}; echo {}" > 00-pic-sizes.txt \;
+    sudo find "$PWD" -type f -iname "*.jpg" -exec bash -c 'identify -format "%wx%h" "$1"; echo "$1"' _ {} \; | sudo tee 00-pic-sizes.txt >/dev/null
 }
 
 ## List large files by type

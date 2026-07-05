@@ -7,7 +7,7 @@ if [ "$EUID" -eq '0' ]; then
     exit 1
 fi
 
-if ! sudo dpkg -l | grep -o 'lighttpd' &>/dev/null; then
+if ! dpkg-query -W -f='${Status}' lighttpd 2>/dev/null | grep -q 'ok installed'; then
     sudo apt -y install lighttpd
     clear
 fi

@@ -153,7 +153,7 @@ mdir() {
 ##################
 
 # REMOVED ALL DUPLICATE LINES: OUTPUTS TO TERMINAL
-rmd() { clear; awk '!seen[${0}]++' "$1"; }
+rmd() { clear; awk '!seen[$0]++' "$1"; }
 
 # REMOVE CONSECUTIVE DUPLICATE LINES: OUTPUTS TO TERMINAL
 rmdc() { clear; awk 'f!=${0}&&f=${0}' "$1"; }
@@ -1374,7 +1374,7 @@ fsed() {
 
 cmf() {
     local rel_sdir
-    if ! sudo dpkg -l | grep -o cmake-curses-gui; then
+    if ! pacman -Qi cmake-curses-gui &>/dev/null; then
         sudo pacman -S --needed --noconfirm cmake-curses-gui
     fi
 

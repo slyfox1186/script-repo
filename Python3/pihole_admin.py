@@ -124,7 +124,7 @@ Changes Made:
                     cursor.execute(query)
                     return cursor.fetchone()[0]
                 except sqlite3.OperationalError as e:
-                    self.logger.warning(f"Query failed: {query}. Error: {str(e)}")
+                    self.logger.warning(f"Query failed: {query}. Error: {e!s}")
                     return default
 
             # Fetch total domains from gravity table
@@ -313,7 +313,7 @@ Changes Made:
             else:
                 self.logger.info("Pi-hole is up to date.")
         except Exception as e:
-            self.logger.error(f"Error checking for updates: {str(e)}")
+            self.logger.error(f"Error checking for updates: {e!s}")
 
     def remove_duplicate_domains(self):
         self.logger.info("Searching for and removing duplicate domains...")
@@ -367,7 +367,7 @@ Changes Made:
 
             for i in range(len(domains)):
                 for j in range(i + 1, len(domains)):
-                    domain1, type1 = domains[i]
+                    domain1, _ = domains[i]
                     domain2, type2 = domains[j]
 
                     if (domain1, domain2) in seen_pairs or (domain2, domain1) in seen_pairs:

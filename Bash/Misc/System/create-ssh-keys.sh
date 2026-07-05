@@ -73,7 +73,7 @@ if [[ ! -f "$authorized_keys" ]]; then
 fi
 
 # Copy public key contents into authorized_keys file if not already present
-if grep -q "$(cat "$public_key")" "$authorized_keys"; then
+if grep -qFx "$(cat "$public_key")" "$authorized_keys"; then
     log "Public key already exists in authorized_keys file"
 else
     cat "$public_key" >> "$authorized_keys" || error_exit "Failed to copy public key contents to authorized_keys file"

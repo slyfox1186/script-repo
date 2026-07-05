@@ -39,15 +39,6 @@ cache_mem="512 MB"
 
 client_rqst_bfr_size="512 KB"
 
-squid_port=3128/tcp
-pihole_port=4711/tcp
-
-fwld_01=dhcp
-fwld_02=dhcpv6
-fwld_03=dns
-fwld_04=http
-fwld_05=ssh
-
 dns_server_ip=192.168.2.1
 
 min_obj_size="64 bytes"

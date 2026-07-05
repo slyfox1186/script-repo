@@ -867,25 +867,11 @@ download_cuda() {
     wget --show-progress -cqO "$package_name" "$cuda_url/$installer_path"
     dpkg -i "$package_name"
     
-    # Copy the CUDA keyring file
-    sudo cp -f /var/cuda-repo-${distro}${version//./-}-local/cuda-*-keyring.gpg /usr/share/keyrings/
+    # Copy the CUDA keyring file (the local-installer deb registers the apt
+    # repo itself; the repo directory name varies by distro, so glob on the
+    # version suffix which is common to all of them)
+    sudo cp -f /var/cuda-repo-*"${version}"-local/cuda-*-keyring.gpg /usr/share/keyrings/
     echo "Copied CUDA keyring file to /usr/share/keyrings/"
-    
-    if [ -n "$cuda_keyring_file" ]; then
-        cp -f "$cuda_keyring_file" /usr/share/keyrings/
-        echo "Copied CUDA keyring file: $cuda_keyring_file"
-        
-        # Add the CUDA repository to sources.list
-        echo "deb [signed-by=/usr/share/keyrings/$(basename "$cuda_keyring_file")] file://$cuda_repo_dir /" | tee /etc/apt/sources.list.d/cuda-repository.list
-        
-        # Update package lists
-        apt update
-        
-        # Install cuda-keyring package
-        apt install -y cuda-keyring
-    else
-        echo "CUDA keyring file not found in $cuda_repo_dir. Manual intervention may be required."
-    fi
 
     if [[ "$distro" == ubuntu* ]]; then
         echo "Pin file downloaded and moved to /etc/apt/preferences.d/cuda-repository-pin-600"

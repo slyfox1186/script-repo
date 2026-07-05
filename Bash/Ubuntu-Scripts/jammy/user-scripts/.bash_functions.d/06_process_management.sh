@@ -26,7 +26,7 @@ kill_process() {
     pids=$(pgrep -f "$program")
 
     if [[ -z "$pids" ]]; then
-        echo "No instances of "$program" are running."
+        echo "No instances of '$program' are running."
         return 0
     fi
 
@@ -69,17 +69,17 @@ nhse() {
 
 # Run Python scripts with options
 run_py() {
-    local cmd_prefix="clear; "
-    local flush_cmd=""
-    
+    local do_clear=true
+    local do_flush=false
+
     # Parse arguments
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
             -v|--verbose)
-                cmd_prefix=""  # Disable screen clearing
+                do_clear=false  # Disable screen clearing
                 ;;
             -f|--flush)
-                flush_cmd="redis-cli flushall && "  # Add Redis flush command
+                do_flush=true  # Run 'redis-cli flushall' before execution
                 ;;
             -h|--help)
                 echo "Usage: run_app [OPTIONS]"
@@ -99,10 +99,15 @@ run_py() {
     done
 
     # Run the appropriate Python script
+    [[ "$do_clear" == true ]] && clear
+    if [[ "$do_flush" == true ]]; then
+        redis-cli flushall || return 1
+    fi
+
     if [[ -f "app.py" ]]; then
-        eval "${cmd_prefix}${flush_cmd}python3 app.py"
+        python3 app.py
     elif [[ -f "main.py" ]]; then
-        eval "${cmd_prefix}${flush_cmd}python3 main.py"
+        python3 main.py
     else
         echo "No app.py or main.py found."
         return 1

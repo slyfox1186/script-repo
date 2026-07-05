@@ -4,6 +4,7 @@
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 CYAN='\033[0;36m'
+YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Display help menu
@@ -28,10 +29,14 @@ while getopts ":f:o:m:M:sh" opt; do
         m ) min="$OPTARG" ;;
         M ) max="$OPTARG" ;;
         s ) sort_flag=true ;;
-        h | --help ) display_help ;;
+        h ) display_help ;;
         \? ) echo -e "${RED}Invalid option: -$OPTARG${NC}" >&2; exit 1 ;;
     esac
 done
+
+# Apply the documented defaults for the optional -m/-M flags
+min="${min:-1}"
+max="${max:-inf}"
 
 # Check for mandatory file argument and file existence
 if [[ -z "$file" ]]; then
@@ -64,8 +69,12 @@ done < "$file"
 [[ $blank_count -ge 1 ]] && line_counts[$blank_count]+="$((line_num - blank_count + 1))-$line_num" && actual_max=$((actual_max > blank_count ? actual_max : blank_count))
 
 # Validate min and max
-max_val=${max:-$actual_max}
-[[ $min -gt $actual_max || "${max_val}" -lt $actual_min ]] && echo -e "${YELLOW}No matches found within specified range (min=$min, max=${max:-inf}). Actual min and max consecutive blank lines in file: $actual_min, $actual_max.${NC}" && exit 0
+if [[ "$max" == "inf" ]]; then
+    max_val=$actual_max
+else
+    max_val=$max
+fi
+[[ $min -gt $actual_max || "${max_val}" -lt $actual_min ]] && echo -e "${YELLOW}No matches found within specified range (min=$min, max=$max). Actual min and max consecutive blank lines in file: $actual_min, $actual_max.${NC}" && exit 0
 
 # Optionally sort keys based on flag
 keys=(${!line_counts[@]})

@@ -51,7 +51,7 @@ pkgs=(asciidoc autogen autoconf autoconf-archive automake binutils bison
 
 for pkg in "${pkgs[@]}"
 do
-    missing_pkg="$(sudo dpkg -l | grep -o "$pkg")"
+    missing_pkg="$(dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -o 'ok installed')"
 
     if [ -z "$missing_pkg" ]; then
         missing_pkgs+="$pkg "
@@ -112,18 +112,7 @@ count=0
 for script in "${scripts[@]}"; do
     ((count++))
     wget --show-progress -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer-Scripts/GitHub-Projects/build-${script}.sh"
-    mv "build-${script}" "0$count-build-${script}"
-done
-
-# Rename all scripts that start with the number 10 and higher so they execute in the intended order
-files=(openssl python3 terminator-terminal tools wsl2-kernel yasm zlib zstd)
-count=9
-
-for i in 1; do
-    for file in "${files[@]}"; do
-        ((count++)) # << start counting here
-        mv "0$count-build-${file}" "$count-build-${file}" # << move the files, thus renaming them
-    done
+    mv "build-${script}.sh" "$(printf '%02d' "$count")-build-${script}.sh"
 done
 
 # Ask the user if they want to install all of the scripts

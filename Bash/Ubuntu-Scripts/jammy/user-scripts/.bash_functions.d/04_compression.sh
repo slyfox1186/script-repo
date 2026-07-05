@@ -3,7 +3,7 @@
 
 ## UNCOMPRESS FILES ##
 untar() {
-    local archive dirname ext flag USER=$(whoami) supported_ext="7z bz2 gz lz tgz xz zip"
+    local archive dirname ext USER=$(whoami) supported_ext="7z bz2 gz lz tgz xz zip"
 
     for archive in *; do
         ext="${archive##*.}"
@@ -30,12 +30,10 @@ untar() {
                 sudo tar -xf "$archive" -C "$dirname" --strip-components 1 ;;
         esac
 
-        for dir in *; do
-            if [[ -d "$dir" ]]; then
-                sudo chown -R "$USER":"$USER" "$dir"
-                sudo chmod -R 755 "$dir"
-            fi
-        done
+        if [[ -d "$dirname" ]]; then
+            sudo chown -R "$USER":"$USER" "$dirname"
+            sudo chmod -R 755 "$dirname"
+        fi
     done
 }
 
@@ -144,6 +142,6 @@ gzip() {
 ## RECURSIVELY UNZIP ZIP FILES AND NAME THE OUTPUT FOLDER THE SAME NAME AS THE ZIP FILE
 zipr() {
     clear
-    sudo find . -type f -iname "*.zip" -exec sh -c "unzip -o -d "${0%.*}" "$0"" "{}" \;
-    sudo find . -type f -iname "*.zip" -exec trash-put "{}" \;
+    sudo find . -type f -iname "*.zip" -exec sh -c 'unzip -o -d "${1%.*}" "$1"' _ {} \;
+    sudo find . -type f -iname "*.zip" -exec trash-put {} \;
 }

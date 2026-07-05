@@ -72,7 +72,7 @@ set_path_variables() {
 exit_fn() {
     echo
     log "Make sure to star this repository to show your support!"
-    log "$web_repo"
+    log "https://github.com/slyfox1186/script-repo"
     exit 0
 }
 
@@ -134,11 +134,13 @@ build_program() {
     set_compiler_flags
     set_path_variables
     autoreconf -fi
-    mkdir -p build && cd build
+    mkdir -p build && cd build || fail "Failed to change directory to: build"
     ../configure --prefix="$install_dir" \
                  --disable-nls \
                  --enable-perl-xs \
-                 --enable-threads=posix
+                 --enable-threads=posix \
+                 ${dmalloc_opt:+"$dmalloc_opt"} \
+                 ${shared_opt:+"$shared_opt"}
     make "-j$(nproc --all)" || fail "Failed to execute: make -j$(nproc --all). Line: ${LINENO}"
     if ! sudo make install; then
         fail "Failed to execute: sudo make install. Line: ${LINENO}"
@@ -166,13 +168,12 @@ main() {
 }
 
 # Parse command line arguments
-while getopts ":hndpst" opt; do
+while getopts ":hds" opt; do
     case "$opt" in
-        h|--help) echo "Usage: $0 [OPTIONS]"
+        h) echo "Usage: $0 [OPTIONS]"
            echo "  -h      Show this help message and exit"
            echo "  -d      Disable building with dmalloc"
            echo "  -s      Enable building shared libraries"
-           shift
            exit 0
            ;;
         d) dmalloc_opt="--without-dmalloc" ;;

@@ -99,11 +99,11 @@ install_required_packages() {
         fi
     done
 
-    if [ "${#Missing_packages[@]}" -gt 0 ]; then
+    if [ "${#missing_packages[@]}" -gt 0 ]; then
         apt update
         apt install "${missing_packages[@]}"
     else
-        log "All required packages are already installed."
+        printf '%s\n' "All required packages are already installed."
     fi
 }
 install_required_packages
@@ -132,7 +132,7 @@ fi
 
 cd "$cwd/$archive_dir" || exit 1
 dopts=('--disable-'{get-easy-options,shared,verbose,versioned-symbols})
-eopts=('--enable-'{alt-svc,ares="$workspace",cookies})
+eopts=('--enable-'{alt-svc,ares,cookies})
 eopts+=('--enable-'{dict,dnsshuffle,doh,file,ftp,gopher})
 eopts+=('--enable-'{headers-api,hsts,http,http-auth,imap})
 eopts+=('--enable-'{ipv6,ldap,ldaps,libcurl-option,libgcc,manual})
@@ -149,7 +149,6 @@ cd build || exit 1
             "${dopts[@]}" \
             "${eopts[@]}" \
             "${wopts[@]}" \
-            "$csuffix"  \
              CPPFLAGS="$CPPFLAGS"
 echo
 if ! make "-j$(nproc --all)"; then
