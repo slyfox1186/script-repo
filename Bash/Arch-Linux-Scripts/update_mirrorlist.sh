@@ -1,90 +1,192 @@
 #!/usr/bin/env bash
+set -Eeuo pipefail
 
-# Check for non-root execution
-if [[ "$EUID" -eq 0 ]]; then
-    echo "You must run this script without root or sudo."
+readonly MIN_MIRRORS=5
+
+print_help() {
+    cat <<'EOF'
+Usage: update_mirrorlist.sh [options]
+
+Rank, validate, and safely install an Arch Linux mirrorlist.
+
+Options:
+  -h, --help                  Display this help message.
+  -a, --age HOURS             Maximum synchronization age (default: 12).
+  -c, --country COUNTRIES     Comma-separated country filter (default: United States).
+  -f, --fastest NUMBER        Number of mirrors to retain (default: 5; minimum: 5).
+  -t, --timeout SECONDS       Per-download timeout (default: 5).
+  -l, --latest NUMBER         Recent mirrors to consider (default: 20).
+  -p, --protocols https       Mirror protocol; only HTTPS is accepted.
+  -s, --save ABSOLUTE_PATH    Destination (default: /etc/pacman.d/mirrorlist).
+      --non-interactive       Do not display configuration prompts.
+      --dry-run               Validate candidates without installing them.
+EOF
+}
+
+die() {
+    printf 'Error: %s\n' "$*" >&2
     exit 1
+}
+
+require_value() {
+    (($# >= 2)) && [[ -n $2 ]] || die "$1 requires a value"
+}
+
+require_positive_integer() {
+    [[ $2 =~ ^[1-9][0-9]*$ ]] || die "$1 must be a positive integer"
+}
+
+if ((EUID == 0)); then
+    die 'run this script as a regular user, not with sudo'
 fi
 
-# Installl required pacman packages
-sudo pacman -Sy --needed --noconfirm reflector
-
-# Help menu function
-print_help() {
-    echo "Usage: $0 [options]"
-    echo
-    echo "Options:"
-    echo " -h, --help                  Display this help message."
-    echo " -a, --age <hours>           Set maximum age in hours since the mirror was last synchronized (default: 24)."
-    echo " -c, --country <country>     Country from which to fetch mirrors (default: United States,Canada)."
-    echo " -f, --fastest <number>      Fetch the fastest 'n' mirrors (default: 5)."
-    echo " -t, --timeout <timeout>     Set download timeout in seconds (default: 1)."
-    echo " -l, --latest <number>       Limit to the 'n' most recently synchronized mirrors (default: 100)."
-    echo " -p, --protocols <protocols> Comma-separated list of protocols to use (default: http,https)."
-    echo " -s, --save <path>           Set the output file path (default: /etc/pacman.d/mirrorlist)."
-    echo
-    echo "Example:"
-    echo " $0 --age 12 --country Germany --fastest 10 --timeout 2 --latest 50 --protocols https --save /path/to/mirrorlist"
-    echo
-}
-
-# Default values
-age=24
-country="United States,Canada"
+age=12
+country='United States'
 fastest=5
-timeout=1
-latest=100
-protocols="http,https"
-save="/etc/pacman.d/mirrorlist"
+timeout=5
+latest=20
+protocols=https
+save=/etc/pacman.d/mirrorlist
+non_interactive=false
+dry_run=false
 
-# Option parsing
-while [[ "$#" -gt 0 ]]; do
-    case "$1" in
-        -h|--help) print_help; exit 0 ;;
-        -a|--age) age=$2; shift ;;
-        -c|--country) country=$2; shift ;;
-        -f|--fastest) fastest=$2; shift ;;
-        -t|--timeout) timeout=$2; shift ;;
-        -l|--latest) latest=$2; shift ;;
-        -p|--protocols) protocols=$2; shift ;;
-        -s|--save) save=$2; shift ;;
-        *) echo "Invalid option: $1" 1>&2; print_help; exit 1 ;;
+while (($#)); do
+    case $1 in
+        -h|--help)
+            print_help
+            exit 0
+            ;;
+        -a|--age|-c|--country|-f|--fastest|-t|--timeout|-l|--latest|-p|--protocols|-s|--save)
+            require_value "$@"
+            option=$1
+            value=$2
+            shift 2
+            case $option in
+                -a|--age) age=$value ;;
+                -c|--country) country=$value ;;
+                -f|--fastest) fastest=$value ;;
+                -t|--timeout) timeout=$value ;;
+                -l|--latest) latest=$value ;;
+                -p|--protocols) protocols=$value ;;
+                -s|--save) save=$value ;;
+            esac
+            ;;
+        --non-interactive)
+            non_interactive=true
+            shift
+            ;;
+        --dry-run)
+            dry_run=true
+            shift
+            ;;
+        --)
+            shift
+            (($# == 0)) || die "unexpected argument: $1"
+            ;;
+        *) die "unknown option: $1" ;;
     esac
-    shift
 done
 
-prompt_user() {
-    local prompt_fastest prompt_latest prompt_save
-    clear
-    echo "You can leave a value as it's default by leaving the prompt blank and pressing enter."
-    echo
-    read -p "Set how many mirrors to test (default: 100): " prompt_latest
-    read -p "Set how many of the fastest mirrors to keep (default: 5): " prompt_fastest
-    read -p "Set the output file path (default: /etc/pacman.d/mirrorlist): " prompt_save
-    read -p "Set the countries sparated by commas (default: United States,Canada): " prompt_country
-    read -p "Set the protocol [http|https|http,https] (default: http,https): " prompt_protocols
-    [[ -n "$prompt_latest" ]] && latest="$prompt_latest"
-    [[ -n "$prompt_fastest" ]] && fastest="$prompt_fastest"
-    [[ -n "$prompt_save" ]] && save="$prompt_save"
-    [[ -n "$prompt_country" ]] && country="$prompt_country"
-    [[ -n "$prompt_protocols" ]] && protocols="$prompt_protocols"
+require_positive_integer age "$age"
+require_positive_integer fastest "$fastest"
+require_positive_integer timeout "$timeout"
+require_positive_integer latest "$latest"
+((fastest >= MIN_MIRRORS)) || die "--fastest must be at least $MIN_MIRRORS"
+((latest >= fastest)) || die '--latest must be greater than or equal to --fastest'
+[[ $protocols == https ]] || die '--protocols must be https'
+[[ $save == /* ]] || die '--save must be an absolute path'
+[[ -n $country ]] || die '--country must not be empty'
+if ! $non_interactive; then
+    printf 'Selecting the %s fastest HTTPS mirrors from %s synchronized within %s hours.\n' \
+        "$fastest" "$country" "$age"
+fi
+
+if ! command -v reflector >/dev/null 2>&1; then
+    printf 'Reflector is not installed; installing it with a full system upgrade.\n'
+    sudo pacman -Syu --needed --noconfirm reflector
+fi
+
+candidate=$(mktemp "${TMPDIR:-/tmp}/arch-mirrorlist.XXXXXX")
+verified_candidate=$(mktemp "${TMPDIR:-/tmp}/arch-mirrorlist-verified.XXXXXX")
+cleanup() {
+    rm -f -- "$candidate" "$verified_candidate"
 }
+trap cleanup EXIT
 
-echo
-read -p "Do you want to manually set the LATEST and FASTEST values? (y/n): " prompt_choice
-case "$prompt_choice" in
-    [yY]*) prompt_user ;;
-    [nN]*) ;;
-esac
+printf 'Ranking current mirrors...\n'
+reflector_args=(
+    --age "$age"
+    --number "$fastest"
+    --download-timeout "$timeout"
+    --latest "$latest"
+    --protocol "$protocols"
+    --completion-percent 100
+    --ipv4
+    --exclude 'cicku\.me'
+    --save "$candidate"
+    --sort rate
+)
+[[ -n $country ]] && reflector_args+=(--country "$country")
+reflector "${reflector_args[@]}"
 
-# Reflector command with configurable options
-clear
-sudo reflector --age "$age" \
-          --country "$country" \
-          --fastest "$fastest" \
-          --download-timeout "$timeout" \
-          --latest "$latest" \
-          --protocol "$protocols" \
-          --save "$save" \
-          --sort rate \
-          --verbose
+mapfile -t servers < <(awk '
+    /^[[:space:]]*Server[[:space:]]*=/ {
+        sub(/^[[:space:]]*Server[[:space:]]*=[[:space:]]*/, "")
+        if (!seen[$0]++) print
+    }
+' "$candidate")
+
+((${#servers[@]} >= MIN_MIRRORS)) || die "Reflector returned fewer than $MIN_MIRRORS distinct mirrors"
+for server in "${servers[@]}"; do
+    [[ $server == https://* ]] || die "candidate contains a non-HTTPS server: $server"
+done
+
+printf 'Checking every ranked mirror against all enabled official repositories...\n'
+{
+    printf '################################################################################\n'
+    printf '############ Arch Linux mirrorlist validated by update_mirrorlist.sh ###########\n'
+    printf '################################################################################\n\n'
+} >"$verified_candidate"
+verified_count=0
+for server in "${servers[@]}"; do
+    mirror_ok=true
+    for repo in core extra multilib; do
+        probe=${server//\$repo/$repo}
+        probe=${probe//\$arch/x86_64}
+        probe=${probe%/}/${repo}.db
+        if ! curl --fail --silent --show-error --location --head \
+            --connect-timeout "$timeout" --max-time "$((timeout * 2))" -- "$probe" >/dev/null; then
+            mirror_ok=false
+            printf 'Rejected %s: %s metadata was unavailable.\n' "$server" "$repo" >&2
+            break
+        fi
+    done
+    if $mirror_ok; then
+        printf 'Server = %s\n' "$server" >>"$verified_candidate"
+        verified_count=$((verified_count + 1))
+    fi
+done
+((verified_count >= MIN_MIRRORS)) || die "fewer than $MIN_MIRRORS mirrors served metadata for core, extra, and multilib"
+mv -- "$verified_candidate" "$candidate"
+
+if $dry_run; then
+    printf 'Validated %s HTTPS mirrors; dry run left %s unchanged.\n' "$verified_count" "$save"
+    sed -n '1,80p' "$candidate"
+    exit 0
+fi
+
+timestamp=$(date -u +%Y%m%dT%H%M%SZ)
+staged="${save}.new.$$"
+if sudo test -e "$save"; then
+    backup="${save}.backup-${timestamp}"
+    sudo cp --archive -- "$save" "$backup"
+    printf 'Backed up the existing mirrorlist to %s.\n' "$backup"
+fi
+
+sudo install --owner=root --group=root --mode=0644 -- "$candidate" "$staged"
+if ! sudo mv -- "$staged" "$save"; then
+    sudo rm -f -- "$staged"
+    die 'failed to install the validated mirrorlist'
+fi
+
+printf 'Installed %s validated HTTPS mirrors in %s.\n' "$verified_count" "$save"
