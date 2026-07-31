@@ -1,0 +1,37 @@
+[Unit]
+Description=Refresh and validate the Arch Linux pacman mirrorlist
+Documentation=https://wiki.archlinux.org/title/Reflector
+Wants=network-online.target
+After=network-online.target nss-lookup.target
+ConditionFileIsExecutable=/usr/local/sbin/update-arch-mirrors
+ConditionFileIsExecutable=/usr/bin/reflector
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/update-arch-mirrors --non-interactive
+CacheDirectory=update-arch-mirrors
+Environment=XDG_CACHE_HOME=/var/cache/update-arch-mirrors
+CapabilityBoundingSet=
+LockPersonality=true
+MemoryDenyWriteExecute=true
+NoNewPrivileges=true
+PrivateDevices=true
+PrivateTmp=true
+ProtectClock=true
+ProtectControlGroups=true
+ProtectHome=true
+ProtectHostname=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectSystem=strict
+ReadWritePaths=/etc/pacman.d
+RemoveIPC=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+SystemCallArchitectures=native
+SystemCallFilter=@system-service @chown
+SystemCallFilter=~@resources
+UMask=077

@@ -15,7 +15,8 @@ Options:
   -c, --country COUNTRIES     Comma-separated country filter (default: United States).
   -f, --fastest NUMBER        Number of mirrors to retain (default: 5; minimum: 5).
   -t, --timeout SECONDS       Per-download timeout (default: 5).
-  -l, --latest NUMBER         Recent mirrors to consider (default: 20).
+  -l, --latest NUMBER         Optionally limit by most recent synchronization.
+      --score NUMBER          Mirror Status score shortlist (default: 20).
   -p, --protocols https       Mirror protocol; only HTTPS is accepted.
   -s, --save ABSOLUTE_PATH    Destination (default: /etc/pacman.d/mirrorlist).
       --non-interactive       Do not display configuration prompts.
@@ -37,14 +38,17 @@ require_positive_integer() {
 }
 
 if ((EUID == 0)); then
-    die 'run this script as a regular user, not with sudo'
+    as_root=()
+else
+    as_root=(sudo)
 fi
 
 age=12
 country='United States'
 fastest=5
 timeout=5
-latest=20
+latest=
+score=20
 protocols=https
 save=/etc/pacman.d/mirrorlist
 non_interactive=false
@@ -56,7 +60,7 @@ while (($#)); do
             print_help
             exit 0
             ;;
-        -a|--age|-c|--country|-f|--fastest|-t|--timeout|-l|--latest|-p|--protocols|-s|--save)
+        -a|--age|-c|--country|-f|--fastest|-t|--timeout|-l|--latest|--score|-p|--protocols|-s|--save)
             require_value "$@"
             option=$1
             value=$2
@@ -67,6 +71,7 @@ while (($#)); do
                 -f|--fastest) fastest=$value ;;
                 -t|--timeout) timeout=$value ;;
                 -l|--latest) latest=$value ;;
+                --score) score=$value ;;
                 -p|--protocols) protocols=$value ;;
                 -s|--save) save=$value ;;
             esac
@@ -90,9 +95,10 @@ done
 require_positive_integer age "$age"
 require_positive_integer fastest "$fastest"
 require_positive_integer timeout "$timeout"
-require_positive_integer latest "$latest"
+[[ -z $latest ]] || require_positive_integer latest "$latest"
+require_positive_integer score "$score"
 ((fastest >= MIN_MIRRORS)) || die "--fastest must be at least $MIN_MIRRORS"
-((latest >= fastest)) || die '--latest must be greater than or equal to --fastest'
+[[ -z $latest ]] || ((latest >= fastest)) || die '--latest must be greater than or equal to --fastest'
 [[ $protocols == https ]] || die '--protocols must be https'
 [[ $save == /* ]] || die '--save must be an absolute path'
 [[ -n $country ]] || die '--country must not be empty'
@@ -103,7 +109,7 @@ fi
 
 if ! command -v reflector >/dev/null 2>&1; then
     printf 'Reflector is not installed; installing it with a full system upgrade.\n'
-    sudo pacman -Syu --needed --noconfirm reflector
+    "${as_root[@]}" pacman -Syu --needed --noconfirm reflector
 fi
 
 candidate=$(mktemp "${TMPDIR:-/tmp}/arch-mirrorlist.XXXXXX")
@@ -114,19 +120,21 @@ cleanup() {
 trap cleanup EXIT
 
 printf 'Ranking current mirrors...\n'
+candidate_count=$((fastest * 2))
 reflector_args=(
     --age "$age"
-    --number "$fastest"
+    --number "$candidate_count"
     --download-timeout "$timeout"
-    --latest "$latest"
+    --score "$score"
     --protocol "$protocols"
     --completion-percent 100
     --ipv4
-    --exclude 'cicku\.me'
+    --exclude '(cicku\.me|mirrors\.misaka\.one|zackmyers\.io)'
     --save "$candidate"
     --sort rate
 )
 [[ -n $country ]] && reflector_args+=(--country "$country")
+[[ -n $latest ]] && reflector_args+=(--latest "$latest")
 reflector "${reflector_args[@]}"
 
 mapfile -t servers < <(awk '
@@ -141,7 +149,17 @@ for server in "${servers[@]}"; do
     [[ $server == https://* ]] || die "candidate contains a non-HTTPS server: $server"
 done
 
-printf 'Checking every ranked mirror against all enabled official repositories...\n'
+pending_artifacts=()
+while IFS='|' read -r repo location; do
+    case $repo in
+        core|extra|multilib)
+            filename=${location##*/}
+            [[ -n $filename ]] && pending_artifacts+=("$repo|$filename")
+            ;;
+    esac
+done < <(pacman -Sup --print-format '%r|%l' 2>/dev/null || true)
+
+printf 'Checking ranked mirrors against enabled repositories and pending packages...\n'
 {
     printf '################################################################################\n'
     printf '############ Arch Linux mirrorlist validated by update_mirrorlist.sh ###########\n'
@@ -162,11 +180,30 @@ for server in "${servers[@]}"; do
         fi
     done
     if $mirror_ok; then
+        for artifact in "${pending_artifacts[@]}"; do
+            repo=${artifact%%|*}
+            filename=${artifact#*|}
+            base=${server//\$repo/$repo}
+            base=${base//\$arch/x86_64}
+            for suffix in '' .sig; do
+                probe=${base%/}/${filename}${suffix}
+                if ! curl --fail --silent --show-error --location --head \
+                    --connect-timeout "$timeout" --max-time "$((timeout * 2))" -- "$probe" >/dev/null; then
+                    mirror_ok=false
+                    printf 'Rejected %s: pending artifact %s%s was unavailable.\n' \
+                        "$server" "$filename" "$suffix" >&2
+                    break 2
+                fi
+            done
+        done
+    fi
+    if $mirror_ok; then
         printf 'Server = %s\n' "$server" >>"$verified_candidate"
         verified_count=$((verified_count + 1))
+        ((verified_count >= fastest)) && break
     fi
 done
-((verified_count >= MIN_MIRRORS)) || die "fewer than $MIN_MIRRORS mirrors served metadata for core, extra, and multilib"
+((verified_count >= fastest)) || die "fewer than $fastest mirrors served all repository metadata and pending artifacts"
 mv -- "$verified_candidate" "$candidate"
 
 if $dry_run; then
@@ -177,15 +214,15 @@ fi
 
 timestamp=$(date -u +%Y%m%dT%H%M%SZ)
 staged="${save}.new.$$"
-if sudo test -e "$save"; then
+if "${as_root[@]}" test -e "$save"; then
     backup="${save}.backup-${timestamp}"
-    sudo cp --archive -- "$save" "$backup"
+    "${as_root[@]}" cp --archive -- "$save" "$backup"
     printf 'Backed up the existing mirrorlist to %s.\n' "$backup"
 fi
 
-sudo install --owner=root --group=root --mode=0644 -- "$candidate" "$staged"
-if ! sudo mv -- "$staged" "$save"; then
-    sudo rm -f -- "$staged"
+"${as_root[@]}" install --owner=root --group=root --mode=0644 -- "$candidate" "$staged"
+if ! "${as_root[@]}" mv -- "$staged" "$save"; then
+    "${as_root[@]}" rm -f -- "$staged"
     die 'failed to install the validated mirrorlist'
 fi
 
