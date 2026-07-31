@@ -21,22 +21,23 @@ The current script contributes avoidable risk:
 
 The script will:
 
-1. Refuse to run as root, preserving the existing user-facing invocation contract.
-2. Require `sudo` and install Reflector only when it is absent, using `pacman -Syu --needed reflector` rather than a database-only refresh.
-3. Default to HTTPS mirrors in the United States and Canada that synchronized within the last 12 hours.
-4. Consider up to 100 recently synchronized candidates and retain the 10 fastest successful mirrors, providing redundancy without an unnecessarily long list.
-5. Ask Reflector to write to a temporary file on the destination filesystem rather than directly to the active mirrorlist.
-6. Validate that the candidate file contains at least three distinct HTTPS `Server` entries and no active non-HTTPS entries.
-7. Probe the current `core.db` endpoint through the highest-ranked candidates. At least three candidates must return a successful HTTP response before installation.
+1. Run as either a regular user (elevating only replacement operations through `sudo`) or root when invoked by the hardened system service.
+2. Install Reflector only when it is absent, using `pacman -Syu --needed reflector` rather than a database-only refresh.
+3. Default to IPv4-capable HTTPS mirrors in the United States that synchronized within the last 12 hours, matching the user's Midway, Georgia location and observed lack of IPv6 connectivity.
+4. Shortlist the 20 best Mirror Status scores, benchmark them from the local connection, validate up to 10 ranked candidates, and retain the first 5 successful mirrors.
+5. Ask Reflector to write to a temporary file rather than directly to the active mirrorlist, then stage the validated file beside its destination before atomic replacement.
+6. Validate that the candidate file contains at least five distinct HTTPS `Server` entries and no active non-HTTPS entries.
+7. Probe `core`, `extra`, and `multilib` metadata plus every currently pending package and detached signature through each candidate. Exclude providers that failed real packages despite healthy Mirror Status data during this incident. At least five candidates must pass the complete contract before installation.
 8. Create or refresh a timestamped backup of the current mirrorlist and install the validated candidate atomically with root ownership and mode `0644`.
 9. Preserve the existing command-line customization options, validate option values, and add a non-interactive mode suitable for the `rr` alias and automation.
 10. Leave the current mirrorlist untouched and return a nonzero status if discovery, ranking, validation, probing, backup, or installation fails.
+11. Install a root-owned production copy and run the same validator weekly through a hardened systemd service and persistent timer.
 
 The `rr` alias in both the deployed shell configuration and repository copy will call this script in non-interactive mode. It will no longer contain a second Reflector policy.
 
 ## Boundaries
 
-The change will not enable the stock `reflector.timer`, alter `/etc/pacman.conf`, remove cached packages, update AUR packages, or change unrelated Arch maintenance scripts. The existing system upgrade will be retried only after the installed mirrorlist passes validation and package databases can be refreshed from it.
+The change will not enable the stock `reflector.timer`, alter `/etc/pacman.conf`, remove cached packages, update AUR packages, or change unrelated Arch maintenance scripts. A dedicated weekly timer will call the stronger validator instead of bypassing it. The existing system upgrade will be retried only after the installed mirrorlist passes validation and package databases can be refreshed from it.
 
 ## Error Handling and Safety
 
@@ -49,7 +50,7 @@ The change will not enable the stock `reflector.timer`, alter `/etc/pacman.conf`
 
 ## Verification
 
-Shell-level regression tests will exercise argument validation, Reflector invocation, failed discovery, insufficient servers, HTTP rejection, failed endpoint probes, successful atomic installation, backup creation, and cleanup. External commands will be supplied through a controlled test `PATH` so tests exercise the real script flow without modifying `/etc`.
+Shell-level regression tests will exercise argument validation, Reflector invocation, failed discovery, insufficient servers, HTTP rejection, failed repository and pending-artifact probes, successful atomic installation, backup creation, and cleanup. External commands will be supplied through a controlled test `PATH` so tests exercise the real script flow without modifying `/etc`.
 
 Verification will include:
 

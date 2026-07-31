@@ -84,6 +84,10 @@ url=${!#}
 case ${TEST_CURL_MODE:-success} in
     fail) exit 22 ;;
     two) [[ $url == *mirror1.example* || $url == *mirror2.example* ]] ;;
+    pending_one_bad)
+        [[ $url == *test-package-1-1-x86_64.pkg.tar.zst.sig && $url =~ mirror([5-9]|10)\.example ]] && exit 22
+        exit 0
+        ;;
     *) exit 0 ;;
 esac
 EOF
@@ -100,6 +104,11 @@ done
 exec /usr/bin/install "${args[@]}"
 EOF
 
+cat >"$mock_bin/pacman" <<'EOF'
+#!/usr/bin/env bash
+printf 'extra|file:///var/cache/pacman/pkg/test-package-1-1-x86_64.pkg.tar.zst\n'
+EOF
+
 chmod +x "$mock_bin"/*
 export PATH="$mock_bin:/usr/bin:/bin"
 export TEST_REFLECTOR_ARGS="$test_root/reflector.args"
@@ -112,9 +121,14 @@ else
     fail 'safe default dry run succeeds'
 fi
 
-for expected in '--age 12' '--country United States' '--number 5' '--download-timeout 5' '--latest 20' '--protocol https' '--completion-percent 100' '--ipv4' '--exclude cicku\.me' '--sort rate'; do
+for expected in '--age 12' '--country United States' '--number 10' '--download-timeout 5' '--score 20' '--protocol https' '--completion-percent 100' '--ipv4' '--exclude (cicku\.me|mirrors\.misaka\.one|zackmyers\.io)' '--sort rate'; do
     assert_contains "$TEST_REFLECTOR_ARGS" "$expected" "Reflector receives $expected"
 done
+if grep -Fq -- '--latest' "$TEST_REFLECTOR_ARGS"; then
+    fail 'default ranking uses Mirror Status score instead of an arbitrary latest slice'
+else
+    pass 'default ranking uses Mirror Status score instead of an arbitrary latest slice'
+fi
 
 assert_fails 'missing option value is rejected' "$script" --non-interactive --age
 assert_fails 'nonnumeric mirror count is rejected' "$script" --non-interactive --fastest many
@@ -162,8 +176,13 @@ else
     pass 'candidate temporary file is cleaned up'
 fi
 
+printf 'original mirrorlist\n' >"$destination"
+export TEST_CURL_MODE=pending_one_bad
+assert_fails 'candidate missing a pending package signature is rejected' "$script" --non-interactive --save "$destination"
+assert_contains "$destination" 'original mirrorlist' 'destination survives pending package validation failure'
+
 rr_line=$(grep -E '^alias rr=' "$aliases" || true)
-if [[ $rr_line == *'update_mirrorlist.sh --non-interactive'* && $rr_line != *'reflector '* ]]; then
+if [[ $rr_line == *'sudo /usr/local/sbin/update-arch-mirrors --non-interactive'* && $rr_line != *'reflector '* ]]; then
     pass 'rr delegates to the maintained mirror script'
 else
     fail 'rr delegates to the maintained mirror script'
