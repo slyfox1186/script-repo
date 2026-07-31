@@ -253,4 +253,4 @@ alias gus="bash <(curl -fsSL https://user-scripts.optimizethis.net)"
 alias gdl="bash <(curl -fsSL https://mirrors.optimizethis.net)"
 
 # REFLECTOR MIRROR SPEED TESTER
-alias rr='clear; sudo reflector --connection-timeout 3 --threads 1 --save /etc/pacman.d/mirrorlist --sort rate --verbose -c us -l 50 -n 3 --ipv4 -p https'
+alias rr='clear; /home/jman/tmp/script-repo/Bash/Arch-Linux-Scripts/update_mirrorlist.sh --non-interactive'
