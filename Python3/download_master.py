@@ -100,7 +100,7 @@ wsl_url = "https://raw.githubusercontent.com/slyfox1186/wsl2-kernel-build-script
 
 # Define script URLs using base URLs and script names
 slyfox1186_scripts = [
-    f"{sly_url}7zip-installer.sh",
+    f"{sly_url}7zip_installer.sh",
     f"{sly_url}build-dmd.sh",
     f"{sly_url}build-gparted.sh",
     f"{sly_url}build-grub-customizer.sh",
