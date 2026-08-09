@@ -24,21 +24,26 @@ fail() {
 
 # Function to detect the operating system and distribution
 detect_os_distro() {
+    local ID=""
+
     log "Detecting operating system and distribution..."
-    if [[ "$(uname -s)" == "Darwin" ]]; then
-        OS="macos"
-        DISTRO="macos"
-    elif [[ "$(uname -s)" == "Linux" ]]; then
-        OS="linux"
+    if [[ $(uname -s) == Darwin ]]; then
+        OS=macos
+        DISTRO=macos
+    elif [[ $(uname -s) == Linux ]]; then
+        OS=linux
         if [[ -f /etc/os-release ]]; then
             source /etc/os-release
-            DISTRO="$ID"
+            DISTRO="${ID,,}"
+            if [[ -z "$DISTRO" ]]; then
+                DISTRO=unknown
+            fi
         elif command -v lsb_release &>/dev/null; then
             DISTRO=$(lsb_release -si | tr '[:upper:]' '[:lower:]')
         elif [[ -f /etc/redhat-release ]]; then
             DISTRO=$(awk '{print tolower($1)}' /etc/redhat-release)
         else
-            DISTRO="unknown"
+            DISTRO=unknown
         fi
     else
         fail "Unsupported operating system: $(uname -s)"
@@ -51,11 +56,11 @@ detect_os_distro() {
 detect_architecture() {
     log "Detecting system architecture..."
     arch="$(uname -m)"
-    case "$arch" in
-        x86_64|amd64) arch_suffix="x86_64" ;;
-        i386|i686) arch_suffix="x86" ;;
-        aarch64|arm64) arch_suffix="arm64" ;;
-        armv7l|armv6l) arch_suffix="armv7l" ;;
+    case $arch in
+        x86_64|amd64) arch_suffix=x86_64 ;;
+        i386|i686) arch_suffix=x86 ;;
+        aarch64|arm64) arch_suffix=arm64 ;;
+        armv7l|armv6l) arch_suffix=armv7l ;;
         *) fail "Unrecognized architecture: $arch" ;;
     esac
     log "Architecture detected: $arch_suffix"
@@ -69,16 +74,16 @@ install_dependencies() {
             case "$DISTRO" in
                 ubuntu|debian|raspbian)
                     sudo apt update && \
-                    sudo apt -y install tar wget xz-utils curl sudo
+                    sudo apt -y install curl sudo tar wget xz-utils
                     ;;
                 centos|fedora|rhel)
-                    sudo yum install -y tar wget xz curl sudo
+                    sudo yum install -y curl sudo tar wget xz
                     ;;
                 arch|manjaro)
-                    sudo pacman -Syu --needed --noconfirm tar wget xz curl sudo
+                    sudo pacman -Syu --needed --noconfirm curl sudo tar wget xz
                     ;;
                 opensuse*|suse)
-                    sudo zypper install -y tar wget xz curl sudo
+                    sudo zypper install -y curl sudo tar wget xz
                     ;;
                 *)
                     fail "Unsupported Linux distribution: $DISTRO"
@@ -203,8 +208,9 @@ download_installer() {
 # Check for disk space (at least 1 GB free required)
 check_disk_space() {
     log "Checking available disk space..."
-    local required_space_kb=1048576 # 1 GB in KB
-    local available_space_kb
+    local available_space_kb required_space_kb
+    required_space_kb=1048576 # 1 GB in KB
+
     if command -v df &>/dev/null; then
         available_space_kb=$(df --output=avail "$HOME" | tail -1 | tr -d ' ')
     else
@@ -219,8 +225,8 @@ check_disk_space() {
 
 # Expand common home-directory shortcuts in interactive path input.
 normalize_install_directory() {
-    local install_dir=$1
-
+    local install_dir
+    install_dir="$1"
     install_dir="${install_dir/#\~/$HOME}"
     install_dir="${install_dir//\$\{HOME\}/$HOME}"
     install_dir="${install_dir//\$HOME/$HOME}"
@@ -234,9 +240,9 @@ normalize_install_directory() {
 
 # Prompt the user for installation directory and handle existing installation
 get_install_directory() {
-    local default_dir="$HOME/miniconda3"
-    local install_dir
-    local first_prompt=true
+    local default_dir first_prompt install_dir
+    default_dir="$HOME/miniconda3"
+    first_prompt=true
 
     while true; do
         if $first_prompt; then
@@ -247,7 +253,7 @@ get_install_directory() {
             read -rp "Enter a different installation directory: " install_dir
         fi
 
-        install_dir=$(normalize_install_directory "$install_dir")
+        install_dir="$(normalize_install_directory "$install_dir")"
 
         # Check for spaces in the path
         if [[ "$install_dir" =~ \  ]]; then
@@ -260,7 +266,7 @@ get_install_directory() {
             case "$overwrite_choice" in
                 y|Y)
                     log "Overwriting existing Miniconda installation at '$install_dir'..."
-                    rm -rf "$install_dir"
+                    rm -fr "$install_dir"
                     log "Existing installation removed."
                     echo "$install_dir"
                     break
@@ -358,7 +364,7 @@ list_python_versions() {
     log "Fetching available Python versions from Conda..."
     # Fetch the list of Python versions available in the default channels
     # Limiting to unique versions and sorting them
-    available_versions=$(conda search python | grep -E "^python[[:space:]]+" | grep -v 'rc' | awk '{print $2}' | sort -uV)
+    available_versions=$(conda search python | grep -E '^python[[:space:]]+' | grep -v 'rc' | awk '{print $2}' | sort -uV)
 
     if [[ -z "$available_versions" ]]; then
         fail "Failed to retrieve Python versions from Conda."
@@ -398,7 +404,9 @@ get_env_name() {
             continue
         fi
         # Check for valid Conda environment naming
-        if [[ "$env_name" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+        local regex_pattern
+        regex_pattern='^[a-zA-Z0-9_-]+$'
+        if [[ "$env_name" =~ $regex_pattern ]]; then
             echo "$env_name"
             break
         else
@@ -419,10 +427,9 @@ check_env_exists() {
 
 # Create Conda environment
 create_conda_env() {
-    local env_name
-    local python_version
-    env_name=$1
-    python_version=$2
+    local env_name python_version
+    env_name="$1"
+    python_version="$2"
 
     log "Creating Conda environment '$env_name' with Python $python_version..."
     if ! conda create -y -n "$env_name" python="$python_version" 2>>"$LOGFILE" | tee -a "$LOGFILE"; then
@@ -445,7 +452,7 @@ main() {
     download_installer
 
     # Get installation directory and install
-    install_dir=$(get_install_directory)
+    install_dir="$(get_install_directory)"
     install_miniconda "$install_dir"
 
     # Initialize Conda
@@ -458,7 +465,7 @@ main() {
     list_python_versions
 
     # Prompt user for Python version
-    python_version=$(get_python_version)
+    python_version="$(get_python_version)"
 
     # Prompt user for Conda environment name
     env_name=$(get_env_name)
