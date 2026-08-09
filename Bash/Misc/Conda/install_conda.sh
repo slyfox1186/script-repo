@@ -102,24 +102,25 @@ install_dependencies() {
 # Function to install 7-Zip using the provided GitHub script
 install_7zip() {
     log "Installing 7-Zip using the provided installer script..."
-    local installer_url="https://raw.githubusercontent.com/slyfox1186/script-repo/refs/heads/main/Bash/Installer-Scripts/SlyFox1186-Scripts/7zip_installer.sh"
-    local installer_script="$TEMP_DIR/7zip_installer.sh"
+    local installer_script installer_url
+    installer_url="https://raw.githubusercontent.com/slyfox1186/script-repo/refs/heads/main/Bash/Installer-Scripts/SlyFox1186-Scripts/7zip_installer.sh"
+    installer_script="$TEMP_DIR/7zip_installer.sh"
 
     log "Downloading 7-Zip installer from $installer_url..."
     if command -v wget &> /dev/null; then
-        wget "$installer_url" -O "$installer_script" 2>>"$LOGFILE" || fail "Failed to download 7-Zip installer using wget."
+        wget $installer_url -O $installer_script 2>>"$LOGFILE" || fail "Failed to download 7-Zip installer using wget."
     elif command -v curl &> /dev/null; then
-        curl -L "$installer_url" -o "$installer_script" 2>>"$LOGFILE" || fail "Failed to download 7-Zip installer using curl."
+        curl -fsSL $installer_url -o $installer_script 2>>"$LOGFILE" || fail "Failed to download 7-Zip installer using curl."
     else
         fail "Neither wget nor curl is available for downloading the 7-Zip installer."
     fi
 
-    if [[ ! -f "$installer_script" ]]; then
+    if [[ ! -f $installer_script ]]; then
         fail "7-Zip installer script was not downloaded successfully."
     fi
 
     log "Executing 7-Zip installer script with sudo privileges..."
-    sudo bash "$installer_script" 2>>"$LOGFILE" || fail "Failed to execute the 7-Zip installer script."
+    sudo bash $installer_script 2>>"$LOGFILE" || fail "Failed to execute the 7-Zip installer script."
 
     log "7-Zip installed successfully."
 }
