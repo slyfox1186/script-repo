@@ -231,6 +231,10 @@ main() {
         if ! apt install -y curl; then
             echo "Failed to install curl. Please install it manually."
             return 1
+        else
+            echo "curl was successfully installed."
+            sleep 2
+            return 0
         fi
     fi
 
