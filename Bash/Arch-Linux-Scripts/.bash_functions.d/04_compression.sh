@@ -85,85 +85,226 @@ untar() {
     fi
 }
 
-# Create a .7z file with max compression settings
-# Optimized version combining the duplicate functions with a compression level parameter
+# Create a .7z file with configurable compression level
 7z_compress() {
-  local choice source_dir archive_name compression_level="$1"
-  
-  # Default to level 9 if not specified
-  [[ -z "$compression_level" ]] && compression_level=9
-  
-  # Validate compression level
-  if [[ ! "$compression_level" =~ ^[1-9]$ ]]; then
-    echo "Invalid compression level. Using default level 9."
-    compression_level=9
-  fi
+    local choice source_dir archive_name compression_level="$1"
 
-  clear
+    # Default to level 9 if not specified
+    [[ -z "$compression_level" ]] && compression_level=9
 
-  if [[ -d "$2" ]]; then
-    source_dir="$2"
-  else
-    read -rp "Please enter the source folder path: " source_dir
-  fi
+    # Validate compression level
+    if [[ ! "$compression_level" =~ ^[1-9]$ ]]; then
+        echo "Invalid compression level. Using default level 9."
+        compression_level=9
+    fi
 
-  if [[ ! -d "$source_dir" ]]; then
-    echo "Invalid directory path: $source_dir"
-    return 1
-  fi
+    clear
 
-  # Strip trailing slashes so basename extraction yields "name" not "" for inputs like "tmp/" or "~/tmp/"
-  while [[ "$source_dir" == */ && "$source_dir" != "/" ]]; do
-    source_dir="${source_dir%/}"
-  done
+    if [[ -d "$2" ]]; then
+        source_dir="$2"
+    else
+        read -rp "Please enter the source folder path: " source_dir
+    fi
 
-  archive_name="${source_dir##*/}.7z"
+    if [[ ! -d "$source_dir" ]]; then
+        echo "Invalid directory path: $source_dir"
+        return 1
+    fi
 
-  # Collect entries (incl. dotfiles) without persisting shell-option changes
-  local _shopt_state
-  _shopt_state=$(shopt -p nullglob dotglob)
-  shopt -s nullglob dotglob
-  local -a entries=("$source_dir"/*)
-  eval "$_shopt_state"
+    # Strip trailing slashes so basename extraction yields a directory name
+    while [[ "$source_dir" == */ && "$source_dir" != "/" ]]; do
+        source_dir="${source_dir%/}"
+    done
 
-  if (( ${#entries[@]} == 0 )); then
-    echo "Source directory is empty: $source_dir"
-    return 1
-  fi
+    archive_name="${source_dir##*/}.7z"
 
-  7z a -y -t7z -m0=lzma2 -mx"$compression_level" "$archive_name" "${entries[@]}"
+    # Collect entries, including dotfiles, without persisting shell-option changes
+    local _shopt_state
+    _shopt_state=$(shopt -p nullglob dotglob)
+    shopt -s nullglob dotglob
+    local -a entries=("$source_dir"/*)
+    eval "$_shopt_state"
 
-  echo
-  echo "Do you want to delete the original directory?"
-  echo "[1] Yes"
-  echo "[2] No"
-  echo
-  read -rp "Your choice is (1 or 2): " choice
-  echo
+    if (( ${#entries[@]} == 0 )); then
+        echo "Source directory is empty: $source_dir"
+        return 1
+    fi
 
-  case $choice in
-    1) rm -fr -- "$source_dir" && echo "Original directory deleted." ;;
-    2|"") echo "Original directory not deleted." ;;
-    *) echo "Bad user input. Original directory not deleted." ;;
-  esac
+    7z a -y -t7z -m0=lzma2 -mx"$compression_level" \
+        "$archive_name" "${entries[@]}"
+
+    echo
+    echo "Do you want to delete the original directory?"
+    echo "[1] Yes"
+    echo "[2] No"
+    echo
+    read -rp "Your choice is (1 or 2): " choice
+    echo
+
+    case $choice in
+        1)
+            rm -fr -- "$source_dir" &&
+                echo "Original directory deleted."
+            ;;
+        2|"")
+            echo "Original directory not deleted."
+            ;;
+        *)
+            echo "Bad user input. Original directory not deleted."
+            ;;
+    esac
 }
 
 # Maintain backward compatibility
 7z_1() {
-  7z_compress 1 "$1"
+    7z_compress 1 "$1"
+}
+
+7z_2() {
+    7z_compress 2 "$1"
+}
+
+7z_3() {
+    7z_compress 3 "$1"
+}
+
+7z_4() {
+    7z_compress 4 "$1"
 }
 
 7z_5() {
-  7z_compress 5 "$1"
+    7z_compress 5 "$1"
+}
+
+7z_6() {
+    7z_compress 6 "$1"
+}
+
+7z_7() {
+    7z_compress 7 "$1"
+}
+
+7z_8() {
+    7z_compress 8 "$1"
 }
 
 7z_9() {
-  7z_compress 9 "$1"
+    7z_compress 9 "$1"
 }
+
+
+# Create a .zip file with configurable compression level using 7-Zip
+zip_compress() {
+    local choice source_dir archive_name compression_level="$1"
+
+    # Default to level 9 if not specified
+    [[ -z "$compression_level" ]] && compression_level=9
+
+    # Validate compression level
+    if [[ ! "$compression_level" =~ ^[1-9]$ ]]; then
+        echo "Invalid compression level. Using default level 9."
+        compression_level=9
+    fi
+
+    clear
+
+    if [[ -d "$2" ]]; then
+        source_dir="$2"
+    else
+        read -rp "Please enter the source folder path: " source_dir
+    fi
+
+    if [[ ! -d "$source_dir" ]]; then
+        echo "Invalid directory path: $source_dir"
+        return 1
+    fi
+
+    # Strip trailing slashes so basename extraction yields a directory name
+    while [[ "$source_dir" == */ && "$source_dir" != "/" ]]; do
+        source_dir="${source_dir%/}"
+    done
+
+    archive_name="${source_dir##*/}.zip"
+
+    # Collect entries, including dotfiles, without persisting shell-option changes
+    local _shopt_state
+    _shopt_state=$(shopt -p nullglob dotglob)
+    shopt -s nullglob dotglob
+    local -a entries=("$source_dir"/*)
+    eval "$_shopt_state"
+
+    if (( ${#entries[@]} == 0 )); then
+        echo "Source directory is empty: $source_dir"
+        return 1
+    fi
+
+    7z a -y -tzip -mm=Deflate -mx"$compression_level" \
+        "$archive_name" "${entries[@]}"
+
+    echo
+    echo "Do you want to delete the original directory?"
+    echo "[1] Yes"
+    echo "[2] No"
+    echo
+    read -rp "Your choice is (1 or 2): " choice
+    echo
+
+    case $choice in
+        1)
+            rm -fr -- "$source_dir" &&
+                echo "Original directory deleted."
+            ;;
+        2|"")
+            echo "Original directory not deleted."
+            ;;
+        *)
+            echo "Bad user input. Original directory not deleted."
+            ;;
+    esac
+}
+
+# ZIP compression-level shortcuts
+zip_1() {
+    zip_compress 1 "$1"
+}
+
+zip_2() {
+    zip_compress 2 "$1"
+}
+
+zip_3() {
+    zip_compress 3 "$1"
+}
+
+zip_4() {
+    zip_compress 4 "$1"
+}
+
+zip_5() {
+    zip_compress 5 "$1"
+}
+
+zip_6() {
+    zip_compress 6 "$1"
+}
+
+zip_7() {
+    zip_compress 7 "$1"
+}
+
+zip_8() {
+    zip_compress 8 "$1"
+}
+
+zip_9() {
+    zip_compress 9 "$1"
+}
+
 
 ## RECURSIVELY UNZIP ZIP FILES AND NAME THE OUTPUT FOLDER THE SAME NAME AS THE ZIP FILE
 zipr() {
     clear
-    sudo find . -type f -iname "*.zip" -exec sh -c 'unzip -o -d "${1%.*}" "$1"' _ {} \;
+    sudo find . -type f -iname "*.zip" \
+        -exec sh -c 'unzip -o -d "${1%.*}" "$1"' _ {} \;
     sudo find . -type f -iname "*.zip" -exec trash-put {} +
 }
