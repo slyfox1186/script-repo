@@ -3,6 +3,7 @@
 import argparse
 import os
 import re
+import shlex
 import shutil
 import signal
 import subprocess
@@ -151,7 +152,7 @@ def prompt_for_input():
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Trim video files using ffmpeg with keyframe-accurate cuts.",
+        description="Trim video files without re-encoding; MP4/MOV preserve the requested playback start.",
         add_help=False,
     )
     parser.add_argument("-f", "--file", dest="file_list", default="")
@@ -159,6 +160,7 @@ def parse_args():
     parser.add_argument("-l", "--list", dest="input_list", default="")
     parser.add_argument("--start", dest="trim_start", default="0")
     parser.add_argument("--end", dest="trim_end", default="0")
+    parser.add_argument("--copy", action="store_true", help="Copy streams without re-encoding (always enabled).")
     parser.add_argument("-a", "--append", dest="append_text", default="_trimmed")
     parser.add_argument("-p", "--prepend", dest="prepend_text", default="")
     parser.add_argument("-o", "--overwrite", action="store_true")
@@ -174,7 +176,7 @@ def main():
         print_color(GREEN,
             f"Usage: {sys.argv[0]} [-f <file_list> | -i <input_file> | -l <input_list>] "
             "[--start <trim_start_seconds>] [--end <trim_end_seconds>] "
-            "[--append <append_text>] [--prepend <prepend_text>] [--overwrite] [--verbose]"
+            "[--copy] [--append <append_text>] [--prepend <prepend_text>] [--overwrite] [--verbose]"
         )
         print()
         print("Options:")
@@ -184,6 +186,10 @@ def main():
         print("  -l, --list             Specify the path to a text file containing the full paths to the video files.")
         print("      --start            Duration in seconds to trim from the start of the video.")
         print("      --end              Duration in seconds to trim from the end of the video.")
+        print("      --copy             Copy video/audio without re-encoding (always enabled, even if omitted).")
+        print("                        MP4/MOV/M4V use edit lists for the requested playback start.")
+        print("                        Earlier keyframe data remains for decoding; the player must honor edit lists.")
+        print("                        Other formats still snap the start to a keyframe; end cuts snap forward.")
         print("  -a, --append           Specify text to append to the output file name. Ignored if --overwrite is used.")
         print("  -p, --prepend          Specify text to prepend to the output file name. Ignored if --overwrite is used.")
         print("  -o, --overwrite        Overwrite the input file instead of creating a new one.")
@@ -253,9 +259,18 @@ def main():
                 print_color(RED, f"Error: Could not read duration of {input_file}. Skipping.")
                 continue
 
-            # Calculate start keyframe — snap to keyframe at or before the
-            # requested time so stream copy produces clean frames.
-            if trim_start > 0:
+            base_name, extension = os.path.splitext(input_file)
+            use_editlist = extension.lower() in (".mp4", ".mov", ".m4v")
+
+            # MP4/MOV can retain the preceding keyframe as decoder preroll,
+            # while an edit list hides frames before the requested start.
+            # Other containers retain the existing keyframe-aligned behavior.
+            if use_editlist:
+                formatted_start_time = trim_start
+                if verbose and trim_start > 0:
+                    print_color(YELLOW,
+                        f"Keeping requested start at {trim_start}s using an MP4/MOV edit list (stream copy).")
+            elif trim_start > 0:
                 formatted_start_time = find_keyframe_at_or_before(input_file, trim_start)
                 if formatted_start_time is None:
                     print_color(YELLOW, f"No keyframe found at or before {trim_start}s, using 0.")
@@ -285,7 +300,6 @@ def main():
                 end_hms = seconds_to_hms(formatted_end_time or 0)
                 print_color(YELLOW, f"Trimming from {start_hms} ({formatted_start_time}s) to {end_hms} ({formatted_end_time}s)")
 
-            base_name, extension = os.path.splitext(input_file)
             if overwrite:
                 final_output = input_file
             else:
@@ -299,11 +313,19 @@ def main():
                 cmd.append("-y")
 
             if formatted_start_time is not None:
-                cmd.extend(["-noaccurate_seek", "-ss", str(formatted_start_time)])
+                if not use_editlist:
+                    cmd.append("-noaccurate_seek")
+                cmd.extend(["-ss", str(formatted_start_time)])
             cmd.extend(["-i", input_file])
             if formatted_end_time is not None:
                 cmd.extend(["-to", str(formatted_end_time - (formatted_start_time or 0))])
-            cmd.extend(["-c", "copy", "-avoid_negative_ts", "make_zero"])
+            cmd.extend(["-c", "copy"])
+            if use_editlist:
+                # Shifting negative preroll timestamps to zero would expose
+                # the earlier keyframe and undo the requested playback start.
+                cmd.extend(["-avoid_negative_ts", "disabled", "-use_editlist", "1"])
+            else:
+                cmd.extend(["-avoid_negative_ts", "make_zero"])
 
             if overwrite:
                 temp_dir = os.path.dirname(input_file) or "."
@@ -311,6 +333,8 @@ def main():
                 os.close(fd)
                 _temp_files.add(temp_output)
                 cmd.append(temp_output)
+                if verbose:
+                    print_color(YELLOW, f"Command: {shlex.join(cmd)}")
                 result = subprocess.run(cmd)
                 if result.returncode == 0:
                     os.replace(temp_output, input_file)
@@ -324,6 +348,8 @@ def main():
                     continue
             else:
                 cmd.append(final_output)
+                if verbose:
+                    print_color(YELLOW, f"Command: {shlex.join(cmd)}")
                 result = subprocess.run(cmd)
                 if result.returncode == 0:
                     print_color(GREEN, f"Successfully processed {input_file} into {final_output}\n")
