@@ -241,7 +241,9 @@ csearch() {
 fix_key() {
     clear
 
-    local file url
+    # pipefail so a failed download or dearmor is not reported as success.
+    local - file url
+    set -o pipefail
 
     if [[ -z "$1" ]] && [[ -z "$2" ]]; then
         read -p 'Enter the file name to store in /etc/apt/trusted.gpg.d: ' file
@@ -253,7 +255,7 @@ fix_key() {
         url="$2"
     fi
 
-
+    if curl -fsS "$url" | gpg --dearmor | sudo tee "/etc/apt/trusted.gpg.d/$file" >/dev/null; then
         echo 'The key was successfully added!'
     else
         echo 'The key FAILED to add!'
@@ -731,12 +733,13 @@ listppas() {
 
     for apt in $(find /etc/apt/ -type f -name \*.list)
     do
+        grep -Po "(?<=^deb\s).*?(?=#|$)" "$apt" | while read -r entry
         do
             host="$(echo "$entry" | cut -d/ -f3)"
             user="$(echo "$entry" | cut -d/ -f4)"
             ppa="$(echo "$entry" | cut -d/ -f5)"
             if [ "ppa.launchpad.net" = "$host" ]; then
-                echo sudo apt-add-repository ppa:"$USER/$ppa"
+                echo sudo apt-add-repository ppa:"$user/$ppa"
             else
                 echo sudo apt-add-repository \'deb "$entry"\'
             fi
@@ -827,85 +830,130 @@ hw_mon() {
 }
 
 
-7z_1() {
-    local answer source output
-    clear
+# Print a listing that changes whenever an entry under the directory is added,
+# removed, resized, or modified.
+_7z_dir_snapshot() {
+    (set -o pipefail; find "$1" -printf '%P\t%y\t%s\t%T@\n' | LC_ALL=C sort)
+}
 
-    if [ -d "$1" ]; then
-        source_dir="$1"
-        7z a -y -t7z -m0=lzma2 -mx1 "$source_dir".7z ./"$source_dir"/*
-    else
-        read -p 'Please enter the source folder path: ' source_dir
-        7z a -y -t7z -m0=lzma2 -mx1 "$source_dir".7z ./"$source_dir"/*
+# Archive the contents of a directory, hidden entries included, into
+# <source_dir><extension> beside it, then offer to delete the directory.
+# Deletion is offered only when 7-Zip reports complete success, the new archive
+# passes `7z t`, the archive lies outside the directory, and the directory has
+# not changed since it was read.
+# Usage: _7z_archive_then_offer_delete <source_dir> <extension> <7z switches...>
+_7z_archive_then_offer_delete() {
+    local source_dir="$1" extension="$2" archive archive_parent source_real snapshot status answer
+    shift 2
+
+    while [[ "$source_dir" == */ && "$source_dir" != "/" ]]; do
+        source_dir="${source_dir%/}"
+    done
+
+    if [[ ! -d "$source_dir" ]]; then
+        printf "\n%s\n\n" "Invalid directory path: $source_dir"
+        return 1
+    fi
+
+    source_real=$(realpath -- "$source_dir") || return 1
+    if [[ -z "$(find "$source_real" -mindepth 1 -print -quit)" ]]; then
+        printf "\n%s\n\n" "Source directory is empty: $source_dir"
+        return 1
+    fi
+
+    archive="$source_dir$extension"
+    archive_parent=$(cd -- "$(dirname -- "$archive")" && pwd -P) || return 1
+    if [[ "$archive_parent/" == "${source_real%/}/"* ]]; then
+        printf "\n%s\n\n" "Refusing to write $archive inside the directory being archived." >&2
+        return 1
+    fi
+    if [[ -e "$archive" || -L "$archive" ]]; then
+        printf "\n%s\n\n" "$archive already exists and 7-Zip would merge into it; move or delete it first." >&2
+        return 1
+    fi
+
+    if ! snapshot=$(_7z_dir_snapshot "$source_real"); then
+        printf "\n%s\n\n" "Could not read every entry in $source_dir; nothing was archived." >&2
+        return 1
+    fi
+
+    7z a -y "$@" -- "$archive" "$source_dir/."
+    status=$?
+    if (( status != 0 )); then
+        rm -f -- "$archive"
+        printf "\n%s\n\n" "7-Zip failed (exit $status); the original directory was kept: $source_dir" >&2
+        return 1
+    fi
+
+    if ! 7z t -- "$archive" >/dev/null; then
+        rm -f -- "$archive"
+        printf "\n%s\n\n" "The new archive failed its integrity test and was removed; the original directory was kept: $source_dir" >&2
+        return 1
+    fi
+
+    if [[ "$(_7z_dir_snapshot "$source_real")" != "$snapshot" ]]; then
+        printf "\n%s\n\n" "$source_dir changed while it was being archived, so $archive may not match it; the original directory was kept." >&2
+        return 1
     fi
 
     printf "\n%s\n\n%s\n%s\n\n"                    \
         'Do you want to delete the original file?' \
         '[1] Yes'                                  \
         '[2] No'
-    read -p 'Your choices are (1 or 2): ' answer
+    read -rp 'Your choices are (1 or 2): ' answer
     clear
 
     case "$answer" in
-        1)      sudo rm -fr "$source_dir";;
+        1)
+            if [[ "$(_7z_dir_snapshot "$source_real")" != "$snapshot" ]]; then
+                printf "\n%s\n\n" "$source_dir changed after it was archived; original directory not deleted." >&2
+                return 1
+            fi
+            sudo rm -fr -- "$source_dir"
+            ;;
         2)      clear;;
         '')     clear;;
         *)      printf "\n%s\n\n" 'Bad user input...';;
     esac
+}
+
+7z_1() {
+    local source_dir
+    clear
+
+    if [ -d "$1" ]; then
+        source_dir="$1"
+    else
+        read -p 'Please enter the source folder path: ' source_dir
+    fi
+
+    _7z_archive_then_offer_delete "$source_dir" .7z -t7z -m0=lzma2 -mx1
 }
 
 7z_5() {
-    local answer source output
+    local source_dir
     clear
 
     if [ -d "$1" ]; then
         source_dir="$1"
-        7z a -y -t7z -m0=lzma2 -mx5 "$source_dir".7z ./"$source_dir"/*
     else
         read -p 'Please enter the source folder path: ' source_dir
-        7z a -y -t7z -m0=lzma2 -mx5 "$source_dir".7z ./"$source_dir"/*
     fi
 
-    printf "\n%s\n\n%s\n%s\n\n"                    \
-        'Do you want to delete the original file?' \
-        '[1] Yes'                                  \
-        '[2] No'
-    read -p 'Your choices are (1 or 2): ' answer
-    clear
-
-    case "$answer" in
-        1)      sudo rm -fr "$source_dir";;
-        2)      clear;;
-        '')     clear;;
-        *)      printf "\n%s\n\n" 'Bad user input...';;
-    esac
+    _7z_archive_then_offer_delete "$source_dir" .7z -t7z -m0=lzma2 -mx5
 }
 
 7z_9() {
-    local answer source output
+    local source_dir
     clear
 
     if [ -d "$1" ]; then
         source_dir="$1"
-        7z a -y -t7z -m0=lzma2 -mx9 "$source_dir".7z ./"$source_dir"/*
     else
         read -p 'Please enter the source folder path: ' source_dir
-        7z a -y -t7z -m0=lzma2 -mx9 "$source_dir".7z ./"$source_dir"/*
     fi
 
-    printf "\n%s\n\n%s\n%s\n\n"                    \
-        'Do you want to delete the original file?' \
-        '[1] Yes'                                  \
-        '[2] No'
-    read -p 'Your choices are (1 or 2): ' answer
-    clear
-
-    case "$answer" in
-        1)      sudo rm -fr "$source_dir";;
-        2)      clear;;
-        '')     clear;;
-        *)      printf "\n%s\n\n" 'Bad user input...';;
-    esac
+    _7z_archive_then_offer_delete "$source_dir" .7z -t7z -m0=lzma2 -mx9
 }
 
 

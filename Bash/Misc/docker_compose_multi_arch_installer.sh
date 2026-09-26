@@ -294,18 +294,22 @@ main() {
         return 1
     fi
 
+    # Install only curl, then continue with the Compose installation.
     if ! command -v curl >/dev/null 2>&1; then
-        error "curl could not be found so it will be downloaded."
-        apt update && apt -y full-upgrade
-        if ! apt install -y curl; then
-            echo "Failed to install curl. Please install it manually."
-            sleep 2
+        if ! command -v apt-get >/dev/null 2>&1; then
+            error "curl is required. Install it with your package manager and run this script again."
             return 1
-        else
-            echo "curl was successfully installed."
-            sleep 2
-            return 0
         fi
+        log "curl was not found; installing it with apt-get."
+        if ! { apt-get update && apt-get install -y curl; }; then
+            error "Failed to install curl. Please install it manually."
+            return 1
+        fi
+        if ! command -v curl >/dev/null 2>&1; then
+            error "curl is still unavailable after installation."
+            return 1
+        fi
+        log "curl was installed successfully."
     fi
 
     fetch_and_install_docker_compose "$force"

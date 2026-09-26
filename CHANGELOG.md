@@ -2,6 +2,41 @@
 
 Log of corpus-wide bug sweeps performed on `Python3/` and `Bash/`. Purpose: record every change, its reasoning, and the triage knowledge needed to repeat this task without re-litigating settled decisions.
 
+## 2026-09-26 — Review of the files changed since the July sweeps
+
+**Method:** Claude investigated the 11 files changed since `50791ff4`; GPT Codex reviewed them independently; every finding was re-verified against the code before fixing. Each fix has regression tests under `tests/` (new; run with `python -m pytest`), which pass on Python 3.13 and on the 3.9 floor (3 end-to-end pip tests skip on 3.9 because the pip a 3.9 venv bundles omits local-wheel hashes from `--report`).
+
+### Data loss
+- **Compress-then-delete helpers (18 functions in 7 files):** `7z_1/5/9`, `7z_compress`, `zip_compress` offered to delete the source even when 7z failed. The Arch, Debian bookworm, Raspbian and jammy-bak `7z_1/5/9` also dropped dotfiles (`"$src"/*` glob). An absolute source compressed from inside itself was deleted together with the new archive. Each file now has one helper that deletes only when 7z exits 0, `7z t` passes, the archive is outside the source, no archive existed beforehand (7z would merge into it), and a before/after listing of the source is unchanged. The input is `"$dir/."`, which includes dotfiles without touching shell options.
+- **`llama_cpp_installer.py`** deleted any existing `./llama.cpp` (including a user's own clone) before even checking the network. It now deletes only a checkout carrying its marker in `.git`, with nothing outside `build/` in `git status --ignored`, and no commits or stashes beyond upstream and the ones it fetched. The remote is resolved first, the tree is checked at preflight, runs are serialized by a directory lock, and end-of-run cleanup follows the same rule. Trees made by earlier versions have no marker and are refused once; move or delete them manually.
+- **`7zip_installer.sh`** ran `sudo rm -fr "$PWD/7zip-install-script"` on whatever was there. It now works in a private `mktemp -d` directory and removes only that (kept and printed with `--no-cleanup`).
+- **`install_conda.sh`** `rm -fr`'d any existing directory typed at the prompt (`~` resolved to `$HOME`). Paths are canonicalized; `/`, the home directory and its parents, symlinks and non-empty non-conda directories are refused; a conda install (`conda-meta/` + `bin/conda`) is removed only after confirmation that names the loss of its environments, and only after the installer downloaded.
+
+### Broken primary paths
+- **`docker_compose_multi_arch_installer.sh`:** with curl missing it ran `apt full-upgrade`, installed curl and exited 0 without installing Compose. It now installs only curl (`apt-get`), fails clearly without apt-get, and continues to the install.
+- **`llama_cpp_installer.py`:** with `/usr/lib/ccache` ahead of `/usr/bin` on PATH (Ubuntu's ccache setup, and this host's), GCC discovery found nothing; `_which_non_shim` now walks all PATH entries. `zip(..., strict=False)` raised `TypeError` on Python 3.9 (executed). Built binaries must run (`--version`, `--list-devices`) before they replace the installed ones, and a failing smoke test is an error instead of "BUILD SUCCEEDED". Child PATH/LD_LIBRARY_PATH no longer contain empty (current-directory) entries. A signal-killed child exits 128+N.
+- **`install_conda.sh`:** checked for tools before installing them, rejected every distro not listed by `ID` (Mint, Pop!_OS), ran `pacman -Syu`, and used GNU-only `df --output` (fails on macOS). Dependencies are now installed only when missing, matched by `ID` then `ID_LIKE`, without whole-system upgrades; disk space uses `df -Pk` on the chosen install location. The predictable `/tmp` workspace is now `mktemp -d` with a cleanup trap; the file can be sourced without side effects. `7zip_installer.sh` got the same `ID_LIKE`/no-`-Syu`/failure propagation.
+- **Bookworm `plain-scripts/.bash_functions`:** `fix_key` and `listppas` had each lost a line since the initial commit, so sourcing stopped at the syntax error and every later function (`toa`, `7z_*`, ...) was never defined. Restored from the sibling copy; `fix_key` uses pipefail; `listppas` printed `$USER` for `$user`. CI now runs `bash -n` on the sourced dotfiles too.
+
+### `pip_updater.py` transaction safety
+- `--dry-run` could roll back an interrupted transaction; it now stops with "run without --dry-run". Unknown journal states are refused.
+- Existing `pip check` conflicts made every update unsolvable (every retained package was a `==` root). Broken holders are now `-c` constraints with their still-satisfied requirements; a target-interpreter check refuses plans that change unselected packages, newly break a satisfied requirement, or downgrade (unless `--allow-downgrade`, which `--yes` does not imply). Non-PEP 440 installed versions are not emitted as invalid pins. Postflight compares broken dependency edges, not raw text.
+- A `%0A`-encoded wheel URL injected aria2 options (`dir=..` escaped the download directory); filenames are checked against the wheel grammar after decoding and again at the aria2 input.
+- Wheel RECORD rows must match archive members (a row could point uninstall at `bin/python`); shared files that pip's one-package-at-a-time order could delete are refused, shared bytes are backed up and restored on rollback, and installed files are verified.
+- Rollback wheels must match the resolver's SHA-256 (the pip-download fallback included), may only write what the installed copy owns, are recorded in the journal (v2) and re-verified before recovery. A yanked exact installed version is allowed only as a rollback copy.
+- `PIP_PREFIX/TARGET/ROOT/USER` and matching config keys are refused before any mutation.
+- Header destinations and generated `.pyc` files follow the target pip's scheme.
+- Cached holds no longer block a joint update with their capper.
+- `stream_command` no longer kills a child at output EOF, and a child that does not read stdin cannot stall past the timeout.
+- SIGHUP exits 129 (was 143).
+
+### Repository
+- CI (`.github/workflows/python-package.yml`) now runs the documented baseline (Ruff select, `py_compile`, `bash -n`, `shellcheck -S error`) and pytest on Python 3.9 and 3.13. The workflow is still disabled on GitHub (`disabled_manually`); re-enabling it is the owner's call.
+- README: removed Debian 11 and Ubuntu 18.04/20.04 from the tested list (trees deleted 2026-07-05). `SECURITY.md` replaced the GitHub template with the enabled private vulnerability reporting route.
+
+### Not changed (owner decision)
+- Every `*.optimizethis.net` install hostname is NXDOMAIN at the authoritative nameservers (`dns1.p09.nsone.net`, checked 2026-09-26), so the README one-liners and menu downloads fail. Restoring the DNS records or rewriting ~190 references to `raw.githubusercontent.com` is an owner decision; the hostname-to-script mapping lived in DNS and is not recoverable from the repo.
+
 ## 2026-07-05 — Second corpus-wide sweep (deep semantic pass)
 
 **Method:** baseline (`ruff` + `shellcheck -S error` + `py_compile` + `bash -n`) was already clean from the 2026-07-04 sweep, so this pass mined `shellcheck -S warning` and broader ruff rule sets for candidates, fanned out read-only scout agents per directory group, then independently verified every claim against the code (and against live tools where possible) before fixing. Every fix below was re-verified with `bash -n` + `shellcheck -S error` (Bash) or the ruff baseline + `py_compile` (Python).

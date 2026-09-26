@@ -700,8 +700,95 @@ hw_mon() {
 
 # CREATE A 7ZIP FILE WITH MAX COMPRESSION SETTINGS
 
+# Print a listing that changes whenever an entry under the directory is added,
+# removed, resized, or modified.
+_7z_dir_snapshot() {
+  (set -o pipefail; find "$1" -printf '%P\t%y\t%s\t%T@\n' | LC_ALL=C sort)
+}
+
+# Archive the contents of a directory, hidden entries included, into
+# ./<directory name><extension>, then offer to delete the directory. Deletion is
+# offered only when 7-Zip reports complete success, the new archive passes
+# `7z t`, the archive lies outside the directory, and the directory has not
+# changed since it was read.
+# Usage: _7z_archive_then_offer_delete <source_dir> <extension> <7z switches...>
+_7z_archive_then_offer_delete() {
+  local source_dir="$1" extension="$2" archive_name archive_parent source_real snapshot status choice
+  shift 2
+
+  while [[ "$source_dir" == */ && "$source_dir" != "/" ]]; do
+    source_dir="${source_dir%/}"
+  done
+
+  if [[ ! -d "$source_dir" ]]; then
+    echo "Invalid directory path: $source_dir"
+    return 1
+  fi
+
+  source_real=$(realpath -- "$source_dir") || return 1
+  if [[ -z "$(find "$source_real" -mindepth 1 -print -quit)" ]]; then
+    echo "Source directory is empty: $source_dir"
+    return 1
+  fi
+
+  archive_name="${source_dir##*/}$extension"
+  archive_parent=$(pwd -P)
+  if [[ "$archive_parent/" == "${source_real%/}/"* ]]; then
+    echo "Refusing to write $archive_name inside the directory being archived; run this from outside $source_dir." >&2
+    return 1
+  fi
+  if [[ -e "$archive_name" || -L "$archive_name" ]]; then
+    echo "$archive_parent/$archive_name already exists and 7-Zip would merge into it; move or delete it first." >&2
+    return 1
+  fi
+
+  if ! snapshot=$(_7z_dir_snapshot "$source_real"); then
+    echo "Could not read every entry in $source_dir; nothing was archived." >&2
+    return 1
+  fi
+
+  7z a -y "$@" -- "$archive_name" "$source_dir/."
+  status=$?
+  if (( status != 0 )); then
+    rm -f -- "$archive_name"
+    echo "7-Zip failed (exit $status); the original directory was kept: $source_dir" >&2
+    return 1
+  fi
+
+  if ! 7z t -- "$archive_name" >/dev/null; then
+    rm -f -- "$archive_name"
+    echo "The new archive failed its integrity test and was removed; the original directory was kept: $source_dir" >&2
+    return 1
+  fi
+
+  if [[ "$(_7z_dir_snapshot "$source_real")" != "$snapshot" ]]; then
+    echo "$source_dir changed while it was being archived, so $archive_name may not match it; the original directory was kept." >&2
+    return 1
+  fi
+
+  echo
+  echo "Do you want to delete the original directory?"
+  echo "[1] Yes"
+  echo "[2] No"
+  echo
+  read -rp "Your choice is (1 or 2): " choice
+  echo
+
+  case $choice in
+    1)
+      if [[ "$(_7z_dir_snapshot "$source_real")" != "$snapshot" ]]; then
+        echo "$source_dir changed after it was archived; original directory not deleted." >&2
+        return 1
+      fi
+      rm -fr -- "$source_dir" && echo "Original directory deleted."
+      ;;
+    2|"") echo "Original directory not deleted." ;;
+    *) echo "Bad user input. Original directory not deleted." ;;
+  esac
+}
+
 7z_1() {
-  local choice source_dir archive_name
+  local source_dir
 
   clear
 
@@ -711,32 +798,11 @@ hw_mon() {
     read -p "Please enter the source folder path: " source_dir
   fi
 
-  if [[ ! -d "$source_dir" ]]; then
-    echo "Invalid directory path: $source_dir"
-    return 1
-  fi
-
-  archive_name="${source_dir##*/}.7z"
-
-  7z a -y -t7z -m0=lzma2 -mx1 "$archive_name" "$source_dir"/*
-
-  echo
-  echo "Do you want to delete the original directory?"
-  echo "[1] Yes"
-  echo "[2] No"
-  echo
-  read -p "Your choice is (1 or 2): " choice
-  echo
-
-  case $choice in
-    1) rm -fr "$source_dir" && echo "Original directory deleted." ;;
-    2|"") echo "Original directory not deleted." ;;
-    *) echo "Bad user input. Original directory not deleted." ;;
-  esac
+  _7z_archive_then_offer_delete "$source_dir" .7z -t7z -m0=lzma2 -mx1
 }
 
 7z_5() {
-  local choice source_dir archive_name
+  local source_dir
 
   clear
 
@@ -746,32 +812,11 @@ hw_mon() {
     read -p "Please enter the source folder path: " source_dir
   fi
 
-  if [[ ! -d "$source_dir" ]]; then
-    echo "Invalid directory path: $source_dir"
-    return 1
-  fi
-
-  archive_name="${source_dir##*/}.7z"
-
-  7z a -y -t7z -m0=lzma2 -mx5 "$archive_name" "$source_dir"/*
-
-  echo
-  echo "Do you want to delete the original directory?"
-  echo "[1] Yes"
-  echo "[2] No"
-  echo
-  read -p "Your choice is (1 or 2): " choice
-  echo
-
-  case $choice in
-    1) rm -fr "$source_dir" && echo "Original directory deleted." ;;
-    2|"") echo "Original directory not deleted." ;;
-    *) echo "Bad user input. Original directory not deleted." ;;
-  esac
+  _7z_archive_then_offer_delete "$source_dir" .7z -t7z -m0=lzma2 -mx5
 }
 
 7z_9() {
-  local choice source_dir archive_name
+  local source_dir
 
   clear
 
@@ -781,28 +826,7 @@ hw_mon() {
     read -p "Please enter the source folder path: " source_dir
   fi
 
-  if [[ ! -d "$source_dir" ]]; then
-    echo "Invalid directory path: $source_dir"
-    return 1
-  fi
-
-  archive_name="${source_dir##*/}.7z"
-
-  7z a -y -t7z -m0=lzma2 -mx9 "$archive_name" "$source_dir"/*
-
-  echo
-  echo "Do you want to delete the original directory?"
-  echo "[1] Yes"
-  echo "[2] No"
-  echo
-  read -p "Your choice is (1 or 2): " choice
-  echo
-
-  case $choice in
-    1) rm -fr "$source_dir" && echo "Original directory deleted." ;;
-    2|"") echo "Original directory not deleted." ;;
-    *) echo "Bad user input. Original directory not deleted." ;;
-  esac
+  _7z_archive_then_offer_delete "$source_dir" .7z -t7z -m0=lzma2 -mx9
 }
 
 ##################

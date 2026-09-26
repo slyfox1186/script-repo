@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Match only this user's Discord process name, never script paths or Vesktop.
-# The kdc alias uses sudo, so retain the invoking user's process ownership.
+# Under sudo, target the invoking user's processes rather than root's.
 target_uid=${SUDO_UID:-$UID}
 mapfile -t pids < <(pgrep -u "$target_uid" -ix discord)
 if (( ${#pids[@]} )); then

@@ -1,5 +1,5 @@
-# This workflow will install Python dependencies, run tests and lint with a variety of Python versions
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+# Enforces the repository's documented verification baseline (see CHANGELOG.md)
+# and runs the regression tests under the Python 3.9 floor and a current Python.
 
 name: Python package
 
@@ -17,13 +17,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
-
+  python:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.9", "3.10", "3.11"]
+        python-version: ["3.9", "3.13"]
 
     steps:
     - uses: actions/checkout@v4
@@ -31,17 +30,22 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        python -m pip install flake8 pytest
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-    - name: Lint with flake8
-      run: |
-        # stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+    - name: Install tools
+      run: python -m pip install pytest ruff==0.16.6
+    - name: Lint with Ruff
+      run: ruff check Python3 --no-cache --select F,E9,B904,B007,S113,S324
+    - name: Compile every tracked Python file
+      run: git ls-files -z '*.py' | xargs -0 python -W error::SyntaxWarning -m py_compile
     - name: Test with pytest
-      run: |
-        pytest
+      run: python -m pytest
+
+  shell:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    # The sourced dotfiles have no .sh extension. One syntax error stops bash
+    # from defining every function after it.
+    - name: Check Bash syntax
+      run: git ls-files -z '*.sh' '*/.bashrc' '*/.bash_functions' '*/.bash_aliases' | xargs -0 -n 1 bash -n
+    - name: ShellCheck errors
+      run: git ls-files -z '*.sh' | xargs -0 shellcheck -S error
