@@ -1,4 +1,4 @@
-#!/home/jman/miniconda3/bin/python
+#!/usr/bin/env python3
 """Safely update pip- and uv-installed packages inside non-base conda environments.
 
 The updater deliberately treats conda and pip as separate ownership domains.  It
@@ -5729,7 +5729,19 @@ class _WheelOwnershipCheck:
                 collisions.setdefault((wheel["name"], owner), []).append(target)
             return
         previous = self.proposed.get(target)
-        if previous and previous != normalized and target not in self.shared:
+        # Two wheels that already share installed files (cu12/cu13 builds of
+        # one NVIDIA library install into the same directory) may extend that
+        # overlap when a new release adds a file the other build already had;
+        # only a first overlap between packages is a new conflict.
+        if (
+            previous
+            and previous != normalized
+            and target not in self.shared
+            and not any(
+                {previous, normalized} <= claimants
+                for claimants in self.shared.values()
+            )
+        ):
             raise UpdaterError(
                 f"Planned wheels {previous} and {normalized} both install {target}."
             )
