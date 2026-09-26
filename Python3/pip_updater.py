@@ -2580,10 +2580,10 @@ class _EnvironmentSelector:
 
     LIST_TOP = 3
 
-    def __init__(self, stdscr, env_names, up_to_date):
+    def __init__(self, stdscr, env_names, finished):
         self.stdscr = stdscr
         self.env_names = env_names
-        self.up_to_date = up_to_date
+        self.finished = finished
         self.hint_attr, self.ok_attr = _init_curses_colors()
         self.mark = _check_mark(stdscr)
         self.nav = ListCursor()
@@ -2618,7 +2618,7 @@ class _EnvironmentSelector:
                 curses.A_REVERSE if self.nav.scroll + offset == self.nav.cursor else 0
             )
             line = f"  {name}"
-            if name in self.up_to_date:
+            if name in self.finished:
                 line += f" {self.mark}"
                 attr |= self.ok_attr
             self.stdscr.addnstr(
@@ -2628,13 +2628,14 @@ class _EnvironmentSelector:
         return visible
 
 
-def interactive_select_env(stdscr, env_names, up_to_date=frozenset()):
+def interactive_select_env(stdscr, env_names, finished=frozenset()):
     """Curses-based selector for conda environment names.
 
-    Environments in ``up_to_date`` were found to have nothing to update
-    earlier in this run and are shown in green with a check mark.
+    Environments in ``finished`` were updated successfully or found to have
+    nothing to update earlier in this run, and are shown in green with a
+    check mark.
     """
-    return _EnvironmentSelector(stdscr, env_names, up_to_date).run()
+    return _EnvironmentSelector(stdscr, env_names, finished).run()
 
 
 def _conda_json(conda, args, action):
@@ -6857,7 +6858,9 @@ class _UpdateTarget:
     prefix: str
     fixed: bool
     env_key: str = dataclasses.field(init=False)
-    up_to_date: bool = dataclasses.field(default=False, init=False)
+    # Set when this pass updated the environment or found nothing to update;
+    # the picker then shows it in green with a check mark.
+    finished: bool = dataclasses.field(default=False, init=False)
 
     def __post_init__(self):
         self.env_key = str(Path(self.prefix).resolve())
@@ -6876,7 +6879,7 @@ def _fixed_environment(args, environments, root_prefix):
     return fixed
 
 
-def _choose_environment(selectable, environments, up_to_date):
+def _choose_environment(selectable, environments, finished):
     """Let the user pick an environment; None when they quit."""
     if not sys.stdin.isatty() or not sys.stdout.isatty():
         raise UpdaterError(
@@ -6884,7 +6887,7 @@ def _choose_environment(selectable, environments, up_to_date):
             "environments: " + ", ".join(selectable)
         )
     try:
-        env_name = curses.wrapper(interactive_select_env, selectable, up_to_date)
+        env_name = curses.wrapper(interactive_select_env, selectable, finished)
     except curses.error as exc:
         raise UpdaterError(
             f"Failed to initialize environment selector ({exc}). "
@@ -7121,12 +7124,12 @@ def _plan_and_apply(target, selected, live_packages, baseline):
         announce("INFO", "No longer need an update: " + ", ".join(dropped))
     if not selected:
         print_no_updates_result(target.env_name)
-        return False
+        return _another_environment_wanted(target)
 
     plan = resolve_update_plan(target.prefix, selected)
     if not plan:
         print_no_updates_result(target.env_name, all_held=True)
-        return False
+        return _another_environment_wanted(target)
     announce("OK", "pip found a compatible update plan.")
     print_resolved_plan(plan, show_details=args.details)
     try:
@@ -7138,7 +7141,7 @@ def _plan_and_apply(target, selected, live_packages, baseline):
 
     if args.dry_run:
         print_dry_run_result(target.env_name, args, selected, plan, baseline)
-        return False
+        return _another_environment_wanted(target)
     # Choosing GO in the selector is the confirmation; only --all/--packages
     # reach this point without the user having confirmed anything.
     non_interactive = args.all or args.packages
@@ -7154,7 +7157,8 @@ def _plan_and_apply(target, selected, live_packages, baseline):
         set(baseline["pip_broken"]),
         pip_check_report(target.prefix),
     )
-    return False
+    target.finished = True
+    return _another_environment_wanted(target)
 
 
 def _update_environment(target, root_prefix):
@@ -7171,13 +7175,13 @@ def _update_environment(target, root_prefix):
 
     found = _find_outdated(target)
     if found is None:
-        target.up_to_date = True
+        target.finished = True
         return _another_environment_wanted(target)
     packages, from_cache, live = found
     if args.all or args.packages:
         chosen = _choose_non_interactive(target, packages, live)
         if chosen is None:
-            return False
+            return _another_environment_wanted(target)
         (selected, packages), live = chosen, True
     else:
         chosen = _choose_interactive(target, packages, from_cache)
@@ -7216,10 +7220,10 @@ def main():
 
     fixed_environment = _fixed_environment(args, environments, root_prefix)
     # Remembered for this run only; the next run scans every environment anew.
-    up_to_date = set()
+    finished = set()
     while True:
         chosen = fixed_environment or _choose_environment(
-            selectable, environments, up_to_date
+            selectable, environments, finished
         )
         if chosen is None:
             print("No environment selected. Exiting.")
@@ -7228,10 +7232,10 @@ def main():
         target = _UpdateTarget(args, env_name, prefix, fixed=bool(fixed_environment))
         if not _update_environment(target, root_prefix):
             return
-        if target.up_to_date:
-            up_to_date.add(env_name)
+        if target.finished:
+            finished.add(env_name)
         else:
-            up_to_date.discard(env_name)
+            finished.discard(env_name)
 
 
 def report_fatal(label, *details, lead=""):
