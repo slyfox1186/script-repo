@@ -1,5 +1,5 @@
-#!/usr/bin/env python3
-"""Safely update pip-owned packages inside non-base conda environments.
+#!/home/jman/miniconda3/bin/python
+"""Safely update pip- and uv-installed packages inside non-base conda environments.
 
 The updater deliberately treats conda and pip as separate ownership domains.  It
 activates the selected environment through Conda's shell hook, and will not modify
@@ -15,9 +15,10 @@ import configparser
 import contextlib
 import csv
 import curses
+import dataclasses
 import fcntl
+import functools
 import hashlib
-import io
 import json
 import os
 import re
@@ -29,9 +30,11 @@ import stat
 import subprocess
 import sys
 import tempfile
+import termios
 import textwrap
 import threading
 import time
+import tty
 import zipfile
 from pathlib import Path, PurePosixPath
 from urllib.parse import unquote, urlsplit
@@ -42,17 +45,14 @@ CACHE_ROOT = (
 CACHE_FILE = str(CACHE_ROOT / "cache-v2.json")
 CACHE_VERSION = 2
 BACK_TO_ENV = "__BACK_TO_ENV__"
+STALE_METADATA_SUFFIX = ".pip-updater-stale"
 PROTECTED_BOOTSTRAP_PACKAGES = {"pip", "setuptools", "wheel"}
+# Installers whose installs pip can replace exactly: both write standard
+# wheel metadata with a RECORD (an install missing one is still refused).  A
+# uv install becomes pip-installed once the updater replaces it.
+UPDATABLE_INSTALLERS = frozenset({"pip", "uv"})
 SAFE_PROJECT_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 SAFE_VERSION = re.compile(r"^[A-Za-z0-9_.!+-]+$")
-# A wheel filename is name-version[-build]-python-abi-platform.whl, and each
-# component uses only these characters.  Anything else -- whitespace, control
-# characters, "=" or path separators -- could become aria2 input-file syntax
-# (a line such as "  dir=.." sets that download's destination) or a path.
-WHEEL_FILENAME = re.compile(
-    r"^[A-Za-z0-9][A-Za-z0-9._+!]*(?:-[A-Za-z0-9._+!]+){4,5}\.whl$"
-)
-URL_UNSAFE_CHARACTERS = re.compile(r"[\x00-\x20\x7f]")
 PROCESS_START_ENVIRONMENT = os.environ.copy()
 # A transaction workspace without a journal never mutated the environment, but a
 # concurrent preparation for another prefix may legitimately still be filling one
@@ -64,23 +64,21 @@ class UpdaterError(RuntimeError):
     """A user-actionable safety or execution failure."""
 
 
+class UnsolvableError(UpdaterError):
+    """pip's resolver proved that no set of versions meets the requirements."""
+
+
 class UpdateInterrupted(BaseException):
     """A termination signal, raised so an active transaction can roll back.
 
     This derives from BaseException so that ordinary ``except Exception`` blocks
     cannot accidentally swallow a shutdown request, matching KeyboardInterrupt.
-    The signal number is kept so the process can exit with the conventional
-    ``128 + signum`` status.
     """
-
-    def __init__(self, signum):
-        super().__init__(f"terminated by signal {signum}")
-        self.signum = signum
 
 
 def _raise_termination(signum, _frame):
     """Convert a termination signal into a rollback-triggering exception."""
-    raise UpdateInterrupted(signum)
+    raise UpdateInterrupted(f"terminated by signal {signum}")
 
 
 def install_termination_handlers():
@@ -98,9 +96,7 @@ def install_termination_handlers():
             signal.signal(number, _raise_termination)
 
 
-def run_command(
-    args, *, capture_output=False, timeout=None, env=None, input_text=None
-):
+def run_command(args, *, capture_output=False, timeout=None, env=None):
     """Run a command with consistent missing-binary handling."""
     try:
         return subprocess.run(
@@ -109,7 +105,6 @@ def run_command(
             text=True,
             timeout=timeout,
             env=env,
-            input=input_text,
             check=False,
         )
     except FileNotFoundError as exc:
@@ -122,38 +117,51 @@ def run_command(
         ) from exc
 
 
-def stream_command(
-    args,
-    *,
-    timeout=None,
-    on_start=None,
-    on_line=None,
-    on_tick=None,
-    tick=1.0,
-    merge_stderr=True,
-    input_data=None,
-):
-    """Run a command, reporting each output line and a periodic liveness tick.
+@dataclasses.dataclass
+class StreamHooks:
+    """Callbacks stream_command makes while a child runs; any may be None."""
 
-    ``run_command`` cannot show progress because it only returns once the child
-    has exited.  Downloads take minutes, so this variant reads the merged output
-    incrementally and calls ``on_tick`` at least once per ``tick`` seconds even
-    while the child is silent. ``merge_stderr=False`` preserves machine-readable
-    stdout such as pip's JSON report while still retaining stderr for failures.
-    Everything stays in the calling thread so a termination signal still unwinds
-    straight through the transaction rollback.
+    on_start: object = None  # called once with the child's pid
+    on_line: object = None  # called with each decoded stdout line
+    on_tick: object = None  # called at least once every `interval` seconds
+    interval: float = 1.0
 
-    ``input_data`` is written through the same selector loop in non-blocking
-    chunks, so a child that reads its input slowly (or never) cannot stall the
-    deadline and liveness checks, and a child that fills its output pipe while
-    its input is still being written cannot deadlock against this process.
-    End of output does not mean the child has exited: the child is then waited
-    for under the same deadline, and is only killed on timeout or interruption.
-    """
+
+class _OutputLines:
+    """Split a child's raw output chunks into decoded lines, per stream."""
+
+    def __init__(self, on_line):
+        self.collected = {"stdout": [], "stderr": []}
+        self._pending = {"stdout": b"", "stderr": b""}
+        self._on_line = on_line
+
+    def feed(self, kind, chunk):
+        """Add a chunk read from ``kind`` ("stdout" or "stderr")."""
+        self._pending[kind] += chunk
+        *lines, self._pending[kind] = self._pending[kind].split(b"\n")
+        for line in lines:
+            self._emit(kind, line)
+
+    def flush(self):
+        """Deliver any final line that had no trailing newline."""
+        for kind, tail in self._pending.items():
+            if tail:
+                self._emit(kind, tail)
+
+    def _emit(self, kind, chunk):
+        text = chunk.decode("utf-8", "replace").rstrip("\r")
+        self.collected[kind].append(text)
+        if kind == "stdout" and self._on_line is not None:
+            self._on_line(text)
+
+
+def _spawn(args, *, merge_stderr, with_stdin):
     try:
-        process = subprocess.Popen(
+        # Not a `with` block: stream_command's `finally` must kill the child
+        # before closing its pipes and reaping it, even on a termination signal.
+        return subprocess.Popen(  # pylint: disable=consider-using-with
             args,
-            stdin=subprocess.PIPE if input_data is not None else subprocess.DEVNULL,
+            stdin=subprocess.PIPE if with_stdin else subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT if merge_stderr else subprocess.PIPE,
             bufsize=0,
@@ -163,101 +171,221 @@ def stream_command(
             f"Required command '{args[0]}' was not found in PATH."
         ) from exc
 
-    collected = {"stdout": [], "stderr": []}
-    pending = {"stdout": b"", "stderr": b""}
 
-    def emit(kind, chunk):
-        text = chunk.decode("utf-8", "replace").rstrip("\r")
-        collected[kind].append(text)
-        if kind == "stdout" and on_line is not None:
-            on_line(text)
+def _write_stdin(process, input_data):
+    payload = input_data.encode("utf-8") if isinstance(input_data, str) else input_data
+    assert process.stdin is not None
+    try:
+        process.stdin.write(payload)
+    except BrokenPipeError:
+        pass
+    finally:
+        process.stdin.close()
 
+
+def _reap(process):
+    if process.poll() is None:
+        process.kill()
+    for stream in (process.stdin, process.stdout, process.stderr):
+        if stream is not None:
+            with contextlib.suppress(OSError):
+                stream.close()
+    process.wait()
+
+
+def stream_command(
+    args, *, timeout=None, hooks=None, merge_stderr=True, input_data=None
+):
+    """Run a command, reporting each output line and a periodic liveness tick.
+
+    ``run_command`` cannot show progress because it only returns once the child
+    has exited.  Downloads take minutes, so this variant reads the merged output
+    incrementally and calls ``hooks.on_tick`` at least once per
+    ``hooks.interval`` seconds even while the child is silent.
+    ``merge_stderr=False`` preserves machine-readable stdout such as pip's JSON
+    report while still retaining stderr for failures.  Everything stays in the
+    calling thread so a termination signal still unwinds straight through the
+    transaction rollback.
+    """
+    hooks = hooks or StreamHooks()
+    process = _spawn(args, merge_stderr=merge_stderr, with_stdin=input_data is not None)
+    output = _OutputLines(hooks.on_line)
     deadline = time.monotonic() + timeout if timeout else None
-
-    def wait_budget():
-        if deadline is None:
-            return tick
-        remaining = deadline - time.monotonic()
-        if remaining <= 0:
-            raise UpdaterError(f"Command timed out after {timeout} seconds: {args[0]}")
-        return min(tick, remaining)
-
     selector = selectors.DefaultSelector()
     try:
-        if on_start is not None:
-            on_start(process.pid)
+        if hooks.on_start is not None:
+            hooks.on_start(process.pid)
+        if input_data is not None:
+            _write_stdin(process, input_data)
         selector.register(process.stdout, selectors.EVENT_READ, "stdout")
         if not merge_stderr:
             selector.register(process.stderr, selectors.EVENT_READ, "stderr")
-        unsent = None
-        if input_data is not None:
-            assert process.stdin is not None
-            unsent = memoryview(
-                input_data.encode("utf-8")
-                if isinstance(input_data, str)
-                else bytes(input_data)
-            )
-            if unsent:
-                os.set_blocking(process.stdin.fileno(), False)
-                selector.register(process.stdin, selectors.EVENT_WRITE, "stdin")
-            else:
-                process.stdin.close()
         while selector.get_map():
-            ready = selector.select(wait_budget())
-            for key, _ in ready:
-                kind = key.data
-                if kind == "stdin":
-                    try:
-                        written = os.write(key.fd, unsent)
-                    except BlockingIOError:
-                        continue
-                    except BrokenPipeError:
-                        # The child stopped reading; its exit status reports
-                        # whether that was a failure.
-                        written = len(unsent)
-                    unsent = unsent[written:]
-                    if not unsent:
-                        selector.unregister(key.fileobj)
-                        with contextlib.suppress(OSError):
-                            process.stdin.close()
-                    continue
-                chunk = os.read(key.fd, 65536)
-                if not chunk:
+            if deadline is not None and time.monotonic() > deadline:
+                raise UpdaterError(
+                    f"Command timed out after {timeout} seconds: {args[0]}"
+                )
+            for key, _ in selector.select(hooks.interval):
+                chunk = os.read(key.fileobj.fileno(), 65536)
+                if chunk:
+                    output.feed(key.data, chunk)
+                else:
                     selector.unregister(key.fileobj)
-                    continue
-                pending[kind] += chunk
-                *lines, pending[kind] = pending[kind].split(b"\n")
-                for line in lines:
-                    emit(kind, line)
-            if on_tick is not None:
-                on_tick()
-        for kind, tail in pending.items():
-            if tail:
-                emit(kind, tail)
-        while process.poll() is None:
-            with contextlib.suppress(subprocess.TimeoutExpired):
-                process.wait(timeout=wait_budget())
-            if on_tick is not None:
-                on_tick()
+            if hooks.on_tick is not None:
+                hooks.on_tick()
+        output.flush()
     finally:
         selector.close()
-        if process.poll() is None:
-            process.kill()
-        for stream in (
-            process.stdin if input_data is not None else None,
-            process.stdout,
-            process.stderr if not merge_stderr else None,
-        ):
-            if stream is not None:
-                with contextlib.suppress(OSError):
-                    stream.close()
-        process.wait()
+        _reap(process)
     return subprocess.CompletedProcess(
         args,
         process.returncode,
-        "\n".join(collected["stdout"]),
-        "\n".join(collected["stderr"]),
+        "\n".join(output.collected["stdout"]),
+        "\n".join(output.collected["stderr"]),
     )
+
+
+# ANSI SGR codes for each style role.
+STYLE_CODES = {
+    "ok": "1;32",
+    "info": "1;36",
+    "warn": "1;33",
+    "error": "1;31",
+    "repair": "1;35",
+    "preview": "1;34",
+    "detail": "2",
+    "heading": "1;36",
+    "step": "1;34",
+    "strong": "1",
+    "muted": "2",
+    "new": "1;32",
+    "note": "33",
+    "command": "36",
+    "env": "1;35",
+    "failed": "1;31",
+}
+
+
+class Palette:
+    """ANSI styling for a color terminal; plain text whenever color is off.
+
+    Color is decided once per run for stdout (``configure``), so piped or
+    logged output never carries escape sequences.  NO_COLOR disables it and
+    FORCE_COLOR enables it for a non-terminal stream (no-color.org and the
+    FORCE_COLOR convention).
+    """
+
+    def __init__(self):
+        self.enabled = False
+
+    def configure(self, stream):
+        """Enable color only for a terminal that has not opted out of it."""
+        if os.environ.get("NO_COLOR"):
+            self.enabled = False
+        elif os.environ.get("FORCE_COLOR"):
+            self.enabled = True
+        else:
+            is_terminal = bool(getattr(stream, "isatty", lambda: False)())
+            self.enabled = is_terminal and os.environ.get("TERM") != "dumb"
+
+    def __call__(self, text, role):
+        """Return ``text`` in ``role``'s style, or unchanged when color is off."""
+        if not self.enabled or not text:
+            return text
+        return f"\x1b[{STYLE_CODES[role]}m{text}\x1b[0m"
+
+
+paint = Palette()
+
+# Each status tag's style; the tag text itself is identical with color off.
+STATUS_ROLES = {
+    "OK": "ok",
+    "INFO": "info",
+    "!": "warn",
+    "REVIEW": "warn",
+    "REPAIR": "repair",
+    "PREVIEW": "preview",
+    "DETAIL": "detail",
+}
+
+
+def announce(tag, *parts, **print_options):
+    """Print a message led by its colored ``[TAG]``."""
+    print(paint(f"[{tag}]", STATUS_ROLES[tag]), *parts, **print_options)
+
+
+def print_banner(title, role="heading"):
+    """Print a full-width result banner; ``role`` sets its color."""
+    rule = ("━" if paint.enabled else "=") * 68
+    print("\n" + paint(rule, role))
+    print(paint(title, role))
+    print(paint(rule, role))
+
+
+def print_section(title):
+    """Print a section heading after a blank line."""
+    print("\n" + paint(title, "heading"))
+
+
+def print_labeled(label, text):
+    """Print ``label text`` indented, wrapped to the terminal width.
+
+    Wrapping runs on the plain text, so the label's styling cannot distort the
+    measured line lengths.
+    """
+    width = max(40, min(100, shutil.get_terminal_size((100, 24)).columns - 1))
+    lines = textwrap.wrap(
+        f"{label} {text}",
+        width=width,
+        initial_indent="  ",
+        subsequent_indent="    ",
+        break_on_hyphens=False,
+        break_long_words=False,
+    )
+    lines[0] = lines[0].replace(label, paint(label, "strong"), 1)
+    print("\n".join(lines))
+
+
+def print_step(position, text):
+    """Print a numbered stage of the run, such as ``[2/3]``."""
+    print("\n" + paint(f"[{position}]", "step"), paint(text, "strong"))
+
+
+_PROGRESS_BAR = re.compile(r"\[([#>!-]{8,})\]")
+_PROGRESS_LABEL = re.compile(r"^(\s*)([A-Z][A-Za-z ]*?)(?=:|\s\[)")
+_PROGRESS_ELAPSED = re.compile(r"(\d{2}:\d{2})(\s*)$")
+_BAR_CELLS = {
+    "#": ("█", "ok"),
+    ">": ("█", "ok"),
+    "-": ("░", "muted"),
+    "!": ("✗", "failed"),
+}
+
+
+def _paint_bar(match):
+    cells = "".join(
+        paint(glyph, role)
+        for glyph, role in (_BAR_CELLS[cell] for cell in match.group(1))
+    )
+    return f"[{cells}]"
+
+
+def colorize_progress(line):
+    """Style one plain progress row without changing its visible width.
+
+    Rows are built and fitted to the terminal as plain text; styling is added
+    last, and every glyph swapped in occupies exactly one column.
+    """
+    if not paint.enabled:
+        return line
+    line = _PROGRESS_BAR.sub(_paint_bar, line)
+    line = _PROGRESS_LABEL.sub(
+        lambda m: m.group(1) + paint(m.group(2), "heading"), line
+    )
+    line = _PROGRESS_ELAPSED.sub(
+        lambda m: paint(m.group(1), "muted") + m.group(2), line
+    )
+    return line.replace(" | ", paint(" | ", "muted"))
 
 
 def format_bytes(count):
@@ -281,6 +409,234 @@ def format_elapsed(seconds):
     return f"{whole // 60:02d}:{whole % 60:02d}"
 
 
+def truncate_label(value, available):
+    """Fit value into available columns, marking a cut with an ellipsis."""
+    if available <= 0:
+        return ""
+    if len(value) <= available:
+        return value
+    if available <= 3:
+        return value[:available]
+    return value[: available - 3] + "..."
+
+
+def process_figures(cpu_percent, rss_bytes):
+    """Format measured process CPU and memory, skipping unmeasured values."""
+    facts = []
+    if cpu_percent is not None:
+        facts.append(f"CPU {cpu_percent:.0f}%")
+    if rss_bytes is not None:
+        facts.append(f"RAM {format_bytes(rss_bytes)}")
+    return facts
+
+
+class ProcessSampler:
+    """Thread-safe CPU and RSS sampling of one child process from /proc.
+
+    /proc exists only on Linux, and a process can exit between reads; either
+    way a sample is skipped and the last measured figures stay on display.
+    """
+
+    def __init__(self):
+        self._lock = threading.Lock()
+        self.pid = None
+        self.cpu_percent = None
+        self.rss_bytes = None
+        self._last_cpu = None
+
+    def watch(self, pid):
+        """Follow a new process, forgetting the previous one's figures."""
+        with self._lock:
+            self.pid = pid
+            self.cpu_percent = None
+            self.rss_bytes = None
+            self._last_cpu = None
+        self.sample()
+
+    def stop(self):
+        """Stop sampling; a reaped pid can be reused by an unrelated process."""
+        with self._lock:
+            self.pid = None
+
+    def sample(self):
+        """Update CPU percent since the previous sample, and resident memory."""
+        with self._lock:
+            pid = self.pid
+            previous = self._last_cpu
+        if pid is None:
+            return
+        now = time.monotonic()
+        try:
+            stat_text = Path(f"/proc/{pid}/stat").read_text(encoding="utf-8")
+            fields = stat_text[stat_text.rfind(")") + 2 :].split()
+            ticks = int(fields[11]) + int(fields[12])
+            cpu_seconds = ticks / os.sysconf("SC_CLK_TCK")
+            status = Path(f"/proc/{pid}/status").read_text(encoding="utf-8")
+        except (OSError, ValueError, IndexError):
+            return
+        rss = re.search(r"^VmRSS:\s+(\d+)\s+kB$", status, re.MULTILINE)
+        with self._lock:
+            if previous is not None and now > previous[1]:
+                self.cpu_percent = max(
+                    0.0, 100 * (cpu_seconds - previous[0]) / (now - previous[1])
+                )
+            if rss:
+                self.rss_bytes = int(rss.group(1)) * 1024
+            self._last_cpu = (cpu_seconds, now)
+
+    def readings(self):
+        """Return ``(cpu_percent, rss_bytes)``; None where not yet measured."""
+        with self._lock:
+            return self.cpu_percent, self.rss_bytes
+
+    def figures(self):
+        """Return the measured facts ("CPU n%", "RAM n MB") available so far."""
+        return process_figures(*self.readings())
+
+
+class LiveDisplay:
+    """Rows repainted in place on a terminal; plain appended lines otherwise."""
+
+    def __init__(self, stream=None):
+        self.stream = stream if stream is not None else sys.stdout
+        self.interactive = bool(getattr(self.stream, "isatty", lambda: False)())
+        self._painted = []
+
+    @staticmethod
+    def width():
+        """Return the usable terminal width, never narrower than 40 columns."""
+        return max(40, shutil.get_terminal_size((180, 24)).columns - 1)
+
+    def draw(self, lines):
+        """Overwrite the rows drawn last time, padding away longer old text."""
+        rows_up = len(self._painted) - 1
+        self.stream.write(f"\r\x1b[{rows_up}A" if rows_up > 0 else "\r")
+        for index, line in enumerate(lines):
+            if index:
+                self.stream.write("\n")
+            previous = self._painted[index] if index < len(self._painted) else 0
+            self.stream.write(colorize_progress(line.ljust(previous)))
+        self.stream.flush()
+        self._painted = [len(line) for line in lines]
+
+    def log(self, text):
+        """Append one line, above any drawn rows; the caller repaints them."""
+        if self._painted:
+            rows_up = len(self._painted) - 1
+            self.stream.write(f"\r\x1b[{rows_up}A\x1b[J" if rows_up > 0 else "\r\x1b[J")
+            self._painted = []
+        print(text, file=self.stream, flush=True)
+
+    def end(self):
+        """Move below drawn rows so later output starts on a clean line."""
+        if self._painted:
+            self.stream.write("\n")
+            self.stream.flush()
+
+
+class Pacer:
+    """Elapsed time plus the throttles that bound repaints and log lines."""
+
+    def __init__(self, log_interval, refresh_interval=0.2):
+        self.started = time.monotonic()
+        self.log_interval = log_interval
+        self.refresh_interval = refresh_interval
+        self.logged_count = 0
+        self._last_paint = None
+        self._logged_interval = -1
+
+    def elapsed(self):
+        """Seconds since the tracked work started."""
+        return time.monotonic() - self.started
+
+    def paint_due(self, *, force=False):
+        """Allow at most one repaint per refresh interval, unless forced."""
+        now = time.monotonic()
+        if (
+            not force
+            and self._last_paint is not None
+            and now - self._last_paint < self.refresh_interval
+        ):
+            return False
+        self._last_paint = now
+        return True
+
+    def log_due(self, *, force=False):
+        """Allow one log line per log interval, unless forced."""
+        interval = int(self.elapsed() // self.log_interval)
+        if not force and interval == self._logged_interval:
+            return False
+        self._logged_interval = interval
+        return True
+
+
+@dataclasses.dataclass
+class ResolverGraph:
+    """Counters distilled from pip's resolver log lines."""
+
+    _PACKAGE_EVENT = re.compile(
+        r"^(?:Collecting|Requirement already satisfied:)\s+"
+        r"([A-Za-z0-9][A-Za-z0-9._-]*)"
+    )
+    _METADATA_EVENT = re.compile(
+        r"^(?:Using cached|Downloading)\s+(\S+\.whl\.metadata)\b"
+    )
+    _BACKTRACK_EVENT = re.compile(
+        r"pip is (?:still )?looking at multiple versions of "
+        r"([A-Za-z0-9][A-Za-z0-9._-]*)"
+    )
+
+    selected: set
+    loaded: set = dataclasses.field(default_factory=set)
+    packages: set = dataclasses.field(default_factory=set)
+    candidates: set = dataclasses.field(default_factory=set)
+    backtracking: set = dataclasses.field(default_factory=set)
+    current: str = ""
+    last_line_at: float = dataclasses.field(default_factory=time.monotonic)
+
+    def observe(self, text):
+        """Count one stripped pip log line; return the phase it implies."""
+        self.last_line_at = time.monotonic()
+        phase = None
+        package = self._PACKAGE_EVENT.match(text)
+        if package:
+            name = canonicalize_name(package.group(1))
+            self.packages.add(name)
+            if name in self.selected:
+                self.loaded.add(name)
+            self.current = name
+            if len(self.loaded) == len(self.selected):
+                phase = "Resolving dependencies"
+
+        metadata = self._METADATA_EVENT.match(text)
+        if metadata:
+            self.candidates.add(metadata.group(1))
+
+        backtrack = self._BACKTRACK_EVENT.search(text)
+        if backtrack:
+            name = canonicalize_name(backtrack.group(1))
+            self.backtracking.add(name)
+            self.current = name
+            phase = "Backtracking"
+
+        if text.startswith(("Downloading ", "Using cached ")):
+            if ".whl (" in text:
+                phase = "Preparing candidate files"
+        elif text.startswith("Would install "):
+            phase = "Finalizing plan"
+        return phase
+
+
+# Resolver phases whose activity text does not depend on the graph counters.
+RESOLVER_PHASE_ACTIVITY = {
+    "Resolver finished": "finished",
+    "Resolver stopped": "stopped",
+    "Preparing candidate files": "preparing candidate wheel files",
+    "Finalizing plan": "finalizing the exact plan",
+    "Discovering compatible wheels": "finding compatible binary targets",
+}
+
+
 class ResolverProgress:
     """Explain pip's observable work while it searches a dependency graph.
 
@@ -294,182 +650,104 @@ class ResolverProgress:
     WIDTH = 16
     LOG_INTERVAL = 30
     REFRESH_INTERVAL = 0.2
-    _PACKAGE_EVENT = re.compile(
-        r"^(?:Collecting|Requirement already satisfied:)\s+"
-        r"([A-Za-z0-9][A-Za-z0-9._-]*)"
-    )
-    _METADATA_EVENT = re.compile(
-        r"^(?:Using cached|Downloading)\s+(\S+\.whl\.metadata)\b"
-    )
-    _BACKTRACK_EVENT = re.compile(
-        r"pip is (?:still )?looking at multiple versions of "
-        r"([A-Za-z0-9][A-Za-z0-9._-]*)"
-    )
+    SILENCE_SHOWN = 10
 
     def __init__(self, selected, stream=None):
-        self.selected = {canonicalize_name(name) for name in selected}
-        self.total = len(self.selected)
-        self.stream = stream if stream is not None else sys.stdout
-        self.interactive = bool(getattr(self.stream, "isatty", lambda: False)())
-        self.started = time.monotonic()
+        self.graph = ResolverGraph({canonicalize_name(name) for name in selected})
         self.phase = "Loading metadata"
-        self.loaded_selected = set()
-        self.graph_packages = set()
-        self.candidate_metadata = set()
-        self.backtracking_packages = set()
-        self.current = ""
-        self.pid = None
-        self.cpu_percent = None
-        self.rss_bytes = None
-        self._last_cpu_seconds = None
-        self._last_cpu_measurement = None
-        self._painted = []
-        self._last_paint = None
-        self._reported_interval = -1
+        self.sampler = ProcessSampler()
+        self.display = LiveDisplay(stream)
+        self.pacer = Pacer(self.LOG_INTERVAL, self.REFRESH_INTERVAL)
         self._finished = False
+        self._step = ("", time.monotonic())
+
+    @property
+    def step(self):
+        """Label of the solve now running, or "" before the first one."""
+        return self._step[0]
+
+    def begin_step(self, label):
+        """Name the solve now running; the dashboard shows it until it ends."""
+        self._step = (label, time.monotonic())
+        self.phase = "Resolving dependencies"
+        self.graph.backtracking.clear()
+        self.graph.last_line_at = self._step[1]
+
+    def end_step(self, result):
+        """Log how the current solve ended, above the dashboard."""
+        seconds = format_elapsed(time.monotonic() - self._step[1])
+        self.display.log(f"  {self.step}: {result} ({seconds})")
+        if self.display.interactive:
+            self._paint()
+
+    @property
+    def total(self):
+        """Number of selected packages whose metadata the bar tracks."""
+        return len(self.graph.selected)
 
     def watch(self, pid):
         """Remember the resolver process so silent CPU work stays visible."""
-        self.pid = pid
-        self.cpu_percent = None
-        self.rss_bytes = None
-        self._last_cpu_seconds = None
-        self._last_cpu_measurement = None
-        self._measure_process()
+        self.sampler.watch(pid)
 
     def note(self, line):
         """Turn pip's human-readable resolver events into stable counters."""
-        text = line.strip()
-        package = self._PACKAGE_EVENT.match(text)
-        if package:
-            name = canonicalize_name(package.group(1))
-            self.graph_packages.add(name)
-            if name in self.selected:
-                self.loaded_selected.add(name)
-            self.current = name
-            if len(self.loaded_selected) == self.total:
-                self.phase = "Resolving dependencies"
-
-        metadata = self._METADATA_EVENT.match(text)
-        if metadata:
-            self.candidate_metadata.add(metadata.group(1))
-
-        backtrack = self._BACKTRACK_EVENT.search(text)
-        if backtrack:
-            name = canonicalize_name(backtrack.group(1))
-            self.backtracking_packages.add(name)
-            self.current = name
-            self.phase = "Backtracking"
-
-        if text.startswith(("Downloading ", "Using cached ")):
-            if ".whl (" in text:
-                self.phase = "Preparing candidate files"
-        elif text.startswith("Would install "):
-            self.phase = "Finalizing plan"
-
-    def _measure_process(self):
-        """Sample Linux resolver CPU and memory without making them mandatory."""
-        if self.pid is None:
-            return
-        now = time.monotonic()
-        try:
-            stat_text = Path(f"/proc/{self.pid}/stat").read_text(encoding="utf-8")
-            fields = stat_text[stat_text.rfind(")") + 2 :].split()
-            ticks = int(fields[11]) + int(fields[12])
-            cpu_seconds = ticks / os.sysconf("SC_CLK_TCK")
-            if self._last_cpu_seconds is not None:
-                elapsed = now - self._last_cpu_measurement
-                if elapsed > 0:
-                    self.cpu_percent = max(
-                        0.0,
-                        100 * (cpu_seconds - self._last_cpu_seconds) / elapsed,
-                    )
-            self._last_cpu_seconds = cpu_seconds
-            self._last_cpu_measurement = now
-
-            status = Path(f"/proc/{self.pid}/status").read_text(encoding="utf-8")
-            rss = re.search(r"^VmRSS:\s+(\d+)\s+kB$", status, re.MULTILINE)
-            if rss:
-                self.rss_bytes = int(rss.group(1)) * 1024
-        except (OSError, ValueError, IndexError):
-            # The process may have exited between the two reads, and non-Linux
-            # systems do not provide /proc. Resolver event reporting still works.
-            return
+        phase = self.graph.observe(line.strip())
+        if phase:
+            self.phase = phase
 
     def _selected_bar(self):
-        loaded = len(self.loaded_selected)
+        loaded = len(self.graph.loaded)
         filled = self.WIDTH if not self.total else self.WIDTH * loaded // self.total
         return "#" * filled + "-" * (self.WIDTH - filled)
 
     def _line(self, max_width):
-        elapsed = format_elapsed(time.monotonic() - self.started)
-        loaded = len(self.loaded_selected)
+        graph = self.graph
+        elapsed = format_elapsed(self.pacer.elapsed())
+        loaded = len(graph.loaded)
         selected = f"selected [{self._selected_bar()}] {loaded}/{self.total} loaded"
-        graph = (
-            f"graph {count_label(len(self.graph_packages), 'package')} / "
-            f"{count_label(len(self.candidate_metadata), 'candidate')}"
+        counts = (
+            f"graph {count_label(len(graph.packages), 'package')} / "
+            f"{count_label(len(graph.candidates), 'candidate')}"
         )
-        compact_selected = f"selected {loaded}/{self.total}"
-        compact_graph = (
-            f"graph {len(self.graph_packages)}/{len(self.candidate_metadata)}"
-        )
-        current = self.current
+        current = graph.current
         if len(current) > 30:
             current = current[:27] + "..."
 
         optional = []
         if current:
             optional.append(f"current {current}")
-        if self.backtracking_packages:
+        if graph.backtracking:
             optional.append(
-                f"backtracking "
-                f"{count_label(len(self.backtracking_packages), 'package')}"
+                f"backtracking {count_label(len(graph.backtracking), 'package')}"
             )
-        process = []
-        if self.cpu_percent is not None:
-            process.append(f"CPU {self.cpu_percent:.0f}%")
-        if self.rss_bytes is not None:
-            process.append(f"RAM {format_bytes(self.rss_bytes)}")
+        process = self.sampler.figures()
         if process:
             optional.append(" / ".join(process))
 
-        parts = [f"  {self.phase}", selected, graph]
+        parts = [f"  {self.phase}", selected, counts]
         for item in optional:
             candidate = " | ".join([*parts, item, elapsed])
             if len(candidate) <= max_width:
                 parts.append(item)
         line = " | ".join([*parts, elapsed])
         if len(line) > max_width:
-            line = " | ".join(
-                [f"  {self.phase}", compact_selected, compact_graph, elapsed]
-            )
+            compact = [
+                f"  {self.phase}",
+                f"selected {loaded}/{self.total}",
+                f"graph {len(graph.packages)}/{len(graph.candidates)}",
+                elapsed,
+            ]
+            line = " | ".join(compact)
         return line[:max_width]
 
-    @staticmethod
-    def _truncate_label(value, available):
-        if available <= 0:
-            return ""
-        if len(value) <= available:
-            return value
-        if available <= 3:
-            return value[:available]
-        return value[: available - 3] + "..."
-
     def _resolver_activity(self):
-        if self.phase == "Resolver finished":
-            return "finished"
-        if self.phase == "Resolver stopped":
-            return "stopped"
-        if self.phase == "Preparing candidate files":
-            return "preparing candidate wheel files"
-        if self.phase == "Finalizing plan":
-            return "finalizing the exact plan"
-        if self.phase == "Discovering compatible wheels":
-            return "finding compatible binary targets"
-        if self.backtracking_packages:
+        activity = RESOLVER_PHASE_ACTIVITY.get(self.phase)
+        if activity:
+            return activity
+        if self.graph.backtracking:
             return (
                 "backtracking across "
-                f"{count_label(len(self.backtracking_packages), 'package')}"
+                f"{count_label(len(self.graph.backtracking), 'package')}"
             )
         if self.phase == "Loading metadata":
             return "loading selected package metadata"
@@ -477,7 +755,8 @@ class ResolverProgress:
 
     def _terminal_lines(self, max_width):
         """Build a compact dashboard whose three rows fit the terminal."""
-        loaded = len(self.loaded_selected)
+        graph = self.graph
+        loaded = len(graph.loaded)
         line1 = (
             f"  Selected metadata [{self._selected_bar()}] {loaded}/{self.total} loaded"
         )
@@ -485,70 +764,50 @@ class ResolverProgress:
             line1 = f"  Selected [{self._selected_bar()}] {loaded}/{self.total}"
 
         graph_prefix = (
-            f"  Dependency graph: {count_label(len(self.graph_packages), 'package')}, "
-            f"{count_label(len(self.candidate_metadata), 'candidate')} | current: "
+            f"  Dependency graph: {count_label(len(graph.packages), 'package')}, "
+            f"{count_label(len(graph.candidates), 'candidate')} | current: "
         )
         if len(graph_prefix) + 1 > max_width:
             graph_prefix = (
-                f"  Graph {len(self.graph_packages)}/{len(self.candidate_metadata)}"
-                " | current: "
+                f"  Graph {len(graph.packages)}/{len(graph.candidates)} | current: "
             )
-        current = self.current or "waiting for pip"
-        line2 = graph_prefix + self._truncate_label(
-            current, max_width - len(graph_prefix)
-        )
+        current = graph.current or "waiting for pip"
+        line2 = graph_prefix + truncate_label(current, max_width - len(graph_prefix))
 
-        elapsed = format_elapsed(time.monotonic() - self.started)
-        parts = [f"  Resolver: {self._resolver_activity()}"]
-        if self.cpu_percent is not None:
-            parts.append(f"CPU {self.cpu_percent:.0f}%")
-        if self.rss_bytes is not None:
-            parts.append(f"RAM {format_bytes(self.rss_bytes)}")
-        while len(" | ".join([*parts, elapsed])) > max_width and len(parts) > 1:
-            parts.pop()
-        line3 = " | ".join([*parts, elapsed])
-        if len(line3) > max_width:
-            line3 = self._truncate_label(line3, max_width)
+        activity = self._resolver_activity()
+        if self.step:
+            activity = f"{self.step} · {activity}"
+        head = f"  Resolver: {activity}"
+        tail = [*self.sampler.figures(), format_elapsed(self.pacer.elapsed())]
+        silent = time.monotonic() - self.graph.last_line_at
+        if silent >= self.SILENCE_SHOWN:
+            # pip prints nothing while it backtracks through candidates it
+            # already loaded; the silence is the only sign of that search.
+            tail.insert(0, f"no pip output for {format_elapsed(silent)}")
+        while len(" | ".join([head, *tail])) > max_width and len(tail) > 2:
+            tail.pop(-2)
+        room = max_width - len(" | ".join(["", *tail]))
+        line3 = " | ".join([truncate_label(head, room), *tail])
 
         return [line[:max_width] for line in (line1, line2, line3)]
 
     def _paint(self):
-        width = max(40, shutil.get_terminal_size((180, 24)).columns - 1)
-        lines = self._terminal_lines(width)
-        if self._painted:
-            self.stream.write("\r\x1b[2A")
-        else:
-            self.stream.write("\r")
-        for index, line in enumerate(lines):
-            if index:
-                self.stream.write("\n")
-            previous = self._painted[index] if self._painted else 0
-            self.stream.write(line.ljust(previous))
-        self.stream.flush()
-        self._painted = [len(line) for line in lines]
-        self._last_paint = time.monotonic()
+        self.display.draw(self._terminal_lines(self.display.width()))
 
     def tick(self):
         """Refresh real telemetry or emit a bounded log heartbeat."""
         if self._finished:
             return
-        if self.interactive:
-            now = time.monotonic()
-            if (
-                self._last_paint is not None
-                and now - self._last_paint < self.REFRESH_INTERVAL
-            ):
-                return
-            self._measure_process()
-            self._paint()
+        if self.display.interactive:
+            if self.pacer.paint_due():
+                self.sampler.sample()
+                self._paint()
             return
-        elapsed = time.monotonic() - self.started
-        interval = int(elapsed // self.LOG_INTERVAL)
-        if interval == self._reported_interval:
-            return
-        self._measure_process()
-        print(self._line(10_000), file=self.stream, flush=True)
-        self._reported_interval = interval
+        # Sample every tick so the closing line reports the resolver's last
+        # real CPU/RAM, not the figure from the moment it was spawned.
+        self.sampler.sample()
+        if self.pacer.log_due():
+            self.display.log(self._line(10_000))
 
     def finish(self, success):
         """Settle the telemetry without claiming success on failure."""
@@ -556,15 +815,174 @@ class ResolverProgress:
             return
         self._finished = True
         self.phase = "Resolver finished" if success else "Resolver stopped"
-        if self.interactive:
+        if self.display.interactive:
             self._paint()
-            self.stream.write("\n")
-            self.stream.flush()
+            self.display.end()
         else:
-            print(self._line(10_000), file=self.stream, flush=True)
+            self.display.log(self._line(10_000))
 
 
-class DownloadProgress:
+class CountedProgress:
+    """One-line progress for work measured as N of a known total of items.
+
+    Subclasses measure ``done`` and ``current`` from the filesystem.  On a
+    terminal the line is repainted; on a pipe each completion is logged, plus
+    a bounded heartbeat so a single multi-gigabyte item never goes silent.
+    """
+
+    HEARTBEAT_SECONDS = 30
+
+    def __init__(self, title, total, stream=None):
+        self.title = title
+        self.total = total
+        self.current = ""
+        self.pid = None
+        self.done = 0
+        self.display = LiveDisplay(stream)
+        self.pacer = Pacer(self.HEARTBEAT_SECONDS)
+
+    def watch(self, pid):
+        """Follow this child so the item it is working on can be observed."""
+        self.pid = pid
+
+    def _measure(self):
+        """Refresh ``done`` and ``current`` from observable state."""
+        raise NotImplementedError
+
+    def _meter_line(self):
+        """Return the repainted line, before the in-flight label."""
+        raise NotImplementedError
+
+    def _summary(self):
+        """Return the logged sentence for the current completed count."""
+        raise NotImplementedError
+
+    def _heartbeat_facts(self):
+        """Return fields for a piped heartbeat, or None when none applies."""
+        return []
+
+    def _report(self):
+        self.display.log(f"  {self.title.rstrip()}: {self._summary()}")
+        self.pacer.logged_count = self.done
+        self.pacer.log_due(force=True)
+
+    def _heartbeat(self):
+        facts = self._heartbeat_facts()
+        if facts is None or not self.pacer.log_due():
+            return
+        current = f" | {self.current}" if self.current else ""
+        fields = [f"{self.done}/{self.total} complete", *facts]
+        fields.append(format_elapsed(self.pacer.elapsed()) + current)
+        self.display.log(f"  {self.title.rstrip()}: " + " | ".join(fields))
+
+    def _paint(self):
+        line = self._meter_line()
+        if self.current:
+            available = self.display.width() - len(line) - 2
+            if available > 3:
+                line += "  " + truncate_label(self.current, available)
+        self.display.draw([line])
+
+    def tick(self):
+        """Repaint the progress line, or report each completion when piped."""
+        self._measure()
+        if self.display.interactive:
+            self._paint()
+        elif self.done != self.pacer.logged_count:
+            self._report()
+        elif self.done < self.total:
+            self._heartbeat()
+
+    def finish(self):
+        """Leave one settled summary line behind for the session transcript."""
+        # The child has been reaped by now, so drop it before measuring rather
+        # than risk reading the open files of whatever inherits its pid next.
+        self.pid = None
+        self._measure()
+        if self.display.interactive:
+            self.current = ""
+            self._paint()
+            self.display.end()
+        elif self.done != self.pacer.logged_count:
+            self._report()
+
+
+class TransferRate:
+    """Download speed, measured only while bytes really come off the network."""
+
+    def __init__(self):
+        self.source = ""
+        self.speed = None
+        self._network_start = None
+        self._window = (0, time.monotonic())
+
+    def begin(self, source, downloaded, *, restart_network=False):
+        """Start timing a new fetch from ``source`` ("network" or "cache")."""
+        self.source = source
+        if source == "network" and (restart_network or self._network_start is None):
+            self._network_start = (downloaded, time.monotonic())
+        self.speed = None
+        self._window = (downloaded, time.monotonic())
+
+    def update(self, downloaded, *, settled):
+        """Recompute speed; ``settled`` means a whole file just finished."""
+        if self.source != "network":
+            return
+        now = time.monotonic()
+        if settled and self._network_start is not None:
+            start_bytes, start_time = self._network_start
+            if now - start_time > 0:
+                self.speed = max(0, downloaded - start_bytes) / (now - start_time)
+        elif now - self._window[1] >= 0.1:
+            window_bytes, window_time = self._window
+            self.speed = max(0, downloaded - window_bytes) / (now - window_time)
+            self._window = (downloaded, now)
+
+    def status(self):
+        """Return "cache", a network rate, or "" before any fetch starts."""
+        if self.source == "cache":
+            return "cache"
+        if self.source == "network":
+            return format_rate(self.speed or 0)
+        return ""
+
+
+class WheelFolder:
+    """Which wheels in a download destination are completely written."""
+
+    def __init__(self, destination):
+        self.destination = Path(destination)
+        self.complete = set()
+        self._observed_sizes = {}
+
+    def measure(self, *, require_stable):
+        """Refresh ``complete`` and return the bytes of every wheel present.
+
+        ``require_stable`` is for while aria2 runs: it can remove its control
+        file just before the last write is visible, so a file must also keep
+        one size across two samples.  A successful child exit settles all.
+        """
+        sizes = {}
+        for wheel in self.destination.glob("*.whl"):
+            with contextlib.suppress(OSError):
+                sizes[wheel.name] = wheel.stat().st_size
+        complete = set()
+        for name, size in sizes.items():
+            if Path(str(self.destination / name) + ".aria2").exists():
+                continue
+            if require_stable and self._observed_sizes.get(name) != size:
+                continue
+            complete.add(name)
+        self.complete = complete
+        self._observed_sizes = sizes
+        return sum(sizes.values())
+
+    def is_complete(self, name):
+        """Whether the wheel file ``name`` was complete at the last measure."""
+        return name in self.complete
+
+
+class DownloadProgress(CountedProgress):
     """Live, plain-language progress for a batch of wheel downloads.
 
     Progress is measured from the filesystem -- finished wheels in the
@@ -574,39 +992,17 @@ class DownloadProgress:
     loses the label and nothing else.
     """
 
-    def __init__(self, title, total, destination, stream=None):
-        self.title = title
-        self.total = total
-        self.destination = Path(destination)
-        self.stream = stream if stream is not None else sys.stdout
-        self.interactive = bool(getattr(self.stream, "isatty", lambda: False)())
-        self.started = time.monotonic()
-        self.current = ""
-        self.pid = None
-        self.done = 0
-        self.downloaded = 0
-        self.source = ""
-        self.speed = None
-        self._peak = 0
-        self._complete = set()
-        self._observed_sizes = {}
-        self._parallel_active = False
-        self._settling_parallel = False
-        self._network_started = None
-        self._network_start_bytes = 0
-        self._rate_bytes = 0
-        self._rate_time = self.started
-        self._painted = 0
-        self._reported = 0
-        self._reported_interval = -1
-
-    def watch(self, pid):
-        """Follow this child so the wheel it is still fetching can be counted."""
-        self.pid = pid
-
     # pip says "Downloading x.whl (5 MB)" for a fetch and "Using cached x.whl
     # (5 MB)" when it serves the same wheel from its own HTTP cache.
     FETCH_PREFIXES = ("Downloading ", "Using cached ")
+
+    def __init__(self, title, total, destination, stream=None):
+        super().__init__(title, total, stream)
+        self.folder = WheelFolder(destination)
+        self.downloaded = 0
+        self.rate = TransferRate()
+        # "idle", "active" while aria2 runs, "settling" once it has exited.
+        self._parallel = "idle"
 
     def note(self, line):
         """Record the wheel pip has just started fetching, for display only."""
@@ -616,13 +1012,8 @@ class DownloadProgress:
                 name = text[len(prefix) :].split(" (")[0]
                 if not name.endswith(".metadata"):
                     self.current = name
-                    self.source = "network" if prefix == "Downloading " else "cache"
-                    if self.source == "network" and self._network_started is None:
-                        self._network_started = time.monotonic()
-                        self._network_start_bytes = self.downloaded
-                    self.speed = None
-                    self._rate_bytes = self.downloaded
-                    self._rate_time = time.monotonic()
+                    source = "network" if prefix == "Downloading " else "cache"
+                    self.rate.begin(source, self.downloaded)
                 return
 
     def network_downloads(self, count, concurrent_files, connections_per_file):
@@ -632,31 +1023,25 @@ class DownloadProgress:
             f"network: {count} queued, up to {active} files x "
             f"{connections_per_file} connections"
         )
-        self._parallel_active = True
-        self.source = "network"
-        self._network_started = time.monotonic()
-        self._network_start_bytes = self.downloaded
-        self.speed = None
-        self._rate_bytes = self.downloaded
-        self._rate_time = time.monotonic()
+        self._parallel = "active"
+        self.rate.begin("network", self.downloaded, restart_network=True)
 
     def parallel_finished(self):
         """Settle final files only after the parallel child has exited."""
-        self._parallel_active = False
-        self._settling_parallel = True
+        self._parallel = "settling"
         try:
             self.tick()
         finally:
-            self._settling_parallel = False
+            self._parallel = "idle"
 
     def parallel_failed(self):
         """Stop treating retry cleanup as an active parallel transfer."""
-        self._parallel_active = False
+        self._parallel = "idle"
 
     def cache_hit(self, filename):
         """Expose verified local-cache reuse without calling it network speed."""
         self.current = f"cache: {filename}"
-        self.source = "cache"
+        self.rate.source = "cache"
 
     def _inflight_bytes(self):
         """Return how much of the wheel pip is still fetching has arrived.
@@ -678,7 +1063,7 @@ class DownloadProgress:
         for handle in handles:
             try:
                 name = os.path.basename(os.readlink(str(handle)))
-                if not name.endswith(".whl") or name in self._complete:
+                if not name.endswith(".whl") or self.folder.is_complete(name):
                     continue
                 # pip fetches one wheel at a time, so the largest open wheel is
                 # the one in flight; max() also avoids double counting during
@@ -690,131 +1075,43 @@ class DownloadProgress:
 
     def _measure(self):
         previous_done = self.done
-        wheels = list(self.destination.glob("*.whl"))
-        sizes = {}
-        for wheel in wheels:
-            with contextlib.suppress(OSError):
-                sizes[wheel.name] = wheel.stat().st_size
-        complete = []
-        for wheel in wheels:
-            size = sizes.get(wheel.name)
-            if size is None or Path(str(wheel) + ".aria2").exists():
-                continue
-            # aria2 can remove its control file just before the last write is
-            # visible. While it is active, require one unchanged sample before
-            # calling a file complete. A successful child exit settles all.
-            if self._parallel_active and self._observed_sizes.get(wheel.name) != size:
-                continue
-            complete.append(wheel)
-        self.done = len(complete)
-        self._complete = {wheel.name for wheel in complete}
-        total = sum(sizes.values())
-        self._observed_sizes = sizes
+        present = self.folder.measure(require_stable=self._parallel == "active")
+        self.done = len(self.folder.complete)
         # There is a moment between pip closing a finished download and copying
         # it into place where neither location holds it.  Reporting the running
         # peak keeps the counter from flicking back to zero, which reads as a
         # failure rather than as the last step of a successful fetch.
-        self._peak = max(self._peak, total + self._inflight_bytes())
-        self.downloaded = self._peak
-        now = time.monotonic()
-        elapsed = now - self._rate_time
-        if (
-            self.source == "network"
-            and (self._settling_parallel or self.done > previous_done)
-            and self._network_started is not None
-        ):
-            network_elapsed = now - self._network_started
-            if network_elapsed > 0:
-                self.speed = (
-                    max(0, self.downloaded - self._network_start_bytes)
-                    / network_elapsed
-                )
-        elif self.source == "network" and elapsed >= 0.1:
-            self.speed = max(0, self.downloaded - self._rate_bytes) / elapsed
-            self._rate_bytes = self.downloaded
-            self._rate_time = now
+        self.downloaded = max(self.downloaded, present + self._inflight_bytes())
+        settled = self._parallel == "settling" or self.done > previous_done
+        self.rate.update(self.downloaded, settled=settled)
 
-    def _transfer_status(self):
-        if self.source == "cache":
-            return "cache"
-        if self.source == "network":
-            return format_rate(self.speed or 0)
-        return ""
-
-    def _report(self):
-        status = self._transfer_status()
+    def _summary(self):
+        status = self.rate.status()
         suffix = f", {status}" if status else ""
-        print(
-            f"  {self.title}: {self.done} of {self.total} downloaded "
-            f"({format_bytes(self.downloaded)}{suffix}).",
-            file=self.stream,
-            flush=True,
+        return (
+            f"{self.done} of {self.total} downloaded "
+            f"({format_bytes(self.downloaded)}{suffix})."
         )
-        self._reported = self.done
-        self._reported_interval = int((time.monotonic() - self.started) // 30)
 
-    def tick(self):
-        """Repaint the progress line, or report each completion when piped."""
-        self._measure()
-        if self.interactive:
-            self._paint()
-        elif self.done != self._reported:
-            self._report()
-        elif self.source == "network" and self.done < self.total:
-            # A pipe cannot repaint one terminal row, but it must not go silent
-            # for the duration of one multi-gigabyte wheel either. Emit one
-            # bounded heartbeat every 30 seconds with the same live byte/rate
-            # telemetry as the interactive display.
-            interval = int((time.monotonic() - self.started) // 30)
-            if interval != self._reported_interval:
-                status = self._transfer_status()
-                current = f" | {self.current}" if self.current else ""
-                print(
-                    f"  {self.title}: {self.done}/{self.total} complete | "
-                    f"{format_bytes(self.downloaded)} | {status} | "
-                    f"{format_elapsed(time.monotonic() - self.started)}{current}",
-                    file=self.stream,
-                    flush=True,
-                )
-                self._reported_interval = interval
+    def _heartbeat_facts(self):
+        if self.rate.source != "network":
+            return None
+        return [format_bytes(self.downloaded), self.rate.status()]
 
-    def _paint(self):
+    def _meter_line(self):
         filled = round(20 * self.done / self.total) if self.total else 20
-        bar = "#" * filled + "-" * (20 - filled)
+        meter = "#" * filled + "-" * (20 - filled)
         line = (
-            f"  {self.title} [{bar}] {self.done}/{self.total}  "
+            f"  {self.title} [{meter}] {self.done}/{self.total}  "
             f"{format_bytes(self.downloaded)}"
         )
-        status = self._transfer_status()
+        status = self.rate.status()
         if status:
             line += f"  {status}"
-        line += f"  {format_elapsed(time.monotonic() - self.started)}"
-        if self.current:
-            width = max(40, shutil.get_terminal_size((180, 24)).columns - 1)
-            available = width - len(line) - 2
-            if available > 3:
-                line += "  " + ResolverProgress._truncate_label(self.current, available)
-        # Pad to erase the tail of any longer line drawn a moment ago.
-        self.stream.write("\r" + line.ljust(self._painted))
-        self.stream.flush()
-        self._painted = len(line)
-
-    def finish(self):
-        """Leave one settled summary line behind for the session transcript."""
-        # The child has been reaped by now, so drop it before measuring rather
-        # than risk reading the open files of whatever inherits its pid next.
-        self.pid = None
-        self._measure()
-        if self.interactive:
-            self.current = ""
-            self._paint()
-            self.stream.write("\n")
-            self.stream.flush()
-        elif self.done != self._reported:
-            self._report()
+        return line + f"  {format_elapsed(self.pacer.elapsed())}"
 
 
-class InstallProgress:
+class InstallProgress(CountedProgress):
     """Live, plain-language progress for installing verified local wheels.
 
     pip prints nothing between starting to install collected packages and its
@@ -829,23 +1126,9 @@ class InstallProgress:
     """
 
     def __init__(self, title, expected, stream=None):
-        self.title = title
+        super().__init__(title, len(expected), stream)
         self.expected = expected
-        self.total = len(expected)
-        self.stream = stream if stream is not None else sys.stdout
-        self.interactive = bool(getattr(self.stream, "isatty", lambda: False)())
-        self.started = time.monotonic()
-        self.current = ""
-        self.pid = None
-        self.done = 0
         self._labels = {item["wheel"]: item["label"] for item in expected}
-        self._painted = 0
-        self._reported = 0
-        self._reported_interval = -1
-
-    def watch(self, pid):
-        """Follow this child so the wheel it is unpacking can be named."""
-        self.pid = pid
 
     def _inflight_label(self):
         """Name the package whose wheel the child currently holds open."""
@@ -879,68 +1162,16 @@ class InstallProgress:
         elif self.done >= self.total:
             self.current = ""
 
-    def _report(self):
-        print(
-            f"  {self.title.rstrip()}: {self.done} of "
-            f"{count_label(self.total, 'package')} in place.",
-            file=self.stream,
-            flush=True,
-        )
-        self._reported = self.done
-        self._reported_interval = int((time.monotonic() - self.started) // 30)
+    def _summary(self):
+        return f"{self.done} of {count_label(self.total, 'package')} in place."
 
-    def tick(self):
-        """Repaint the progress line, or report each completion when piped."""
-        self._measure()
-        if self.interactive:
-            self._paint()
-        elif self.done != self._reported:
-            self._report()
-        elif self.done < self.total:
-            # A pipe cannot repaint one terminal row, but it must not go
-            # silent for the whole of one large package either.  Emit one
-            # bounded heartbeat every 30 seconds.
-            interval = int((time.monotonic() - self.started) // 30)
-            if interval != self._reported_interval:
-                current = f" | {self.current}" if self.current else ""
-                print(
-                    f"  {self.title.rstrip()}: {self.done}/{self.total} complete | "
-                    f"{format_elapsed(time.monotonic() - self.started)}{current}",
-                    file=self.stream,
-                    flush=True,
-                )
-                self._reported_interval = interval
-
-    def _paint(self):
+    def _meter_line(self):
         filled = round(20 * self.done / self.total) if self.total else 0
-        bar = "#" * filled + "-" * (20 - filled)
-        line = (
-            f"  {self.title} [{bar}] {self.done}/{self.total} in place  "
-            f"{format_elapsed(time.monotonic() - self.started)}"
+        meter = "#" * filled + "-" * (20 - filled)
+        return (
+            f"  {self.title} [{meter}] {self.done}/{self.total} in place  "
+            f"{format_elapsed(self.pacer.elapsed())}"
         )
-        if self.current:
-            width = max(40, shutil.get_terminal_size((180, 24)).columns - 1)
-            available = width - len(line) - 2
-            if available > 3:
-                line += "  " + ResolverProgress._truncate_label(self.current, available)
-        # Pad to erase the tail of any longer line drawn a moment ago.
-        self.stream.write("\r" + line.ljust(self._painted))
-        self.stream.flush()
-        self._painted = len(line)
-
-    def finish(self):
-        """Leave one settled summary line behind for the session transcript."""
-        # The child has been reaped by now, so drop it before measuring rather
-        # than risk reading the open files of whatever inherits its pid next.
-        self.pid = None
-        self._measure()
-        if self.interactive:
-            self.current = ""
-            self._paint()
-            self.stream.write("\n")
-            self.stream.flush()
-        elif self.done != self._reported:
-            self._report()
 
 
 class PackageScanProgress:
@@ -959,83 +1190,47 @@ class PackageScanProgress:
     def __init__(self, *, cached_count=None, render=True, stream=None):
         self.cached_count = cached_count
         self.render = render
-        self.stream = stream if stream is not None else sys.stdout
-        self.interactive = bool(getattr(self.stream, "isatty", lambda: False)())
-        self.started = time.monotonic()
-        self.phase = "Reading installed package metadata"
-        self.scope = None
-        self.found = None
-        self.pid = None
-        self.cpu_percent = None
-        self.rss_bytes = None
-        self.success = None
-        self._last_cpu_seconds = None
-        self._last_cpu_measurement = None
-        self._last_paint = None
-        self._painted = []
-        self._reported_interval = -1
+        self.display = LiveDisplay(stream)
+        self.pacer = Pacer(self.LOG_INTERVAL, self.REFRESH_INTERVAL)
+        self.sampler = ProcessSampler()
         self._lock = threading.Lock()
+        self._state = {
+            "phase": "Reading installed package metadata",
+            "scope": None,
+            "found": None,
+            "success": None,
+        }
+
+    def _set(self, **changes):
+        with self._lock:
+            self._state.update(changes)
 
     def set_phase(self, phase):
-        with self._lock:
-            self.phase = phase
+        """Record the scan stage shown to the user."""
+        self._set(phase=phase)
 
     def set_scope(self, count):
-        with self._lock:
-            self.scope = count
+        """Record how many installed distributions the scan covers."""
+        self._set(scope=count)
 
     def set_found(self, count):
-        with self._lock:
-            self.found = count
+        """Record how many eligible updates the scan found."""
+        self._set(found=count)
 
     def watch(self, pid):
-        with self._lock:
-            self.pid = pid
-            self._last_cpu_seconds = None
-            self._last_cpu_measurement = None
-        self._measure_process()
+        """Attach the running scan process for CPU and RAM sampling."""
+        self.sampler.watch(pid)
 
-    def _measure_process(self):
-        with self._lock:
-            pid = self.pid
-            previous_cpu = self._last_cpu_seconds
-            previous_time = self._last_cpu_measurement
-        if pid is None:
-            return
-        now = time.monotonic()
-        try:
-            stat_text = Path(f"/proc/{pid}/stat").read_text(encoding="utf-8")
-            fields = stat_text[stat_text.rfind(")") + 2 :].split()
-            ticks = int(fields[11]) + int(fields[12])
-            cpu_seconds = ticks / os.sysconf("SC_CLK_TCK")
-            cpu_percent = None
-            if previous_cpu is not None and previous_time is not None:
-                elapsed = now - previous_time
-                if elapsed > 0:
-                    cpu_percent = max(0.0, 100 * (cpu_seconds - previous_cpu) / elapsed)
-            status = Path(f"/proc/{pid}/status").read_text(encoding="utf-8")
-            rss = re.search(r"^VmRSS:\s+(\d+)\s+kB$", status, re.MULTILINE)
-            rss_bytes = int(rss.group(1)) * 1024 if rss else None
-        except (OSError, ValueError, IndexError):
-            return
-        with self._lock:
-            self._last_cpu_seconds = cpu_seconds
-            self._last_cpu_measurement = now
-            if cpu_percent is not None:
-                self.cpu_percent = cpu_percent
-            if rss_bytes is not None:
-                self.rss_bytes = rss_bytes
+    def redirect(self, stream):
+        """Draw on ``stream`` from now on (a background scan gets a screen)."""
+        self.display = LiveDisplay(stream)
 
     def snapshot(self):
+        """Return a consistent copy of the measured scan state."""
         with self._lock:
-            return {
-                "phase": self.phase,
-                "scope": self.scope,
-                "found": self.found,
-                "cpu_percent": self.cpu_percent,
-                "rss_bytes": self.rss_bytes,
-                "success": self.success,
-            }
+            state = dict(self._state)
+        state["cpu_percent"], state["rss_bytes"] = self.sampler.readings()
+        return state
 
     def _activity_bar(self, elapsed, success):
         if success is True:
@@ -1050,20 +1245,14 @@ class PackageScanProgress:
         return "".join(cells)
 
     def terminal_lines(self, max_width):
+        """Return the three dashboard rows, each cut to max_width."""
         snap = self.snapshot()
-        elapsed_seconds = time.monotonic() - self.started
-        elapsed = format_elapsed(elapsed_seconds)
-        state = (
-            "complete"
-            if snap["success"] is True
-            else "failed"
-            if snap["success"] is False
-            else "running"
-        )
+        elapsed_seconds = self.pacer.elapsed()
+        state = {True: "complete", False: "failed"}.get(snap["success"], "running")
         line1 = (
             f"  Live package scan activity "
             f"[{self._activity_bar(elapsed_seconds, snap['success'])}] "
-            f"{state} | {elapsed}"
+            f"{state} | {format_elapsed(elapsed_seconds)}"
         )
         line2 = f"  Stage: {snap['phase']}"
         facts = []
@@ -1073,78 +1262,57 @@ class PackageScanProgress:
             facts.append(f"cached result {count_label(self.cached_count, 'update')}")
         if snap["found"] is not None:
             facts.append(f"found {count_label(snap['found'], 'update')}")
-        if snap["cpu_percent"] is not None:
-            facts.append(f"CPU {snap['cpu_percent']:.0f}%")
-        if snap["rss_bytes"] is not None:
-            facts.append(f"RAM {format_bytes(snap['rss_bytes'])}")
+        facts.extend(process_figures(snap["cpu_percent"], snap["rss_bytes"]))
         line3 = "  " + (" | ".join(facts) or "Starting scan process...")
-        return [
-            ResolverProgress._truncate_label(line, max_width)
-            for line in (line1, line2, line3)
-        ]
+        return [truncate_label(line, max_width) for line in (line1, line2, line3)]
 
     def compact_status(self, max_width):
+        """Return a one-line scan summary for the selector header."""
         snap = self.snapshot()
-        elapsed = time.monotonic() - self.started
+        elapsed = self.pacer.elapsed()
         text = (
             f" Scan [{self._activity_bar(elapsed, snap['success'])}] "
             f"{snap['phase']} | {format_elapsed(elapsed)}"
         )
-        return ResolverProgress._truncate_label(text, max_width)
+        return truncate_label(text, max_width)
 
     def paint(self, *, force=False):
-        now = time.monotonic()
-        if (
-            not force
-            and self._last_paint is not None
-            and now - self._last_paint < self.REFRESH_INTERVAL
-        ):
+        """Redraw in place on a terminal; otherwise log at LOG_INTERVAL."""
+        if self.display.interactive:
+            if self.pacer.paint_due(force=force):
+                self.sampler.sample()
+                self.display.draw(self.terminal_lines(self.display.width()))
             return
-        self._measure_process()
-        if self.interactive:
-            width = max(40, shutil.get_terminal_size((180, 24)).columns - 1)
-            lines = self.terminal_lines(width)
-            if self._painted:
-                self.stream.write("\r\x1b[2A")
-            else:
-                self.stream.write("\r")
-            for index, line in enumerate(lines):
-                if index:
-                    self.stream.write("\n")
-                previous = self._painted[index] if self._painted else 0
-                self.stream.write(line.ljust(previous))
-            self.stream.flush()
-            self._painted = [len(line) for line in lines]
-            self._last_paint = now
-            return
-        interval = int((now - self.started) // self.LOG_INTERVAL)
-        if force or interval != self._reported_interval:
-            print(" | ".join(self.terminal_lines(10_000)), file=self.stream, flush=True)
-            self._reported_interval = interval
+        self.sampler.sample()
+        if self.pacer.log_due(force=force):
+            fields = [line.strip() for line in self.terminal_lines(10_000)]
+            self.display.log("  " + " | ".join(fields))
 
     def tick(self):
+        """Repaint when rendering (paint throttles); otherwise just sample."""
         if self.render:
             self.paint()
         else:
-            self._measure_process()
+            self.sampler.sample()
 
     def finish(self, success):
-        with self._lock:
-            self.pid = None
-            self.success = success
-            self.phase = (
+        """Mark the scan finished and draw its final state."""
+        self.sampler.stop()
+        self._set(
+            success=success,
+            phase=(
                 "Package index scan complete"
                 if success
                 else "Package index scan failed"
-            )
+            ),
+        )
         if self.render:
             self.paint(force=True)
             self.end_display()
 
     def end_display(self):
-        if self.interactive and self._painted:
-            self.stream.write("\n")
-            self.stream.flush()
+        """Move below an in-place dashboard so later output starts clean."""
+        self.display.end()
 
 
 def parse_json_output(raw, context):
@@ -1163,17 +1331,17 @@ def canonicalize_name(name):
 
 
 def wheel_filename_from_url(url):
-    """Return a safe wheel basename from a resolver-selected URL.
-
-    The check applies to the decoded name because the decoded name is what is
-    written to disk and into aria2's input file; ``%0A`` is harmless in a URL
-    but becomes a new aria2 option line once unquoted.
-    """
-    if not isinstance(url, str) or not url or URL_UNSAFE_CHARACTERS.search(url):
+    """Return a safe wheel basename from a resolver-selected URL."""
+    if not isinstance(url, str) or not url or "\n" in url or "\r" in url:
         raise UpdaterError("pip proposed an invalid wheel URL.")
     encoded = PurePosixPath(urlsplit(url).path).name
     filename = unquote(encoded)
-    if not WHEEL_FILENAME.fullmatch(filename):
+    if (
+        not filename.endswith(".whl")
+        or "/" in filename
+        or "\\" in filename
+        or filename in {"", ".", ".."}
+    ):
         raise UpdaterError(f"pip proposed a URL without a safe wheel filename: {url!r}")
     return filename
 
@@ -1229,6 +1397,11 @@ def conda_executable():
     discovered = shutil.which("conda")
     if discovered:
         return discovered
+    # Shells without `conda init` (cron, systemd, env -i) have neither of the
+    # above, but the shebang runs Conda's own base interpreter.
+    bundled = Path(sys.prefix) / "bin" / "conda"
+    if bundled.is_file() and os.access(bundled, os.X_OK):
+        return str(bundled)
     raise UpdaterError("Conda was not found. Activate Conda or set CONDA_EXE.")
 
 
@@ -1398,6 +1571,23 @@ def set_cached_holds(prefix, holds):
     save_cache(cache)
 
 
+def _local_build(version):
+    """Return the normalized local label of a version: `cu130` of `2.10+cu130`."""
+    return re.sub(r"[-_]", ".", str(version).partition("+")[2].lower())
+
+
+def build_change(installed, newest):
+    """Say why ``newest`` would swap the installed build for another, or None.
+
+    A local label names a build from a specific index (PyTorch's +cu130
+    wheels).  A newest release with a different label is not an update of
+    that build: installing it replaces, say, CUDA 13.0 torch with PyPI's.
+    """
+    if _local_build(installed) == _local_build(newest):
+        return None
+    return f"{newest} is a different build than the installed {installed}"
+
+
 def _is_within(path, parent):
     """Return whether path resolves within parent without requiring existence."""
     if not path:
@@ -1447,169 +1637,394 @@ print(json.dumps(rows, separators=(",", ":")))
     return rows
 
 
-def index_inventory(rows):
-    """Index inventory by normalized name and reject ambiguous metadata."""
+def _group_inventory(rows):
     grouped = {}
     for row in rows:
         if not isinstance(row, dict) or not row.get("name"):
             continue
         grouped.setdefault(canonicalize_name(row["name"]), []).append(row)
+    return grouped
+
+
+def index_inventory(rows, prefix):
+    """Index inventory by normalized name and reject ambiguous metadata."""
+    grouped = _group_inventory(rows)
     duplicates = {name: items for name, items in grouped.items() if len(items) != 1}
     if duplicates:
-        raise UpdaterError(explain_duplicate_metadata(duplicates))
+        raise UpdaterError(explain_duplicate_metadata(duplicates, prefix))
     return {name: items[0] for name, items in grouped.items()}
 
 
-def record_evidence(metadata_path):
-    """Compare one distribution's hashed RECORD entries with files on disk.
+def repair_stale_duplicate_metadata(prefix, *, dry_run):
+    """Move aside duplicate package records that file hashes prove stale.
 
-    Duplicate metadata cannot be resolved safely from version numbers or path
-    overlap: either copy may be the stale one. Wheel RECORD hashes provide
-    direct evidence instead. Entries outside site-packages are skipped because
-    they are unnecessary here and must not turn a RECORD into an arbitrary read.
+    Moving is recoverable (rename the directory back) and never deletes a
+    file.  Copies the evidence cannot tell apart are left for
+    explain_duplicate_metadata to report, because guessing could break the
+    package.
     """
-    directory = Path(metadata_path)
-    own_records = directory.name + "/"
+    ledgers = InstallLedgers(prefix)
+    grouped = _group_inventory(get_environment_inventory(prefix))
+    for name, items in sorted(grouped.items()):
+        if len(items) < 2:
+            continue
+        evidence, current = _duplicate_verdict(items, ledgers)
+        if current is None:
+            continue
+        for path in sorted(evidence.keys() - {current}):
+            destination = path + STALE_METADATA_SUFFIX
+            if dry_run:
+                announce("PREVIEW", f"Would move the stale {name} record {path} aside.")
+                continue
+            if not _is_within(path, prefix):
+                raise UpdaterError(f"Refusing to move {path}: it is outside {prefix}.")
+            if os.path.lexists(destination):
+                raise UpdaterError(
+                    f"Cannot move the stale {name} record aside: {destination} "
+                    "already exists."
+                )
+            os.rename(path, destination)
+            announce(
+                "OK",
+                f"Moved the stale {name} record aside: {destination} "
+                "(rename it back to undo).",
+            )
+
+
+def file_sha256(path):
+    """Return the SHA-256 hash object of a file, read in bounded chunks."""
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest
+
+
+def _hash_field(digest):
+    """Return a SHA-256 digest in RECORD's ``sha256=`` form."""
+    return "sha256=" + base64.urlsafe_b64encode(digest).rstrip(b"=").decode()
+
+
+def _file_hash_field(path):
+    """Return a file's hash in RECORD's ``sha256=`` form, or None if unreadable."""
+    try:
+        return _hash_field(file_sha256(path).digest())
+    except OSError:
+        return None
+
+
+def _record_hashes(metadata_path, prefix_path):
+    """Map the prefix-relative paths one RECORD hashes to their hash fields.
+
+    Returns None without a readable RECORD.  Paths resolving outside the prefix
+    are left out, so a RECORD cannot direct a read elsewhere.
+    """
     try:
         with open(
-            directory / "RECORD", newline="", encoding="utf-8", errors="replace"
+            metadata_path / "RECORD", newline="", encoding="utf-8", errors="replace"
         ) as handle:
             rows = list(csv.reader(handle))
     except OSError:
         return None
-    claims = set()
-    matched = changed = missing = 0
-    root = directory.parent.resolve(strict=False)
+    hashes = {}
     for row in rows:
-        if not row or not row[0] or row[0].startswith(own_records):
+        if len(row) < 2 or not row[0] or not row[1].startswith("sha256="):
             continue
-        recorded = PurePosixPath(row[0])
-        if recorded.is_absolute() or ".." in recorded.parts:
-            continue
-        claims.add(row[0])
-        if len(row) < 2 or not row[1] or not row[1].startswith("sha256="):
-            continue
-        target = root.joinpath(*recorded.parts)
-        if not _is_within(target, root):
-            continue
-        try:
-            if not target.is_file():
-                missing += 1
-                continue
-            digest = hashlib.sha256()
-            with open(target, "rb") as handle:
-                for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-                    digest.update(chunk)
-        except OSError:
-            missing += 1
-            continue
-        actual = base64.urlsafe_b64encode(digest.digest()).rstrip(b"=").decode()
-        expected = row[1].split("=", 1)[1]
-        if actual == expected:
-            matched += 1
-        else:
-            changed += 1
-    return {
-        "claims": claims,
-        "matched": matched,
-        "changed": changed,
-        "missing": missing,
+        target = (metadata_path.parent / Path(row[0])).resolve(strict=False)
+        if _is_within(target, prefix_path):
+            hashes[target.relative_to(prefix_path).as_posix()] = row[1]
+    return hashes
+
+
+def _is_noarch_python(record):
+    noarch = record.get("noarch")
+    if isinstance(noarch, dict):
+        noarch = noarch.get("type")
+    return noarch == "python" or record.get("package_type") == "noarch_python"
+
+
+def _noarch_python_target(path, site_packages):
+    """Map a noarch: python package path to where Conda installed it.
+
+    Mirrors Conda's own link step: ``site-packages/`` goes to the environment's
+    site-packages and ``python-scripts/`` to ``bin/``.
+    """
+    head, _, rest = path.partition("/")
+    if head == "site-packages" and rest and site_packages:
+        return f"{site_packages}/{rest}"
+    if head == "python-scripts" and rest:
+        return f"bin/{rest}"
+    return path
+
+
+def _conda_record_hashes(record, site_packages):
+    """Map the prefix-relative files one Conda record hashes to hash fields.
+
+    Conda hashes each file as packaged and, when it rewrites the file while
+    installing (``file_mode``), again as installed in ``sha256_in_prefix``.
+    Only the installed hash describes the file on disk, so a rewritten file
+    without one is left out, as are links and files compiled at install time,
+    which carry no hash.  A noarch: python record names its files by their
+    paths inside the package, so each is mapped to where it was installed and
+    kept only if the record's ``files`` list confirms that location.
+    """
+    installed_files = {
+        path for path in record.get("files", []) if isinstance(path, str)
     }
+    noarch_python = _is_noarch_python(record)
+    paths_data = record.get("paths_data")
+    entries = paths_data.get("paths") if isinstance(paths_data, dict) else None
+    hashes = {}
+    for entry in entries if isinstance(entries, list) else ():
+        if not isinstance(entry, dict) or entry.get("path_type") == "softlink":
+            continue
+        relative = entry.get("_path")
+        installed = entry.get("sha256_in_prefix")
+        if installed is None and not entry.get("file_mode"):
+            installed = entry.get("sha256")
+        if not isinstance(relative, str) or not isinstance(installed, str):
+            continue
+        if noarch_python:
+            relative = _noarch_python_target(relative, site_packages)
+        posix_path = PurePosixPath(relative)
+        if (
+            relative not in installed_files
+            or posix_path.is_absolute()
+            or ".." in posix_path.parts
+        ):
+            continue
+        with contextlib.suppress(ValueError):
+            hashes[relative] = _hash_field(bytes.fromhex(installed))
+    return hashes
 
 
-def explain_duplicate_metadata(duplicates):
+def conda_metadata_hashes(prefix_path):
+    """Map each Python metadata directory Conda installed to its record's hashes.
+
+    Keys are prefix-relative directories such as
+    ``lib/python3.13/site-packages/setuptools-80.10.2-py3.13.egg-info``.  An
+    unreadable record is skipped, so it vouches for nothing.
+    """
+    ledgers = {}
+    for record_path in sorted((prefix_path / "conda-meta").glob("*.json")):
+        try:
+            record = json.loads(record_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if not isinstance(record, dict):
+            continue
+        directories = {
+            PurePosixPath(raw_path).parent
+            for raw_path in record.get("files", [])
+            if isinstance(raw_path, str)
+            and is_distribution_metadata(PurePosixPath(raw_path))
+        }
+        if not directories:
+            continue
+        # One site-packages is required to place noarch files; with none
+        # placed, the record simply offers no evidence.
+        site_dirs = {directory.parent.as_posix() for directory in directories}
+        site_packages = site_dirs.pop() if len(site_dirs) == 1 else None
+        hashes = _conda_record_hashes(record, site_packages)
+        ledgers.update(
+            dict.fromkeys((directory.as_posix() for directory in directories), hashes)
+        )
+    return ledgers
+
+
+def _verify_hashed_file(root, relative, hash_field):
+    """Check one hashed file: "matched", "changed", "missing" or None.
+
+    None means the path resolves outside ``root`` and is not read at all.
+    """
+    target = root.joinpath(*PurePosixPath(relative).parts)
+    if not _is_within(target, root):
+        return None
+    try:
+        actual = _file_hash_field(target) if target.is_file() else None
+    except OSError:
+        actual = None
+    if actual is None:
+        return "missing"
+    return "matched" if actual == hash_field else "changed"
+
+
+class InstallLedgers:
+    """Each installed copy's own ledger of its files and their SHA-256 hashes.
+
+    pip keeps that ledger in the copy's RECORD and Conda in its conda-meta
+    record.  A Conda egg-info copy has no RECORD at all, so judging copies by
+    RECORD alone cannot tell it from a pip copy of the same package; that is
+    what cloning or renaming an environment in which pip had replaced a Conda
+    package leaves behind.  Conda's records are read only when first needed.
+    """
+
+    def __init__(self, prefix):
+        self.prefix_path = Path(prefix).resolve(strict=False)
+        self._conda = None
+
+    def hashes(self, row):
+        """Return (ledger name, {prefix-relative path: hash field}) for a copy.
+
+        Conda's record judges a copy Conda installed.  pip's RECORD judges pip's
+        copies, including one pip reinstalled into a Conda directory of the same
+        name, because pip then rewrote its RECORD and INSTALLER.  (None, {})
+        means the copy has no ledger to check.
+        """
+        metadata_path = Path(row.get("metadata_path") or "")
+        if not row.get("metadata_path") or not _is_within(
+            metadata_path, self.prefix_path
+        ):
+            return None, {}
+        if row.get("installer") != "pip":
+            if self._conda is None:
+                self._conda = conda_metadata_hashes(self.prefix_path)
+            relative = metadata_path.resolve(strict=False).relative_to(self.prefix_path)
+            conda_hashes = self._conda.get(relative.as_posix())
+            if conda_hashes is not None:
+                return "Conda record", conda_hashes
+        record_hashes = _record_hashes(metadata_path, self.prefix_path)
+        return ("RECORD", record_hashes) if record_hashes is not None else (None, {})
+
+    def evidence(self, row):
+        """Compare one copy's ledger with the files on disk; None without one.
+
+        The copy's own metadata directory is skipped: a RECORD cannot hash
+        itself, and INSTALLER changes when another tool reinstalls in place.
+        """
+        source, hashes = self.hashes(row)
+        if source is None:
+            return None
+        own = (
+            Path(row["metadata_path"])
+            .resolve(strict=False)
+            .relative_to(self.prefix_path)
+            .as_posix()
+            + "/"
+        )
+        claims = {relative for relative in hashes if not relative.startswith(own)}
+        counts = {"matched": 0, "changed": 0, "missing": 0}
+        for relative in claims:
+            outcome = _verify_hashed_file(self.prefix_path, relative, hashes[relative])
+            if outcome:
+                counts[outcome] += 1
+        return {"source": source, "claims": claims, **counts}
+
+
+def _duplicate_verdict(items, ledgers):
+    """Return (evidence, current) for one package's metadata copies.
+
+    ``evidence`` maps each copy with a ledger to its InstallLedgers.evidence.
+    ``current`` is the one copy whose every hash matches the files on disk
+    while every other copy has a mismatch, or None when the hashes do not
+    single one out.  Version numbers and path overlap are never used: either
+    copy may be the stale one.
+    """
+    evidence = {}
+    for item in items:
+        found = ledgers.evidence(item)
+        if found is not None:
+            evidence[item["metadata_path"]] = found
+    current = [
+        path
+        for path, found in evidence.items()
+        if found["matched"] and not found["changed"] and not found["missing"]
+    ]
+    stale = [
+        path for path, found in evidence.items() if found["changed"] or found["missing"]
+    ]
+    decided = (
+        len(evidence) == len(items)
+        and len(current) == 1
+        and len(stale) == len(items) - 1
+    )
+    return evidence, (current[0] if decided else None)
+
+
+def _evidence_summary(found):
+    """Summarize one copy's hash check for a copy that could not be judged."""
+    if found is None:
+        return "no RECORD or Conda record to check it against"
+    counts = [
+        f"{found[key]} {word}"
+        for key, word in (
+            ("matched", "matches" if found["matched"] == 1 else "match"),
+            ("changed", "differs" if found["changed"] == 1 else "differ"),
+            ("missing", "missing"),
+        )
+        if found[key]
+    ]
+    return f"{found['source']}: {', '.join(counts) or 'no file hashes to check'}"
+
+
+def _stale_copy_lines(path, found, current_claims):
+    """Describe one stale metadata copy and any files only it claims."""
+    problems = found["changed"] + found["missing"]
+    source = found["source"]
+    problem_label = count_label(problems, f"{source} hash", f"{source} hashes")
+    verb = "differs" if problems == 1 else "differ"
+    lines = [f"    {path}  (stale: {problem_label} {verb})"]
+    old_only = len(found["claims"] - current_claims)
+    if old_only:
+        lines += [
+            f"      It also lists {count_label(old_only, 'file')} that the",
+            "      current records do not claim. Moving this metadata does",
+            "      not delete those files.",
+        ]
+    return lines
+
+
+def explain_duplicate_metadata(duplicates, prefix):
     """Explain duplicate records and quarantine only demonstrably stale copies.
 
     An upgrade normally replaces a package's records; when that clean-up does
     not happen the old directory stays behind and the environment now claims two
     versions of one package at once.  The updater cannot tell which one an
     update is meant to replace, so it stops.
-
-    Choosing which directory to move by version number or path overlap alone
-    would be a guess. A copy is called current only when all of its verifiable
-    RECORD hashes match the files on disk and every other copy has a mismatch.
     """
+    ledgers = InstallLedgers(prefix)
     lines = [
         "Two sets of records exist for the same package, so this environment",
         "cannot be updated safely -- there is no way to tell which copy an",
         "update is meant to replace.",
         "",
-        "This is commonly left by an upgrade that did not finish cleaning up.",
-        "The updater verifies RECORD hashes before identifying a stale copy.",
+        "This is commonly left by an upgrade that did not finish cleaning up,",
+        "or by cloning or renaming an environment in which pip had replaced a",
+        "Conda package. Each copy is checked against its installer's own file",
+        "hashes (pip's RECORD or Conda's record) before one is called stale.",
         "",
     ]
     removable = []
     for name, items in sorted(duplicates.items()):
         lines.append(f"  {name}:")
-        evidence = {}
-        for item in items:
-            path = item.get("metadata_path") or ""
-            found = record_evidence(path) if path else None
-            if found is not None:
-                evidence[path] = found
-        current = [
-            path
-            for path, found in evidence.items()
-            if found["matched"] > 0 and found["changed"] == 0 and found["missing"] == 0
-        ]
-        stale = [
-            path
-            for path, found in evidence.items()
-            if found["changed"] > 0 or found["missing"] > 0
-        ]
-        decided = (
-            len(evidence) == len(items)
-            and len(current) == 1
-            and len(stale) == len(items) - 1
-        )
-        if not decided:
+        evidence, current = _duplicate_verdict(items, ledgers)
+        if current is None:
             lines += [
-                f"    {item['metadata_path']}"
+                f"    {item['metadata_path']}  "
+                f"({_evidence_summary(evidence.get(item['metadata_path']))})"
                 for item in sorted(
                     items, key=lambda row: row.get("metadata_path") or ""
                 )
                 if item.get("metadata_path")
             ]
-            lines.append("    RECORD hashes do not identify one current copy, so")
+            lines.append("    The hashes do not single out one current copy, so")
             lines.append(
                 "    moving either one could break the package. Check by hand."
             )
             continue
-        current_path = current[0]
-        lines.append(f"    {current_path}  (all RECORD hashes match)")
-        current_claims = evidence[current_path]["claims"]
-        for path in sorted(stale):
-            found = evidence[path]
-            problems = found["changed"] + found["missing"]
-            problem_label = count_label(problems, "RECORD hash", "RECORD hashes")
-            verb = "differs" if problems == 1 else "differ"
-            lines.append(f"    {path}  (stale: {problem_label} {verb})")
-            old_only = len(found["claims"] - current_claims)
-            if old_only:
-                lines.append(
-                    f"      It also lists {count_label(old_only, 'file')} that the"
-                )
-                lines.append(
-                    "      current records do not claim. Moving this metadata does"
-                )
-                lines.append("      not delete those files.")
+        found = evidence[current]
+        lines.append(f"    {current}  (all {found['source']} hashes match)")
+        for path in sorted(evidence.keys() - {current}):
+            lines += _stale_copy_lines(path, evidence[path], found["claims"])
             removable.append(path)
     if removable:
         lines += [
             "",
-            "Move the stale record directories aside, then run this command again:",
+            "A real (not --dry-run) run moves each stale record directory aside",
+            "automatically before updating; it is recoverable by renaming back:",
             "",
         ]
-        for path in removable:
-            destination = path + ".pip-updater-stale"
-            lines.append(
-                "  " + shlex.join(["mv", "-T", "--no-clobber", "--", path, destination])
-            )
-        lines += [
-            "",
-            "This is recoverable: move a .pip-updater-stale directory back to",
-            "its original name if you need to undo it.",
-        ]
+        lines += [f"  {path}{STALE_METADATA_SUFFIX}" for path in removable]
     return "\n".join(lines)
 
 
@@ -1625,6 +2040,28 @@ def _metadata_name(metadata_path):
     except OSError:
         return None
     return None
+
+
+def _metadata_directory_name(posix_path):
+    """Return the distribution name encoded in a .dist-info/.egg-info path."""
+    stem = re.sub(
+        r"\.(dist|egg)-info$", "", posix_path.parent.name, flags=re.IGNORECASE
+    )
+    return re.split(r"-(?=\d)", stem, maxsplit=1)[0]
+
+
+def is_distribution_metadata(posix_path):
+    """Whether a record path is the metadata of a distribution pip can see.
+
+    Only metadata directly in site-packages names a distribution; a copy such
+    as setuptools/_vendor/tomli-*.dist-info is part of the vendoring package.
+    """
+    return (
+        posix_path.as_posix()
+        .lower()
+        .endswith((".dist-info/metadata", ".egg-info/pkg-info"))
+        and posix_path.parent.parent.name.lower() == "site-packages"
+    )
 
 
 def load_conda_ownership(prefix):
@@ -1662,17 +2099,11 @@ def load_conda_ownership(prefix):
                 raise UpdaterError(
                     f"Unsafe path in conda record {record_path}: {raw_path}"
                 )
-            normalized_path = posix_path.as_posix()
-            owned_paths.add(normalized_path)
-            lower = normalized_path.lower()
-            if lower.endswith((".dist-info/metadata", ".egg-info/pkg-info")):
-                name = _metadata_name(prefix_path / Path(*posix_path.parts))
-                if not name:
-                    directory = posix_path.parent.name
-                    stem = re.sub(
-                        r"\.(dist|egg)-info$", "", directory, flags=re.IGNORECASE
-                    )
-                    name = re.split(r"-(?=\d)", stem, maxsplit=1)[0]
+            owned_paths.add(posix_path.as_posix())
+            if is_distribution_metadata(posix_path):
+                name = _metadata_name(
+                    prefix_path / Path(*posix_path.parts)
+                ) or _metadata_directory_name(posix_path)
                 if name:
                     distribution_names.add(canonicalize_name(name))
     return {
@@ -1684,11 +2115,10 @@ def load_conda_ownership(prefix):
 
 def filter_outdated_packages(packages, inventory, conda_ownership, prefix):
     """Split pip's outdated list into eligible and excluded distributions."""
-    inventory_by_name = index_inventory(inventory)
+    inventory_by_name = index_inventory(inventory, prefix)
     holds = get_cached_holds(prefix)
     eligible = []
     excluded = []
-    held = []
     for package in packages:
         if not isinstance(package, dict) or not package.get("name"):
             continue
@@ -1702,7 +2132,7 @@ def filter_outdated_packages(packages, inventory, conda_ownership, prefix):
             reason = "owned by conda"
         elif installed is None:
             reason = "installed metadata is missing"
-        elif installed.get("installer") != "pip":
+        elif installed.get("installer") not in UPDATABLE_INSTALLERS:
             reason = f"installer is {installed.get('installer') or 'unknown'}"
         elif not _is_within(installed.get("metadata_path", ""), prefix):
             reason = "outside the selected environment"
@@ -1710,76 +2140,69 @@ def filter_outdated_packages(packages, inventory, conda_ownership, prefix):
             reason = "editable/direct-URL installs are not reproducible"
         elif not SAFE_PROJECT_NAME.fullmatch(name):
             reason = "invalid or unsafe project name"
+        elif swap := build_change(
+            installed.get("version") or "", package.get("latest_version") or ""
+        ):
+            reason = swap
         else:
-            hold_reason = _still_valid_hold(
+            reason = _still_valid_hold(
                 package, holds.get(normalized), inventory_by_name
             )
-            if hold_reason:
-                held.append((name, package, hold_reason, holds[normalized]["cappers"]))
-                continue
 
         if reason:
             excluded.append((name, reason))
             continue
-        eligible.append(_eligible_row(name, package))
-
-    # A hold only describes what happens while its cappers stay installed as
-    # they are.  When a capper is itself offered for update, both must be
-    # resolvable together (a new capper release may lift the cap), so the held
-    # package is offered again.  Repeat until stable: an offered package can
-    # in turn be the capper of another hold.
-    offered = {canonicalize_name(row["name"]) for row in eligible}
-    changed = True
-    while changed:
-        changed = False
-        for entry in list(held):
-            name, package, _reason, cappers = entry
-            if {canonicalize_name(str(capper)) for capper in cappers} & offered:
-                eligible.append(_eligible_row(name, package))
-                offered.add(canonicalize_name(name))
-                held.remove(entry)
-                changed = True
-    excluded.extend((name, reason) for name, _package, reason, _cappers in held)
+        eligible.append(
+            {
+                "name": name,
+                "version": str(package.get("version", "?")),
+                "latest_version": str(package.get("latest_version", "?")),
+            }
+        )
     eligible.sort(key=lambda package: package["name"].lower())
     return eligible, excluded
 
 
-def _eligible_row(name, package):
-    """Return the cached/displayed form of one outdated package."""
-    return {
-        "name": name,
-        "version": str(package.get("version", "?")),
-        "latest_version": str(package.get("latest_version", "?")),
-    }
+def _installed_version(inventory_by_name, name):
+    """Return the installed version of ``name`` as text, "" when absent."""
+    row = inventory_by_name.get(canonicalize_name(str(name))) or {}
+    return str(row.get("version") or "")
 
 
 def _still_valid_hold(package, hold, inventory_by_name):
     """Return an exclusion reason if a recorded resolver hold still applies.
 
     A hold is trusted only while nothing that produced it has moved: the held
-    package's newest release and installed version are unchanged and every
-    capping package is still installed at the recorded version.  Anything else
-    returns None so the package is offered again and the resolver retests it.
+    package's newest release and installed version are unchanged, and every
+    capping package is still installed at the recorded version (or, for a cap
+    that could not be named, the whole environment is exactly as planned).
+    Anything else returns None so the package is offered again and the
+    resolver retests it for real.
     """
-    if not isinstance(hold, dict):
+    if (
+        not isinstance(hold, dict)
+        or hold.get("latest") != str(package.get("latest_version", "?"))
+        or hold.get("installed") != str(package.get("version", "?"))
+    ):
         return None
     cappers = hold.get("cappers")
-    if not isinstance(cappers, dict) or not cappers:
-        return None
-    if hold.get("latest") != str(package.get("latest_version", "?")):
-        return None
-    installed = inventory_by_name.get(canonicalize_name(str(package.get("name")))) or {}
-    if str(hold.get("installed") or "") != str(installed.get("version") or ""):
-        return None
-    for capper_name, capper_version in cappers.items():
-        row = inventory_by_name.get(canonicalize_name(str(capper_name))) or {}
-        if str(row.get("version") or "") != str(capper_version):
-            return None
-    return "held back by " + ", ".join(sorted(cappers))
+    if isinstance(cappers, dict) and cappers:
+        unchanged = all(
+            _installed_version(inventory_by_name, name) == str(version)
+            for name, version in cappers.items()
+        )
+        return "held back by " + ", ".join(sorted(cappers)) if unchanged else None
+    fingerprint = hold.get("environment")
+    current = {
+        name: str(row.get("version") or "") for name, row in inventory_by_name.items()
+    }
+    if fingerprint and fingerprint == inventory_fingerprint(current):
+        return "held back by installed package requirements"
+    return None
 
 
 def scan_outdated_packages(prefix, *, report_exclusions=False, progress=None):
-    """Scan reproducibly pip-owned packages with live, truthful telemetry."""
+    """Scan reproducibly updatable packages with live, truthful telemetry."""
     progress = progress or PackageScanProgress()
     success = False
     eligible = []
@@ -1798,11 +2221,14 @@ def scan_outdated_packages(prefix, *, report_exclusions=False, progress=None):
                 "--outdated",
                 "--format=json",
                 "--disable-pip-version-check",
+                # Must match the resolver and downloader, which install
+                # verified wheels only; otherwise a source-only release is
+                # listed as outdated on every run and never installs.
+                "--only-binary=:all:",
             ],
             timeout=300,
             merge_stderr=False,
-            on_start=progress.watch,
-            on_tick=progress.tick,
+            hooks=StreamHooks(on_start=progress.watch, on_tick=progress.tick),
         )
         if result.returncode != 0:
             raise command_failure(f"Checking outdated packages in {prefix}", result)
@@ -1849,28 +2275,25 @@ def print_excluded_packages(excluded):
         key=lambda item: item[0].lower(),
     )
 
-    print(f"\nSkipped automatically ({len(excluded)}) — no action is needed:")
+    print_section(f"Skipped automatically ({len(excluded)}) — no action is needed:")
     if conda_managed:
-        print(
-            "  Conda-managed: "
-            + ", ".join(conda_managed)
-            + " (pip must not replace these)"
+        print_labeled(
+            "Conda-managed:",
+            ", ".join(conda_managed) + " (pip must not replace these)",
         )
     if protected:
-        print(
-            "  Core update tools: "
-            + ", ".join(protected)
-            + " (protected so the updater cannot break itself)"
+        print_labeled(
+            "Core update tools:",
+            ", ".join(protected) + " (protected so the updater cannot break itself)",
         )
     if held:
-        print(
-            "  Version-capped: "
-            + ", ".join(held)
-            + " (an installed package pins each of these; they will be offered "
-            "again once the capping package updates)"
+        print_labeled(
+            "Version-capped:",
+            ", ".join(held) + " (an installed package pins each of these; they "
+            "will be offered again once the capping package updates)",
         )
     for name, reason in other:
-        print(f"  {name}: skipped for safety ({reason})")
+        print_labeled(f"{name}:", f"skipped for safety ({reason})")
 
 
 def get_outdated_packages(env_key, prefix, *, refresh=False):
@@ -1902,7 +2325,9 @@ def refresh_packages_background(env_key, prefix, package_state, progress):
     """Background refresh: rescan env, update cache, and mark if list changed."""
     try:
         fresh_packages = scan_outdated_packages(prefix, progress=progress)
-    except Exception as exc:  # noqa: BLE001 - thread boundary must always publish failure state.
+    # A thread boundary must publish every failure, or the selector would wait
+    # on a scan that never reports back.
+    except Exception as exc:  # noqa: BLE001  # pylint: disable=broad-exception-caught
         with package_state["lock"]:
             package_state["scan_in_progress"] = False
             package_state["scan_done"] = True
@@ -1926,8 +2351,7 @@ def wait_for_background_scan(thread, progress, stream=None):
     if thread is None or not thread.is_alive():
         return False
     stream = stream if stream is not None else sys.stdout
-    progress.stream = stream
-    progress.interactive = bool(getattr(stream, "isatty", lambda: False)())
+    progress.redirect(stream)
     print("\nFinishing the live package scan...", file=stream, flush=True)
     while thread.is_alive():
         progress.paint()
@@ -1937,56 +2361,166 @@ def wait_for_background_scan(thread, progress, stream=None):
     return True
 
 
-def interactive_select(stdscr, package_state, allow_back=False):
-    """Curses package selector that can live-refresh when background scan completes."""
+def _init_curses_colors():
+    """Hide the cursor; return the hint color attribute, 0 if unsupported."""
     curses.curs_set(0)
-    hint_attr = 0
     try:
         curses.use_default_colors()
         curses.init_pair(2, curses.COLOR_CYAN, -1)
-        hint_attr = curses.color_pair(2)
+        return curses.color_pair(2)
     except curses.error:
         # Some terminals don't support colors; keep rendering without color attributes.
-        hint_attr = 0
+        return 0
 
-    stdscr.timeout(150)
-    selected = set()
-    cursor = 0
-    scroll = 0
-    while True:
-        with package_state["lock"]:
-            packages = list(package_state["packages"])
-            scan_in_progress = package_state["scan_in_progress"]
-            scan_done = package_state["scan_done"]
-            scan_error = package_state["scan_error"]
-            cache_mismatch = package_state["cache_mismatch"]
-            from_cache = package_state["started_from_cache"]
-            scan_progress = package_state.get("scan_progress")
 
-        package_names_lower = {pkg["name"].lower() for pkg in packages}
-        selected &= package_names_lower
+class ListCursor:
+    """Cursor row and scroll offset of a vertically scrolling curses list."""
 
-        package_count = len(packages)
-        confirm_idx = package_count + 1
-        total = package_count + 2  # update all + packages + confirm
-        cursor = min(cursor, total - 1)
+    def __init__(self):
+        self.cursor = 0
+        self.scroll = 0
 
-        stdscr.clear()
-        h, w = stdscr.getmaxyx()
-        safe_w = max(1, w - 1)
+    def follow(self, visible):
+        """Scroll just far enough that the cursor row is on screen."""
+        if self.cursor < self.scroll:
+            self.scroll = self.cursor
+        elif self.cursor >= self.scroll + visible:
+            self.scroll = self.cursor - visible + 1
 
-        if scan_error:
-            status = f" Live refresh failed: {scan_error}"
-        elif scan_in_progress and scan_progress is not None:
-            status = scan_progress.compact_status(safe_w)
-        elif from_cache and scan_done and cache_mismatch:
-            status = " Live scan updated this list (cache was stale)."
-        elif from_cache and scan_done:
-            status = " Live scan confirmed cached results."
+    def navigate(self, key, total, visible):
+        """Apply a movement key; return False for any other key."""
+        if key in (curses.KEY_UP, ord("k")):
+            self.cursor = max(0, self.cursor - 1)
+        elif key in (curses.KEY_DOWN, ord("j")):
+            self.cursor = min(total - 1, self.cursor + 1)
+        elif key == curses.KEY_HOME:
+            self.cursor = 0
+        elif key == curses.KEY_END:
+            self.cursor = total - 1
+        elif key == curses.KEY_PPAGE:
+            self.cursor = max(0, self.cursor - visible)
+        elif key == curses.KEY_NPAGE:
+            self.cursor = min(total - 1, self.cursor + visible)
         else:
-            status = " "
+            return False
+        return True
 
-        stdscr.addnstr(
+
+def _read_selector_state(package_state):
+    with package_state["lock"]:
+        state = {
+            key: package_state[key]
+            for key in (
+                "scan_in_progress",
+                "scan_done",
+                "scan_error",
+                "cache_mismatch",
+                "started_from_cache",
+            )
+        }
+        state["packages"] = list(package_state["packages"])
+        state["scan_progress"] = package_state.get("scan_progress")
+    return state
+
+
+def _scan_status(state, width):
+    """Return the selector's one-line report on the live background scan."""
+    from_cache_done = state["started_from_cache"] and state["scan_done"]
+    if state["scan_error"]:
+        return f" Live refresh failed: {state['scan_error']}"
+    if state["scan_in_progress"] and state["scan_progress"] is not None:
+        return state["scan_progress"].compact_status(width)
+    if from_cache_done and state["cache_mismatch"]:
+        return " Live scan updated this list (cache was stale)."
+    if from_cache_done:
+        return " Live scan confirmed cached results."
+    return " "
+
+
+def _all_selected(packages, selected):
+    return bool(packages) and all(pkg["name"].lower() in selected for pkg in packages)
+
+
+def _package_row(idx, packages, selected):
+    """Text of list row ``idx``: update-all, a package, or the confirm button."""
+    if idx == 0:
+        mark = "[x]" if _all_selected(packages, selected) else "[ ]"
+        return f"  {mark}  ** UPDATE ALL **"
+    if idx <= len(packages):
+        pkg = packages[idx - 1]
+        mark = "[x]" if pkg["name"].lower() in selected else "[ ]"
+        return (
+            f"  {mark}  {pkg['name']:<40} {pkg['version']:>12} "
+            f"-> {pkg['latest_version']}"
+        )
+    selected_count = sum(1 for pkg in packages if pkg["name"].lower() in selected)
+    return f"  >>> CONFIRM ({selected_count} selected) <<<"
+
+
+def _toggled(cursor, packages, selected):
+    """Return the selection after toggling the row under the cursor."""
+    if cursor == 0:
+        if _all_selected(packages, selected):
+            return set()
+        return {pkg["name"].lower() for pkg in packages}
+    if 1 <= cursor <= len(packages):
+        return selected ^ {packages[cursor - 1]["name"].lower()}
+    return selected
+
+
+class _PackageSelector:
+    """Curses package checklist whose list a background scan may replace."""
+
+    LIST_TOP = 4
+
+    def __init__(self, stdscr, package_state, allow_back):
+        self.stdscr = stdscr
+        self.package_state = package_state
+        self.allow_back = allow_back
+        self.hint_attr = _init_curses_colors()
+        self.selected = set()
+        self.nav = ListCursor()
+
+    def run(self):
+        """Return chosen names, [] to quit, or BACK_TO_ENV."""
+        self.stdscr.timeout(150)
+        while True:
+            packages, visible = self.draw()
+            key = self.stdscr.getch()
+            if key == -1:
+                continue
+            result = self.handle_key(key, packages, visible)
+            if result is not None:
+                return result
+
+    def draw(self):
+        """Paint one frame; return the listed packages and visible row count."""
+        state = _read_selector_state(self.package_state)
+        packages = state["packages"]
+        self.selected &= {pkg["name"].lower() for pkg in packages}
+        total = len(packages) + 2  # update all + packages + confirm
+        self.nav.cursor = min(self.nav.cursor, total - 1)
+
+        self.stdscr.clear()
+        height, width = self.stdscr.getmaxyx()
+        safe_w = max(1, width - 1)
+        self._draw_header(len(packages), _scan_status(state, safe_w), safe_w)
+
+        # Reserve 2 rows at bottom: blank + confirm button
+        visible = max(height - self.LIST_TOP - 2, 1)
+        self.nav.follow(visible)
+        for offset in range(min(visible, total - self.nav.scroll)):
+            idx = self.nav.scroll + offset
+            line = _package_row(idx, packages, self.selected)
+            attr = curses.A_REVERSE if idx == self.nav.cursor else 0
+            self.stdscr.addnstr(
+                self.LIST_TOP + offset, 0, line.ljust(safe_w), safe_w, attr
+            )
+        self.stdscr.refresh()
+        return packages, visible
+
+    def _draw_header(self, package_count, status, safe_w):
+        self.stdscr.addnstr(
             0,
             0,
             f" {package_count} package(s) eligible for update",
@@ -1994,191 +2528,93 @@ def interactive_select(stdscr, package_state, allow_back=False):
             curses.A_BOLD,
         )
         help_line = " [SPACE] Toggle  [a] All  [n] None  [ENTER] Confirm"
-        if allow_back:
+        if self.allow_back:
             help_line += "  [b] Back"
         help_line += "  [q] Quit"
-        stdscr.addnstr(1, 0, help_line, safe_w, hint_attr)
-        stdscr.addnstr(2, 0, status.ljust(safe_w), safe_w, hint_attr)
-        stdscr.addnstr(3, 0, "-" * safe_w, safe_w)
+        self.stdscr.addnstr(1, 0, help_line, safe_w, self.hint_attr)
+        self.stdscr.addnstr(2, 0, status.ljust(safe_w), safe_w, self.hint_attr)
+        self.stdscr.addnstr(3, 0, "-" * safe_w, safe_w)
 
-        list_top = 4
-        # Reserve 2 rows at bottom: blank + confirm button
-        visible = max(h - list_top - 2, 1)
-
-        if cursor < scroll:
-            scroll = cursor
-        elif cursor >= scroll + visible:
-            scroll = cursor - visible + 1
-
-        all_selected = package_count > 0 and all(
-            pkg["name"].lower() in selected for pkg in packages
-        )
-
-        for vi in range(visible):
-            idx = scroll + vi
-            if idx >= total:
-                break
-            row = list_top + vi
-
-            if idx == 0:
-                mark = "[x]" if all_selected else "[ ]"
-                line = f"  {mark}  ** UPDATE ALL **"
-            elif 1 <= idx <= package_count:
-                pkg = packages[idx - 1]
-                key = pkg["name"].lower()
-                mark = "[x]" if key in selected else "[ ]"
-                line = f"  {mark}  {pkg['name']:<40} {pkg['version']:>12} -> {pkg['latest_version']}"
-            else:
-                selected_count = sum(
-                    1 for pkg in packages if pkg["name"].lower() in selected
-                )
-                line = f"  >>> CONFIRM ({selected_count} selected) <<<"
-
-            attr = curses.A_REVERSE if idx == cursor else 0
-            stdscr.addnstr(row, 0, line.ljust(safe_w), safe_w, attr)
-
-        stdscr.refresh()
-        key = stdscr.getch()
-        if key == -1:
-            continue
-
-        if key == ord("q") or key == 27:
+    def handle_key(self, key, packages, visible):
+        """Apply one key; return the selector's result, or None to continue."""
+        if key in (ord("q"), 27):
             return []
-        elif allow_back and key == ord("b"):
+        if self.allow_back and key == ord("b"):
             return BACK_TO_ENV
-        elif key == curses.KEY_UP or key == ord("k"):
-            cursor = max(0, cursor - 1)
-        elif key == curses.KEY_DOWN or key == ord("j"):
-            cursor = min(total - 1, cursor + 1)
-        elif key == curses.KEY_HOME:
-            cursor = 0
-        elif key == curses.KEY_END:
-            cursor = total - 1
-        elif key == curses.KEY_PPAGE:
-            cursor = max(0, cursor - visible)
-        elif key == curses.KEY_NPAGE:
-            cursor = min(total - 1, cursor + visible)
-        elif key == ord(" "):
-            if cursor == 0:
-                if all_selected:
-                    selected.clear()
-                else:
-                    selected = {pkg["name"].lower() for pkg in packages}
-            elif 1 <= cursor <= package_count:
-                pkg_key = packages[cursor - 1]["name"].lower()
-                if pkg_key in selected:
-                    selected.remove(pkg_key)
-                else:
-                    selected.add(pkg_key)
+        if self.nav.navigate(key, len(packages) + 2, visible):
+            return None
+        enter = key in (10, 13, curses.KEY_ENTER)
+        if enter and self.nav.cursor == len(packages) + 1:
+            return [
+                pkg["name"] for pkg in packages if pkg["name"].lower() in self.selected
+            ]
+        if enter or key == ord(" "):
+            self.selected = _toggled(self.nav.cursor, packages, self.selected)
         elif key == ord("a"):
-            selected = {pkg["name"].lower() for pkg in packages}
+            self.selected = {pkg["name"].lower() for pkg in packages}
         elif key == ord("n"):
-            selected.clear()
-        elif key in (10, 13, curses.KEY_ENTER):
-            if cursor == confirm_idx:
-                return [
-                    pkg["name"] for pkg in packages if pkg["name"].lower() in selected
-                ]
-            elif cursor == 0:
-                if all_selected:
-                    selected.clear()
-                else:
-                    selected = {pkg["name"].lower() for pkg in packages}
-            elif 1 <= cursor <= package_count:
-                pkg_key = packages[cursor - 1]["name"].lower()
-                if pkg_key in selected:
-                    selected.remove(pkg_key)
-                else:
-                    selected.add(pkg_key)
+            self.selected = set()
+        return None
+
+
+def interactive_select(stdscr, package_state, allow_back=False):
+    """Curses package selector that can live-refresh when background scan completes."""
+    return _PackageSelector(stdscr, package_state, allow_back).run()
 
 
 def interactive_select_env(stdscr, env_names):
     """Curses-based selector for conda environment names."""
-    curses.curs_set(0)
-    hint_attr = 0
-    try:
-        curses.use_default_colors()
-        curses.init_pair(2, curses.COLOR_CYAN, -1)
-        hint_attr = curses.color_pair(2)
-    except curses.error:
-        hint_attr = 0
-
-    cursor = 0
-    scroll = 0
-
+    hint_attr = _init_curses_colors()
+    nav = ListCursor()
+    total = len(env_names)
+    list_top = 3
     while True:
         stdscr.clear()
-        h, w = stdscr.getmaxyx()
-        safe_w = max(1, w - 1)
-
+        height, width = stdscr.getmaxyx()
+        safe_w = max(1, width - 1)
         stdscr.addnstr(0, 0, " Select a conda environment", safe_w, curses.A_BOLD)
         stdscr.addnstr(
             1, 0, " [UP/DOWN] Move  [ENTER] Select  [q] Quit", safe_w, hint_attr
         )
         stdscr.addnstr(2, 0, "-" * safe_w, safe_w)
 
-        list_top = 3
-        visible = max(h - list_top, 1)
-
-        total = len(env_names)
-        if cursor < scroll:
-            scroll = cursor
-        elif cursor >= scroll + visible:
-            scroll = cursor - visible + 1
-
-        for vi in range(visible):
-            idx = scroll + vi
-            if idx >= total:
-                break
-            row = list_top + vi
-            line = f"  {env_names[idx]}"
-            attr = curses.A_REVERSE if idx == cursor else 0
-            stdscr.addnstr(row, 0, line.ljust(safe_w), safe_w, attr)
+        visible = max(height - list_top, 1)
+        nav.follow(visible)
+        for offset in range(max(0, min(visible, total - nav.scroll))):
+            idx = nav.scroll + offset
+            attr = curses.A_REVERSE if idx == nav.cursor else 0
+            line = f"  {env_names[idx]}".ljust(safe_w)
+            stdscr.addnstr(list_top + offset, 0, line, safe_w, attr)
 
         stdscr.refresh()
         key = stdscr.getch()
-
         if key in (ord("q"), 27):
             return None
-        if key in (curses.KEY_UP, ord("k")):
-            cursor = max(0, cursor - 1)
-        elif key in (curses.KEY_DOWN, ord("j")):
-            cursor = min(total - 1, cursor + 1)
-        elif key in (curses.KEY_HOME,):
-            cursor = 0
-        elif key in (curses.KEY_END,):
-            cursor = total - 1
-        elif key in (curses.KEY_PPAGE,):
-            cursor = max(0, cursor - visible)
-        elif key in (curses.KEY_NPAGE,):
-            cursor = min(total - 1, cursor + visible)
-        elif key in (10, 13, curses.KEY_ENTER):
-            return env_names[cursor]
+        if key in (10, 13, curses.KEY_ENTER):
+            return env_names[nav.cursor]
+        nav.navigate(key, total, visible)
 
 
-def get_known_environments():
-    """Return display-name-to-prefix mapping and Conda's root prefix."""
-    conda = conda_executable()
-    info_result = run_command(
-        [conda, "info", "--json"], capture_output=True, timeout=60
-    )
-    if info_result.returncode != 0:
-        raise command_failure("Reading conda information", info_result)
-    info = parse_json_output(info_result.stdout, "reading conda information")
-    raw_root_prefix = info.get("root_prefix") or info.get("default_prefix")
-    if not raw_root_prefix:
-        raise UpdaterError("Conda did not report a root prefix.")
-    root_prefix = str(Path(raw_root_prefix).resolve())
+def _conda_json(conda, args, action):
+    """Run a read-only ``conda ... --json`` command and parse its output.
 
-    list_result = run_command(
-        [conda, "env", "list", "--json"], capture_output=True, timeout=60
-    )
-    if list_result.returncode != 0:
-        raise command_failure("Listing conda environments", list_result)
-    env_paths = parse_json_output(list_result.stdout, "listing conda environments").get(
-        "envs", []
-    )
+    ``action`` names the step in errors, e.g. "Reading conda information".
+    """
+    result = run_command([conda, *args], capture_output=True, timeout=60)
+    if result.returncode != 0:
+        raise command_failure(action, result)
+    return parse_json_output(result.stdout, action[:1].lower() + action[1:])
 
+
+def environment_labels(env_paths, root_prefix):
+    """Map each selectable name to an environment prefix.
+
+    "base" is reserved for Conda's root prefix, and a basename shared by
+    several registered environments is ambiguous.  In both cases the short
+    name is withheld so selection can only happen through the exact prefix;
+    giving it to whichever environment Conda happened to list first would
+    silently pick one of them.
+    """
     resolved = []
     for raw_path in env_paths:
         if not raw_path:
@@ -2186,31 +2622,34 @@ def get_known_environments():
         prefix = str(Path(raw_path).resolve())
         if prefix not in resolved:
             resolved.append(prefix)
-    if root_prefix not in resolved:
-        resolved.append(root_prefix)
-
+    others = [prefix for prefix in resolved if prefix != root_prefix]
     basename_counts = {}
-    for prefix in resolved:
-        if prefix == root_prefix:
-            continue
+    for prefix in others:
         name = Path(prefix).name
         basename_counts[name] = basename_counts.get(name, 0) + 1
 
-    # "base" is reserved for Conda's root prefix, and a basename shared by
-    # several registered environments is ambiguous.  In both cases the short
-    # name is withheld so selection can only happen through the exact prefix;
-    # the previous behaviour silently gave the short name to whichever
-    # environment Conda happened to list first.
     labels = {"base": root_prefix}
-    for prefix in resolved:
-        if prefix == root_prefix:
-            continue
+    for prefix in others:
         name = Path(prefix).name
         if name == "base" or basename_counts[name] > 1:
             labels[prefix] = prefix
         else:
             labels[name] = prefix
-    return labels, root_prefix
+    return labels
+
+
+def get_known_environments():
+    """Return display-name-to-prefix mapping and Conda's root prefix."""
+    conda = conda_executable()
+    info = _conda_json(conda, ["info", "--json"], "Reading conda information")
+    raw_root_prefix = info.get("root_prefix") or info.get("default_prefix")
+    if not raw_root_prefix:
+        raise UpdaterError("Conda did not report a root prefix.")
+    root_prefix = str(Path(raw_root_prefix).resolve())
+    env_paths = _conda_json(
+        conda, ["env", "list", "--json"], "Listing conda environments"
+    ).get("envs", [])
+    return environment_labels(env_paths, root_prefix), root_prefix
 
 
 def activate_environment(prefix, root_prefix):
@@ -2286,8 +2725,9 @@ def activate_environment(prefix, root_prefix):
 
     os.environ.clear()
     os.environ.update(activated)
-    print(
-        f"[OK] Activated Conda environment '{Path(prefix).name}'.",
+    announce(
+        "OK",
+        f"Activated Conda environment '{Path(prefix).name}'.",
         flush=True,
     )
 
@@ -2342,38 +2782,6 @@ PIP_CONFLICT_PATTERN = re.compile(
     # The version is non-greedy so the sentence-ending period is not absorbed.
     r"but you have (?P<installed>\S+) (?P<installed_version>\S+?)\.?$"
 )
-PIP_MISSING_PATTERN = re.compile(
-    r"^(?P<holder>\S+) (?P<holder_version>\S+) requires (?P<dependency>\S+), "
-    r"which is not installed\.?$"
-)
-
-
-def pip_conflict_key(line):
-    """Identify the dependency edge a `pip check` line reports as broken.
-
-    The raw line embeds both installed versions, so it changes whenever either
-    side is updated even though the same requirement is still unmet.  Keying on
-    the (requirer, dependency) pair lets postflight tolerate an edge that was
-    already broken while still rejecting every newly broken one.  Lines of any
-    other shape are compared verbatim.
-    """
-    text = line.strip()
-    match = PIP_CONFLICT_PATTERN.match(text)
-    if match:
-        return (canonicalize_name(match["holder"]), canonicalize_name(match["installed"]))
-    match = PIP_MISSING_PATTERN.match(text)
-    if match:
-        return (
-            canonicalize_name(match["holder"]),
-            canonicalize_name(match["dependency"]),
-        )
-    return text
-
-
-def new_pip_conflicts(after, before):
-    """Return `pip check` lines whose broken edge was not broken before."""
-    known = {pip_conflict_key(line) for line in before}
-    return {line for line in after if pip_conflict_key(line) not in known}
 
 
 def pip_check_report(prefix):
@@ -2405,12 +2813,6 @@ def pip_check_report(prefix):
 
 def describe_pip_conflict(line):
     """Rewrite one raw `pip check` line into plain language."""
-    missing = PIP_MISSING_PATTERN.match(line.strip())
-    if missing:
-        return (
-            f"{missing['holder']} {missing['holder_version']} needs "
-            f"{missing['dependency']}, which is not installed"
-        )
     match = PIP_CONFLICT_PATTERN.match(line.strip())
     if not match:
         return line.strip()
@@ -2423,9 +2825,11 @@ def describe_pip_conflict(line):
 
 def print_existing_conflicts(conflicts):
     """Explain pre-existing dependency conflicts without blocking the run."""
-    print(
-        f"\n[!] {count_label(len(conflicts), 'package conflict')} already existed "
-        "here before the updater started:"
+    print()
+    announce(
+        "!",
+        f"{count_label(len(conflicts), 'package conflict')} already existed "
+        "here before the updater started:",
     )
     for line in sorted(conflicts):
         print(f"      {describe_pip_conflict(line)}")
@@ -2439,10 +2843,12 @@ def print_conda_inconsistencies(issues):
     if not issues:
         return
     total = sum(len(found) for found in issues.values())
-    print(
-        f"\n[!] Conda reports "
+    print()
+    announce(
+        "!",
+        "Conda reports "
         f"{count_label(total, 'dependency mismatch', 'dependency mismatches')} "
-        "in this environment:"
+        "in this environment:",
     )
     for package in sorted(issues):
         for sentence in issues[package]:
@@ -2603,48 +3009,269 @@ def conda_consistency_issues(prefix):
     }
 
 
-def explain_conda_file_damage(prefix, sections, snapshot):
-    """Explain that Conda's own files are damaged, naming the packages."""
+def pip_replaced_conda_packages(prefix, conda_names):
+    """Find named Conda packages that pip has since installed over.
+
+    Conda's record lists the package's own .dist-info directory, which pip
+    removes when it replaces the package, so the Python distribution name comes
+    from that recorded path rather than from metadata that may now be pip's.
+    Returns {conda package: [{"distribution", "conda_version", "pip_version"}]}.
+    """
+    wanted = set(conda_names)
+    distributions = {}
+    meta_dir = Path(prefix) / "conda-meta"
+    for record_path in sorted(meta_dir.glob("*.json")):
+        try:
+            record = json.loads(record_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if not isinstance(record, dict) or record.get("name") not in wanted:
+            continue
+        for raw_path in record.get("files", []):
+            if not isinstance(raw_path, str):
+                continue
+            posix_path = PurePosixPath(raw_path)
+            if not is_distribution_metadata(posix_path):
+                continue
+            name = _metadata_directory_name(posix_path)
+            if name:
+                distributions[canonicalize_name(name)] = (
+                    record["name"],
+                    str(record.get("version") or ""),
+                )
+    if not distributions:
+        return {}
+    try:
+        rows = get_environment_inventory(prefix)
+    except UpdaterError:
+        return {}
+    replaced = {}
+    for row in rows:
+        if not isinstance(row, dict) or row.get("installer") != "pip":
+            continue
+        owner = distributions.get(canonicalize_name(row.get("name") or ""))
+        if owner:
+            replaced.setdefault(owner[0], []).append(
+                {
+                    "distribution": str(row["name"]),
+                    "conda_version": owner[1],
+                    "pip_version": str(row.get("version") or ""),
+                }
+            )
+    return replaced
+
+
+def explain_conda_file_damage(sections, snapshot):
+    """Explain Conda file damage found where it cannot be repaired right now."""
     damaged = []
     for section in sections:
         for name in damaged_conda_packages(section["detail"]):
             if name not in damaged:
                 damaged.append(name)
+    return (
+        "Conda reports altered or missing files in "
+        f"{', '.join(damaged) or 'one or more packages'}.\n\n"
+        "This appeared after the updater's health check, so nothing was\n"
+        "changed. Run the updater again: it repairs this automatically before\n"
+        "updating.\n\nConda's full report:\n" + snapshot
+    )
+
+
+CONDA_DIST_PATTERN = re.compile(r"[A-Za-z0-9_][A-Za-z0-9_.+!]*(?:-[A-Za-z0-9_.+!]+){2}")
+
+
+def damaged_conda_dists(lines):
+    """Extract Conda record names ("name-version-build") from doctor output.
+
+    Handles both the summary form ("setuptools-83.0.0-py313_0: 61") and the
+    --verbose form, where the record name ends in a colon and the damaged
+    paths follow on indented lines.
+    """
+    dists = []
+    for raw_line in lines:
+        head, separator, count = raw_line.strip().rpartition(":")
+        head = head.strip()
+        if not separator or (count.strip() and not count.strip().isdigit()):
+            continue
+        if CONDA_DIST_PATTERN.fullmatch(head) and head not in dists:
+            dists.append(head)
+    return dists
+
+
+def _conda_record(prefix, dist):
+    path = Path(prefix) / "conda-meta" / f"{dist}.json"
+    try:
+        record = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise UpdaterError(
+            f"Conda reports damage in {dist}, but its record {path} is unreadable."
+        ) from exc
+    fields = [
+        record.get(key) if isinstance(record, dict) else None
+        for key in ("name", "version", "build")
+    ]
+    if not all(isinstance(value, str) and value for value in fields):
+        raise UpdaterError(f"Conda's record {path} lacks a name, version or build.")
+    name, version, build = fields
+    return {"dist": dist, "name": name, "version": version, "build": build}
+
+
+def damaged_conda_records(prefix, sections):
+    """Return the Conda records of every package the doctor report names.
+
+    A report that names nothing is completed from `conda doctor --verbose`.
+    """
+    dists = damaged_conda_dists(
+        line for section in sections for line in section["detail"]
+    )
+    if not dists:
+        result = run_command(
+            [
+                conda_executable(),
+                "doctor",
+                "-p",
+                str(prefix),
+                "altered-files",
+                "missing-files",
+                "--verbose",
+            ],
+            capture_output=True,
+            timeout=300,
+        )
+        if result.returncode != 0:
+            raise command_failure(
+                f"Running conda doctor --verbose for {prefix}", result
+            )
+        dists = damaged_conda_dists(result.stdout.splitlines())
+    return [_conda_record(prefix, dist) for dist in dists]
+
+
+def _refuse_breaking_restore(prefix, replaced):
+    """Stop if an installed package needs pip's version over Conda's."""
+    held = {
+        canonicalize_name(entry["distribution"]): (
+            entry["distribution"],
+            entry["conda_version"],
+        )
+        for entries in replaced.values()
+        for entry in entries
+    }
+    inventory = index_inventory(get_environment_inventory(prefix), prefix)
+    reasons = holdback_reasons(held, inventory, [], marker_environment(prefix))
+    if not reasons:
+        return
     lines = [
-        (
-            "Conda reports altered or missing files in "
-            f"{', '.join(damaged) or 'one or more packages'}."
-        ),
-        "",
-        "Conda installed these packages, so Conda must restore them. The",
-        "updater stops here on purpose: if it ran now, any later problem could",
-        "not be told apart from the damage that was already present.",
+        "Conda's files are damaged because pip installed its own copy over",
+        "Conda's, and restoring Conda's version would break other packages:",
         "",
     ]
-    if damaged:
-        command = shlex.join(
-            ["conda", "install", "-p", str(prefix), "--force-reinstall", *damaged]
+    for normalized, causes in sorted(reasons.items()):
+        name, conda_version = held[normalized]
+        lines.append(
+            f"  Conda's {name} {conda_version}: "
+            + "; ".join(dict.fromkeys(cause["text"] for cause in causes))
         )
-        lines += [
-            "Affected Conda packages:",
-            "",
-            f"  {', '.join(damaged)}",
-            "",
-            "Repair them with Conda, then run this command again:",
-            "",
-            f"  {command}",
-        ]
-    else:
-        # Never print a placeholder in place of a name: an instruction the
-        # reader cannot run is worse than admitting the report was silent.
-        lines += [
-            "Conda's report did not name them. This command lists them:",
-            "",
-            f"  conda doctor -p {prefix} altered-files missing-files --verbose",
-            "",
-            "Reinstall each package it names with Conda, then run this again.",
-        ]
-    return "\n".join(lines) + "\n\nConda's full report:\n" + snapshot
+    lines += [
+        "",
+        "The updater will not trade one breakage for another, so nothing was",
+        "changed. Update or remove the packages named above so they accept",
+        "Conda's version, then run the updater again.",
+    ]
+    raise UpdaterError("\n".join(lines))
+
+
+def _describe_damage(records, replaced):
+    for record in records:
+        line = (
+            f"  {paint(record['name'], 'strong')} "
+            f"(Conda {record['version']}, build {record['build']})"
+        )
+        for entry in replaced.get(record["name"], ()):
+            line += (
+                f": pip installed {entry['distribution']} {entry['pip_version']} "
+                f"over Conda's {entry['conda_version']}"
+            )
+        print(line)
+
+
+def _conda_install(prefix, spec, *, download_only):
+    """Force-reinstall one exact Conda spec without touching its dependencies."""
+    command = [conda_executable(), "install", "-p", str(prefix), "--yes"]
+    command += ["--force-reinstall", "--no-deps"]
+    if download_only:
+        command.append("--download-only")
+    return run_command([*command, spec], capture_output=True, timeout=1800)
+
+
+def _fetch_conda_package(prefix, record):
+    """Put Conda's recorded build in Conda's package cache; return its spec.
+
+    Falls back to another build of the same version.  Nothing in the
+    environment changes, so a failure here leaves it exactly as it was.
+    """
+    name, version = record["name"], record["version"]
+    spec = f"{name}=={version}={record['build']}"
+    if _conda_install(prefix, spec, download_only=True).returncode == 0:
+        return spec
+    announce(
+        "INFO",
+        f"Build {record['build']} is unavailable; using another build "
+        f"of {name} {version}.",
+        flush=True,
+    )
+    spec = f"{name}=={version}"
+    result = _conda_install(prefix, spec, download_only=True)
+    if result.returncode != 0:
+        raise command_failure(f"Fetching Conda's {name} {version}", result)
+    return spec
+
+
+def repair_conda_file_damage(prefix, sections, *, dry_run):
+    """Restore Conda's damaged packages, removing pip's overwrite first.
+
+    Reinstalling with Conda alone would leave pip's INSTALLER marker inside
+    Conda's metadata, so pip would keep treating Conda's files as its own;
+    pip's copy is therefore uninstalled first.  Each package is reinstalled at
+    the exact version Conda recorded, without touching its dependencies.
+    """
+    records = damaged_conda_records(prefix, sections)
+    if not records:
+        raise UpdaterError(
+            "Conda reports damaged files but does not say which packages own "
+            "them, so the updater cannot repair them safely."
+        )
+    replaced = pip_replaced_conda_packages(prefix, [r["name"] for r in records])
+    _refuse_breaking_restore(prefix, replaced)
+    announce("REPAIR", "Conda's files are damaged in:")
+    _describe_damage(records, replaced)
+    if dry_run:
+        announce("PREVIEW", "A real run repairs this automatically before updating.")
+        return
+    # Fetch first: once pip's copy is removed, a failed download would leave
+    # the environment without the package at all.
+    announce(
+        "INFO", "Fetching Conda's packages before changing anything...", flush=True
+    )
+    specs = [_fetch_conda_package(prefix, record) for record in records]
+    distributions = [e["distribution"] for es in replaced.values() for e in es]
+    if distributions:
+        announce(
+            "INFO", f"Removing pip's copy of {', '.join(distributions)}...", flush=True
+        )
+        result = run_command(
+            [*pip_command(prefix), "uninstall", "-y", *distributions],
+            capture_output=True,
+            timeout=300,
+        )
+        if result.returncode != 0:
+            raise command_failure("Removing pip's copy", result)
+    for record, spec in zip(records, specs):
+        announce(
+            "INFO", f"Reinstalling Conda's {record['name']} {record['version']}..."
+        )
+        result = _conda_install(prefix, spec, download_only=False)
+        if result.returncode != 0:
+            raise command_failure(f"Reinstalling Conda's {record['name']}", result)
 
 
 def explain_unknown_doctor_report(snapshot):
@@ -2658,21 +3285,50 @@ def explain_unknown_doctor_report(snapshot):
     )
 
 
-def preflight_health(prefix):
-    """Snapshot dependency health and return the baseline mutation fingerprint."""
-    snapshot = doctor_snapshot(prefix)
+def _checked_doctor_sections(snapshot):
+    """Split a doctor report, failing closed on one this updater cannot read."""
     sections = doctor_sections(snapshot)
-    expected_checks = {"altered-files", "missing-files", "consistency"}
     reported_checks = {section["kind"] for section in sections}
-    if reported_checks != expected_checks:
+    if reported_checks != {"altered-files", "missing-files", "consistency"}:
         raise UpdaterError(explain_unknown_doctor_report(snapshot))
-    blocking = [
+    return sections
+
+
+def _file_damage(sections):
+    return [
         section
         for section in sections
         if section["failed"] and section["kind"] in {"altered-files", "missing-files"}
     ]
+
+
+def preflight_health(prefix, *, repair=False, dry_run=False):
+    """Snapshot dependency health and return the baseline mutation fingerprint.
+
+    With ``repair``, stale duplicate records and damaged Conda files are fixed
+    first (``dry_run`` only describes the fixes); without it, damage stops the
+    run.  A repair is proven by a fresh Conda health report, never assumed.
+    """
+    if repair:
+        repair_stale_duplicate_metadata(prefix, dry_run=dry_run)
+    snapshot = doctor_snapshot(prefix)
+    sections = _checked_doctor_sections(snapshot)
+    blocking = _file_damage(sections)
+    if blocking and not repair:
+        raise UpdaterError(explain_conda_file_damage(blocking, snapshot))
+    repair_pending = bool(blocking) and dry_run
     if blocking:
-        raise UpdaterError(explain_conda_file_damage(prefix, blocking, snapshot))
+        repair_conda_file_damage(prefix, blocking, dry_run=dry_run)
+        if not dry_run:
+            snapshot = doctor_snapshot(prefix)
+            sections = _checked_doctor_sections(snapshot)
+            if _file_damage(sections):
+                raise UpdaterError(
+                    "The automatic repair finished, but Conda still reports "
+                    "damaged files, so nothing will be updated.\n\n"
+                    "Conda's full report:\n" + snapshot
+                )
+            announce("OK", "Repaired: Conda's health check now passes.")
     ownership = load_conda_ownership(prefix)
     inconsistent = any(
         section["failed"] and section["kind"] == "consistency" for section in sections
@@ -2680,6 +3336,8 @@ def preflight_health(prefix):
     return {
         "doctor": snapshot,
         "conda_records_digest": ownership["records_digest"],
+        # A preview found damage a real run would repair first.
+        "repair_pending": repair_pending,
         # Recorded, not enforced, for the same reason as pip conflicts below: a
         # Conda inconsistency is a dependency statement, not file damage, and
         # refusing to start on one would strand environments that are working
@@ -2707,280 +3365,81 @@ def plan_signature(plan):
     )
 
 
-REQUIREMENT_ANALYSIS_HELPER = r"""
-import json
-import sys
-from importlib import metadata
+def retained_environment_pins(inventory, targets):
+    """Pin every installed package outside the selection at its exact version.
 
-try:
-    from pip._vendor.packaging.requirements import InvalidRequirement, Requirement
-    from pip._vendor.packaging.utils import canonicalize_name
-    from pip._vendor.packaging.version import InvalidVersion, Version
-except ImportError:
-    from packaging.requirements import InvalidRequirement, Requirement
-    from packaging.utils import canonicalize_name
-    from packaging.version import InvalidVersion, Version
-
-plan = json.load(sys.stdin)["plan"]
-before = {}
-for dist in metadata.distributions():
-    name = dist.metadata.get("Name") or ""
-    if name:
-        before.setdefault(canonicalize_name(name), {
-            "name": name,
-            "version": dist.version,
-            "requires": list(dist.requires or []),
-        })
-after = dict(before)
-for item in plan:
-    after[canonicalize_name(item["name"])] = {
-        "name": item["name"],
-        "version": item["version"],
-        "requires": list(item.get("requires") or []),
-    }
-
-
-def parse_version(text):
-    try:
-        return Version(text)
-    except InvalidVersion:
-        return None
-
-
-def dependencies(row):
-    # Same selection as `pip check`: base requirements whose marker holds in
-    # this interpreter with no extra requested.
-    for raw in row["requires"]:
-        try:
-            requirement = Requirement(raw)
-        except InvalidRequirement:
-            continue
-        if requirement.marker is not None and not requirement.marker.evaluate(
-            {"extra": ""}
-        ):
-            continue
-        yield requirement
-
-
-def broken_edges(packages):
-    edges = {}
-    for holder, row in packages.items():
-        for requirement in dependencies(row):
-            dependency = canonicalize_name(requirement.name)
-            installed = packages.get(dependency)
-            try:
-                satisfied = installed is not None and requirement.specifier.contains(
-                    installed["version"], prereleases=True
-                )
-            except InvalidVersion:
-                satisfied = False
-            if not satisfied:
-                edges.setdefault((holder, dependency), str(requirement))
-    return edges
-
-
-broken_before = broken_edges(before)
-broken_after = broken_edges(after)
-broken_holders = {}
-for holder, dependency in broken_before:
-    broken_holders.setdefault(holder, set()).add(dependency)
-holder_constraints = {}
-for holder, broken in broken_holders.items():
-    lines = set()
-    for requirement in dependencies(before[holder]):
-        if (
-            canonicalize_name(requirement.name) in broken
-            or requirement.url
-            or not requirement.specifier
-        ):
-            continue
-        lines.add(requirement.name + str(requirement.specifier))
-    holder_constraints[holder] = sorted(lines)
-
-downgrades = []
-for item in plan:
-    installed = before.get(canonicalize_name(item["name"]))
-    if installed is None:
-        continue
-    current = parse_version(installed["version"])
-    proposed = parse_version(item["version"])
-    if current is not None and proposed is not None and proposed < current:
-        downgrades.append({
-            "name": item["name"],
-            "current": installed["version"],
-            "proposed": item["version"],
-        })
-
-print(json.dumps({
-    "invalid_versions": sorted(
-        name for name, row in before.items() if parse_version(row["version"]) is None
-    ),
-    "broken_holders": holder_constraints,
-    "newly_broken": [
-        {
-            "holder": after[holder]["name"],
-            "holder_version": after[holder]["version"],
-            "requirement": text,
-            "installed": (after.get(dependency) or {}).get("version"),
-        }
-        for (holder, dependency), text in sorted(broken_after.items())
-        if (holder, dependency) not in broken_before
-    ],
-    "downgrades": downgrades,
-}))
-"""
-
-
-def analyze_requirements(prefix, plan=()):
-    """Evaluate installed and prospective requirements in the target interpreter.
-
-    The target's own pip-vendored ``packaging`` parses versions and evaluates
-    markers, so the answers match what that environment's pip and Python do
-    rather than what the updater's interpreter would conclude.  Returns the
-    installed distributions whose version is not PEP 440, the distributions
-    that already have unmet requirements (each with its still-satisfied
-    requirements as constraint lines), requirements the plan would newly break,
-    and planned versions lower than the installed ones.
+    The solve passes these to pip as constraints, which bind only the packages
+    it actually reaches: a selection's dependencies stay as installed, so the
+    plan never moves a package the user did not select, and conflicts among
+    packages the selections never reach stay out of the solve.
     """
-    request = {
-        "plan": [
-            {
-                "name": item["name"],
-                "version": item["version"],
-                "requires": list(item.get("requires") or []),
-            }
-            for item in plan
-        ]
-    }
-    result = run_command(
-        [environment_python(prefix), "-I", "-c", REQUIREMENT_ANALYSIS_HELPER],
-        capture_output=True,
-        timeout=120,
-        input_text=json.dumps(request),
-    )
-    if result.returncode != 0:
-        raise command_failure(f"Analyzing package requirements in {prefix}", result)
-    analysis = parse_json_output(
-        result.stdout, f"analyzing package requirements in {prefix}"
-    )
-    if not isinstance(analysis, dict) or not all(
-        key in analysis
-        for key in ("invalid_versions", "broken_holders", "newly_broken", "downgrades")
-    ):
-        raise UpdaterError(f"Requirement analysis for {prefix} was malformed.")
-    return analysis
-
-
-def retained_environment_pins(inventory, targets, analysis):
-    """Return resolver roots and constraints that keep retained packages fixed.
-
-    pip's resolver only honors the requirements of distributions inside the
-    requirement set it is given.  A package that is already at its newest
-    version is never selected for an update, so without a pin its version caps
-    are invisible while the plan is chosen.  Pinned as a ``name==version`` root,
-    a retained package resolves to the installed distribution (nothing is
-    downloaded or changed) while its requirements constrain the solve.
-
-    A package with a requirement that is already unmet cannot be a root: pip
-    would have to satisfy that requirement too, so every update would fail on a
-    conflict it did not cause.  Such a package is pinned through the
-    constraints file instead, which keeps it from changing without enforcing
-    its requirements, and its requirements that are still met are added as
-    constraints so those caps keep protecting it.
-
-    Distributions whose name or installed version cannot be written as an exact
-    requirement are returned separately.  They are not pinned; the plan is
-    refused later if it would change one of them.
-    """
-    roots = []
-    constraints = []
-    unpinnable = []
-    invalid_versions = set(analysis["invalid_versions"])
-    broken_holders = analysis["broken_holders"]
+    pins = []
     for normalized in sorted(set(inventory) - set(targets)):
         row = inventory[normalized]
         name = str(row.get("name") or "")
         version = str(row.get("version") or "")
-        pinnable = (
-            SAFE_PROJECT_NAME.fullmatch(name)
-            and SAFE_VERSION.fullmatch(version)
-            and normalized not in invalid_versions
-        )
-        if normalized in broken_holders:
-            constraints.extend(broken_holders[normalized])
-            if pinnable:
-                constraints.append(f"{name}=={version}")
-        elif pinnable:
-            roots.append(f"{name}=={version}")
-        if not pinnable:
-            unpinnable.append(f"{name} {version}")
-    return roots, sorted(set(constraints)), unpinnable
+        # A row that cannot be written as a `name==version` spec is left
+        # unpinned; its requirements are still enforced by the post-install
+        # `pip check` regression gate.
+        if SAFE_PROJECT_NAME.fullmatch(name) and SAFE_VERSION.fullmatch(version):
+            pins.append(f"{name}=={version}")
+    return pins
 
 
-def enforce_plan_policy(plan, inventory, selected_names, analysis, *, allow_downgrade):
-    """Refuse plans that change unselected packages, downgrade, or break more.
+def marker_environment(prefix):
+    """Return the target interpreter's PEP 508 marker values, or None.
 
-    The resolver pins every retained package, so an installed package the user
-    did not select can only appear in the plan when it could not be pinned;
-    that is refused rather than silently moving it.  A lower version is refused
-    unless explicitly allowed, and any requirement the plan would newly leave
-    unmet is refused before anything is downloaded.
+    Requirement markers must be judged against the environment being updated,
+    not the updater's own interpreter, which can be a different Python version.
     """
-    unselected = sorted(
-        item["name"]
-        for item in plan
-        if canonicalize_name(item["name"]) in inventory
-        and canonicalize_name(item["name"]) not in selected_names
-    )
-    if unselected:
-        raise UpdaterError(
-            "The resolved plan would change installed packages you did not select: "
-            + ", ".join(unselected)
-            + ". No packages were changed."
-        )
-    downgrades = analysis["downgrades"]
-    if downgrades and not allow_downgrade:
-        lines = [
-            f"  {item['name']}: {item['current']} -> {item['proposed']}"
-            for item in downgrades
-        ]
-        raise UpdaterError(
-            "The only compatible plan installs a lower version than is installed:\n"
-            + "\n".join(lines)
-            + "\nNo packages were changed. Re-run with --allow-downgrade to accept "
-            "this downgrade explicitly."
-        )
-    downgraded = {canonicalize_name(item["name"]) for item in downgrades}
-    for item in plan:
-        item["downgrade"] = canonicalize_name(item["name"]) in downgraded
-    if analysis["newly_broken"]:
-        lines = []
-        for edge in analysis["newly_broken"]:
-            installed = edge["installed"] or "nothing installed"
-            lines.append(
-                f"  {edge['holder']} {edge['holder_version']} requires "
-                f"{edge['requirement']} (would have {installed})"
-            )
-        raise UpdaterError(
-            "The resolved plan would leave requirements unmet that are met today:\n"
-            + "\n".join(lines)
-            + "\nNo packages were changed."
-        )
-
-
-def holdback_reasons(held, inventory, plan):
-    """Name the requirements that reject each held-back package's newest release.
-
-    The hold itself is already a fact established by the resolver; this only
-    explains it.  When the `packaging` library is unavailable the holds are
-    reported without naming the cap rather than re-implementing PEP 440.
-    """
+    helper = r"""
+import json, os, platform, sys
+impl = sys.implementation
+version = f"{impl.version.major}.{impl.version.minor}.{impl.version.micro}"
+if impl.version.releaselevel != "final":
+    version += impl.version.releaselevel[0] + str(impl.version.serial)
+print(json.dumps({
+    "implementation_name": impl.name,
+    "implementation_version": version,
+    "os_name": os.name,
+    "platform_machine": platform.machine(),
+    "platform_python_implementation": platform.python_implementation(),
+    "platform_release": platform.release(),
+    "platform_system": platform.system(),
+    "platform_version": platform.version(),
+    "python_full_version": platform.python_version(),
+    "python_version": ".".join(platform.python_version_tuple()[:2]),
+    "sys_platform": sys.platform,
+}))
+"""
     try:
-        from packaging.requirements import InvalidRequirement, Requirement
-        from packaging.version import InvalidVersion, Version
-    except ImportError:
-        return {}
+        result = run_command(
+            [environment_python(prefix), "-I", "-c", helper],
+            capture_output=True,
+            timeout=60,
+        )
+        if result.returncode != 0:
+            return None
+        values = json.loads(result.stdout)
+    except (UpdaterError, OSError, ValueError):
+        return None
+    if not isinstance(values, dict) or not all(
+        isinstance(value, str) for value in values.values()
+    ):
+        return None
+    return values
 
+
+def inventory_fingerprint(versions):
+    """Digest an exact name-to-version map of every installed distribution."""
+    digest = hashlib.sha256()
+    for name, version in sorted(versions.items()):
+        digest.update(f"{name}=={version}\n".encode())
+    return digest.hexdigest()
+
+
+def _requirement_sources(inventory, plan):
+    """Return ``(name, version, requires)`` for every package after the plan."""
     planned = {canonicalize_name(item["name"]): item for item in plan}
     sources = []
     for normalized, row in inventory.items():
@@ -2991,41 +3450,253 @@ def holdback_reasons(held, inventory, plan):
     for normalized, item in planned.items():
         if normalized not in inventory:
             sources.append((item["name"], item["version"], item.get("requires") or []))
+    return sources
 
+
+def _parsed_requirement_sources(inventory, plan):
+    """Return ``(name, version, [Requirement])`` for every post-plan package.
+
+    Each installed package contributes its planned version's requirements if
+    the plan moves it; packages the plan introduces are added.  Returns None
+    when the ``packaging`` library is unavailable.
+    """
+    # Imported here so a missing `packaging` only drops the explanation.
+    try:
+        # pylint: disable=import-outside-toplevel
+        from packaging.requirements import InvalidRequirement, Requirement
+    except ImportError:
+        return None
+    parsed = []
+    for name, version, requires in _requirement_sources(inventory, plan):
+        requirements = []
+        for raw in requires:
+            with contextlib.suppress(InvalidRequirement):
+                requirements.append(Requirement(str(raw)))
+        parsed.append((name, version, requirements))
+    return parsed
+
+
+def _marker_applies(requirement, extras, marker_env):
+    """Whether ``requirement`` applies without an extra or with one of ``extras``."""
+    if requirement.marker is None:
+        return True
+    for extra in ("", *sorted(extras)):
+        environment = dict(marker_env or {})
+        environment["extra"] = extra
+        try:
+            if requirement.marker.evaluate(environment):
+                return True
+        except ValueError:
+            # UndefinedComparison / UndefinedEnvironmentName: the marker
+            # cannot be judged here, so it cannot explain the cap.
+            return False
+    return False
+
+
+def _active_extras(parsed, marker_env):
+    """Return the extras some installed package requests, per package name.
+
+    An extra-gated requirement constrains the install only when some package
+    asks for that extra.  torch requires `cuda-toolkit[cublas,...]`, and the
+    extras are what pin every nvidia-* library, so ignoring them left most
+    CUDA holds unexplained.  Extras can enable further extras; iterate.
+    """
+    active = {}
+    changed = True
+    while changed:
+        changed = False
+        for capper_name, _, requirements in parsed:
+            own = active.get(canonicalize_name(str(capper_name)), set())
+            for requirement in requirements:
+                if not requirement.extras or not _marker_applies(
+                    requirement, own, marker_env
+                ):
+                    continue
+                known = active.setdefault(canonicalize_name(requirement.name), set())
+                if not requirement.extras <= known:
+                    known |= requirement.extras
+                    changed = True
+    return active
+
+
+def _caps_rejecting(normalized, latest_version, parsed, active_extras, marker_env):
+    """Return a cause for each applicable requirement that rejects the version."""
+    causes = []
+    for capper_name, capper_version, requirements in parsed:
+        extras = active_extras.get(canonicalize_name(str(capper_name)), set())
+        for requirement in requirements:
+            if (
+                canonicalize_name(requirement.name) == normalized
+                and _marker_applies(requirement, extras, marker_env)
+                and requirement.specifier
+                and latest_version not in requirement.specifier
+            ):
+                causes.append(
+                    {
+                        "capper": str(capper_name),
+                        "capper_version": str(capper_version),
+                        "text": (
+                            f"{capper_name} {capper_version} requires "
+                            f"{requirement.name}{requirement.specifier}"
+                        ),
+                    }
+                )
+    return causes
+
+
+def broken_installed_requirements(inventory, marker_env):
+    """Find installed versions that an installed package's requirement rejects.
+
+    `pip check` misses these when the requirement sits behind an extra that
+    another package asks for (discord-ext-voice-recv -> discord.py[voice] ->
+    PyNaCl<1.6), yet pip's resolver enforces them.  Returns
+    {normalized name: [cause]} in the holdback_reasons cause format.
+    """
+    parsed = _parsed_requirement_sources(inventory, [])
+    if parsed is None:
+        return {}
+    # packaging is importable: _parsed_requirement_sources just imported it.
+    from packaging.version import (  # pylint: disable=import-outside-toplevel
+        InvalidVersion,
+        Version,
+    )
+
+    active_extras = _active_extras(parsed, marker_env)
+    broken = {}
+    for capper_name, capper_version, requirements in parsed:
+        extras = active_extras.get(canonicalize_name(str(capper_name)), set())
+        for requirement in requirements:
+            normalized = canonicalize_name(requirement.name)
+            row = inventory.get(normalized)
+            if row is None or not requirement.specifier:
+                continue
+            try:
+                installed = Version(str(row.get("version") or ""))
+            except InvalidVersion:
+                continue
+            if installed in requirement.specifier or not _marker_applies(
+                requirement, extras, marker_env
+            ):
+                continue
+            broken.setdefault(normalized, []).append(
+                {
+                    "capper": str(capper_name),
+                    "capper_version": str(capper_version),
+                    "text": (
+                        f"{capper_name} {capper_version} requires "
+                        f"{requirement.name}{requirement.specifier}"
+                    ),
+                }
+            )
+    return broken
+
+
+@dataclasses.dataclass(frozen=True)
+class PlannedVersion:
+    """A package's version once the plan is applied."""
+
+    name: str
+    text: str  # as installed; recorded holds compare this text verbatim
+    version: object  # packaging.version.Version
+    moved: bool
+
+
+def _planned_versions(parsed, plan):
+    """Map each post-plan package to its PlannedVersion, skipping bad versions."""
+    # packaging is importable: holdback_reasons calls this only after using it.
+    from packaging.version import Version  # pylint: disable=import-outside-toplevel
+
+    moved = {canonicalize_name(item["name"]) for item in plan}
+    planned = {}
+    for name, text, _ in parsed:
+        normalized = canonicalize_name(str(name))
+        try:
+            version = Version(str(text))
+        except ValueError:  # packaging's InvalidVersion is a ValueError
+            continue
+        planned[normalized] = PlannedVersion(
+            str(name), str(text), version, normalized in moved
+        )
+    return planned
+
+
+def _unmet_newest_requirements(label, requires, planned, extras, marker_env):
+    """Return a cause for each requirement of a newest release the plan leaves unmet.
+
+    ``label`` is the newest release as "name version".  The cause names the
+    dependency as the capper: the hold stands exactly as long as that
+    dependency's version does.
+    """
+    # packaging is importable: holdback_reasons calls this only after using it.
+    from packaging.requirements import (  # pylint: disable=import-outside-toplevel
+        InvalidRequirement,
+        Requirement,
+    )
+
+    causes = []
+    for raw in requires:
+        try:
+            requirement = Requirement(str(raw))
+        except InvalidRequirement:
+            continue
+        dependency = planned.get(canonicalize_name(requirement.name))
+        if (
+            dependency is None
+            or not requirement.specifier
+            or not _marker_applies(requirement, extras, marker_env)
+            or requirement.specifier.contains(dependency.version, prereleases=True)
+        ):
+            continue
+        causes.append(
+            {
+                "capper": dependency.name,
+                "capper_version": dependency.text,
+                "text": (
+                    f"{label} requires {requirement.name}{requirement.specifier}, "
+                    f"and {dependency.name} "
+                    f"{'moves only to' if dependency.moved else 'stays at'} "
+                    f"{dependency.text}"
+                ),
+            }
+        )
+    return causes
+
+
+def holdback_reasons(held, inventory, plan, marker_env=None, newest_requires=None):
+    """Name the requirements that keep each held package from its newest release.
+
+    A newest release is kept out either by an installed package's cap on it,
+    or by its own requirement on a package whose version the plan keeps out
+    of range (``newest_requires`` gives each newest release's requirements).
+    The hold itself is already a fact established by the resolver; this only
+    explains it.  When the `packaging` library is unavailable the holds are
+    reported without naming the cap rather than re-implementing PEP 440.
+    """
+    parsed = _parsed_requirement_sources(inventory, plan)
+    if parsed is None:
+        return {}
+    # packaging is importable: _parsed_requirement_sources just imported it.
+    from packaging.version import Version  # pylint: disable=import-outside-toplevel
+
+    active_extras = _active_extras(parsed, marker_env)
+    planned = _planned_versions(parsed, plan)
     reasons = {}
-    for normalized, (_, latest) in held.items():
+    for normalized, (name, latest) in held.items():
         try:
             latest_version = Version(latest)
-        except InvalidVersion:
+        except ValueError:  # packaging's InvalidVersion is a ValueError
             continue
-        for capper_name, capper_version, requires in sources:
-            for raw in requires:
-                try:
-                    requirement = Requirement(str(raw))
-                except InvalidRequirement:
-                    continue
-                if canonicalize_name(requirement.name) != normalized:
-                    continue
-                if requirement.marker is not None:
-                    # Extra-gated requirements do not constrain a base install,
-                    # and markers here evaluate against the updater's own
-                    # interpreter; skip anything not clearly applicable.
-                    try:
-                        if not requirement.marker.evaluate({"extra": ""}):
-                            continue
-                    except Exception:
-                        continue
-                if requirement.specifier and latest_version not in requirement.specifier:
-                    reasons.setdefault(normalized, []).append(
-                        {
-                            "capper": str(capper_name),
-                            "capper_version": str(capper_version),
-                            "text": (
-                                f"{capper_name} {capper_version} requires "
-                                f"{requirement.name}{requirement.specifier}"
-                            ),
-                        }
-                    )
+        causes = _caps_rejecting(
+            normalized, latest_version, parsed, active_extras, marker_env
+        ) + _unmet_newest_requirements(
+            f"{name} {latest}",
+            (newest_requires or {}).get(normalized, ()),
+            planned,
+            active_extras.get(normalized, set()),
+            marker_env,
+        )
+        if causes:
+            reasons[normalized] = causes
     return reasons
 
 
@@ -3033,28 +3704,1019 @@ def print_held_back(held, inventory, reasons):
     """Explain selected updates the resolver kept at their installed versions.
 
     A hold is not an error: the newest release of a selected package is
-    rejected by a requirement of a package that is staying as it is, so the
-    resolver keeps the installed version instead of breaking the environment.
-    The cap is named so the user knows which package must release an update
-    before the hold can lift.
+    rejected by a requirement of a package that is staying as it is, or needs
+    a version of another package that the environment keeps, so the resolver
+    keeps the installed version instead of breaking the environment.  The cap
+    is named so the user knows which package must move before the hold can
+    lift.
     """
-    print(
-        f"[INFO] {count_label(len(held), 'selected package')} held back to stay "
-        "compatible with packages not being updated:"
+    announce(
+        "INFO",
+        f"{count_label(len(held), 'selected package')} held back to stay "
+        "compatible with packages not being updated:",
     )
     for normalized, (name, latest) in sorted(held.items()):
         installed = str((inventory.get(normalized) or {}).get("version") or "")
         line = (
-            f"  {name} stays at {installed or 'its current version'}"
-            f" instead of {latest}"
+            f"  {paint(name, 'strong')} stays at "
+            f"{installed or 'its current version'} instead of {latest}"
         )
-        causes = [cause["text"] for cause in reasons.get(normalized, ())][:3]
-        if causes:
-            line += " (" + "; ".join(causes) + ")"
-        print(line, flush=True)
+        print(line + _cause_suffix(reasons.get(normalized, ())), flush=True)
 
 
-def resolve_update_plan(prefix, names, *, allow_downgrade=False):
+def print_capped(capped, plan, reasons):
+    """Explain selected updates the resolver moves, but not to the newest release.
+
+    pip keeps listing such a package as outdated afterward, so without this the
+    summary reads as a full update and the next scan looks like it failed.
+    """
+    versions = {canonicalize_name(item["name"]): item["version"] for item in plan}
+    announce(
+        "INFO",
+        f"{count_label(len(capped), 'selected package')} can only update "
+        "as far as other packages allow:",
+    )
+    for normalized, (name, latest) in sorted(capped.items()):
+        line = (
+            f"  {paint(name, 'strong')} goes to "
+            f"{paint(str(versions.get(normalized)), 'new')} instead of {latest}"
+        )
+        print(line + _cause_suffix(reasons.get(normalized, ())), flush=True)
+
+
+def _cause_suffix(causes):
+    texts = list(dict.fromkeys(cause["text"] for cause in causes))[:3]
+    return " " + paint("(" + "; ".join(texts) + ")", "note") if texts else ""
+
+
+def _ownership_refusal(name, inventory, ownership, prefix):
+    """Return why the updater must not or cannot replace ``name``, or None."""
+    normalized = canonicalize_name(name)
+    installed = inventory.get(normalized)
+    if normalized in PROTECTED_BOOTSTRAP_PACKAGES:
+        return f"Refusing to update protected bootstrap package {name}."
+    if normalized in ownership["distributions"]:
+        return f"Refusing to update Conda-owned package {name}."
+    if not installed or installed.get("installer") not in UPDATABLE_INSTALLERS:
+        return f"{name} is not an unambiguous pip- or uv-installed distribution."
+    if not _is_within(installed.get("metadata_path", ""), prefix):
+        return f"{name} is outside the selected environment."
+    if installed.get("direct_url"):
+        return f"{name} is an editable/direct-URL install and cannot be reproduced."
+    return None
+
+
+def _check_selected_ownership(names, inventory, ownership, prefix):
+    """Refuse selections the updater must not or cannot reproducibly replace."""
+    for name in names:
+        refusal = _ownership_refusal(name, inventory, ownership, prefix)
+        if refusal:
+            raise UpdaterError(refusal)
+
+
+def _compatible_wheel_targets(prefix, names, hooks):
+    """Ask pip for each selection's newest compatible wheel, ignoring deps.
+
+    Returns ``(targets, newest_requires)``: ``targets`` maps each selection
+    that has a newer wheel to ``(name, version)``, and ``newest_requires``
+    maps it to that wheel's requirements.
+    """
+    report = pip_install_report(
+        prefix,
+        [
+            "--upgrade",
+            "--no-deps",
+            "--only-binary=:all:",
+            "--disable-pip-version-check",
+            *names,
+        ],
+        action=f"Finding compatible wheels for {prefix}",
+        report_name="candidate",
+        timeout=300,
+        hooks=hooks,
+    )
+    items = report_install_items(
+        report, "pip's candidate report did not contain an install list."
+    )
+    selected_names = {canonicalize_name(name) for name in names}
+    targets = {}
+    newest_requires = {}
+    for item in items:
+        metadata = item.get("metadata") or {}
+        name = str(metadata.get("name") or "")
+        version = str(metadata.get("version") or "")
+        normalized = canonicalize_name(name)
+        if (
+            normalized not in selected_names
+            or normalized in targets
+            or not SAFE_PROJECT_NAME.fullmatch(name)
+            or not version
+        ):
+            raise UpdaterError(
+                "pip returned an invalid or unexpected compatible-wheel candidate."
+            )
+        targets[normalized] = (name, version)
+        newest_requires[normalized] = list(metadata.get("requires_dist") or [])
+    return targets, newest_requires
+
+
+def _dependency_closure(start, graph):
+    """Return ``start`` and every package its requirements reach in ``graph``."""
+    reached = {start}
+    pending = [start]
+    while pending:
+        for dependency in graph.get(pending.pop(), ()):
+            if dependency not in reached:
+                reached.add(dependency)
+                pending.append(dependency)
+    return reached
+
+
+def _selection_spec(name, installed, newest, extras):
+    """Return ``name[extras]>=installed,<=newest``, leaving out unusable bounds.
+
+    PEP 440 forbids local labels (``+cu130``) in range bounds, so each bound
+    uses the public version, which still admits every local build of it.
+    """
+    requested = [extra for extra in extras if SAFE_PROJECT_NAME.fullmatch(extra)]
+    spec = name + (f"[{','.join(requested)}]" if requested else "")
+    bounds = []
+    if SAFE_VERSION.fullmatch(installed):
+        bounds.append(">=" + installed.split("+", 1)[0])
+    if SAFE_VERSION.fullmatch(newest):
+        bounds.append("<=" + newest.split("+", 1)[0])
+    return spec + ",".join(bounds)
+
+
+@dataclasses.dataclass(frozen=True)
+class RepairOption:
+    """One way to repair an existing conflict.
+
+    ``packages`` are installed packages to update, ``specs`` missing
+    requirements to install, and ``tags`` names the conflict each package
+    the option moves or installs repairs.
+    """
+
+    packages: tuple
+    specs: tuple
+    tags: dict
+
+
+@dataclasses.dataclass(frozen=True)
+class InstalledRequirements:
+    """What the installed environment requires, as the update solve sees it.
+
+    ``edges`` pairs each package with every requirement it makes that applies
+    here (markers judged for the target interpreter, extras only when some
+    package requests them); ``broken`` holds installed versions a requirement
+    already rejects, in the holdback_reasons cause format.
+    """
+
+    inventory: dict
+    marker_env: object
+    edges: list
+    extras: dict
+    broken: dict
+
+    @classmethod
+    def load(cls, inventory, marker_env):
+        """Read the applicable requirements of every installed package."""
+        parsed = _parsed_requirement_sources(inventory, [])
+        if parsed is None:
+            raise UpdaterError(
+                "Planning an update needs the Python 'packaging' library."
+            )
+        extras = _active_extras(parsed, marker_env)
+        edges = []
+        for name, _, requirements in parsed:
+            owner = canonicalize_name(str(name))
+            edges.extend(
+                (owner, requirement)
+                for requirement in requirements
+                if _marker_applies(requirement, extras.get(owner, set()), marker_env)
+            )
+        broken = broken_installed_requirements(inventory, marker_env)
+        return cls(inventory, marker_env, edges, extras, broken)
+
+    def specs(self, targets):
+        """Let each selection settle from its installed version to its newest.
+
+        The newest wheel was found ignoring dependencies, so it can need a
+        version of another package the environment keeps (sentence-transformers
+        6.1.0 needs transformers>=5 while vllm holds transformers<5); pinned to
+        it, the whole solve was impossible, while a range lets pip hold that
+        selection back or stop at an older release.  The floor stops the plan
+        from downgrading a selection.  Extras another package requests stay
+        installed.
+        """
+        return [
+            _selection_spec(
+                name,
+                str((self.inventory.get(normalized) or {}).get("version") or ""),
+                newest,
+                sorted(self.extras.get(normalized, ())),
+            )
+            for normalized, (name, newest) in targets.items()
+        ]
+
+    def constraints(self, targets, fixed=()):
+        """Pin every other package, and keep each cap it places on the solve.
+
+        pip checks only the requirements of packages its solve reaches, so a
+        package that depends on a selection would otherwise never be asked:
+        its cap on that selection, or on a package the plan might add, is
+        passed explicitly.  Its requirements on other pinned packages cannot
+        change and are left out.  A cap the installed version already breaks
+        is kept too, so a selection moves only to repair that conflict.
+        ``fixed`` names packages the request pins itself to a planned version.
+        """
+        moving = set(targets) | set(fixed)
+        caps = {
+            f"{requirement.name}{requirement.specifier}"
+            for owner, requirement in self.edges
+            if owner not in moving
+            and requirement.specifier
+            and (
+                canonicalize_name(requirement.name) in moving
+                or canonicalize_name(requirement.name) not in self.inventory
+            )
+        }
+        return retained_environment_pins(self.inventory, moving) + sorted(caps)
+
+    def exposure(self, targets):
+        """Return the conflicts each selection that touches one cannot escape.
+
+        pip rechecks every requirement in the dependency graph it walks.  A
+        selection whose installed version a requirement already rejects, or
+        whose installed dependencies (itself included) reach a package with
+        an unmet requirement, therefore has no answer that leaves it as it is:
+        the solve repairs that conflict or fails.  Any other selection can
+        always stay installed.  Each conflict is named twice, once per side,
+        so a recorded hold lifts when either side moves.
+        """
+        graph = {}
+        for owner, requirement in self.edges:
+            graph.setdefault(owner, set()).add(canonicalize_name(requirement.name))
+        unmet = {}
+        for package, causes in self.broken.items():
+            for cause in causes:
+                holder = canonicalize_name(cause["capper"])
+                unmet.setdefault(holder, []).append((package, cause))
+        exposure = {}
+        for normalized, (name, _) in targets.items():
+            touched = [(normalized, cause) for cause in self.broken.get(normalized, ())]
+            for holder in sorted(_dependency_closure(normalized, graph) & set(unmet)):
+                touched.extend(unmet[holder])
+            if touched:
+                exposure[normalized] = [
+                    conflict_cause
+                    for package, cause in touched
+                    for conflict_cause in self._conflict_causes(
+                        (normalized, name), package, cause
+                    )
+                ]
+        return exposure
+
+    def repair_units(self, selected, updatable, blocked):
+        """List the ways to repair each existing conflict without a downgrade.
+
+        A missing requirement is repaired by installing it.  A version conflict
+        is repaired by updating the package whose requirement is unmet, or else
+        the package that requirement rejects; each update has a floor, so
+        neither moves down.  A conflict a selection takes part in is left to
+        that selection.  Returns ``(units, unrepairable)``: each unit is
+        ``(reason, [RepairOption])``, and ``unrepairable`` names conflicts
+        whose packages the updater may not touch (``blocked`` names may not be
+        installed; only ``updatable`` ones may move).
+        """
+        units, unrepairable = self._missing_units(selected, blocked)
+        for (holder, package), reason in sorted(self._conflicts(selected).items()):
+            options = [
+                RepairOption((name,), (), {name: reason})
+                for name in (holder, package)
+                if name in updatable
+            ]
+            if options:
+                units.append((reason, options))
+            else:
+                unrepairable.append(reason)
+        return units, unrepairable
+
+    def _missing_units(self, selected, blocked):
+        """Return one unit per package with missing requirements to install."""
+        unrepairable = []
+        missing = {}
+        for owner, requirement in self.edges:
+            dependency = canonicalize_name(requirement.name)
+            if dependency in self.inventory or owner in selected:
+                continue
+            row = self.inventory[owner]
+            text = (
+                f"{row['name']} {row['version']} requires "
+                f"{requirement.name}{requirement.specifier}, which is not installed"
+            )
+            if dependency in blocked:
+                unrepairable.append(text)
+                continue
+            extras = ",".join(sorted(requirement.extras))
+            spec = requirement.name + (f"[{extras}]" if extras else "")
+            missing.setdefault(owner, {})[dependency] = (
+                spec + str(requirement.specifier),
+                text,
+            )
+        units = [
+            (
+                "; ".join(text for _, text in entries.values()),
+                [
+                    RepairOption(
+                        (),
+                        tuple(spec for spec, _ in entries.values()),
+                        {name: text for name, (_, text) in entries.items()},
+                    )
+                ],
+            )
+            for _, entries in sorted(missing.items())
+        ]
+        return units, unrepairable
+
+    def _conflicts(self, selected):
+        """Map each version conflict no selection takes part in to its reason."""
+        conflicts = {}
+        for package, causes in self.broken.items():
+            row = self.inventory[package]
+            for cause in causes:
+                holder = canonicalize_name(cause["capper"])
+                if package not in selected and holder not in selected:
+                    conflicts[(holder, package)] = (
+                        f"{cause['text']}, which installed {row['name']} "
+                        f"{row['version']} fails"
+                    )
+        return conflicts
+
+    def _conflict_causes(self, selection, package, cause):
+        """Name both sides of the conflict ``cause`` describes on ``package``."""
+        normalized, name = selection
+        row = self.inventory[package]
+        text = f"{cause['text']}, which installed {row['name']} {row['version']} fails"
+        if normalized not in (package, canonicalize_name(cause["capper"])):
+            text = f"{name} needs {cause['capper']}; {text}"
+        return [
+            {**cause, "text": text},
+            {
+                "capper": str(row["name"]),
+                "capper_version": str(row["version"]),
+                "text": text,
+            },
+        ]
+
+
+def _plan_item(raw_item, inventory, ownership, prefix):
+    """Validate one item of pip's resolver report and return its plan entry."""
+    metadata = raw_item.get("metadata") or {}
+    name = str(metadata.get("name") or "")
+    version = str(metadata.get("version") or "")
+    normalized = canonicalize_name(name)
+    if normalized in PROTECTED_BOOTSTRAP_PACKAGES:
+        raise UpdaterError(f"The update would modify protected package {name}.")
+    if normalized in ownership["distributions"]:
+        raise UpdaterError(
+            f"The update would overwrite Conda-owned dependency {name} {version}."
+        )
+
+    installed = inventory.get(normalized)
+    if installed:
+        if installed.get("installer") not in UPDATABLE_INSTALLERS or not _is_within(
+            installed.get("metadata_path", ""), prefix
+        ):
+            raise UpdaterError(
+                f"The update would replace {name}, which pip or uv did not install."
+            )
+        if installed.get("direct_url"):
+            raise UpdaterError(f"The update would replace direct-URL package {name}.")
+
+    url, sha256 = report_download(raw_item)
+    if not is_index_artifact(raw_item):
+        raise UpdaterError(f"The update plan contains non-reproducible source {name}.")
+    if raw_item.get("is_yanked"):
+        raise UpdaterError(f"The update plan contains yanked release {name} {version}.")
+    if not sha256:
+        raise UpdaterError(f"The update artifact for {name} lacks a SHA-256 digest.")
+    return {
+        "name": name,
+        "current_version": installed.get("version") if installed else None,
+        "version": version,
+        "sha256": sha256,
+        # Kept only in memory. Transaction journals store versions and
+        # hashes, never private-index URLs that may contain credentials.
+        "url": url,
+        "filename": wheel_filename_from_url(url),
+        "requested": bool(raw_item.get("requested")),
+        "requires": list(metadata.get("requires_dist") or []),
+    }
+
+
+def _plan_from_report(raw_plan, inventory, ownership, prefix):
+    """Validate pip's whole resolver report into the ordered update plan."""
+    plan = []
+    seen = set()
+    for raw_item in raw_plan:
+        metadata = raw_item.get("metadata") or {}
+        name = str(metadata.get("name") or "")
+        version = str(metadata.get("version") or "")
+        if not name or not version or not SAFE_PROJECT_NAME.fullmatch(name):
+            raise UpdaterError(
+                "pip proposed an item with invalid name/version metadata."
+            )
+        normalized = canonicalize_name(name)
+        if normalized in seen:
+            raise UpdaterError(f"pip proposed {name} more than once.")
+        seen.add(normalized)
+        plan.append(_plan_item(raw_item, inventory, ownership, prefix))
+    return plan
+
+
+def _limited_selections(targets, plan):
+    """Split selections the plan does not take to their newest wheel.
+
+    Returns ``(held, capped)``: held selections stay installed as they are;
+    capped ones move, but not to the newest compatible wheel, and pip will
+    still list them as outdated after a successful update (CUDA wheels
+    pinned by torch through cuda-toolkit are the common case).  Each capped
+    plan item gains a ``newest`` key.
+    """
+    planned = {canonicalize_name(item["name"]) for item in plan}
+    held = {
+        normalized: candidate
+        for normalized, candidate in targets.items()
+        if normalized not in planned
+    }
+    capped = {}
+    for item in plan:
+        normalized = canonicalize_name(item["name"])
+        if normalized in targets and item["version"] != targets[normalized][1]:
+            capped[normalized] = targets[normalized]
+            item["newest"] = targets[normalized][1]
+    return held, capped
+
+
+def _hold_records(limited, reasons, inventory, plan):
+    """Describe each limited selection so a later scan can trust the hold."""
+    after_plan = {
+        normalized: str(row.get("version") or "")
+        for normalized, row in inventory.items()
+    }
+    after_plan.update(
+        {canonicalize_name(item["name"]): item["version"] for item in plan}
+    )
+    records = {}
+    for normalized, (name, latest) in limited.items():
+        cappers = {
+            cause["capper"]: cause["capper_version"]
+            for cause in reasons.get(normalized, ())
+        }
+        records[normalized] = {
+            "name": name,
+            "installed": after_plan.get(normalized, ""),
+            "latest": latest,
+        }
+        if cappers:
+            records[normalized]["cappers"] = cappers
+        else:
+            # pip saw a cap this explanation cannot name.  Every other package
+            # is pinned at its installed version during the solve, so the same
+            # installed set gives the same answer; trust the hold only while
+            # the environment is exactly the one this plan produces.
+            records[normalized]["environment"] = inventory_fingerprint(after_plan)
+    return records
+
+
+def _limitation_reasons(limited, outcome, plan, installed):
+    """Name what keeps each limited selection from its newest release."""
+    reasons = holdback_reasons(
+        limited,
+        installed.inventory,
+        plan,
+        installed.marker_env,
+        outcome.newest_requires,
+    )
+    for normalized, causes in outcome.set_aside.items():
+        # A cap the installed version already breaks is named once, in the
+        # set-aside cause that says so.
+        conflicts = {cause["text"] for cause in causes}
+        reasons[normalized] = [
+            cause
+            for cause in reasons.get(normalized, [])
+            if not any(text.startswith(cause["text"] + ",") for text in conflicts)
+        ] + causes
+    return reasons
+
+
+def _report_holds(prefix, outcome, plan, installed):
+    """Explain new holds and caps, and remember them for the next scan.
+
+    ``outcome`` is the ResolverOutcome, ``plan`` what pip actually chose.
+    """
+    held, capped = _limited_selections(outcome.targets, plan)
+    limited = {**held, **capped}
+    reasons = _limitation_reasons(limited, outcome, plan, installed) if limited else {}
+    records = _hold_records(limited, reasons, installed.inventory, plan)
+    cached_holds = get_cached_holds(prefix)
+    # A hold is announced when it is news; a hold identical to the recorded one
+    # was already explained (and the scan normally filters it out earlier).
+    fresh = {
+        normalized
+        for normalized in limited
+        if cached_holds.get(normalized) != records[normalized]
+    }
+    if fresh & held.keys():
+        print_held_back(
+            {name: held[name] for name in fresh & held.keys()},
+            installed.inventory,
+            reasons,
+        )
+    if fresh & capped.keys():
+        print_capped(
+            {name: capped[name] for name in fresh & capped.keys()}, plan, reasons
+        )
+    merged = {
+        normalized: record
+        for normalized, record in cached_holds.items()
+        if normalized not in outcome.targets and isinstance(record, dict)
+    }
+    merged.update(records)
+    if merged != cached_holds:
+        set_cached_holds(prefix, merged)
+
+
+def _announce_conflict_repairs(plan, broken):
+    """Say which selected updates also satisfy a requirement they already broke."""
+    for item in plan:
+        causes = broken.get(canonicalize_name(item["name"]))
+        if causes and item["requested"]:
+            reasons = "; ".join(dict.fromkeys(cause["text"] for cause in causes))
+            announce(
+                "INFO",
+                "Also repairs an existing conflict: "
+                f"{item['name']} {item['current_version']} -> {item['version']} "
+                f"({reasons})",
+                flush=True,
+            )
+
+
+def _announce_missing_wheels(names, outcome):
+    """Name selections pip found no newer installable wheel for."""
+    no_wheel = sorted(
+        name
+        for name in names
+        if canonicalize_name(name) not in outcome.targets
+        and canonicalize_name(name) not in outcome.rebuilt
+    )
+    if no_wheel:
+        announce(
+            "INFO",
+            "No newer wheel is available for this environment: "
+            + ", ".join(no_wheel)
+            + " (a newer source-only release needs a manual build)",
+            flush=True,
+        )
+
+
+@dataclasses.dataclass(frozen=True)
+class ResolverOutcome:
+    """What the solve found: each selection's newest wheel and pip's plan.
+
+    ``newest_requires`` holds each newest wheel's requirements;
+    ``set_aside`` maps each selection left out of the plan because it touches
+    an existing conflict to that conflict's causes; ``rebuilt`` holds the
+    selections whose newest wheel is a different build, as
+    ``(name, installed, newest)``; ``repairs`` names the conflict each
+    repaired package fixes, and ``unrepairable`` the conflicts left as they
+    are.
+    """
+
+    targets: dict
+    newest_requires: dict
+    report: dict
+    set_aside: dict
+    rebuilt: dict
+    repairs: dict
+    unrepairable: list
+
+
+# pip settings that change where packages come from; uv cannot see them.
+PIP_INDEX_SETTINGS = ("index-url", "extra-index-url", "find-links", "no-index")
+
+# One line of uv's dry-run plan: " + name==version".
+UV_PLANNED_LINE = re.compile(r"^ \+ ([A-Za-z0-9][A-Za-z0-9._-]*)==(\S+)$")
+
+
+def uv_resolver(prefix):
+    """Return uv's path when it can choose versions from pip's own index.
+
+    pip's resolver backtracks through version combinations one at a time and,
+    on a large environment (vllm's, with 85 selections), gives up after
+    minutes with ResolutionTooDeep; uv solves the same request in seconds.
+    uv is only used when pip is configured with no index of its own, since
+    uv reads neither pip.conf nor PIP_* variables.
+    """
+    uv = shutil.which("uv")
+    if uv is None:
+        return None
+    result = run_command(
+        [*pip_command(prefix), "config", "list"], capture_output=True, timeout=60
+    )
+    if result.returncode != 0 or any(
+        setting in result.stdout for setting in PIP_INDEX_SETTINGS
+    ):
+        return None
+    return uv
+
+
+def _uv_plan(output):
+    """Read uv's dry-run plan as ``{normalized: (name, version)}``.
+
+    Returns None when a planned package is not an exact version (a direct
+    URL), since pip could not be pinned to it.
+    """
+    planned = {}
+    for line in output.splitlines():
+        if line.startswith(" + "):
+            match = UV_PLANNED_LINE.match(line)
+            if not match:
+                return None
+            planned[canonicalize_name(match.group(1))] = match.groups()
+    return planned
+
+
+def _uv_versions(uv, prefix, request, hooks):
+    """Ask uv which version each package of ``request`` should end at.
+
+    ``request`` is ``(requirements, constraints, upgradable)``.  Returns
+    ``{normalized: (name, version)}`` for every package uv would install, or
+    None when uv's plan cannot be read as exact versions.  Raises
+    UnsolvableError when uv proves the request impossible.
+    """
+    requirements, constraints, upgradable = request
+    with tempfile.TemporaryDirectory(prefix="pip-updater-uv-") as tmp:
+        requirements_path = Path(tmp) / "requirements.txt"
+        requirements_path.write_text("\n".join(requirements) + "\n", encoding="utf-8")
+        constraints_path = Path(tmp) / "constraints.txt"
+        constraints_path.write_text("\n".join(constraints) + "\n", encoding="utf-8")
+        result = stream_command(
+            [
+                uv,
+                "pip",
+                "install",
+                "--dry-run",
+                "--no-config",
+                "--color=never",
+                f"--python={environment_python(prefix)}",
+                "--only-binary=:all:",
+                *(f"--upgrade-package={name}" for name in sorted(upgradable)),
+                "-c",
+                str(constraints_path),
+                "-r",
+                str(requirements_path),
+            ],
+            timeout=600,
+            hooks=hooks,
+        )
+    output = f"{result.stdout}\n{result.stderr}"
+    if result.returncode == 0:
+        return _uv_plan(output)
+    if "No solution found" in output:
+        raise UnsolvableError(output.strip())
+    return None
+
+
+def _pinned_choice(targets, installed, planned):
+    """Pin every target and every package uv plans at uv's chosen version.
+
+    A target uv leaves alone is pinned at its installed version, so pip
+    checks one exact assignment instead of searching the ranges again.
+    """
+    pins = []
+    for normalized, (name, _newest) in targets.items():
+        extras = sorted(
+            extra
+            for extra in installed.extras.get(normalized, ())
+            if SAFE_PROJECT_NAME.fullmatch(extra)
+        )
+        version = planned.pop(normalized, (name, ""))[1] or str(
+            (installed.inventory.get(normalized) or {}).get("version") or ""
+        )
+        spec = name + (f"[{','.join(extras)}]" if extras else "")
+        pins.append(f"{spec}=={version}" if SAFE_VERSION.fullmatch(version) else spec)
+    pins.extend(f"{name}=={version}" for name, version in planned.values())
+    return pins
+
+
+def _pip_solve(prefix, requirements, constraints, hooks):
+    """Return pip's dry-run install report for ``requirements``."""
+    return pip_install_report(
+        prefix,
+        [
+            "--upgrade",
+            "--upgrade-strategy",
+            "only-if-needed",
+            "--only-binary=:all:",
+            "--disable-pip-version-check",
+            *requirements,
+        ],
+        constraints=constraints,
+        action=f"Resolving updates for {prefix}",
+        report_name="resolver",
+        timeout=600,
+        hooks=hooks,
+    )
+
+
+def _solve(prefix, request, installed, hooks, uv):
+    """Ask for the joint plan that moves only what ``request`` names.
+
+    ``request`` is ``(targets, specs, fixed)``: packages that may move within
+    their range, extra requirement specs, and the names ``specs`` pin exactly.
+    With ``uv``, uv chooses the versions and pip checks exactly those and
+    writes the report; pip searches the ranges itself only when uv is
+    unavailable or pip rejects uv's choice.
+    """
+    targets, specs, fixed = request
+    requirements = [*installed.specs(targets), *specs]
+    constraints = installed.constraints(targets, fixed)
+    if uv is not None:
+        planned = _uv_versions(uv, prefix, (requirements, constraints, targets), hooks)
+        if planned is not None:
+            try:
+                return _pip_solve(
+                    prefix,
+                    [*_pinned_choice(targets, installed, planned), *specs],
+                    constraints,
+                    hooks,
+                )
+            except UnsolvableError:
+                pass
+    return _pip_solve(prefix, requirements, constraints, hooks)
+
+
+def _split_rebuilt(found, inventory):
+    """Split newest wheels into targets and swaps of the installed build."""
+    targets = {}
+    rebuilt = {}
+    for normalized, (name, newest) in found.items():
+        installed_version = str(inventory[normalized].get("version"))
+        if build_change(installed_version, newest):
+            rebuilt[normalized] = (name, installed_version, newest)
+        else:
+            targets[normalized] = (name, newest)
+    return targets, rebuilt
+
+
+def _plan_pins(report):
+    """Pin every package a pip report plans at its planned version."""
+    items = [item.get("metadata") or {} for item in report.get("install", [])]
+    return (
+        [f"{item.get('name')}=={item.get('version')}" for item in items],
+        {canonicalize_name(str(item.get("name"))) for item in items},
+    )
+
+
+def _grow_plan(solve, base, units):
+    """Solve the selections, then add each unit that fits around that plan.
+
+    ``solve(request, label)`` returns pip's report for a ``(targets, specs,
+    fixed)`` request.  ``base`` holds the selections that can always stay as
+    installed.  Each unit ``(key, label, [RepairOption])`` is then tried with
+    everything planned so far pinned, so the solve searches only that unit's
+    own versions and rejects an impossible one quickly.  A unit that did not
+    fit is tried again after a later unit changed the plan (fastapi-cli fits
+    only once typer has moved).  Returns ``(report, kept options, keys of
+    units that did not fit)``.
+    """
+    report = {"install": []}
+    if base:
+        report = solve(
+            (base, [], ()), f"Solving {count_label(len(base), 'selected package')}"
+        )
+    kept = []
+    pending = list(enumerate(units, 1))
+    retry = ""
+    while pending:
+        failed = []
+        for position, (key, label, options) in pending:
+            for option in options:
+                pins, fixed = _plan_pins(report)
+                try:
+                    report = solve(
+                        (dict(option.packages), [*pins, *option.specs], fixed),
+                        f"[{position}/{len(units)}] {label}{retry}",
+                    )
+                except UnsolvableError:
+                    continue
+                kept.append(option)
+                break
+            else:
+                failed.append((position, (key, label, options)))
+        if len(failed) == len(pending):
+            break
+        pending = failed
+        retry = " (retry after the plan changed)"
+    return report, kept, [key for _, (key, _label, _options) in pending]
+
+
+def _resolver_units(installed, found, selected, repairable):
+    """Build the units the plan grows by: repairs first, then selections.
+
+    ``repairable`` is ``(repair units, unrepairable)`` from repair_units;
+    ``found`` maps every candidate to its newest wheel.  A repair option is
+    usable only when each package it moves has a newer wheel of the same build.
+    Returns ``(base targets, units, exposure, unrepairable)``.
+    """
+    units = repairable[0]
+    unrepairable = list(repairable[1])
+    exposure = installed.exposure(selected)
+    grown = []
+    for reason, options in units:
+        usable = [
+            RepairOption(
+                tuple((name, found[name]) for name in option.packages),
+                option.specs,
+                option.tags,
+            )
+            for option in options
+            if all(name in found for name in option.packages)
+        ]
+        if usable:
+            grown.append((("repair", reason), f"repair: {reason}", usable))
+        else:
+            unrepairable.append(reason)
+    grown.extend(
+        (
+            ("selection", normalized),
+            (
+                f"{selected[normalized][0]} -> {selected[normalized][1]}, "
+                "which touches an existing conflict"
+            ),
+            [RepairOption(((normalized, selected[normalized]),), (), {})],
+        )
+        for normalized in sorted(exposure)
+    )
+    base = {name: target for name, target in selected.items() if name not in exposure}
+    return base, grown, exposure, unrepairable
+
+
+def _repair_candidates(repairable, inventory, wanted):
+    """Return the display names of packages a repair may update."""
+    return [
+        inventory[normalized]["name"]
+        for normalized in sorted(
+            {
+                package
+                for _, options in repairable[0]
+                for option in options
+                for package in option.packages
+            }
+            - wanted
+        )
+    ]
+
+
+def _outcome(found, selected, grown, exposure):
+    """Assemble the ResolverOutcome from what the plan kept and dropped.
+
+    ``found`` is ``(newest_requires, rebuilt selections)`` from the wheel search;
+    ``grown`` is ``(report, kept options, failed unit keys, unrepairable)``.
+    """
+    newest_requires, rebuilt = found
+    report, kept, failed, unrepairable = grown
+    repairs = {}
+    for option in kept:
+        repairs.update(option.tags)
+    return ResolverOutcome(
+        targets=selected,
+        newest_requires=newest_requires,
+        report=report,
+        set_aside={key: exposure[key] for kind, key in failed if kind == "selection"},
+        rebuilt=rebuilt,
+        repairs=repairs,
+        unrepairable=unrepairable + [key for kind, key in failed if kind == "repair"],
+    )
+
+
+def _newest_wheels(prefix, names, inventory, repairable, hooks):
+    """Find the newest same-build wheel of every selection and repair candidate.
+
+    Returns ``(found, (newest_requires, rebuilt selections), selected)``:
+    every candidate's target, the requirements of each newest wheel with the
+    selections whose newest wheel is a different build, and the selections'
+    targets.
+    """
+    wanted = {canonicalize_name(name) for name in names}
+    found, newest_requires = _compatible_wheel_targets(
+        prefix, [*names, *_repair_candidates(repairable, inventory, wanted)], hooks
+    )
+    found, rebuilt = _split_rebuilt(found, inventory)
+    return (
+        found,
+        (
+            newest_requires,
+            {name: value for name, value in rebuilt.items() if name in wanted},
+        ),
+        {name: target for name, target in found.items() if name in wanted},
+    )
+
+
+def _logged_solve(progress, label, solve):
+    """Run one solve as a named step, logging whether it found a plan."""
+    progress.begin_step(label)
+    try:
+        report = solve()
+    except UnsolvableError:
+        progress.end_step("no solution, left out")
+        raise
+    progress.end_step("solved")
+    return report
+
+
+def _run_resolver(prefix, names, installed, repairable):
+    """Find each candidate's newest wheel, then grow the joint plan with pip.
+
+    The plan starts from the selections that can always stay as installed.
+    Repairs of existing conflicts (``repairable``, from repair_units) and then
+    the selections that touch an existing conflict are tried one at a time
+    around that plan, each kept only if pip can solve it with everything kept
+    before it.  Every solve is logged as a step, so a long one stays visible.
+    """
+    progress = ResolverProgress(names)
+    progress.phase = "Discovering compatible wheels"
+    progress.tick()
+    hooks = StreamHooks(progress.watch, progress.note, progress.tick)
+    uv = uv_resolver(prefix)
+    try:
+        found, searched, selected = _newest_wheels(
+            prefix, names, installed.inventory, repairable, hooks
+        )
+        base, units, exposure, unrepairable = _resolver_units(
+            installed, found, selected, repairable
+        )
+        grown = ({"install": []}, [], [])
+        if base or units:
+            progress.phase = "Resolving dependencies"
+            grown = _grow_plan(
+                lambda request, label: _logged_solve(
+                    progress,
+                    label,
+                    lambda: _solve(prefix, request, installed, hooks, uv),
+                ),
+                base,
+                units,
+            )
+    except BaseException:
+        progress.finish(False)
+        raise
+    progress.finish(True)
+    return _outcome(searched, selected, (*grown, unrepairable), exposure)
+
+
+def _announce_unrepairable(outcome):
+    """Name the existing conflicts no update the updater may make repairs."""
+    if outcome.unrepairable:
+        announce(
+            "INFO",
+            "These conflicts already existed, and no update of the packages "
+            "involved repairs them (the updater never downgrades):",
+            flush=True,
+        )
+        for reason in sorted(set(outcome.unrepairable)):
+            print(f"      {reason}", flush=True)
+
+
+def _announce_rebuilt(outcome):
+    """Name selections whose newest wheel would swap their installed build."""
+    for name, installed, newest in sorted(outcome.rebuilt.values()):
+        announce(
+            "INFO",
+            f"{name} stays at {installed}: the newest wheel pip finds, {newest}, "
+            "is a different build",
+            flush=True,
+        )
+
+
+def _announce_set_aside(outcome):
+    """Say which selections were left out because of an existing conflict."""
+    if outcome.set_aside:
+        names = sorted(
+            outcome.targets[normalized][0] for normalized in outcome.set_aside
+        )
+        announce(
+            "INFO",
+            ", ".join(names)
+            + " could not be planned with the rest: each touches a dependency "
+            "conflict this environment already has, so they stay as they are.",
+            flush=True,
+        )
+
+
+def resolve_update_plan(prefix, names):
     """Resolve an update without mutation and enforce package ownership."""
     if not names:
         raise UpdaterError("No package names were selected.")
@@ -3062,335 +4724,61 @@ def resolve_update_plan(prefix, names, *, allow_downgrade=False):
         if not SAFE_PROJECT_NAME.fullmatch(name):
             raise UpdaterError(f"Unsafe project name in selection: {name!r}")
 
-    inventory_rows = get_environment_inventory(prefix)
-    inventory = index_inventory(inventory_rows)
+    inventory = index_inventory(get_environment_inventory(prefix), prefix)
     ownership = load_conda_ownership(prefix)
-    for name in names:
-        normalized = canonicalize_name(name)
-        installed = inventory.get(normalized)
-        if normalized in PROTECTED_BOOTSTRAP_PACKAGES:
-            raise UpdaterError(
-                f"Refusing to update protected bootstrap package {name}."
-            )
-        if normalized in ownership["distributions"]:
-            raise UpdaterError(f"Refusing to update Conda-owned package {name}.")
-        if not installed or installed.get("installer") != "pip":
-            raise UpdaterError(f"{name} is not an unambiguous pip-owned distribution.")
-        if not _is_within(installed.get("metadata_path", ""), prefix):
-            raise UpdaterError(f"{name} is outside the selected environment.")
-        if installed.get("direct_url"):
-            raise UpdaterError(
-                f"{name} is an editable/direct-URL install and cannot be reproduced."
-            )
-
-    baseline_analysis = analyze_requirements(prefix)
-    progress = ResolverProgress(names)
-    progress.phase = "Discovering compatible wheels"
-    progress.tick()
-    resolved = False
-    unpinnable = []
-    with tempfile.TemporaryDirectory(prefix="pip-updater-resolver-") as raw_tmp:
-        candidate_path = Path(raw_tmp) / "candidates.json"
-        report_path = Path(raw_tmp) / "report.json"
-        try:
-            candidate_result = stream_command(
-                pip_command(prefix)
-                + [
-                    "install",
-                    "--dry-run",
-                    "--report",
-                    str(candidate_path),
-                    "--upgrade",
-                    "--no-deps",
-                    "--only-binary=:all:",
-                    "--disable-pip-version-check",
-                ]
-                + list(names),
-                timeout=300,
-                on_start=progress.watch,
-                on_line=progress.note,
-                on_tick=progress.tick,
-            )
-            if candidate_result.returncode != 0:
-                raise command_failure(
-                    f"Finding compatible wheels for {prefix}",
-                    candidate_result,
-                    max_lines=60,
-                )
-            try:
-                raw_candidates = candidate_path.read_text(encoding="utf-8")
-            except OSError as exc:
-                raise UpdaterError(
-                    "pip completed without writing its candidate report."
-                ) from exc
-            candidate_report = parse_json_output(
-                raw_candidates, f"finding compatible wheels for {prefix}"
-            )
-            candidate_items = candidate_report.get("install", [])
-            if not isinstance(candidate_items, list):
-                raise UpdaterError(
-                    "pip's candidate report did not contain an install list."
-                )
-
-            selected_names = {canonicalize_name(name) for name in names}
-            targets = {}
-            candidate_rows = []
-            for item in candidate_items:
-                metadata = item.get("metadata") or {}
-                name = str(metadata.get("name") or "")
-                version = str(metadata.get("version") or "")
-                normalized = canonicalize_name(name)
-                if (
-                    normalized not in selected_names
-                    or normalized in targets
-                    or not SAFE_PROJECT_NAME.fullmatch(name)
-                    or not version
-                ):
-                    raise UpdaterError(
-                        "pip returned an invalid or unexpected compatible-wheel candidate."
-                    )
-                targets[normalized] = (name, version)
-                candidate_rows.append({"requires": metadata.get("requires_dist") or []})
-
-            depended = (
-                depended_upon_packages(inventory_rows)
-                | depended_upon_packages(candidate_rows)
-            ) & set(targets)
-            resolver_specs = [
-                name if normalized in depended else f"{name}=={version}"
-                for normalized, (name, version) in targets.items()
-            ]
-            if not resolver_specs:
-                report = {"install": []}
-                resolved = True
-            else:
-                roots, constraints, unpinnable = retained_environment_pins(
-                    inventory, targets, baseline_analysis
-                )
-                resolver_specs.extend(roots)
-                if constraints:
-                    constraints_path = Path(raw_tmp) / "constraints.txt"
-                    constraints_path.write_text(
-                        "\n".join(constraints) + "\n", encoding="utf-8"
-                    )
-                    resolver_specs += ["-c", str(constraints_path)]
-                progress.phase = "Resolving dependencies"
-                result = stream_command(
-                    pip_command(prefix)
-                    + [
-                        "install",
-                        "--dry-run",
-                        "--report",
-                        str(report_path),
-                        "--upgrade",
-                        "--upgrade-strategy",
-                        "only-if-needed",
-                        "--only-binary=:all:",
-                        "--disable-pip-version-check",
-                    ]
-                    + resolver_specs,
-                    timeout=600,
-                    on_start=progress.watch,
-                    on_line=progress.note,
-                    on_tick=progress.tick,
-                )
-                if result.returncode != 0:
-                    raise command_failure(
-                        f"Resolving updates for {prefix}", result, max_lines=60
-                    )
-                try:
-                    raw_report = report_path.read_text(encoding="utf-8")
-                except OSError as exc:
-                    raise UpdaterError(
-                        "pip completed without writing its resolver report."
-                    ) from exc
-                report = parse_json_output(
-                    raw_report, f"resolving updates for {prefix}"
-                )
-                resolved = True
-        finally:
-            progress.finish(resolved)
-    if unpinnable:
-        print(
-            "[INFO] Not pinned (no exact version requirement can express them); "
-            "the plan is refused if it would change them: " + ", ".join(unpinnable),
-            flush=True,
-        )
-    raw_plan = report.get("install", [])
-    if not isinstance(raw_plan, list):
-        raise UpdaterError("pip's install report did not contain an install list.")
-
-    plan = []
-    seen = set()
-    for raw_item in raw_plan:
-        metadata = raw_item.get("metadata") or {}
-        name = str(metadata.get("name") or "")
-        version = str(metadata.get("version") or "")
-        normalized = canonicalize_name(name)
-        if not name or not version or not SAFE_PROJECT_NAME.fullmatch(name):
-            raise UpdaterError(
-                "pip proposed an item with invalid name/version metadata."
-            )
-        if normalized in seen:
-            raise UpdaterError(f"pip proposed {name} more than once.")
-        seen.add(normalized)
-        if normalized in PROTECTED_BOOTSTRAP_PACKAGES:
-            raise UpdaterError(f"The update would modify protected package {name}.")
-        if normalized in ownership["distributions"]:
-            raise UpdaterError(
-                f"The update would overwrite Conda-owned dependency {name} {version}."
-            )
-
-        installed = inventory.get(normalized)
-        if installed:
-            if installed.get("installer") != "pip" or not _is_within(
-                installed.get("metadata_path", ""), prefix
-            ):
-                raise UpdaterError(f"The update would replace non-pip package {name}.")
-            if installed.get("direct_url"):
-                raise UpdaterError(
-                    f"The update would replace direct-URL package {name}."
-                )
-
-        download = raw_item.get("download_info") or {}
-        archive = download.get("archive_info") or {}
-        hashes = archive.get("hashes") or {}
-        sha256 = hashes.get("sha256")
-        url = download.get("url")
-        if (
-            raw_item.get("is_direct")
-            or download.get("vcs_info")
-            or download.get("dir_info")
-        ):
-            raise UpdaterError(
-                f"The update plan contains non-reproducible source {name}."
-            )
-        if raw_item.get("is_yanked"):
-            raise UpdaterError(
-                f"The update plan contains yanked release {name} {version}."
-            )
-        if not isinstance(sha256, str) or not re.fullmatch(r"[0-9a-fA-F]{64}", sha256):
-            raise UpdaterError(
-                f"The update artifact for {name} lacks a SHA-256 digest."
-            )
-        filename = wheel_filename_from_url(url)
-
-        plan.append(
-            {
-                "name": name,
-                "current_version": installed.get("version") if installed else None,
-                "version": version,
-                "sha256": sha256.lower(),
-                # Kept only in memory. Transaction journals store versions and
-                # hashes, never private-index URLs that may contain credentials.
-                "url": url,
-                "filename": filename,
-                "requested": bool(raw_item.get("requested")),
-                "requires": list(metadata.get("requires_dist") or []),
-            }
-        )
-
-    if plan:
-        enforce_plan_policy(
-            plan,
-            inventory,
-            selected_names,
-            analyze_requirements(prefix, plan),
-            allow_downgrade=allow_downgrade,
-        )
-
-    held = {
-        normalized: candidate
-        for normalized, candidate in targets.items()
-        if normalized not in seen
+    _check_selected_ownership(names, inventory, ownership, prefix)
+    installed = InstalledRequirements.load(inventory, marker_environment(prefix))
+    updatable = {
+        normalized
+        for normalized, row in inventory.items()
+        if not _ownership_refusal(str(row.get("name")), inventory, ownership, prefix)
     }
-    reasons = holdback_reasons(held, inventory, plan) if held else {}
-    cached_holds = get_cached_holds(prefix)
-    records = {}
-    for normalized, (name, latest) in held.items():
-        cappers = {
-            cause["capper"]: cause["capper_version"]
-            for cause in reasons.get(normalized, ())
-        }
-        if cappers:
-            records[normalized] = {
-                "name": name,
-                "installed": str(
-                    (inventory.get(normalized) or {}).get("version") or ""
-                ),
-                "latest": latest,
-                "cappers": cappers,
-            }
-    # A hold is announced when it is news; a hold identical to the recorded one
-    # was already explained (and the scan normally filters it out earlier).
-    # Holds whose cap pip saw but this explanation cannot name are never
-    # recorded, so they stay visible and are retested on every run.
-    fresh = {
-        normalized: candidate
-        for normalized, candidate in held.items()
-        if normalized not in records
-        or cached_holds.get(normalized) != records[normalized]
-    }
-    if fresh:
-        print_held_back(fresh, inventory, reasons)
-    merged = {
-        normalized: record
-        for normalized, record in cached_holds.items()
-        if normalized not in targets and isinstance(record, dict)
-    }
-    merged.update(records)
-    if merged != cached_holds:
-        set_cached_holds(prefix, merged)
+    repairable = installed.repair_units(
+        {canonicalize_name(name) for name in names},
+        updatable,
+        PROTECTED_BOOTSTRAP_PACKAGES | set(ownership["distributions"]),
+    )
+
+    outcome = _run_resolver(prefix, names, installed, repairable)
+    raw_plan = report_install_items(
+        outcome.report, "pip's install report did not contain an install list."
+    )
+    _announce_missing_wheels(names, outcome)
+    _announce_rebuilt(outcome)
+    _announce_set_aside(outcome)
+    plan = _plan_from_report(raw_plan, inventory, ownership, prefix)
+    for item in plan:
+        normalized = canonicalize_name(item["name"])
+        item["requested"] = normalized in outcome.targets
+        if normalized in outcome.repairs:
+            item["repair"] = outcome.repairs[normalized]
+    _announce_conflict_repairs(plan, installed.broken)
+    _announce_unrepairable(outcome)
+    _report_holds(prefix, outcome, plan, installed)
     return plan
-
-
-ENVIRONMENT_LAYOUT_HELPER = r"""
-import json
-import os
-import sys
-import sysconfig
-
-paths = sysconfig.get_paths()
-layout = {key: paths[key] for key in ("purelib", "platlib", "scripts", "data", "include")}
-# pip installs a wheel's .data/headers under a per-distribution directory whose
-# parent depends on pip's scheme backend and on virtualenv detection, so ask
-# pip itself.  Every backend appends the distribution name to one base.
-probe = "pip-updater-probe"
-try:
-    from pip._internal.locations import get_scheme
-
-    headers = get_scheme(probe).headers
-except Exception:
-    headers = os.path.join(paths["include"], probe)
-layout["headers_base"] = os.path.dirname(headers) if os.path.basename(headers) == probe else ""
-layout["cache_tag"] = sys.implementation.cache_tag or ""
-print(json.dumps(layout))
-"""
-LAYOUT_PATH_KEYS = ("purelib", "platlib", "scripts", "data")
 
 
 def environment_layout(prefix):
     """Return target installation scheme paths for wheel collision checks."""
+    helper = (
+        "import json,sysconfig; "
+        "print(json.dumps({k:sysconfig.get_paths()[k] for k in "
+        "('purelib','platlib','scripts','data','include')}))"
+    )
     result = run_command(
-        [environment_python(prefix), "-I", "-c", ENVIRONMENT_LAYOUT_HELPER],
+        [environment_python(prefix), "-I", "-c", helper],
         capture_output=True,
         timeout=60,
     )
     if result.returncode != 0:
         raise command_failure(f"Reading Python installation paths in {prefix}", result)
     layout = parse_json_output(result.stdout, f"reading installation paths in {prefix}")
-    for key in LAYOUT_PATH_KEYS:
-        if not _is_within(layout.get(key), prefix):
+    for key, value in layout.items():
+        if not _is_within(value, prefix) and key != "include":
             raise UpdaterError(
-                f"Python's {key} path escapes the selected prefix: {layout.get(key)}"
+                f"Python's {key} path escapes the selected prefix: {value}"
             )
     return layout
-
-
-def bytecode_target(target, cache_tag):
-    """Return the prefix-relative .pyc path pip compiles for a .py target."""
-    source = PurePosixPath(target)
-    return (source.parent / "__pycache__" / f"{source.stem}.{cache_tag}.pyc").as_posix()
 
 
 def _safe_relative_target(prefix, base, relative):
@@ -3431,25 +4819,112 @@ def generated_script_names(entry_points_text):
     return scripts
 
 
-def inspect_wheel(wheel_path, prefix, layout, requirement_name=None):
-    """Read wheel identity, hash, and exact installation targets.
+def _wheel_identity(archive, names, wheel_name):
+    """Return ``(dist_info, name, version)`` from a wheel's own METADATA."""
+    # Anchor to the archive root: a wheel may legitimately ship a vendored
+    # ``foo/bar.dist-info/METADATA`` as package data, which must not be
+    # mistaken for the wheel's own identity.
+    metadata_names = [
+        name
+        for name in names
+        if name.lower().endswith(".dist-info/metadata") and name.count("/") == 1
+    ]
+    if len(metadata_names) != 1:
+        raise UpdaterError(f"Wheel {wheel_name} has ambiguous METADATA.")
+    metadata_text = archive.read(metadata_names[0]).decode("utf-8", errors="replace")
+    project_name = None
+    version = None
+    for line in metadata_text.splitlines():
+        if line.startswith("Name:"):
+            project_name = line.split(":", 1)[1].strip()
+        elif line.startswith("Version:"):
+            version = line.split(":", 1)[1].strip()
+        elif not line:
+            break
+    if not project_name or not version:
+        raise UpdaterError(f"Wheel {wheel_name} lacks Name/Version metadata.")
+    return PurePosixPath(metadata_names[0]).parent.as_posix(), project_name, version
 
-    ``requirement_name`` is the name in the requirement later passed to pip;
-    pip names the headers directory after it, not after the wheel metadata.
 
-    The wheel's RECORD becomes the installed distribution's RECORD, and pip
-    uninstalls every path listed there -- including rows matching no file in
-    the archive.  Every row must therefore name a member of this archive, so
-    uninstall authority cannot reach beyond the targets checked here.
+def _wheel_member_target(info, wheel_name, prefix, bases):
+    """Map one archive member to its prefix-relative install target.
 
-    ``generated`` holds the bytecode pip compiles for each installed ``.py``
-    file.  Compilation can be disabled or fail, so these paths are modeled for
-    ownership checks but never required to exist.
+    ``bases`` maps "root" and each supported ``.data`` category to its
+    installation directory.
     """
-    digest = hashlib.sha256()
-    with open(wheel_path, "rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
+    file_type = (info.external_attr >> 16) & 0o170000
+    if file_type == stat.S_IFLNK:
+        raise UpdaterError(f"Wheel {wheel_name} contains a symbolic link.")
+    member = PurePosixPath(info.filename)
+    if member.is_absolute() or ".." in member.parts:
+        raise UpdaterError(f"Wheel {wheel_name} contains unsafe path {info.filename}.")
+    parts = member.parts
+    if not (parts and parts[0].lower().endswith(".data")):
+        return _safe_relative_target(prefix, bases["root"], member.as_posix())
+    if len(parts) < 3:
+        raise UpdaterError(f"Wheel {wheel_name} has malformed .data path.")
+    category = parts[1].lower()
+    if category == "root" or category not in bases:
+        raise UpdaterError(
+            f"Wheel {wheel_name} uses unsupported .data category {category}."
+        )
+    rest = PurePosixPath(*parts[2:]).as_posix()
+    return _safe_relative_target(prefix, bases[category], rest)
+
+
+def _wheel_root_is_purelib(archive, names, dist_info, wheel_name):
+    """Read the WHEEL file's Root-Is-Purelib flag."""
+    wheel_metadata = f"{dist_info}/WHEEL"
+    if wheel_metadata not in names:
+        raise UpdaterError(f"Wheel {wheel_name} lacks WHEEL metadata.")
+    wheel_text = archive.read(wheel_metadata).decode("utf-8", errors="replace")
+    return any(
+        line.lower() == "root-is-purelib: true" for line in wheel_text.splitlines()
+    )
+
+
+def _entry_point_script_targets(archive, names, dist_info, prefix, scripts_dir):
+    """Return ``(entry_points_name, targets)`` of scripts pip will generate."""
+    entry_points_name = f"{dist_info}/entry_points.txt"
+    if entry_points_name not in names:
+        return entry_points_name, []
+    entry_points_text = archive.read(entry_points_name).decode(
+        "utf-8", errors="replace"
+    )
+    return entry_points_name, [
+        _safe_relative_target(prefix, scripts_dir, script)
+        for script in generated_script_names(entry_points_text)
+    ]
+
+
+def _install_bases(layout, *, pure):
+    """Map "root" and each supported ``.data`` category to its install dir."""
+    return {
+        "root": layout["purelib" if pure else "platlib"],
+        "purelib": layout["purelib"],
+        "platlib": layout["platlib"],
+        "scripts": layout["scripts"],
+        "data": layout["data"],
+        "headers": layout["include"],
+    }
+
+
+def _member_targets(archive, wheel_name, prefix, bases):
+    """Map each file member's install target to its archive name."""
+    target_sources = {}
+    for info in archive.infolist():
+        if info.is_dir():
+            continue
+        target = _wheel_member_target(info, wheel_name, prefix, bases)
+        if target in target_sources:
+            raise UpdaterError(f"Wheel {wheel_name} maps multiple members to {target}.")
+        target_sources[target] = info.filename
+    return target_sources
+
+
+def inspect_wheel(wheel_path, prefix, layout):
+    """Read wheel identity, hash, and exact installation targets."""
+    digest = file_sha256(wheel_path)
 
     try:
         archive = zipfile.ZipFile(wheel_path)
@@ -3457,154 +4932,32 @@ def inspect_wheel(wheel_path, prefix, layout, requirement_name=None):
         raise UpdaterError(f"Invalid wheel {wheel_path}: {exc}") from exc
     with archive:
         names = archive.namelist()
-        # Anchor to the archive root: a wheel may legitimately ship a vendored
-        # ``foo/bar.dist-info/METADATA`` as package data, which must not be
-        # mistaken for the wheel's own identity.
-        metadata_names = [
-            name
-            for name in names
-            if name.lower().endswith(".dist-info/metadata") and name.count("/") == 1
-        ]
-        if len(metadata_names) != 1:
-            raise UpdaterError(f"Wheel {wheel_path.name} has ambiguous METADATA.")
-        metadata_text = archive.read(metadata_names[0]).decode(
-            "utf-8", errors="replace"
+        dist_info, project_name, version = _wheel_identity(
+            archive, names, wheel_path.name
         )
-        project_name = None
-        version = None
-        for line in metadata_text.splitlines():
-            if line.startswith("Name:"):
-                project_name = line.split(":", 1)[1].strip()
-            elif line.startswith("Version:"):
-                version = line.split(":", 1)[1].strip()
-            elif not line:
-                break
-        if not project_name or not version:
-            raise UpdaterError(f"Wheel {wheel_path.name} lacks Name/Version metadata.")
-
-        dist_info = PurePosixPath(metadata_names[0]).parent.as_posix()
-        requirement_name = requirement_name or project_name
-        if not SAFE_PROJECT_NAME.fullmatch(requirement_name):
-            raise UpdaterError(f"Wheel {wheel_path.name} has an unsafe project name.")
-        members = {info.filename for info in archive.infolist() if not info.is_dir()}
-        record_name = f"{dist_info}/RECORD"
-        if record_name not in members:
-            raise UpdaterError(f"Wheel {wheel_path.name} lacks RECORD metadata.")
-        try:
-            record_text = archive.read(record_name).decode("utf-8")
-        except (OSError, UnicodeDecodeError, zipfile.BadZipFile) as exc:
-            raise UpdaterError(f"Wheel {wheel_path.name} has unreadable RECORD.") from exc
-        # RECORD cannot hash itself, and its signature files are written after it.
-        unhashed = {record_name, f"{dist_info}/RECORD.jws", f"{dist_info}/RECORD.p7s"}
-        recorded = set()
-        for row in csv.reader(io.StringIO(record_text)):
-            if not row:
-                continue
-            path = row[0]
-            posix = PurePosixPath(path)
-            if not path or posix.is_absolute() or ".." in posix.parts:
-                raise UpdaterError(
-                    f"Wheel {wheel_path.name} RECORD lists unsafe path {path!r}."
-                )
-            if path in recorded:
-                raise UpdaterError(
-                    f"Wheel {wheel_path.name} RECORD lists {path} more than once."
-                )
-            recorded.add(path)
-            if path not in members and path not in unhashed:
-                raise UpdaterError(
-                    f"Wheel {wheel_path.name} RECORD lists {path}, which the wheel "
-                    "does not contain."
-                )
-        wheel_metadata = f"{dist_info}/WHEEL"
-        if wheel_metadata not in names:
-            raise UpdaterError(f"Wheel {wheel_path.name} lacks WHEEL metadata.")
-        wheel_text = archive.read(wheel_metadata).decode("utf-8", errors="replace")
-        pure = any(
-            line.lower() == "root-is-purelib: true" for line in wheel_text.splitlines()
+        pure = _wheel_root_is_purelib(archive, names, dist_info, wheel_path.name)
+        target_sources = _member_targets(
+            archive, wheel_path.name, prefix, _install_bases(layout, pure=pure)
         )
-        root_base = layout["purelib" if pure else "platlib"]
-        targets = set()
-        target_sources = {}
-        for info in archive.infolist():
-            if info.is_dir():
-                continue
-            file_type = (info.external_attr >> 16) & 0o170000
-            if file_type == stat.S_IFLNK:
-                raise UpdaterError(f"Wheel {wheel_path.name} contains a symbolic link.")
-            member = PurePosixPath(info.filename)
-            if member.is_absolute() or ".." in member.parts:
-                raise UpdaterError(
-                    f"Wheel {wheel_path.name} contains unsafe path {info.filename}."
-                )
-            parts = member.parts
-            if parts and parts[0].lower().endswith(".data"):
-                if len(parts) < 3:
-                    raise UpdaterError(
-                        f"Wheel {wheel_path.name} has malformed .data path."
-                    )
-                category = parts[1].lower()
-                rest = PurePosixPath(*parts[2:]).as_posix()
-                base_by_category = {
-                    "purelib": layout["purelib"],
-                    "platlib": layout["platlib"],
-                    "scripts": layout["scripts"],
-                    "data": layout["data"],
-                    "headers": str(
-                        Path(layout["headers_base"] or layout["include"])
-                        / requirement_name
-                    ),
-                }
-                if category not in base_by_category:
-                    raise UpdaterError(
-                        f"Wheel {wheel_path.name} uses unsupported .data category {category}."
-                    )
-                target = _safe_relative_target(prefix, base_by_category[category], rest)
-            else:
-                target = _safe_relative_target(prefix, root_base, member.as_posix())
-            if target in target_sources:
-                raise UpdaterError(
-                    f"Wheel {wheel_path.name} maps multiple members to {target}."
-                )
-            target_sources[target] = info.filename
-            targets.add(target)
-        entry_points_name = f"{dist_info}/entry_points.txt"
-        if entry_points_name in names:
-            entry_points_text = archive.read(entry_points_name).decode(
-                "utf-8", errors="replace"
-            )
-            for script in generated_script_names(entry_points_text):
-                target = _safe_relative_target(prefix, layout["scripts"], script)
-                # setdefault, not the duplicate check above: a generated script
-                # may legitimately coincide with a packaged script of the same
-                # name, and pip still writes exactly one file.
-                target_sources.setdefault(target, entry_points_name)
-                targets.add(target)
-    generated = set()
-    cache_tag = layout.get("cache_tag")
-    if cache_tag:
-        for target in list(targets):
-            if target.endswith(".py"):
-                compiled = bytecode_target(target, cache_tag)
-                if compiled not in targets:
-                    generated.add(compiled)
+        entry_points_name, scripts = _entry_point_script_targets(
+            archive, names, dist_info, prefix, layout["scripts"]
+        )
+        for target in scripts:
+            # setdefault, not _member_targets' duplicate check: a generated
+            # script may legitimately coincide with a packaged script of the
+            # same name, and pip still writes exactly one file.
+            target_sources.setdefault(target, entry_points_name)
     return {
         "name": project_name,
         "version": version,
         "sha256": digest.hexdigest(),
         "path": str(wheel_path),
-        "targets": targets | generated,
-        "generated": generated,
+        "targets": set(target_sources),
     }
 
 
-def inspect_wheelhouse(directory, prefix, requirement_names=None):
-    """Index all downloaded wheels and reject unexpected artifacts.
-
-    ``requirement_names`` maps normalized names to the spelling that will be
-    passed to pip, which determines the headers directory.
-    """
-    requirement_names = requirement_names or {}
+def inspect_wheelhouse(directory, prefix):
+    """Index all downloaded wheels and reject unexpected artifacts."""
     layout = environment_layout(prefix)
     wheels = {}
     files = list(Path(directory).iterdir())
@@ -3616,15 +4969,36 @@ def inspect_wheelhouse(directory, prefix, requirement_names=None):
     for path in files:
         wheel = inspect_wheel(path, prefix, layout)
         normalized = canonicalize_name(wheel["name"])
-        spelled = requirement_names.get(normalized)
-        if spelled and spelled != wheel["name"]:
-            wheel = inspect_wheel(path, prefix, layout, spelled)
         if normalized in wheels:
             raise UpdaterError(
                 f"Wheelhouse contains multiple artifacts for {wheel['name']}."
             )
         wheels[normalized] = wheel
     return wheels
+
+
+def _record_claims(metadata_path, prefix_path, prefix):
+    """Return the prefix-relative paths one RECORD claims, in RECORD order."""
+    record_path = metadata_path / "RECORD"
+    try:
+        with open(
+            record_path, newline="", encoding="utf-8", errors="replace"
+        ) as handle:
+            rows = list(csv.reader(handle))
+    except OSError as exc:
+        raise UpdaterError(f"Could not read {record_path}: {exc}") from exc
+    claims = []
+    for row in rows:
+        if not row or not row[0]:
+            continue
+        target = (metadata_path.parent / Path(row[0])).resolve(strict=False)
+        try:
+            claims.append(target.relative_to(prefix_path).as_posix())
+        except ValueError as exc:
+            raise UpdaterError(
+                f"Installed RECORD path escapes {prefix}: {row[0]}"
+            ) from exc
+    return claims
 
 
 def installed_file_owners(prefix, inventory):
@@ -3642,11 +5016,12 @@ def installed_file_owners(prefix, inventory):
     shared_claims = {}
     distributions_with_records = set()
     for name, item in inventory.items():
-        claimed = installed_record_paths(prefix_path, item)
-        if claimed is None:
+        metadata_path = Path(item.get("metadata_path") or "")
+        record_path = metadata_path / "RECORD"
+        if not record_path.is_file() or not _is_within(record_path, prefix_path):
             continue
         distributions_with_records.add(name)
-        for relative in claimed:
+        for relative in _record_claims(metadata_path, prefix_path, prefix):
             previous = owners.get(relative)
             if previous and previous != name:
                 shared_claims.setdefault(relative, {previous}).add(name)
@@ -3655,62 +5030,107 @@ def installed_file_owners(prefix, inventory):
     return owners, distributions_with_records, shared_claims
 
 
-def installed_record_paths(prefix_path, item):
-    """Return the prefix-relative paths one installed RECORD claims, or None."""
-    metadata_path = Path(item.get("metadata_path") or "")
-    record_path = metadata_path / "RECORD"
-    if not record_path.is_file() or not _is_within(record_path, prefix_path):
-        return None
-    try:
-        with open(record_path, newline="", encoding="utf-8", errors="replace") as handle:
-            rows = list(csv.reader(handle))
-    except OSError as exc:
-        raise UpdaterError(f"Could not read {record_path}: {exc}") from exc
-    claimed = []
-    for row in rows:
-        if not row or not row[0]:
-            continue
-        target = (metadata_path.parent / Path(row[0])).resolve(strict=False)
-        try:
-            claimed.append(target.relative_to(prefix_path).as_posix())
-        except ValueError as exc:
-            raise UpdaterError(
-                f"Installed RECORD path escapes {prefix_path}: {row[0]}"
-            ) from exc
-    return claimed
+def current_copy_owners(prefix, inventory, claimants, paths):
+    """Return the sharers whose recorded hashes match every shared file on disk.
+
+    Each sharer is judged by its installer's own ledger (see InstallLedgers).
+    A sharer counts only if it hashes at least one of the files.  Both match
+    when their copies are identical; neither matches when the files differ
+    from every recorded copy, or when one package's copy was only partly
+    overwritten.
+    """
+    ledgers = InstallLedgers(prefix)
+    prefix_path = ledgers.prefix_path
+    hashes = {name: ledgers.hashes(inventory[name])[1] for name in claimants}
+    checked = dict.fromkeys(claimants, 0)
+    matching = set(claimants)
+    for relative in paths:
+        actual = _file_hash_field(prefix_path / relative)
+        for name in claimants:
+            expected = hashes[name].get(relative)
+            if expected is None:
+                continue
+            checked[name] += 1
+            if expected != actual:
+                matching.discard(name)
+    return {name for name in matching if checked[name]}
 
 
-def depended_upon_packages(rows):
-    """Return every distribution named as a requirement by an installed one."""
-    needed = set()
+def declared_dependents(rows):
+    """Map each distribution to the installed ones whose requirements name it.
+
+    Requirements that apply only with an extra are left out: installing the
+    requiring package does not by itself pull them in.
+    """
+    dependents = {}
     for row in rows:
+        holder = canonicalize_name(str(row.get("name") or ""))
         for requirement in row.get("requires") or []:
-            name = re.split(r"[\s\[<>=!~;(]", str(requirement), maxsplit=1)[0]
-            if name:
-                needed.add(canonicalize_name(name))
-    return needed
+            text = str(requirement)
+            if re.search(r"\bextra\s*==", text):
+                continue
+            name = re.split(r"[\s\[<>=!~;(]", text, maxsplit=1)[0]
+            if name and holder:
+                dependents.setdefault(canonicalize_name(name), set()).add(holder)
+    return dependents
 
 
 def shared_file_report(prefix, plan):
-    """Count files a planned package shares with a package staying as it is.
+    """Describe files a planned package shares with a package staying as it is.
 
     The overlap is a property of the installed environment, not of the update,
     so it is surfaced while the user can still decline rather than raised as an
-    error once the downloads have already run.  Requirement metadata is not
-    used to recommend removals: absence from that metadata does not prove an
-    application or user does not import a package directly.
+    error once the downloads have already run.  Each group records whose copy
+    is on disk now (by installer file hash) and which installed packages declare each
+    sharer as a requirement.  Neither is used to recommend a removal: absence
+    from requirement metadata does not prove that nothing loads a package's
+    files directly.
     """
     planned = {canonicalize_name(item["name"]) for item in plan}
     rows = get_environment_inventory(prefix)
-    inventory = index_inventory(rows)
+    inventory = index_inventory(rows, prefix)
     _, _, shared_claims = installed_file_owners(prefix, inventory)
-    groups = {}
-    for claimants in shared_claims.values():
+    paths_by_group = {}
+    for relative, claimants in shared_claims.items():
         if not claimants & planned or claimants <= planned:
             continue
-        key = frozenset(claimants)
-        groups[key] = groups.get(key, 0) + 1
-    return {"groups": groups}
+        paths_by_group.setdefault(frozenset(claimants), []).append(relative)
+    dependents = declared_dependents(rows)
+    details = {
+        key: {
+            "on_disk": current_copy_owners(prefix, inventory, key, paths),
+            "required_by": {name: dependents.get(name, set()) for name in key},
+        }
+        for key, paths in paths_by_group.items()
+    }
+    return {
+        "groups": {key: len(paths) for key, paths in paths_by_group.items()},
+        "details": details,
+    }
+
+
+def _sharer_line(name, required_by):
+    """One sharer and the installed packages that declare it, for the warning."""
+    if required_by:
+        shown = sorted(required_by)
+        listed = ", ".join(shown[:3])
+        if len(shown) > 3:
+            listed += f" and {len(shown) - 3} more"
+        need = f"required by {listed}"
+    else:
+        need = paint("no installed package declares it as a requirement", "muted")
+    return f"      {paint(name, 'strong')}: {need}"
+
+
+def _on_disk_line(claimants, owners):
+    if len(owners) == 1:
+        (owner,) = owners
+        return f"      Files on disk now: {paint(owner, 'strong')}'s copy"
+    if owners and owners == claimants:
+        return "      Files on disk now: identical in every package"
+    return "      Files on disk now: " + paint(
+        "a mix that matches no single package's copy", "note"
+    )
 
 
 def print_shared_file_warning(report):
@@ -3718,23 +5138,48 @@ def print_shared_file_warning(report):
     groups = report["groups"]
     if not groups:
         return
+    details = report.get("details") or {}
     total = sum(groups.values())
-    print(f"\nSHARED FILES ({count_label(total, 'file')})")
-    print("  These files are installed by two packages at once. Only one copy can")
-    print("  exist on disk, so the package installed most recently is the one you")
-    print("  currently have. That is already true today; updating does not cause it.")
-    print()
+    print_section(f"SHARED FILES ({count_label(total, 'file')})")
+    wrap = functools.partial(
+        textwrap.fill, width=76, initial_indent="  ", subsequent_indent="  "
+    )
+    print(
+        wrap(
+            "Some files are installed by more than one package. Only one copy of "
+            "each can exist on disk, so whichever package was installed last "
+            "provides them. This was already the case before this update."
+        )
+    )
     for claimants, count in sorted(
         groups.items(), key=lambda entry: (-entry[1], sorted(entry[0]))
     ):
-        print(f"    {count_label(count, 'file')}: {' and '.join(sorted(claimants))}")
+        print(
+            f"\n    {paint(count_label(count, 'file'), 'strong')} shared by "
+            + " and ".join(sorted(claimants))
+        )
+        group = details.get(claimants)
+        if group:
+            print(_on_disk_line(claimants, group["on_disk"]))
+            for name in sorted(claimants):
+                print(_sharer_line(name, group["required_by"].get(name)))
     print()
-    print("  This warning does not prove either package is unused. The updater will")
-    print("  inspect the exact new wheels before fetching rollback copies. Updating")
-    print("  one side is allowed only when its new wheel puts every shared file back;")
-    print("  otherwise the transaction stops before any package is changed.")
-    print()
-    print("  Do not uninstall either package solely because it appears in this list.")
+    print(
+        wrap(
+            "Safe to continue: the updater inspects the new wheels first and "
+            "stops before changing anything if an update would leave a shared "
+            "file missing or replaced by the wrong copy."
+        )
+    )
+    print(
+        wrap(
+            "This warning does not prove either package is unused: programs can "
+            "load a package's files without declaring it (bitsandbytes, for "
+            "example, loads CUDA 12 libraries directly), so the updater never "
+            "removes either one. Do not uninstall either package solely because "
+            "it appears in this list."
+        )
+    )
 
 
 def pip_cache_root(prefix):
@@ -3748,6 +5193,96 @@ def pip_cache_root(prefix):
         return None
     path = Path(result.stdout.strip())
     return path if path.is_dir() else None
+
+
+def pip_install_report(
+    prefix, arguments, *, action, report_name, constraints=(), **stream_options
+):
+    """Run ``pip install --dry-run --report`` and return pip's parsed report.
+
+    Nothing is installed.  ``constraints`` lines reach pip as a constraints
+    file.  ``action`` names the step in errors ("Resolving updates for /env");
+    ``report_name`` names the report pip failed to write.  Raises
+    UnsolvableError when pip proves the requirements impossible.
+    """
+    with tempfile.TemporaryDirectory(prefix="pip-updater-report-") as tmp:
+        report_path = Path(tmp) / "report.json"
+        options = ["--report", str(report_path)]
+        if constraints:
+            constraints_path = Path(tmp) / "constraints.txt"
+            constraints_path.write_text("\n".join(constraints) + "\n", encoding="utf-8")
+            options += ["-c", str(constraints_path)]
+        result = stream_command(
+            pip_command(prefix) + ["install", "--dry-run", *options] + list(arguments),
+            **stream_options,
+        )
+        if result.returncode != 0:
+            failure = command_failure(action, result, max_lines=60)
+            output = f"{result.stdout}{result.stderr}"
+            if "ResolutionImpossible" in output or "ResolutionTooDeep" in output:
+                raise UnsolvableError(str(failure))
+            raise failure
+        try:
+            raw_report = report_path.read_text(encoding="utf-8")
+        except OSError as exc:
+            raise UpdaterError(
+                f"pip completed without writing its {report_name} report."
+            ) from exc
+    return parse_json_output(raw_report, action[:1].lower() + action[1:])
+
+
+def report_install_items(report, message):
+    """Return a pip report's install list, or raise ``message``."""
+    items = report.get("install", [])
+    if not isinstance(items, list):
+        raise UpdaterError(message)
+    return items
+
+
+def report_download(raw_item):
+    """Return ``(url, sha256)`` from a pip report item; sha256 None if unusable.
+
+    A usable digest is a 64-digit hex SHA-256, returned lowercased.
+    """
+    download = raw_item.get("download_info") or {}
+    sha256 = ((download.get("archive_info") or {}).get("hashes") or {}).get("sha256")
+    if not isinstance(sha256, str) or not re.fullmatch(r"[0-9a-fA-F]{64}", sha256):
+        sha256 = None
+    return download.get("url"), sha256.lower() if sha256 else None
+
+
+def is_index_artifact(raw_item):
+    """True unless a report item comes from a direct URL, VCS, or directory."""
+    download = raw_item.get("download_info") or {}
+    return not (
+        raw_item.get("is_direct")
+        or download.get("vcs_info")
+        or download.get("dir_info")
+    )
+
+
+def _rollback_artifact(raw_item, expected):
+    """Validate one rollback report item against ``expected`` exact versions."""
+    metadata = raw_item.get("metadata") or {}
+    name = str(metadata.get("name") or "")
+    version = str(metadata.get("version") or "")
+    expected_name, expected_version = expected[canonicalize_name(name)]
+    if version != expected_version:
+        raise UpdaterError(
+            f"pip selected {name} {version}, not rollback version {expected_version}."
+        )
+    url, sha256 = report_download(raw_item)
+    if not is_index_artifact(raw_item) or raw_item.get("is_yanked") or not sha256:
+        raise UpdaterError(
+            f"pip did not select a reproducible rollback wheel for {name}."
+        )
+    return {
+        "name": expected_name,
+        "version": version,
+        "sha256": sha256,
+        "url": url,
+        "filename": wheel_filename_from_url(url),
+    }
 
 
 def resolve_exact_download_artifacts(prefix, specs):
@@ -3764,88 +5299,31 @@ def resolve_exact_download_artifacts(prefix, specs):
             raise UpdaterError(f"Duplicate rollback requirement: {name}")
         expected[normalized] = (name, version)
 
-    with tempfile.TemporaryDirectory(prefix="pip-updater-rollback-resolver-") as tmp:
-        report_path = Path(tmp) / "report.json"
-        result = stream_command(
-            pip_command(prefix)
-            + [
-                "install",
-                "--dry-run",
-                "--ignore-installed",
-                "--no-deps",
-                "--report",
-                str(report_path),
-                "--only-binary=:all:",
-                "--disable-pip-version-check",
-            ]
-            + list(specs),
-            timeout=300,
-        )
-        if result.returncode != 0:
-            raise command_failure(
-                "Locating exact rollback wheels", result, max_lines=60
-            )
-        try:
-            report = parse_json_output(
-                report_path.read_text(encoding="utf-8"),
-                "locating exact rollback wheels",
-            )
-        except OSError as exc:
-            raise UpdaterError(
-                "pip completed without writing its rollback-wheel report."
-            ) from exc
-
-    raw_items = report.get("install", [])
-    if not isinstance(raw_items, list):
-        raise UpdaterError("pip's rollback-wheel report had no install list.")
+    report = pip_install_report(
+        prefix,
+        [
+            "--ignore-installed",
+            "--no-deps",
+            "--only-binary=:all:",
+            "--disable-pip-version-check",
+            *specs,
+        ],
+        action="Locating exact rollback wheels",
+        report_name="rollback-wheel",
+        timeout=300,
+    )
+    raw_items = report_install_items(
+        report, "pip's rollback-wheel report had no install list."
+    )
     found = {}
     for raw_item in raw_items:
         metadata = raw_item.get("metadata") or {}
-        name = str(metadata.get("name") or "")
-        version = str(metadata.get("version") or "")
-        normalized = canonicalize_name(name)
+        normalized = canonicalize_name(str(metadata.get("name") or ""))
         if normalized not in expected or normalized in found:
             raise UpdaterError(
                 "pip returned an invalid or unexpected rollback-wheel candidate."
             )
-        expected_name, expected_version = expected[normalized]
-        if version != expected_version:
-            raise UpdaterError(
-                f"pip selected {name} {version}, not rollback version "
-                f"{expected_version}."
-            )
-        download = raw_item.get("download_info") or {}
-        archive = download.get("archive_info") or {}
-        sha256 = (archive.get("hashes") or {}).get("sha256")
-        url = download.get("url")
-        if (
-            raw_item.get("is_direct")
-            or download.get("vcs_info")
-            or download.get("dir_info")
-            or not isinstance(sha256, str)
-            or not re.fullmatch(r"[0-9a-fA-F]{64}", sha256)
-        ):
-            raise UpdaterError(
-                f"pip did not select a reproducible rollback wheel for {name}."
-            )
-        # An exact pin may select a yanked file (PEP 592).  That is acceptable
-        # only here: the file restores the version already installed and passes
-        # the same hash and ownership checks.  Update targets stay refused.
-        yanked = bool(raw_item.get("is_yanked"))
-        if yanked:
-            print(
-                f"[WARN] The rollback copy of {expected_name} {version} is a yanked "
-                "release; it is kept only to restore the version installed now.",
-                flush=True,
-            )
-        found[normalized] = {
-            "name": expected_name,
-            "version": version,
-            "sha256": sha256.lower(),
-            "url": url,
-            "filename": wheel_filename_from_url(url),
-            "yanked": yanked,
-        }
+        found[normalized] = _rollback_artifact(raw_item, expected)
     if set(found) != set(expected):
         missing = ", ".join(
             expected[name][0] for name in expected.keys() - found.keys()
@@ -3907,16 +5385,6 @@ def download_with_aria2(artifacts, destination, progress):
     for item in artifacts:
         if urlsplit(item["url"]).scheme not in {"http", "https"}:
             return False
-        # Revalidated here because each value becomes a line of aria2's option
-        # syntax; a stray newline would inject options for this download.
-        if (
-            URL_UNSAFE_CHARACTERS.search(item["url"])
-            or not WHEEL_FILENAME.fullmatch(str(item["filename"]))
-            or not re.fullmatch(r"[0-9a-f]{64}", str(item["sha256"]))
-        ):
-            raise UpdaterError(
-                f"Refusing unsafe download entry for {item.get('name', '?')}."
-            )
         lines += [
             item["url"],
             f"  out={item['filename']}",
@@ -3951,7 +5419,7 @@ def download_with_aria2(artifacts, destination, progress):
         ],
         input_data="\n".join(lines) + "\n",
         timeout=1800,
-        on_tick=progress.tick,
+        hooks=StreamHooks(on_tick=progress.tick),
     )
     if result.returncode != 0:
         # Some private indexes reject ranged requests even though pip's normal
@@ -3964,9 +5432,10 @@ def download_with_aria2(artifacts, destination, progress):
                 with contextlib.suppress(FileNotFoundError, OSError):
                     partial.unlink()
         print(
-            "  [INFO] Parallel transfer was unavailable; retrying these files "
-            "with pip.",
-            file=progress.stream,
+            " ",
+            paint("[INFO]", "info"),
+            "Parallel transfer was unavailable; retrying these files with pip.",
+            file=progress.display.stream,
             flush=True,
         )
         return False
@@ -3989,9 +5458,7 @@ def _download_with_pip(prefix, specs, destination, progress):
         ]
         + specs,
         timeout=1800,
-        on_start=progress.watch,
-        on_line=progress.note,
-        on_tick=progress.tick,
+        hooks=StreamHooks(progress.watch, progress.note, progress.tick),
     )
     if result.returncode != 0:
         raise command_failure("Downloading transaction wheels", result)
@@ -4010,61 +5477,59 @@ def download_exact_wheels(prefix, specs, destination, title=None, artifacts=None
     progress.tick()
     try:
         remaining_specs = list(specs)
-        if artifacts and len(artifacts) == len(specs):
-            by_name = {canonicalize_name(item["name"]): item for item in artifacts}
-            filenames = [item.get("filename") for item in artifacts]
-            if len(by_name) != len(artifacts) or len(set(filenames)) != len(filenames):
-                raise UpdaterError(
-                    "The resolved download set contains duplicate names or filenames."
-                )
-            ordered = []
-            for spec in specs:
-                item = by_name.get(canonicalize_name(spec.split("==", 1)[0]))
-                if item is None:
-                    break
-                ordered.append(item)
+        ordered = _artifacts_in_spec_order(specs, artifacts)
+        if ordered is not None:
+            misses = _copy_cached_wheels(prefix, ordered, destination, progress)
+            if not misses or download_with_aria2(misses, destination, progress):
+                remaining_specs = []
             else:
-                cache_root = pip_cache_root(prefix)
-                cache_misses = []
-                for item in ordered:
-                    target = Path(destination) / item["filename"]
-                    body = cached_http_body(cache_root, item["url"])
-                    if copy_verified_cache_body(body, target, item["sha256"]):
-                        progress.cache_hit(item["filename"])
-                        progress.tick()
-                    else:
-                        cache_misses.append(item)
-                missing_names = {
-                    canonicalize_name(item["name"]) for item in cache_misses
-                }
+                missed = {canonicalize_name(item["name"]) for item in misses}
                 remaining_specs = [
                     spec
                     for spec in specs
-                    if canonicalize_name(spec.split("==", 1)[0]) in missing_names
+                    if canonicalize_name(spec.split("==", 1)[0]) in missed
                 ]
-                if not cache_misses or download_with_aria2(
-                    cache_misses, destination, progress
-                ):
-                    remaining_specs = []
         if remaining_specs:
             _download_with_pip(prefix, remaining_specs, destination, progress)
     finally:
         progress.finish()
 
 
-def explain_owner_collisions(prefix, collisions, plan=()):
-    """Turn raw file-ownership collisions into something the user can act on.
+def _artifacts_in_spec_order(specs, artifacts):
+    """Return ``artifacts`` ordered like ``specs``, or None if any is missing.
 
-    Reaching this point means an installed package that is staying put owns
-    files the new wheel wants to write.  Rolling the update back could not
-    restore them, because the older version of the updated package never
-    shipped them, so the only safe outcome is to stop and let the user retire
-    one of the two packages.
+    Without an artifact for every spec, pip's own downloader must fetch them.
     """
-    pip = shlex.join(pip_command(prefix))
-    blockers = sorted({owner for _, owner in collisions})
-    items = {canonicalize_name(item["name"]): item for item in plan}
-    reverse_requirements = {}
+    if not artifacts or len(artifacts) != len(specs):
+        return None
+    by_name = {canonicalize_name(item["name"]): item for item in artifacts}
+    filenames = [item.get("filename") for item in artifacts]
+    if len(by_name) != len(artifacts) or len(set(filenames)) != len(filenames):
+        raise UpdaterError(
+            "The resolved download set contains duplicate names or filenames."
+        )
+    ordered = [by_name.get(canonicalize_name(spec.split("==", 1)[0])) for spec in specs]
+    return None if None in ordered else ordered
+
+
+def _copy_cached_wheels(prefix, ordered, destination, progress):
+    """Copy hash-verified wheels out of pip's HTTP cache; return the misses."""
+    cache_root = pip_cache_root(prefix)
+    misses = []
+    for item in ordered:
+        target = Path(destination) / item["filename"]
+        body = cached_http_body(cache_root, item["url"])
+        if copy_verified_cache_body(body, target, item["sha256"]):
+            progress.cache_hit(item["filename"])
+            progress.tick()
+        else:
+            misses.append(item)
+    return misses
+
+
+def _reverse_requirements(plan):
+    """Map each dependency name to the plan items that unconditionally need it."""
+    reverse = {}
     for item in plan:
         parent = canonicalize_name(item["name"])
         for requirement in item.get("requires") or []:
@@ -4079,24 +5544,40 @@ def explain_owner_collisions(prefix, collisions, plan=()):
                 continue
             dependency = re.split(r"[\s\[<>=!~;(]", requirement_text, maxsplit=1)[0]
             if dependency:
-                reverse_requirements.setdefault(
-                    canonicalize_name(dependency), set()
-                ).add(parent)
+                reverse.setdefault(canonicalize_name(dependency), set()).add(parent)
+    return reverse
 
-    def selected_causes(name):
-        causes = set()
-        pending = [canonicalize_name(name)]
-        seen = set(pending)
-        while pending:
-            dependency = pending.pop()
-            for parent in reverse_requirements.get(dependency, ()):
-                item = items.get(parent, {})
-                if item.get("requested"):
-                    causes.add(item.get("name", parent))
-                elif parent not in seen:
-                    seen.add(parent)
-                    pending.append(parent)
-        return causes
+
+def _selected_causes(name, reverse_requirements, items):
+    """Return the user-selected updates that transitively pull in ``name``."""
+    causes = set()
+    pending = [canonicalize_name(name)]
+    seen = set(pending)
+    while pending:
+        dependency = pending.pop()
+        for parent in reverse_requirements.get(dependency, ()):
+            item = items.get(parent, {})
+            if item.get("requested"):
+                causes.add(item.get("name", parent))
+            elif parent not in seen:
+                seen.add(parent)
+                pending.append(parent)
+    return causes
+
+
+def explain_owner_collisions(prefix, collisions, plan=()):
+    """Turn raw file-ownership collisions into something the user can act on.
+
+    Reaching this point means an installed package that is staying put owns
+    files the new wheel wants to write.  Rolling the update back could not
+    restore them, because the older version of the updated package never
+    shipped them, so the only safe outcome is to stop and let the user retire
+    one of the two packages.
+    """
+    pip = shlex.join(pip_command(prefix))
+    blockers = sorted({owner for _, owner in collisions})
+    items = {canonicalize_name(item["name"]): item for item in plan}
+    reverse_requirements = _reverse_requirements(plan)
 
     lines = [
         "A new wheel and an installed package target the same files, so this",
@@ -4119,7 +5600,7 @@ def explain_owner_collisions(prefix, collisions, plan=()):
     )
     skip_updates = set()
     for name in introduced:
-        skip_updates.update(selected_causes(name))
+        skip_updates.update(_selected_causes(name, reverse_requirements, items))
 
     lines += [
         "",
@@ -4158,198 +5639,160 @@ def explain_owner_collisions(prefix, collisions, plan=()):
     return "\n".join(lines)
 
 
-def validate_new_wheels(
-    prefix, plan, new_wheels, inventory, ownership, *, require_complete=True
-):
-    """Require exact report artifacts and reject every file ownership collision.
-
-    A partial check is used only for newly introduced dependencies before the
-    large main download. Ownership decisions still use the complete plan, so a
-    package already scheduled for replacement is not mistaken for a fixed
-    external owner. The complete assembled wheelhouse is always checked again.
-
-    Returns the installed paths claimed by more than one distribution, which
-    the caller backs up so rollback can restore their exact bytes.
-    """
+def _check_downloaded_artifacts(plan, new_wheels, *, require_complete):
+    """Require downloaded wheels to be exactly the plan's reported artifacts."""
     planned_names = {canonicalize_name(item["name"]) for item in plan}
     downloaded_names = set(new_wheels)
     invalid = downloaded_names - planned_names
     if invalid or (require_complete and downloaded_names != planned_names):
-        missing = planned_names - set(new_wheels)
-        extra = downloaded_names - planned_names
+        missing = planned_names - downloaded_names
         raise UpdaterError(
-            f"Downloaded wheel set differs from plan (missing={sorted(missing)}, extra={sorted(extra)})."
+            "Downloaded wheel set differs from plan "
+            f"(missing={sorted(missing)}, extra={sorted(invalid)})."
         )
     for item in plan:
-        normalized = canonicalize_name(item["name"])
-        if normalized not in new_wheels:
+        wheel = new_wheels.get(canonicalize_name(item["name"]))
+        if wheel is None:
             continue
-        wheel = new_wheels[normalized]
         if wheel["version"] != item["version"] or wheel["sha256"] != item["sha256"]:
             raise UpdaterError(
-                f"Downloaded artifact for {item['name']} does not match the resolved report."
+                f"Downloaded artifact for {item['name']} does not match the "
+                "resolved report."
             )
 
-    file_owners, with_records, shared_claims = installed_file_owners(prefix, inventory)
-    for name in downloaded_names:
-        if name in inventory and name not in with_records:
-            raise UpdaterError(
-                f"Cannot safely replace {name}: installed RECORD is missing."
-            )
-    for target, installed_owner in file_owners.items():
-        claimants = shared_claims.get(target, {installed_owner})
-        implicated = sorted(claimants & downloaded_names)
-        if implicated and target in ownership["paths"]:
-            raise UpdaterError(
-                f"Installed pip RECORD for {implicated[0]} claims Conda-owned file {target}."
-            )
 
-    proposed_owners = {}
-    collisions = {}
-    prefix_path = Path(prefix).resolve(strict=False)
-    for normalized, wheel in new_wheels.items():
-        for target in wheel["targets"]:
-            if target in ownership["paths"]:
-                raise UpdaterError(
-                    f"Wheel {wheel['name']} would overwrite Conda-owned file {target}."
-                )
-            installed_owner = file_owners.get(target)
-            claimants = shared_claims.get(target) or (
-                {installed_owner} if installed_owner else set()
-            )
-            # The wheel's own predecessor being a claimant makes this an
-            # in-place replacement, not a takeover -- generated console
-            # scripts especially are claimed by every distribution that
-            # declares them, in whichever order RECORDs were read.
-            if (
-                claimants
-                and normalized not in claimants
-                and not claimants & planned_names
-            ):
-                # Gathered rather than raised one at a time: a single filename
-                # says nothing, but the whole set names the two packages that
-                # cannot both stay installed.
-                for owner in sorted(claimants):
-                    collisions.setdefault((wheel["name"], owner), []).append(target)
-                continue
-            previous = proposed_owners.get(target)
-            if previous and previous != normalized and target not in shared_claims:
-                raise UpdaterError(
-                    f"Planned wheels {previous} and {normalized} both install {target}."
-                )
-            proposed_owners[target] = normalized
-            target_path = prefix_path / Path(*PurePosixPath(target).parts)
-            # Stale bytecode is routinely left unowned by imports of files that
-            # were installed without compilation; pip overwrites it harmlessly.
-            if (
-                target_path.exists()
-                and installed_owner not in planned_names
-                and target not in shared_claims
-                and target not in wheel["generated"]
-            ):
-                raise UpdaterError(
-                    f"Wheel {wheel['name']} would overwrite unowned existing file {target}."
-                )
+class _WheelOwnershipCheck:
+    """File-ownership rules for installing one transaction's new wheels.
 
-    if collisions:
-        raise UpdaterError(explain_owner_collisions(prefix, collisions, plan))
-
-    if require_complete:
-        # pip replaces packages one at a time: uninstall the old version (which
-        # deletes every path its RECORD lists), then install the new one.  A
-        # path written by one planned wheel but listed by another package being
-        # replaced survives only if that removal happens first, and pip does
-        # not promise an order.  It is order-independent only when every
-        # replaced claimant's new wheel writes the path back itself.
-        writers = {}
-        for normalized, wheel in new_wheels.items():
-            for target in wheel["targets"]:
-                writers.setdefault(target, set()).add(normalized)
-        for target, writing in sorted(writers.items()):
-            installed_owner = file_owners.get(target)
-            claimants = shared_claims.get(target) or (
-                {installed_owner} if installed_owner else set()
-            )
-            removers = (claimants & planned_names) - writing
-            if removers:
-                raise UpdaterError(
-                    f"Updating {', '.join(sorted(removers))} removes {target}, which "
-                    f"{', '.join(sorted(writing))} installs in the same update.\n"
-                    "pip replaces packages one at a time, so the file could end up "
-                    "deleted. No packages were changed; this combination cannot be "
-                    "applied safely in one transaction."
-                )
-
-    # A path claimed by several installed distributions is already decided by
-    # whichever wheel was written last; this transaction did not create that
-    # ambiguity and refusing to run would strand the environment forever (the
-    # NVIDIA cu12/cu13 wheels share one `nvidia/` namespace by design).  The one
-    # outcome that is genuinely worse than the status quo is a shared file that
-    # disappears: --force-reinstall removes every path the planned package's own
-    # RECORD lists, so if no planned wheel ships it back, the other claimants
-    # silently lose a file that nothing will restore.
-    for target, claimants in sorted(shared_claims.items()):
-        if target in proposed_owners or not claimants & downloaded_names:
-            continue
-        stranded = sorted(claimants - planned_names)
-        if not stranded:
-            continue
-        updating = ", ".join(sorted(claimants & planned_names))
-        raise UpdaterError(
-            f"Updating {updating} would delete {target}, which "
-            f"{', '.join(stranded)} also needs and no updated package puts back.\n"
-            f"Update {', '.join(sorted(claimants))} together, or none of them."
-        )
-    return shared_claims
-
-
-def validate_rollback_wheels(
-    prefix, old_versions, old_wheels, old_artifacts, inventory, ownership
-):
-    """Prove each rollback wheel is the resolved artifact and restores in place.
-
-    Rollback reinstalls these wheels over the updated environment, so each must
-    be the exact file pip's report named (hash, not just version), and must
-    write only paths its installed distribution already owns.  A published
-    wheel that differs from what is installed -- for example a locally built
-    or modified install -- would write elsewhere on rollback, so the update is
-    refused before any change.  Locally modified file contents are not
-    preserved by rollback; the published wheel's contents are restored.
+    Ownership decisions always use the complete plan, so a package already
+    scheduled for replacement is never mistaken for a fixed external owner.
     """
-    expected = {canonicalize_name(name): version for name, version in old_versions.items()}
-    if set(old_wheels) != set(expected):
-        raise UpdaterError("Rollback wheel set is incomplete.")
-    artifacts = {canonicalize_name(item["name"]): item for item in old_artifacts}
-    prefix_path = Path(prefix).resolve(strict=False)
-    for normalized, version in sorted(expected.items()):
-        wheel = old_wheels[normalized]
-        if wheel["version"] != version:
-            raise UpdaterError(f"Rollback wheel version mismatch for {wheel['name']}.")
-        artifact = artifacts.get(normalized)
-        if artifact is None or wheel["sha256"] != artifact["sha256"]:
-            raise UpdaterError(
-                f"Rollback wheel for {wheel['name']} {version} does not match the "
-                "checksum pip resolved; no packages were changed."
-            )
-        claimed = installed_record_paths(prefix_path, inventory.get(normalized) or {})
-        if claimed is None:
-            raise UpdaterError(
-                f"Cannot safely replace {wheel['name']}: installed RECORD is missing."
-            )
-        claimed = set(claimed)
-        for target in sorted(wheel["targets"]):
-            if target in ownership["paths"]:
+
+    def __init__(self, prefix, plan, new_wheels, inventory, ownership):
+        self.prefix = prefix
+        self.planned = {canonicalize_name(item["name"]) for item in plan}
+        self.downloaded = set(new_wheels)
+        self.conda_paths = ownership["paths"]
+        self.owners, with_records, self.shared = installed_file_owners(
+            prefix, inventory
+        )
+        self.proposed = {}
+        self._check_installed_records(inventory, with_records)
+
+    def _check_installed_records(self, inventory, with_records):
+        for name in self.downloaded:
+            if name in inventory and name not in with_records:
                 raise UpdaterError(
-                    f"Rollback wheel {wheel['name']} would overwrite Conda-owned "
+                    f"Cannot safely replace {name}: installed RECORD is missing."
+                )
+        for target, installed_owner in self.owners.items():
+            claimants = self.shared.get(target, {installed_owner})
+            implicated = sorted(claimants & self.downloaded)
+            if implicated and target in self.conda_paths:
+                raise UpdaterError(
+                    f"Installed pip RECORD for {implicated[0]} claims Conda-owned "
                     f"file {target}."
                 )
-            if target not in wheel["generated"] and target not in claimed:
-                raise UpdaterError(
-                    f"The published {wheel['name']} {version} wheel installs {target}, "
-                    "which the installed copy does not own, so rollback could not "
-                    "restore the current installation exactly. No packages were "
-                    "changed."
-                )
+
+    def claim_targets(self, new_wheels):
+        """Claim every new wheel target; return ownership collisions found.
+
+        Collisions map ``(updating, owner)`` to the files both claim.  Every
+        other unsafe target raises UpdaterError immediately.
+        """
+        collisions = {}
+        prefix_path = Path(self.prefix).resolve(strict=False)
+        for normalized, wheel in new_wheels.items():
+            for target in wheel["targets"]:
+                self._claim(normalized, wheel, target, prefix_path, collisions)
+        return collisions
+
+    def _claim(self, normalized, wheel, target, prefix_path, collisions):
+        """Record ``wheel`` as the new owner of ``target``, or reject it."""
+        if target in self.conda_paths:
+            raise UpdaterError(
+                f"Wheel {wheel['name']} would overwrite Conda-owned file {target}."
+            )
+        installed_owner = self.owners.get(target)
+        claimants = self.shared.get(target) or (
+            {installed_owner} if installed_owner else set()
+        )
+        # The wheel's own predecessor being a claimant makes this an
+        # in-place replacement, not a takeover -- generated console
+        # scripts especially are claimed by every distribution that
+        # declares them, in whichever order RECORDs were read.
+        if claimants and normalized not in claimants and not claimants & self.planned:
+            # Gathered rather than raised one at a time: a single filename
+            # says nothing, but the whole set names the two packages that
+            # cannot both stay installed.
+            for owner in sorted(claimants):
+                collisions.setdefault((wheel["name"], owner), []).append(target)
+            return
+        previous = self.proposed.get(target)
+        if previous and previous != normalized and target not in self.shared:
+            raise UpdaterError(
+                f"Planned wheels {previous} and {normalized} both install {target}."
+            )
+        self.proposed[target] = normalized
+        target_path = prefix_path / Path(*PurePosixPath(target).parts)
+        if (
+            target_path.exists()
+            and installed_owner not in self.planned
+            and target not in self.shared
+        ):
+            raise UpdaterError(
+                f"Wheel {wheel['name']} would overwrite unowned existing file {target}."
+            )
+
+    def check_stranded_shared_files(self):
+        """Reject deleting a shared file that no planned wheel puts back."""
+        # A path claimed by several installed distributions is already decided
+        # by whichever wheel was written last; this transaction did not create
+        # that ambiguity and refusing to run would strand the environment
+        # forever (the NVIDIA cu12/cu13 wheels share one `nvidia/` namespace by
+        # design).  The one outcome that is genuinely worse than the status quo
+        # is a shared file that disappears: --force-reinstall removes every path
+        # the planned package's own RECORD lists, so if no planned wheel ships
+        # it back, the other claimants silently lose a file that nothing will
+        # restore.
+        for target, claimants in sorted(self.shared.items()):
+            if target in self.proposed or not claimants & self.downloaded:
+                continue
+            stranded = sorted(claimants - self.planned)
+            if not stranded:
+                continue
+            updating = ", ".join(sorted(claimants & self.planned))
+            raise UpdaterError(
+                f"Updating {updating} would delete {target}, which "
+                f"{', '.join(stranded)} also needs and no updated package puts "
+                "back.\n"
+                f"Update {', '.join(sorted(claimants))} together, or none of them."
+            )
+
+
+def _check_wheel_ownership(prefix, plan, new_wheels, inventory, ownership):
+    check = _WheelOwnershipCheck(prefix, plan, new_wheels, inventory, ownership)
+    collisions = check.claim_targets(new_wheels)
+    if collisions:
+        raise UpdaterError(explain_owner_collisions(prefix, collisions, plan))
+    check.check_stranded_shared_files()
+
+
+def validate_new_wheels(prefix, plan, new_wheels, inventory, ownership):
+    """Require the complete wheelhouse and reject every ownership collision."""
+    _check_downloaded_artifacts(plan, new_wheels, require_complete=True)
+    _check_wheel_ownership(prefix, plan, new_wheels, inventory, ownership)
+
+
+def validate_introduced_wheels(prefix, plan, new_wheels, inventory, ownership):
+    """Check newly introduced dependencies before the large main download.
+
+    Only part of the plan is downloaded yet, so the wheel set may be partial;
+    ownership is still judged against the complete plan.  The assembled
+    wheelhouse is always checked again by validate_new_wheels.
+    """
+    _check_downloaded_artifacts(plan, new_wheels, require_complete=False)
+    _check_wheel_ownership(prefix, plan, new_wheels, inventory, ownership)
 
 
 def _write_json_atomic(path, payload):
@@ -4460,7 +5903,7 @@ def environment_lock(prefix):
 
 def _verify_expected_versions(prefix, expected):
     """Verify exact installed versions and pip ownership after a transaction."""
-    inventory = index_inventory(get_environment_inventory(prefix))
+    inventory = index_inventory(get_environment_inventory(prefix), prefix)
     for normalized, version in expected.items():
         item = inventory.get(normalized)
         if not item or item.get("version") != version or item.get("installer") != "pip":
@@ -4470,184 +5913,14 @@ def _verify_expected_versions(prefix, expected):
             )
 
 
-PIP_INSTALL_LOCATION_HELPER = r"""
-import json
-from pip._internal.commands import create_command
-
-options, _ = create_command("install").parse_args([])
-print(json.dumps({
-    "prefix": options.prefix_path,
-    "target": options.target_dir,
-    "root": options.root_path,
-    "user": bool(options.use_user_site),
-}))
-"""
-
-
-def check_pip_install_location(prefix):
-    """Refuse pip configuration that would install outside the selected prefix.
-
-    ``python -I`` isolates Python, not pip: PIP_PREFIX, PIP_TARGET, PIP_ROOT,
-    PIP_USER and the matching keys in any pip configuration file still apply
-    and would send files somewhere the ownership checks never inspected.  The
-    target pip parses its own ``install`` options, so every configuration
-    source is covered exactly as pip would apply it.  Index, authentication
-    and certificate settings are unaffected.
-    """
-    result = run_command(
-        pip_command(prefix)[:2] + ["-c", PIP_INSTALL_LOCATION_HELPER],
-        capture_output=True,
-        timeout=60,
-    )
-    if result.returncode != 0:
-        raise command_failure(f"Reading pip install settings in {prefix}", result)
-    location = parse_json_output(result.stdout, f"reading pip install settings in {prefix}")
-    overrides = [
-        f"{key}={location[key]}"
-        for key in ("prefix", "target", "root", "user")
-        if isinstance(location, dict) and location.get(key)
-    ]
-    if not isinstance(location, dict) or overrides:
-        raise UpdaterError(
-            "pip is configured to install somewhere other than the selected "
-            f"environment ({', '.join(overrides) or 'unreadable settings'}).\n"
-            "Unset the matching PIP_PREFIX/PIP_TARGET/PIP_ROOT/PIP_USER variables "
-            "or pip configuration keys (see `pip config list`), then run again. "
-            "No packages were changed."
-        )
-
-
-def _file_sha256(path):
-    """Return the hex SHA-256 digest of one file."""
-    digest = hashlib.sha256()
-    with open(path, "rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
-
-
-def _fsync_files(directory):
-    """Flush every file in a directory, then the directory entry itself."""
-    for path in sorted(Path(directory).iterdir()):
-        if not path.is_file():
-            continue
-        fd = os.open(str(path), os.O_RDONLY)
-        try:
-            os.fsync(fd)
-        finally:
-            os.close(fd)
-    _fsync_directory(directory)
-
-
-def backup_shared_files(prefix, shared_claims, planned_names, backup_dir):
-    """Copy files several distributions claim before a transaction touches them.
-
-    Which claimant wrote a shared path last decides its bytes, and reinstalling
-    the old wheels in some order cannot reproduce that choice.  Keeping the
-    exact bytes lets rollback put back precisely what was there.
-    """
-    prefix_path = Path(prefix).resolve(strict=False)
-    backups = []
-    for target, claimants in sorted(shared_claims.items()):
-        if not claimants & planned_names:
-            continue
-        path = prefix_path / Path(*PurePosixPath(target).parts)
-        try:
-            info = path.lstat()
-        except FileNotFoundError:
-            continue
-        if not stat.S_ISREG(info.st_mode):
-            continue
-        backup_dir.mkdir(mode=0o700, exist_ok=True)
-        backup = backup_dir / str(len(backups))
-        shutil.copyfile(path, backup)
-        backups.append(
-            {
-                "target": target,
-                "backup": f"{backup_dir.name}/{backup.name}",
-                "sha256": _file_sha256(backup),
-                "mode": stat.S_IMODE(info.st_mode),
-            }
-        )
-    if backups:
-        _fsync_files(backup_dir)
-    return backups
-
-
-def restore_shared_files(prefix, transaction_dir, backups):
-    """Put back the exact pre-transaction bytes of shared files."""
-    prefix_path = Path(prefix).resolve(strict=False)
-    for entry in backups:
-        relative = PurePosixPath(entry["target"])
-        if relative.is_absolute() or ".." in relative.parts:
-            raise UpdaterError(f"Unsafe shared-file path in journal: {entry['target']}")
-        source = Path(transaction_dir) / entry["backup"]
-        if _file_sha256(source) != entry["sha256"]:
-            raise UpdaterError(f"Backup of shared file {entry['target']} has changed.")
-        destination = prefix_path / Path(*relative.parts)
-        if not _is_within(destination, prefix_path):
-            raise UpdaterError(f"Shared-file path escapes {prefix}: {entry['target']}")
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        temporary = destination.parent / f".{destination.name}.pip-updater-restore"
-        shutil.copyfile(source, temporary)
-        os.chmod(temporary, entry["mode"])
-        os.replace(temporary, destination)
-
-
-def verify_targets_present(prefix, target_list):
-    """Fail if any file an installed wheel should have written is missing."""
-    prefix_path = Path(prefix).resolve(strict=False)
-    targets = json.loads(Path(target_list).read_text(encoding="utf-8"))
-    missing = sorted(
-        target
-        for target in targets
-        if not os.path.lexists(prefix_path / Path(*PurePosixPath(target).parts))
-    )
-    if missing:
-        raise UpdaterError(
-            f"{count_label(len(missing), 'installed file')} missing after "
-            f"installation, such as {missing[0]}."
-        )
-
-
-def verify_rollback_artifacts(transaction_dir, manifest):
-    """Re-verify the journaled rollback wheels before using them."""
-    records = manifest.get("old_artifacts")
-    if records is None:
-        print(
-            "[WARN] This journal predates rollback-wheel checksums; restoring "
-            "without re-verifying them.",
-            flush=True,
-        )
-        return
-    old_dir = Path(transaction_dir) / "old"
-    present = {path.name for path in old_dir.iterdir()} if old_dir.is_dir() else set()
-    expected = {record["filename"] for record in records.values()}
-    if present != expected:
-        raise UpdaterError(
-            f"Rollback wheels in {old_dir} are missing or unexpected; restore "
-            "them or recover the environment manually."
-        )
-    for record in records.values():
-        if _file_sha256(old_dir / record["filename"]) != record["sha256"]:
-            raise UpdaterError(
-                f"Rollback wheel {record['filename']} has changed since it was "
-                "verified; recover the environment manually."
-            )
-
-
 def rollback_transaction(transaction_dir, manifest):
     """Restore exact pre-transaction wheels and verify the restored environment."""
     prefix = manifest["prefix"]
     manifest["status"] = "rolling_back"
     _write_json_atomic(Path(transaction_dir) / "manifest.json", manifest)
-    # Both checks run before anything is uninstalled, so a failure leaves the
-    # environment exactly as the interrupted update left it.
-    verify_rollback_artifacts(transaction_dir, manifest)
-    check_pip_install_location(prefix)
     new_only = manifest.get("new_only", [])
     if new_only:
-        print("[INFO] Removing the newly introduced packages...", flush=True)
+        announce("INFO", "Removing the newly introduced packages...", flush=True)
         result = run_command(
             pip_command(prefix) + ["uninstall", "-y", "--quiet"] + new_only,
             capture_output=True,
@@ -4659,24 +5932,20 @@ def rollback_transaction(transaction_dir, manifest):
             )
     old_versions = manifest.get("old_versions", {})
     if old_versions:
-        print("[INFO] Restoring the previous package versions...", flush=True)
+        announce("INFO", "Restoring the previous package versions...", flush=True)
         specs = [f"{name}=={version}" for name, version in sorted(old_versions.items())]
         result = _install_local_wheels(
             prefix, Path(transaction_dir) / "old", specs, "Restoring        "
         )
         if result.returncode != 0:
             raise command_failure("Restoring previous wheels", result)
-    restore_shared_files(prefix, transaction_dir, manifest.get("shared_backups", []))
-    print("[INFO] Verifying the restored environment...", flush=True)
+    announce("INFO", "Verifying the restored environment...", flush=True)
     _verify_expected_versions(
         prefix,
         {canonicalize_name(name): version for name, version in old_versions.items()},
     )
-    old_targets = Path(transaction_dir) / "old-targets.json"
-    if old_targets.is_file():
-        verify_targets_present(prefix, old_targets)
-    regressions = new_pip_conflicts(
-        pip_check_report(prefix), manifest["baseline"].get("pip_broken", [])
+    regressions = pip_check_report(prefix) - set(
+        manifest["baseline"].get("pip_broken", [])
     )
     if regressions:
         raise UpdaterError(
@@ -4694,36 +5963,27 @@ def rollback_transaction(transaction_dir, manifest):
     _write_json_atomic(Path(transaction_dir) / "manifest.json", manifest)
 
 
-MUTATION_JOURNAL_STATES = {"applying", "rolling_back", "rollback_failed"}
-FINISHED_JOURNAL_STATES = {"preparing", "prepared", "complete", "rolled_back"}
-
-
-def recover_incomplete_transactions(prefix, *, dry_run=False):
-    """Recover transactions interrupted after mutation began.
-
-    With ``dry_run`` nothing is rolled back or removed: an interrupted update
-    for this prefix stops the preview instead, because a preview of a
-    half-applied environment would describe a state nobody chose.
-    """
+def recover_incomplete_transactions(prefix):
+    """Recover transactions interrupted after mutation began."""
     root = transaction_root()
     resolved_prefix = str(Path(prefix).resolve())
     now = time.time()
     for transaction_dir in sorted(root.glob("txn-*")):
         manifest_path = transaction_dir / "manifest.json"
         if not manifest_path.is_file():
-            # Lost between mkdtemp and the first write, which never mutated the
+            # Written by a version that journalled only on success, or lost
+            # between mkdtemp and the first write.  Neither case mutated the
             # environment, but a concurrent preparation for a different prefix
             # may still be filling one in, so only sweep clearly abandoned ones.
-            if dry_run:
-                continue
             try:
                 age = now - transaction_dir.stat().st_mtime
             except OSError:
                 continue
             if age > ORPHAN_TRANSACTION_MAX_AGE_SECONDS:
-                print(
-                    f"[INFO] Removing abandoned download workspace "
-                    f"{transaction_dir.name} ({int(age // 3600)}h old, no journal)."
+                announce(
+                    "INFO",
+                    f"Removing abandoned download workspace "
+                    f"{transaction_dir.name} ({int(age // 3600)}h old, no journal).",
                 )
                 with contextlib.suppress(UpdaterError, OSError):
                     _safe_remove_transaction(transaction_dir)
@@ -4744,26 +6004,10 @@ def recover_incomplete_transactions(prefix, *, dry_run=False):
         if journal_prefix != resolved_prefix:
             continue
         status = manifest.get("status")
-        if status not in MUTATION_JOURNAL_STATES | FINISHED_JOURNAL_STATES:
-            raise UpdaterError(
-                f"Transaction journal {manifest_path} has unrecognized status "
-                f"{status!r}, so it is not acted on automatically.\n"
-                f"Inspect {transaction_dir}, confirm the environment is correct, "
-                "then delete that directory to continue."
-            )
-        if dry_run:
-            if status in MUTATION_JOURNAL_STATES:
-                raise UpdaterError(
-                    f"An interrupted update of this environment ({transaction_dir.name}) "
-                    "must be rolled back before it can be previewed.\n"
-                    "Run the same command without --dry-run to recover it "
-                    "automatically. This preview changed no packages."
-                )
-            continue
         if status in {"preparing", "prepared"}:
             # No mutation happened yet; the downloaded wheels can be discarded.
             _safe_remove_transaction(transaction_dir)
-        elif status in MUTATION_JOURNAL_STATES:
+        elif status in {"applying", "rolling_back", "rollback_failed"}:
             print(f"Recovering interrupted transaction {transaction_dir.name}...")
             try:
                 rollback_transaction(transaction_dir, manifest)
@@ -4774,8 +6018,102 @@ def recover_incomplete_transactions(prefix, *, dry_run=False):
                     f"Automatic recovery failed; preserved journal at {transaction_dir}: {exc}"
                 ) from exc
             _safe_remove_transaction(transaction_dir)
-        else:
+        elif status in {"complete", "rolled_back"}:
             _safe_remove_transaction(transaction_dir)
+
+
+def _initialize_transaction(transaction_dir, prefix):
+    """Journal the prefix and create the wheelhouses of a new transaction."""
+    transaction_dir.chmod(0o700)
+    # Claim the workspace before doing anything slow.  Preparation makes
+    # several subprocess calls and two network downloads; a signal arriving
+    # in any of them must leave behind either nothing at all or a journal
+    # that identifies the prefix -- never an anonymous directory of wheels.
+    _write_json_atomic(
+        transaction_dir / "manifest.json",
+        {
+            "version": 1,
+            "prefix": str(Path(prefix).resolve()),
+            "created_at": int(time.time()),
+            "status": "preparing",
+        },
+    )
+    for name in ("new", "new-dependency-preflight", "old"):
+        (transaction_dir / name).mkdir(mode=0o700)
+
+
+def _exact_specs(items):
+    return [f"{item['name']}=={item['version']}" for item in items]
+
+
+def _download_new_wheels(prefix, plan, transaction_dir, inventory, ownership):
+    """Download and validate every new wheel into ``transaction_dir/new``."""
+    new_dir = transaction_dir / "new"
+    preflight_dir = transaction_dir / "new-dependency-preflight"
+    introduced = [
+        item
+        for item in plan
+        if "current_version" in item and item["current_version"] is None
+    ]
+    remaining = [item for item in plan if item not in introduced]
+    if introduced:
+        announce(
+            "INFO",
+            "Checking newly introduced dependencies before the large download...",
+            flush=True,
+        )
+        download_exact_wheels(
+            prefix,
+            _exact_specs(introduced),
+            preflight_dir,
+            "New dependencies ",
+            artifacts=introduced,
+        )
+        validate_introduced_wheels(
+            prefix,
+            plan,
+            inspect_wheelhouse(preflight_dir, prefix),
+            inventory,
+            ownership,
+        )
+
+    download_exact_wheels(
+        prefix,
+        _exact_specs(remaining),
+        new_dir,
+        "New packages     ",
+        artifacts=remaining,
+    )
+    for wheel in preflight_dir.glob("*.whl"):
+        os.replace(wheel, new_dir / wheel.name)
+    # Nothing has touched the environment yet, so reject an unsafe new
+    # wheel as soon as its exact paths are known.  In particular, do not
+    # make the user fetch a second multi-gigabyte rollback batch for a
+    # transaction that can never be applied.
+    validate_new_wheels(
+        prefix, plan, inspect_wheelhouse(new_dir, prefix), inventory, ownership
+    )
+
+
+def _download_rollback_wheels(prefix, old_versions, old_dir):
+    """Download exact wheels of the installed versions an update replaces."""
+    old_specs = [f"{name}=={version}" for name, version in old_versions.items()]
+    if old_specs:
+        announce("INFO", "Locating exact rollback wheels...", flush=True)
+    old_artifacts = resolve_exact_download_artifacts(prefix, old_specs)
+    download_exact_wheels(
+        prefix,
+        old_specs,
+        old_dir,
+        "Rollback copies  ",
+        artifacts=old_artifacts,
+    )
+    old_wheels = inspect_wheelhouse(old_dir, prefix) if old_specs else {}
+    if set(old_wheels) != {canonicalize_name(name) for name in old_versions}:
+        raise UpdaterError("Rollback wheel set is incomplete.")
+    for name, version in old_versions.items():
+        if old_wheels[canonicalize_name(name)]["version"] != version:
+            raise UpdaterError(f"Rollback wheel version mismatch for {name}.")
 
 
 def prepare_transaction(prefix, plan, baseline):
@@ -4783,151 +6121,27 @@ def prepare_transaction(prefix, plan, baseline):
     transaction_dir = None
     try:
         transaction_dir = Path(tempfile.mkdtemp(prefix="txn-", dir=transaction_root()))
-        transaction_dir.chmod(0o700)
-        # Claim the workspace before doing anything slow.  Preparation makes
-        # several subprocess calls and two network downloads; a signal arriving
-        # in any of them must leave behind either nothing at all or a journal
-        # that identifies the prefix -- never an anonymous directory of wheels.
-        _write_json_atomic(
-            transaction_dir / "manifest.json",
-            {
-                "version": 1,
-                "prefix": str(Path(prefix).resolve()),
-                "created_at": int(time.time()),
-                "status": "preparing",
-            },
-        )
-        new_dir = transaction_dir / "new"
-        preflight_dir = transaction_dir / "new-dependency-preflight"
-        old_dir = transaction_dir / "old"
-        new_dir.mkdir(mode=0o700)
-        preflight_dir.mkdir(mode=0o700)
-        old_dir.mkdir(mode=0o700)
-        inventory = index_inventory(get_environment_inventory(prefix))
+        _initialize_transaction(transaction_dir, prefix)
+        inventory = index_inventory(get_environment_inventory(prefix), prefix)
         ownership = load_conda_ownership(prefix)
         old_versions = {}
         new_only = []
         for item in plan:
-            normalized = canonicalize_name(item["name"])
-            installed = inventory.get(normalized)
+            installed = inventory.get(canonicalize_name(item["name"]))
             if installed:
                 old_versions[item["name"]] = installed["version"]
             else:
                 new_only.append(item["name"])
 
-        requirement_names = {canonicalize_name(item["name"]): item["name"] for item in plan}
-        introduced = [
-            item
-            for item in plan
-            if "current_version" in item and item["current_version"] is None
-        ]
-        remaining = [item for item in plan if item not in introduced]
-        introduced_specs = [f"{item['name']}=={item['version']}" for item in introduced]
-        remaining_specs = [f"{item['name']}=={item['version']}" for item in remaining]
-        old_specs = [f"{name}=={version}" for name, version in old_versions.items()]
-        if introduced:
-            print(
-                "[INFO] Checking newly introduced dependencies before the large "
-                "download...",
-                flush=True,
-            )
-            download_exact_wheels(
-                prefix,
-                introduced_specs,
-                preflight_dir,
-                "New dependencies ",
-                artifacts=introduced,
-            )
-            introduced_wheels = inspect_wheelhouse(
-                preflight_dir, prefix, requirement_names
-            )
-            validate_new_wheels(
-                prefix,
-                plan,
-                introduced_wheels,
-                inventory,
-                ownership,
-                require_complete=False,
-            )
-
-        download_exact_wheels(
-            prefix,
-            remaining_specs,
-            new_dir,
-            "New packages     ",
-            artifacts=remaining,
-        )
-        for wheel in preflight_dir.glob("*.whl"):
-            os.replace(wheel, new_dir / wheel.name)
-        new_wheels = inspect_wheelhouse(new_dir, prefix, requirement_names)
-        # Nothing has touched the environment yet, so reject an unsafe new
-        # wheel as soon as its exact paths are known.  In particular, do not
-        # make the user fetch a second multi-gigabyte rollback batch for a
-        # transaction that can never be applied.
-        shared_claims = validate_new_wheels(
-            prefix, plan, new_wheels, inventory, ownership
-        )
-
-        if old_specs:
-            print("[INFO] Locating exact rollback wheels...", flush=True)
-        old_artifacts = resolve_exact_download_artifacts(prefix, old_specs)
-        download_exact_wheels(
-            prefix,
-            old_specs,
-            old_dir,
-            "Rollback copies  ",
-            artifacts=old_artifacts,
-        )
-        old_wheels = (
-            inspect_wheelhouse(
-                old_dir,
-                prefix,
-                {canonicalize_name(name): name for name in old_versions},
-            )
-            if old_specs
-            else {}
-        )
-        validate_rollback_wheels(
-            prefix, old_versions, old_wheels, old_artifacts, inventory, ownership
-        )
-        shared_backups = backup_shared_files(
-            prefix,
-            shared_claims,
-            {canonicalize_name(item["name"]) for item in plan},
-            transaction_dir / "shared",
-        )
-        for label, wheels in (("new", new_wheels), ("old", old_wheels)):
-            (transaction_dir / f"{label}-targets.json").write_text(
-                json.dumps(
-                    sorted(
-                        target
-                        for wheel in wheels.values()
-                        for target in wheel["targets"] - wheel["generated"]
-                    )
-                ),
-                encoding="utf-8",
-            )
-        # Recovery after a crash relies on these files, so they must be durable
-        # before the journal can ever record that mutation has started.
-        for directory in (new_dir, old_dir, transaction_dir):
-            _fsync_files(directory)
+        _download_new_wheels(prefix, plan, transaction_dir, inventory, ownership)
+        _download_rollback_wheels(prefix, old_versions, transaction_dir / "old")
         manifest = {
-            "version": 2,
+            "version": 1,
             "prefix": str(Path(prefix).resolve()),
             "created_at": int(time.time()),
             "status": "prepared",
             "baseline": baseline,
             "old_versions": old_versions,
-            "old_artifacts": {
-                normalized: {
-                    "name": wheel["name"],
-                    "version": wheel["version"],
-                    "filename": Path(wheel["path"]).name,
-                    "sha256": wheel["sha256"],
-                }
-                for normalized, wheel in old_wheels.items()
-            },
-            "shared_backups": shared_backups,
             "new_only": new_only,
             "new_versions": {item["name"]: item["version"] for item in plan},
             "plan_signature": plan_signature(plan),
@@ -4999,8 +6213,7 @@ def _install_local_wheels(prefix, wheel_dir, specs, title):
             ]
             + specs,
             timeout=1800,
-            on_start=progress.watch,
-            on_tick=progress.tick,
+            hooks=StreamHooks(on_start=progress.watch, on_tick=progress.tick),
         )
     finally:
         progress.finish()
@@ -5019,7 +6232,7 @@ def apply_transaction(transaction_dir, manifest):
         )
         if result.returncode != 0:
             raise command_failure("Applying prevalidated wheels", result)
-        print("[INFO] Verifying the updated environment...", flush=True)
+        announce("INFO", "Verifying the updated environment...", flush=True)
         _verify_expected_versions(
             prefix,
             {
@@ -5027,13 +6240,10 @@ def apply_transaction(transaction_dir, manifest):
                 for name, version in manifest["new_versions"].items()
             },
         )
-        verify_targets_present(prefix, Path(transaction_dir) / "new-targets.json")
-        # Only *newly broken* requirements are a failure.  One that was already
-        # unmet before the update is not caused by it, and may even be resolved
-        # by it; its `pip check` wording changes when either side's version
-        # does, so edges are compared rather than raw lines.
-        regressions = new_pip_conflicts(
-            pip_check_report(prefix), manifest["baseline"].get("pip_broken", [])
+        # Only *new* conflicts are a failure.  A conflict that already existed
+        # before the update is not caused by it, and may even be resolved by it.
+        regressions = pip_check_report(prefix) - set(
+            manifest["baseline"].get("pip_broken", [])
         )
         if regressions:
             raise UpdaterError(
@@ -5076,34 +6286,34 @@ def apply_transaction(transaction_dir, manifest):
     _safe_remove_transaction(transaction_dir)
 
 
-def update_packages(prefix, env_label, names, expected_plan, *, allow_downgrade=False):
+def update_packages(prefix, env_label, names, expected_plan):
     """Run an ownership-safe, journaled pip transaction."""
     print(
         f"\nPreparing the safe update for {count_label(len(names), 'selected package')}...",
         flush=True,
     )
-    print(
-        "[INFO] Downloading both the new packages and rollback copies first.",
+    announce(
+        "INFO",
+        "Downloading both the new packages and rollback copies first.",
         flush=True,
     )
     with environment_lock(prefix):
         recover_incomplete_transactions(prefix)
-        check_pip_install_location(prefix)
         baseline = preflight_health(prefix)
-        current_plan = resolve_update_plan(
-            prefix, names, allow_downgrade=allow_downgrade
-        )
+        current_plan = resolve_update_plan(prefix, names)
         if plan_signature(current_plan) != plan_signature(expected_plan):
             raise UpdaterError(
                 "The resolved update plan changed after confirmation; no packages were modified."
             )
         transaction_dir, manifest = prepare_transaction(prefix, current_plan, baseline)
-        print(
-            "[OK] Downloads, checksums, and file-ownership checks passed.",
+        announce(
+            "OK",
+            "Downloads, checksums, and file-ownership checks passed.",
             flush=True,
         )
-        print(
-            f"[INFO] Installing the verified packages into '{env_label}'...",
+        announce(
+            "INFO",
+            f"Installing the verified packages into '{env_label}'...",
             flush=True,
         )
         apply_transaction(transaction_dir, manifest)
@@ -5146,14 +6356,6 @@ def parse_args():
         "--details",
         action="store_true",
         help="Show technical paths and full package artifact checksums",
-    )
-    parser.add_argument(
-        "--allow-downgrade",
-        action="store_true",
-        help=(
-            "Accept a plan that installs a lower version of a selected package "
-            "(refused by default; --yes does not imply this)"
-        ),
     )
     return parser.parse_args()
 
@@ -5245,43 +6447,76 @@ def count_label(count, singular, plural=None):
     return f"{count} {noun}"
 
 
-def format_plan_change(item):
-    """Format one package change in user-facing current-to-new form."""
+def format_plan_change(item, name_width=0, version_width=0):
+    """Format one package change in user-facing current-to-new form.
+
+    The widths pad the name and current version into columns so a group's
+    arrows line up.
+    """
     current = item.get("current_version") or "not installed"
-    suffix = "  (DOWNGRADE)" if item.get("downgrade") else ""
-    return f"  {item['name']}: {current} -> {item['version']}{suffix}"
+    name = paint(f"{item['name'] + ':':<{name_width}}", "strong")
+    arrow = paint("→" if paint.enabled else "->", "muted")
+    line = (
+        f"  {name} {paint(f'{current:<{version_width}}', 'muted')} {arrow} "
+        f"{paint(item['version'], 'new')}"
+    )
+    if item.get("newest"):
+        note = f"(newest is {item['newest']}; capped by another package)"
+        line += " " + paint(note, "note")
+    if item.get("repair"):
+        line += " " + paint(f"(repairs: {item['repair']})", "note")
+    return line
 
 
 def print_plan_group(title, items):
     """Print one logically grouped set of package changes."""
     if not items:
         return
-    print(f"\n{title} ({len(items)}):")
+    print_section(f"{title} ({len(items)}):")
+    # A single very long name should not push every other row far right.
+    name_width = min(40, max(len(item["name"]) + 1 for item in items))
+    version_width = min(
+        20, max(len(item.get("current_version") or "not installed") for item in items)
+    )
     for item in sorted(items, key=lambda value: value["name"].lower()):
-        print(format_plan_change(item))
+        print(format_plan_change(item, name_width, version_width))
 
 
 def print_resolved_plan(plan, *, show_details=False):
     """Explain direct, dependency, and major-version changes in plain language."""
     selected = [item for item in plan if item["requested"]]
-    dependencies = [item for item in plan if not item["requested"]]
+    repairs = [item for item in plan if item.get("repair")]
+    dependencies = [
+        item for item in plan if not item["requested"] and not item.get("repair")
+    ]
     major_changes = [item for item in selected if is_major_version_change(item)]
     routine_changes = [item for item in selected if item not in major_changes]
 
-    print("\nPACKAGE CHANGES")
+    print_section("PACKAGE CHANGES")
     print(
         f"  {count_label(len(selected), 'package')} you selected; "
-        f"{count_label(len(dependencies), 'required dependency change')}."
+        + (
+            count_label(
+                len(repairs),
+                "repair of an existing conflict",
+                "repairs of existing conflicts",
+            )
+            + "; "
+            if repairs
+            else ""
+        )
+        + f"{count_label(len(dependencies), 'required dependency change')}."
     )
     print_plan_group(
         "Review carefully — major-version updates can change behavior",
         major_changes,
     )
     print_plan_group("Other selected updates", routine_changes)
+    print_plan_group("Repairs of conflicts that already existed", repairs)
     print_plan_group("Extra dependencies required automatically", dependencies)
 
     if show_details:
-        print("\nTechnical artifact checksums:")
+        print_section("Technical artifact checksums:")
         for item in sorted(plan, key=lambda value: value["name"].lower()):
             print(f"  {item['name']}=={item['version']}: sha256:{item['sha256']}")
 
@@ -5296,7 +6531,7 @@ def display_script_command():
 
 def build_apply_command(env_name, args, selected):
     """Build the non-dry-run command matching the user's selection mode."""
-    command = ["python3", display_script_command(), env_name]
+    command = [sys.executable, display_script_command(), env_name]
     if args.all:
         command.append("--all")
     elif args.packages:
@@ -5306,15 +6541,13 @@ def build_apply_command(env_name, args, selected):
     command.append("--refresh")
     if args.details:
         command.append("--details")
-    if args.allow_downgrade:
-        command.append("--allow-downgrade")
     return shlex.join(command)
 
 
 def build_single_package_command(env_name, package_name, *, show_details=False):
     """Build a copy-and-paste command for one higher-risk package update."""
     command = [
-        "python3",
+        sys.executable,
         display_script_command(),
         env_name,
         "--packages",
@@ -5326,43 +6559,83 @@ def build_single_package_command(env_name, package_name, *, show_details=False):
     return shlex.join(command)
 
 
-def conflicting_package_names(conflicts):
-    """Return the package names mentioned by raw `pip check` lines."""
-    names = set()
-    for line in conflicts:
-        key = pip_conflict_key(line)
-        if isinstance(key, tuple):
-            names.update(key)
-    return names
+PIP_MISSING_PATTERN = re.compile(
+    r"^(?P<holder>\S+) (?P<holder_version>\S+) requires (?P<missing>\S+), "
+    r"which is not installed\.?$"
+)
 
 
-def print_dry_run_result(env_name, args, selected, plan, existing_conflicts=()):
-    """End a preview with an interpretation and a concrete next action."""
-    existing_conflicts = set(existing_conflicts)
+def conflict_package_names(line):
+    """Return the package names one raw `pip check` line is about."""
+    line = line.strip()
+    match = PIP_CONFLICT_PATTERN.match(line)
+    if match:
+        return {
+            canonicalize_name(match["holder"]),
+            canonicalize_name(match["installed"]),
+        }
+    match = PIP_MISSING_PATTERN.match(line)
+    if match:
+        return {canonicalize_name(match["holder"]), canonicalize_name(match["missing"])}
+    return set()
+
+
+def _print_conflict_outlook(existing_conflicts, plan):
+    """Say how many pre-existing conflicts this plan addresses."""
+    planned = {canonicalize_name(item["name"]) for item in plan}
+    covered = [
+        line for line in existing_conflicts if conflict_package_names(line) & planned
+    ]
+    if covered:
+        pronoun = "it" if len(covered) == 1 else "them"
+        announce(
+            "OK",
+            "This plan installs or updates the packages behind "
+            f"{len(covered)} of "
+            f"{count_label(len(existing_conflicts), 'existing conflict')}, "
+            f"which should repair {pronoun}.",
+        )
+    remaining = len(existing_conflicts) - len(covered)
+    if remaining:
+        verb, pronoun = ("involves", "it") if remaining == 1 else ("involve", "they")
+        announce(
+            "!",
+            f"{count_label(remaining, 'existing conflict')} {verb} packages "
+            f"this plan does not touch, so {pronoun} will still be there afterward.",
+        )
+
+
+def print_dry_run_result(env_name, args, selected, plan, baseline=None):
+    """End a preview with an interpretation and a concrete next action.
+
+    ``baseline`` is the environment health check's result, when there is one.
+    """
+    baseline = baseline or {}
+    existing_conflicts = set(baseline.get("pip_broken") or ())
+    repair_pending = bool(baseline.get("repair_pending"))
     major_changes = [item for item in plan if is_major_version_change(item)]
-    print("\n" + "=" * 68)
-    print("PREVIEW COMPLETE — NO CHANGES WERE MADE")
-    print("=" * 68)
+    print_banner("PREVIEW COMPLETE — NO CHANGES WERE MADE", "preview")
+    if repair_pending:
+        announce(
+            "REPAIR",
+            "A real run first repairs the damaged Conda files described "
+            "above, automatically.",
+        )
     if existing_conflicts:
-        print("[OK] Conda-managed packages are healthy and will stay untouched.")
-        planned = {canonicalize_name(item["name"]) for item in plan}
-        covered = sorted(conflicting_package_names(existing_conflicts) & planned)
-        if covered:
-            print(
-                f"[!] The conflict noted above involves {', '.join(covered)}, "
-                "which this plan updates — that may repair it."
+        if not repair_pending:
+            announce(
+                "OK", "Conda-managed packages are healthy and will stay untouched."
             )
-        else:
-            print(
-                "[!] This plan does not touch the packages involved in the conflict "
-                "above, so it will still be there afterward."
-            )
-    else:
-        print("[OK] The environment health and package-ownership checks passed.")
-    print("[OK] pip found a compatible installation plan.")
-    print("[OK] Conda-managed packages and core update tools will stay untouched.")
-    print(
-        "[INFO] Package files are downloaded and inspected only during a real update."
+        _print_conflict_outlook(existing_conflicts, plan)
+    elif not repair_pending:
+        announce("OK", "The environment health and package-ownership checks passed.")
+    announce("OK", "pip found a compatible installation plan.")
+    untouched = "Conda-managed packages and core update tools will stay untouched."
+    if repair_pending:
+        untouched = "Apart from that repair, " + untouched[0].lower() + untouched[1:]
+    announce("OK", f"{untouched}")
+    announce(
+        "INFO", "Package files are downloaded and inspected only during a real update."
     )
     if major_changes:
         names = ", ".join(
@@ -5370,90 +6643,487 @@ def print_dry_run_result(env_name, args, selected, plan, existing_conflicts=()):
             for item in sorted(major_changes, key=lambda value: value["name"].lower())
         )
         verb = "needs" if len(major_changes) == 1 else "need"
-        print(
-            f"[REVIEW] {count_label(len(major_changes), 'major-version change')} "
-            f"{verb} extra care: {names}."
+        announce(
+            "REVIEW",
+            f"{count_label(len(major_changes), 'major-version change')} "
+            f"{verb} extra care: {names}.",
         )
 
-    print("\nWhat to do next:")
+    print_section("What to do next:")
     if major_changes:
         print(
             "  Safest approach: update and test the major-version packages "
             "one at a time:"
         )
         for item in sorted(major_changes, key=lambda value: value["name"].lower()):
-            print(
-                "\n    "
-                + build_single_package_command(
-                    env_name, item["name"], show_details=args.details
-                )
+            command = build_single_package_command(
+                env_name, item["name"], show_details=args.details
             )
+            print("\n    " + paint(command, "command"))
         print("\n  After each update, start the application or run its tests.")
         print("  Then run your preview command again to see what remains.")
         print("\n  Faster but higher risk: apply every update at once:")
-        print(f"\n    {build_apply_command(env_name, args, selected)}")
+        print(
+            "\n    " + paint(build_apply_command(env_name, args, selected), "command")
+        )
     else:
         print("  To apply this selection, run:")
-        print(f"\n    {build_apply_command(env_name, args, selected)}")
+        print(
+            "\n    " + paint(build_apply_command(env_name, args, selected), "command")
+        )
         print("\n  Afterward, start the application or run its tests.")
     print("\nThe updater will recheck everything and ask before installing.")
     print(
-        "\nNote: these checks protect package integrity; they cannot predict every "
-        "application-level behavior change."
+        "\n"
+        + paint(
+            "Note: these checks protect package integrity; they cannot predict "
+            "every application-level behavior change.",
+            "muted",
+        )
     )
 
 
-def print_no_updates_result(env_name):
+def print_no_updates_result(env_name, *, all_held=False):
     """Explain a clean scan as a successful no-op."""
-    print("\n" + "=" * 68)
-    print("NOTHING TO UPDATE")
-    print("=" * 68)
-    print(f"[OK] All eligible pip packages in '{env_name}' are already current.")
-    print("[INFO] Automatically skipped Conda-managed/core packages need no action.")
+    print_banner("NOTHING TO UPDATE", "ok")
+    if all_held:
+        announce(
+            "OK",
+            "Every selected package is already as new as this updater can "
+            "install (see the reasons above).",
+        )
+    else:
+        announce(
+            "OK", f"All eligible pip packages in '{env_name}' are already current."
+        )
+    announce(
+        "INFO", "Automatically skipped Conda-managed/core packages need no action."
+    )
 
 
 def print_update_success(env_name, plan, before_conflicts=(), after_conflicts=()):
     """Report a successful transaction and its recommended follow-up."""
-    before = {pip_conflict_key(line) for line in before_conflicts}
-    after_keys = {pip_conflict_key(line) for line in after_conflicts}
+    before = set(before_conflicts)
     after = set(after_conflicts)
     selected_count = sum(bool(item["requested"]) for item in plan)
-    dependency_count = len(plan) - selected_count
-    print("\n" + "=" * 68)
-    print("UPDATE COMPLETED SUCCESSFULLY")
-    print("=" * 68)
-    print(
-        f"[OK] Updated {count_label(selected_count, 'selected package')} and "
-        f"{count_label(dependency_count, 'required dependency package')} "
-        f"in '{env_name}'."
+    repair_count = sum(bool(item.get("repair")) for item in plan)
+    dependency_count = len(plan) - selected_count - repair_count
+    repaired = (
+        count_label(
+            repair_count,
+            "package that repairs an existing conflict",
+            "packages that repair existing conflicts",
+        )
+        + ", and "
+        if repair_count
+        else "and "
     )
+    print_banner("UPDATE COMPLETED SUCCESSFULLY", "ok")
+    announce(
+        "OK",
+        f"Updated {count_label(selected_count, 'selected package')}"
+        f"{', ' if repair_count else ' '}{repaired}"
+        f"{count_label(dependency_count, 'required dependency package')} "
+        f"in '{env_name}'.",
+    )
+    capped = sorted(item["name"] for item in plan if item.get("newest"))
+    if capped:
+        announce(
+            "INFO",
+            f"{count_label(len(capped), 'package')} went only as far as other "
+            f"packages allow: {', '.join(capped)}.",
+        )
+        print(
+            "       pip still lists newer releases for them; the updater shows them "
+            "as version-capped until the capping package changes."
+        )
     if after:
-        if before - after_keys:
-            print(
-                f"[OK] Repaired {count_label(len(before - after_keys), 'conflict')} "
-                "that existed before this update."
+        if before - after:
+            announce(
+                "OK",
+                f"Repaired {count_label(len(before - after), 'conflict')} "
+                "that existed before this update.",
             )
-        print(f"[!] {count_label(len(after), 'conflict')} still needs attention:")
+        one = len(after) == 1
+        announce(
+            "!",
+            f"{count_label(len(after), 'conflict')} still "
+            f"{'needs' if one else 'need'} attention:",
+        )
         for line in sorted(after):
             print(f"      {describe_pip_conflict(line)}")
-        print("    This update did not cause it and did not make it worse.")
+        print(
+            f"    This update did not cause {'it' if one else 'them'} "
+            f"and did not make {'it' if one else 'them'} worse."
+        )
     else:
-        print("[OK] pip reports no broken requirements.")
+        announce("OK", "pip reports no broken requirements.")
         if before:
-            print(
-                f"[OK] The {count_label(len(before), 'conflict')} that existed "
-                "before this update is now resolved."
+            announce(
+                "OK",
+                f"The {count_label(len(before), 'conflict')} that existed "
+                "before this update is now resolved.",
             )
-    print("[OK] Conda-managed files and environment health are unchanged.")
-    print("\nNext: start the application or run its tests to confirm normal behavior.")
+    announce("OK", "Conda-managed files and environment health are unchanged.")
+    print(
+        "\n" + paint("Next:", "strong"),
+        "start the application or run its tests to confirm normal behavior.",
+    )
+
+
+@dataclasses.dataclass
+class _UpdateTarget:
+    """The environment one pass of main() works on, and the run's options."""
+
+    args: argparse.Namespace
+    env_name: str
+    prefix: str
+    fixed: bool
+    env_key: str = dataclasses.field(init=False)
+
+    def __post_init__(self):
+        self.env_key = str(Path(self.prefix).resolve())
+
+
+def _fixed_environment(args, environments, root_prefix):
+    """Return the ``(name, prefix)`` named on the command line, if any."""
+    if not args.env_name:
+        return None
+    fixed = resolve_environment(args.env_name, environments)
+    if fixed[1] == root_prefix:
+        raise UpdaterError(
+            "Refusing to update Conda's base environment. Base contains Conda's own "
+            "control plane; create or select a named environment instead."
+        )
+    return fixed
+
+
+def _choose_environment(selectable, environments):
+    """Let the user pick an environment; None when they quit."""
+    if not sys.stdin.isatty() or not sys.stdout.isatty():
+        raise UpdaterError(
+            "env_name is required in non-interactive mode. Available named "
+            "environments: " + ", ".join(selectable)
+        )
+    try:
+        env_name = curses.wrapper(interactive_select_env, selectable)
+    except curses.error as exc:
+        raise UpdaterError(
+            f"Failed to initialize environment selector ({exc}). "
+            "Run the script directly in a local terminal session."
+        ) from exc
+    if not env_name:
+        return None
+    return env_name, environments[env_name]
+
+
+def _check_environment(prefix, root_prefix, *, dry_run):
+    """Activate, health-check and repair the environment.
+
+    Returns the health check's baseline (see preflight_health).
+    """
+    print_step("1/3", "Activating and checking the environment...")
+    activate_environment(prefix, root_prefix)
+    with environment_lock(prefix):
+        recover_incomplete_transactions(prefix)
+        baseline = preflight_health(prefix, repair=True, dry_run=dry_run)
+    existing_conflicts = set(baseline["pip_broken"])
+    conda_issues = baseline.get("conda_issues") or {}
+    if baseline.get("repair_pending"):
+        pass  # The preview already said what a real run repairs first.
+    elif existing_conflicts or conda_issues:
+        announce("OK", "Conda's own files are all present and unaltered.")
+    else:
+        announce("OK", "Environment health checks passed.")
+    print_conda_inconsistencies(conda_issues)
+    if existing_conflicts:
+        print_existing_conflicts(existing_conflicts)
+    return baseline
+
+
+def _live_scan(target, *, report_exclusions=True):
+    packages = scan_outdated_packages(
+        target.prefix, report_exclusions=report_exclusions
+    )
+    set_cached_packages(target.env_key, packages)
+    return packages
+
+
+def _find_outdated(target):
+    """Return ``(packages, from_cache, live)``, or None when nothing is outdated.
+
+    ``live`` means the list came from a scan performed moments ago in this run,
+    with no user interaction since.
+    """
+    args = target.args
+    print_step("2/3", "Looking for pip packages that can be safely updated...")
+    packages, from_cache = get_outdated_packages(
+        target.env_key, target.prefix, refresh=args.refresh
+    )
+    if from_cache:
+        announce("OK", "Loaded the previous package scan; it will be rechecked live.")
+    else:
+        announce("OK", "Fresh package scan completed.")
+    if args.details:
+        announce("DETAIL", f"Scan cache: {CACHE_FILE}")
+    if packages:
+        announce(
+            "OK", f"Found {count_label(len(packages), 'package')} that can be updated."
+        )
+        return packages, from_cache, not from_cache
+    if not from_cache or args.refresh:
+        print_no_updates_result(target.env_name)
+        return None
+    print("Cached result is empty; verifying with a live scan...")
+    packages = _live_scan(target)
+    if not packages:
+        print_no_updates_result(target.env_name)
+        return None
+    announce(
+        "OK",
+        f"Live scan found {count_label(len(packages), 'package')} that can be updated.",
+    )
+    return packages, from_cache, True
+
+
+def _choose_non_interactive(target, packages, live):
+    """Apply --all/--packages; return ``(selected, packages)``, or None."""
+    # For non-interactive modes, prefer correctness over stale cache.
+    if not live:
+        announce("INFO", "Confirming the cached list with a live scan...")
+        packages = _live_scan(target)
+        if not packages:
+            print_no_updates_result(target.env_name)
+            return None
+    selected = select_non_interactive(
+        packages,
+        select_all=target.args.all,
+        requested_csv=target.args.packages,
+    )
+    return selected, packages
+
+
+def _start_background_refresh(target, package_state):
+    """Rescan in a thread while the user chooses from the cached list."""
+    package_state["scan_in_progress"] = True
+    package_state["scan_done"] = False
+    progress = PackageScanProgress(
+        cached_count=len(package_state["packages"]), render=False
+    )
+    package_state["scan_progress"] = progress
+    thread = threading.Thread(
+        target=refresh_packages_background,
+        args=(target.env_key, target.prefix, package_state, progress),
+        daemon=True,
+    )
+    thread.start()
+    return thread, progress
+
+
+def _choose_interactive(target, packages, from_cache):
+    """Run the selector; return ``(selected, packages, live)`` or BACK_TO_ENV."""
+    if not sys.stdin.isatty() or not sys.stdout.isatty():
+        print(
+            paint("Error:", "error"), "interactive selection requires a TTY terminal."
+        )
+        print("Use --all or --packages for non-interactive usage.")
+        sys.exit(1)
+
+    package_state = {
+        "lock": threading.Lock(),
+        "packages": packages,
+        "scan_in_progress": False,
+        "scan_done": True,
+        "scan_error": None,
+        "cache_mismatch": False,
+        "started_from_cache": from_cache,
+        "scan_progress": None,
+    }
+    refresh_thread = refresh_progress = None
+    if from_cache and not target.args.refresh:
+        refresh_thread, refresh_progress = _start_background_refresh(
+            target, package_state
+        )
+
+    print(f"Opening the selector with {len(packages)} available update(s)...")
+    try:
+        selected = curses.wrapper(interactive_select, package_state, not target.fixed)
+    except curses.error as exc:
+        raise UpdaterError(
+            f"Failed to initialize terminal UI ({exc}). Run this in a local terminal."
+        ) from exc
+    waited_for_refresh = wait_for_background_scan(refresh_thread, refresh_progress)
+    if selected == BACK_TO_ENV:
+        return BACK_TO_ENV
+
+    # The user spent an unbounded amount of time in the selector, so the list
+    # they saw is live only if the background scan finished cleanly just now.
+    live = False
+    if refresh_thread:
+        with package_state["lock"]:
+            packages = list(package_state["packages"])
+            had_mismatch = package_state["cache_mismatch"]
+            scan_ok = package_state["scan_error"] is None
+        if had_mismatch:
+            selected, dropped = reconcile_selected(selected, packages)
+            if dropped:
+                print_section("Removed stale selections no longer outdated:")
+                print("  " + ", ".join(dropped))
+        live = waited_for_refresh and scan_ok
+    return selected, packages, live
+
+
+def _read_key():
+    """Return one keypress as soon as it is typed, or "" at end of input.
+
+    Echo is off while waiting, and any unread remainder of a multi-byte key
+    (an arrow's escape sequence) is discarded so it cannot leak into the next
+    prompt or selector.  Signals stay enabled, so Ctrl-C still interrupts.
+    """
+    if not sys.stdin.isatty():
+        return sys.stdin.readline()[:1]
+    fd = sys.stdin.fileno()
+    saved = termios.tcgetattr(fd)
+    try:
+        tty.setcbreak(fd, termios.TCSANOW)
+        return os.read(fd, 1).decode("utf-8", "replace")
+    finally:
+        termios.tcsetattr(fd, termios.TCSAFLUSH, saved)
+
+
+def _another_environment_wanted(target):
+    """After a result, wait for a key before the environment picker returns.
+
+    The picker takes over the whole terminal, so reopening it at once would
+    wipe the result off the screen before it could be read.  A named
+    environment has no picker to return to, so the run simply ends.
+    """
+    if target.fixed:
+        return False
+    print(
+        f"\nPress {paint('Enter', 'strong')} to choose another environment, "
+        f"or {paint('q', 'strong')} to quit: ",
+        end="",
+        flush=True,
+    )
+    while True:
+        key = _read_key()
+        if key in {"\n", "\r"}:
+            print()
+            return True
+        # Ctrl-D and a closed input end the run, like q.
+        if key in {"q", "Q", "\x04", ""}:
+            print("q")
+            return False
+
+
+def _confirmed(env_name):
+    if not sys.stdin.isatty():
+        print(
+            paint("Error:", "error"),
+            "confirmation prompt requires a TTY. Re-run with --yes.",
+        )
+        raise UpdaterError("Confirmation requires a TTY; re-run with --yes.")
+    answer = input(f"\nApply these changes to '{env_name}'? [y/N] ")
+    return answer.strip().lower() == "y"
+
+
+def _plan_and_apply(target, selected, live_packages, baseline):
+    """Resolve, confirm, and apply; return True to choose another environment.
+
+    ``live_packages`` is the outdated list when it is fresh from this run,
+    otherwise None and it is rescanned first.
+    """
+    args = target.args
+    print_step("3/3", "Building and checking the exact update plan...")
+    if live_packages is None:
+        live_packages = _live_scan(target, report_exclusions=False)
+    selected, dropped = reconcile_selected(selected, live_packages)
+    if dropped:
+        announce("INFO", "No longer need an update: " + ", ".join(dropped))
+    if not selected:
+        print_no_updates_result(target.env_name)
+        return False
+
+    plan = resolve_update_plan(target.prefix, selected)
+    if not plan:
+        print_no_updates_result(target.env_name, all_held=True)
+        return False
+    announce("OK", "pip found a compatible update plan.")
+    print_resolved_plan(plan, show_details=args.details)
+    try:
+        print_shared_file_warning(shared_file_report(target.prefix, plan))
+    except (UpdaterError, OSError) as exc:
+        # Advisory only; validate_new_wheels enforces the real guarantee
+        # before anything is installed, so this must never end the run.
+        announce("INFO", f"Could not check for shared files ({exc}).")
+
+    if args.dry_run:
+        print_dry_run_result(target.env_name, args, selected, plan, baseline)
+        return False
+    # Choosing GO in the selector is the confirmation; only --all/--packages
+    # reach this point without the user having confirmed anything.
+    non_interactive = args.all or args.packages
+    if non_interactive and not args.yes and not _confirmed(target.env_name):
+        print(paint("Cancelled. No packages were changed.", "warn"))
+        return _another_environment_wanted(target)
+
+    update_packages(target.prefix, target.env_name, selected, plan)
+    remove_cached_packages(target.env_key, selected)
+    print_update_success(
+        target.env_name,
+        plan,
+        set(baseline["pip_broken"]),
+        pip_check_report(target.prefix),
+    )
+    return False
+
+
+def _update_environment(target, root_prefix):
+    """One full pass over an environment; True means choose another one."""
+    args = target.args
+    print_banner("PIP PACKAGE UPDATE PREVIEW" if args.dry_run else "PIP PACKAGE UPDATE")
+    print(paint("Environment:", "strong"), paint(target.env_name, "env"))
+    if args.dry_run:
+        print(
+            paint("Mode:", "strong"),
+            "preview only — this command will not change any packages",
+        )
+    baseline = _check_environment(target.prefix, root_prefix, dry_run=args.dry_run)
+
+    found = _find_outdated(target)
+    if found is None:
+        return _another_environment_wanted(target)
+    packages, from_cache, live = found
+    if args.all or args.packages:
+        chosen = _choose_non_interactive(target, packages, live)
+        if chosen is None:
+            return False
+        (selected, packages), live = chosen, True
+    else:
+        chosen = _choose_interactive(target, packages, from_cache)
+        if chosen == BACK_TO_ENV:
+            return True
+        selected, packages, live = chosen
+
+    if not selected:
+        print("\nNo packages selected. Exiting.")
+        return False
+    # A list from a scan seconds ago in this same run is not rescanned: that
+    # only repeats a network round trip (measured at ~2.6s, about a quarter of
+    # total runtime).  The authoritative time-of-use checks are unchanged:
+    # resolve_update_plan queries pip live, and update_packages re-resolves
+    # under the environment lock and refuses to proceed if the plan moved.
+    return _plan_and_apply(target, selected, packages if live else None, baseline)
 
 
 def main():
+    """Select an environment, choose updates, and apply them transactionally."""
     args = parse_args()
+    paint.configure(sys.stdout)
     install_termination_handlers()
-    if not args.dry_run:
-        with contextlib.suppress(UpdaterError):
-            prune_stale_locks()
+    with contextlib.suppress(UpdaterError):
+        prune_stale_locks()
 
     environments, root_prefix = get_known_environments()
     selectable = sorted(
@@ -5461,258 +7131,39 @@ def main():
     )
     if not selectable:
         raise UpdaterError(
-            "No named Conda environments were found. Base is intentionally never an update target."
+            "No named Conda environments were found. Base is intentionally never "
+            "an update target."
         )
 
-    fixed_environment = None
-    if args.env_name:
-        fixed_environment = resolve_environment(args.env_name, environments)
-        if fixed_environment[1] == root_prefix:
-            raise UpdaterError(
-                "Refusing to update Conda's base environment. Base contains Conda's own control "
-                "plane; create or select a named environment instead."
-            )
-
+    fixed_environment = _fixed_environment(args, environments, root_prefix)
     while True:
-        if fixed_environment:
-            env_name, prefix = fixed_environment
-        else:
-            if not sys.stdin.isatty() or not sys.stdout.isatty():
-                raise UpdaterError(
-                    "env_name is required in non-interactive mode. Available named environments: "
-                    + ", ".join(selectable)
-                )
-            try:
-                env_name = curses.wrapper(interactive_select_env, selectable)
-            except curses.error as exc:
-                raise UpdaterError(
-                    f"Failed to initialize environment selector ({exc}). "
-                    "Run the script directly in a local terminal session."
-                ) from exc
-            if not env_name:
-                print("No environment selected. Exiting.")
-                return
-            prefix = environments[env_name]
-
-        print("\n" + "=" * 68)
-        print("PIP PACKAGE UPDATE PREVIEW" if args.dry_run else "PIP PACKAGE UPDATE")
-        print("=" * 68)
-        print(f"Environment: {env_name}")
-        if args.dry_run:
-            print("Mode: preview only — this command will not change any packages")
-        print("\n[1/3] Activating and checking the environment...")
-        activate_environment(prefix, root_prefix)
-
-        with environment_lock(prefix):
-            recover_incomplete_transactions(prefix, dry_run=args.dry_run)
-            baseline = preflight_health(prefix)
-        existing_conflicts = set(baseline["pip_broken"])
-        conda_issues = baseline.get("conda_issues") or {}
-        if existing_conflicts or conda_issues:
-            print("[OK] Conda's own files are all present and unaltered.")
-        else:
-            print("[OK] Environment health checks passed.")
-        print_conda_inconsistencies(conda_issues)
-        if existing_conflicts:
-            print_existing_conflicts(existing_conflicts)
-
-        env_key = str(Path(prefix).resolve())
-
-        print("\n[2/3] Looking for pip packages that can be safely updated...")
-        packages, from_cache = get_outdated_packages(
-            env_key, prefix, refresh=args.refresh
-        )
-        # Tracks whether `packages` came from a scan performed moments ago in
-        # this run, with no user interaction since.
-        packages_are_live = not from_cache
-        if from_cache:
-            print("[OK] Loaded the previous package scan; it will be rechecked live.")
-        else:
-            print("[OK] Fresh package scan completed.")
-        if args.details:
-            print(f"[DETAIL] Scan cache: {CACHE_FILE}")
-
-        if not packages:
-            if from_cache and not args.refresh:
-                print("Cached result is empty; verifying with a live scan...")
-                packages = scan_outdated_packages(prefix, report_exclusions=True)
-                set_cached_packages(env_key, packages)
-                packages_are_live = True
-                if packages:
-                    print(
-                        f"[OK] Live scan found {count_label(len(packages), 'package')} "
-                        "that can be updated."
-                    )
-                else:
-                    print_no_updates_result(env_name)
-                    if fixed_environment:
-                        return
-                    continue
-            else:
-                print_no_updates_result(env_name)
-                if fixed_environment:
-                    return
-                continue
-        else:
-            print(
-                f"[OK] Found {count_label(len(packages), 'package')} "
-                "that can be updated."
-            )
-
-        if args.all or args.packages:
-            # For non-interactive modes, prefer correctness over stale cache.
-            if from_cache and not args.refresh:
-                print("[INFO] Confirming the cached list with a live scan...")
-                packages = scan_outdated_packages(prefix, report_exclusions=True)
-                set_cached_packages(env_key, packages)
-                packages_are_live = True
-                if not packages:
-                    print_no_updates_result(env_name)
-                    return
-
-            selected = select_non_interactive(
-                packages,
-                select_all=args.all,
-                requested_csv=args.packages,
-            )
-        else:
-            if not sys.stdin.isatty() or not sys.stdout.isatty():
-                print("Error: interactive selection requires a TTY terminal.")
-                print("Use --all or --packages for non-interactive usage.")
-                sys.exit(1)
-
-            package_state = {
-                "lock": threading.Lock(),
-                "packages": packages,
-                "scan_in_progress": False,
-                "scan_done": True,
-                "scan_error": None,
-                "cache_mismatch": False,
-                "started_from_cache": from_cache,
-                "scan_progress": None,
-            }
-            refresh_thread = None
-            refresh_progress = None
-            if from_cache and not args.refresh:
-                package_state["scan_in_progress"] = True
-                package_state["scan_done"] = False
-                refresh_progress = PackageScanProgress(
-                    cached_count=len(packages), render=False
-                )
-                package_state["scan_progress"] = refresh_progress
-                refresh_thread = threading.Thread(
-                    target=refresh_packages_background,
-                    args=(env_key, prefix, package_state, refresh_progress),
-                    daemon=True,
-                )
-                refresh_thread.start()
-
-            # The user is about to spend an unbounded amount of time in the
-            # selector, so whatever list they see must be revalidated afterward.
-            packages_are_live = False
-            print(f"Opening the selector with {len(packages)} available update(s)...")
-            try:
-                selected = curses.wrapper(
-                    interactive_select, package_state, not bool(fixed_environment)
-                )
-            except curses.error as exc:
-                raise UpdaterError(
-                    f"Failed to initialize terminal UI ({exc}). Run this in a local terminal."
-                ) from exc
-
-            if selected == BACK_TO_ENV:
-                wait_for_background_scan(refresh_thread, refresh_progress)
-                continue
-
-            waited_for_refresh = wait_for_background_scan(
-                refresh_thread, refresh_progress
-            )
-
-            if refresh_thread:
-                with package_state["lock"]:
-                    packages = list(package_state["packages"])
-                    had_mismatch = package_state["cache_mismatch"]
-                if had_mismatch:
-                    selected, dropped = reconcile_selected(selected, packages)
-                    if dropped:
-                        print("\nRemoved stale selections no longer outdated:")
-                        print("  " + ", ".join(dropped))
-                if waited_for_refresh:
-                    with package_state["lock"]:
-                        packages_are_live = package_state["scan_error"] is None
-
-        if not selected:
-            print("\nNo packages selected. Exiting.")
+        chosen = fixed_environment or _choose_environment(selectable, environments)
+        if chosen is None:
+            print("No environment selected. Exiting.")
+            return
+        env_name, prefix = chosen
+        target = _UpdateTarget(args, env_name, prefix, fixed=bool(fixed_environment))
+        if not _update_environment(target, root_prefix):
             return
 
-        print("\n[3/3] Building and checking the exact update plan...")
-        if packages_are_live:
-            # This list came from a scan seconds ago in the same non-interactive
-            # run, so rescanning only repeats a network round trip (measured at
-            # ~2.6s, about a quarter of total runtime).  The authoritative
-            # time-of-use checks are unchanged: resolve_update_plan queries pip
-            # live below, and update_packages re-resolves under the environment
-            # lock and refuses to proceed if the plan signature moved.
-            live_packages = packages
-        else:
-            live_packages = scan_outdated_packages(prefix, report_exclusions=False)
-            set_cached_packages(env_key, live_packages)
-        selected, dropped = reconcile_selected(selected, live_packages)
-        if dropped:
-            print("[INFO] No longer need an update: " + ", ".join(dropped))
-        if not selected:
-            print_no_updates_result(env_name)
-            return
 
-        plan = resolve_update_plan(
-            prefix, selected, allow_downgrade=args.allow_downgrade
-        )
-        if not plan:
-            print_no_updates_result(env_name)
-            return
-        print("[OK] pip found a compatible update plan.")
-        print_resolved_plan(plan, show_details=args.details)
-        try:
-            print_shared_file_warning(shared_file_report(prefix, plan))
-        except (UpdaterError, OSError) as exc:
-            # Advisory only; validate_new_wheels enforces the real guarantee
-            # before anything is installed, so this must never end the run.
-            print(f"[INFO] Could not check for shared files ({exc}).")
-
-        if args.dry_run:
-            print_dry_run_result(env_name, args, selected, plan, existing_conflicts)
-            return
-
-        if not args.yes:
-            if not sys.stdin.isatty():
-                print("Error: confirmation prompt requires a TTY. Re-run with --yes.")
-                raise UpdaterError("Confirmation requires a TTY; re-run with --yes.")
-            answer = input(f"\nApply these changes to '{env_name}'? [y/N] ")
-            if answer.strip().lower() != "y":
-                print("Cancelled. No packages were changed.")
-                if fixed_environment:
-                    return
-                continue
-
-        update_packages(
-            prefix, env_name, selected, plan, allow_downgrade=args.allow_downgrade
-        )
-        remove_cached_packages(env_key, selected)
-        print_update_success(
-            env_name, plan, existing_conflicts, pip_check_report(prefix)
-        )
-        return
+def report_fatal(label, *details, lead=""):
+    """Print why the run ended to stderr, colored only when stderr is a terminal."""
+    styled = paint.enabled and sys.stderr.isatty()
+    print(
+        lead + (paint(label, "error") if styled else label), *details, file=sys.stderr
+    )
 
 
 if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        print("\nCancelled.", file=sys.stderr)
+        report_fatal("Cancelled.", lead="\n")
         sys.exit(130)
     except UpdateInterrupted as exc:
-        print(f"\nStopped: {exc}.", file=sys.stderr)
-        sys.exit(128 + exc.signum)
+        report_fatal("Stopped:", f"{exc}.", lead="\n")
+        sys.exit(143)
     except UpdaterError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
+        report_fatal("Error:", exc)
         sys.exit(1)
