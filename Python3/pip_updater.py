@@ -2362,15 +2362,28 @@ def wait_for_background_scan(thread, progress, stream=None):
 
 
 def _init_curses_colors():
-    """Hide the cursor; return the hint color attribute, 0 if unsupported."""
+    """Hide the cursor; return the hint and success color attributes.
+
+    Both are 0 when the terminal has no colors.
+    """
     curses.curs_set(0)
     try:
         curses.use_default_colors()
         curses.init_pair(2, curses.COLOR_CYAN, -1)
-        return curses.color_pair(2)
+        curses.init_pair(3, curses.COLOR_GREEN, -1)
+        return curses.color_pair(2), curses.color_pair(3) | curses.A_BOLD
     except curses.error:
         # Some terminals don't support colors; keep rendering without color attributes.
-        return 0
+        return 0, 0
+
+
+def _check_mark(window):
+    """Return a check mark the window's encoding can draw."""
+    try:
+        "✓".encode(window.encoding)
+    except (UnicodeEncodeError, LookupError):
+        return "[ok]"
+    return "✓"
 
 
 class ListCursor:
@@ -2477,7 +2490,7 @@ class _PackageSelector:
         self.stdscr = stdscr
         self.package_state = package_state
         self.allow_back = allow_back
-        self.hint_attr = _init_curses_colors()
+        self.hint_attr = _init_curses_colors()[0]
         self.selected = set()
         self.nav = ListCursor()
 
@@ -2562,37 +2575,66 @@ def interactive_select(stdscr, package_state, allow_back=False):
     return _PackageSelector(stdscr, package_state, allow_back).run()
 
 
-def interactive_select_env(stdscr, env_names):
-    """Curses-based selector for conda environment names."""
-    hint_attr = _init_curses_colors()
-    nav = ListCursor()
-    total = len(env_names)
-    list_top = 3
-    while True:
-        stdscr.clear()
-        height, width = stdscr.getmaxyx()
+class _EnvironmentSelector:
+    """Curses list of conda environments to pick one from."""
+
+    LIST_TOP = 3
+
+    def __init__(self, stdscr, env_names, up_to_date):
+        self.stdscr = stdscr
+        self.env_names = env_names
+        self.up_to_date = up_to_date
+        self.hint_attr, self.ok_attr = _init_curses_colors()
+        self.mark = _check_mark(stdscr)
+        self.nav = ListCursor()
+
+    def run(self):
+        """Return the chosen environment name, or None to quit."""
+        while True:
+            visible = self.draw()
+            key = self.stdscr.getch()
+            if key in (ord("q"), 27):
+                return None
+            if key in (10, 13, curses.KEY_ENTER):
+                return self.env_names[self.nav.cursor]
+            self.nav.navigate(key, len(self.env_names), visible)
+
+    def draw(self):
+        """Paint one frame; return the visible row count."""
+        self.stdscr.clear()
+        height, width = self.stdscr.getmaxyx()
         safe_w = max(1, width - 1)
-        stdscr.addnstr(0, 0, " Select a conda environment", safe_w, curses.A_BOLD)
-        stdscr.addnstr(
-            1, 0, " [UP/DOWN] Move  [ENTER] Select  [q] Quit", safe_w, hint_attr
+        self.stdscr.addnstr(0, 0, " Select a conda environment", safe_w, curses.A_BOLD)
+        self.stdscr.addnstr(
+            1, 0, " [UP/DOWN] Move  [ENTER] Select  [q] Quit", safe_w, self.hint_attr
         )
-        stdscr.addnstr(2, 0, "-" * safe_w, safe_w)
+        self.stdscr.addnstr(2, 0, "-" * safe_w, safe_w)
 
-        visible = max(height - list_top, 1)
-        nav.follow(visible)
-        for offset in range(max(0, min(visible, total - nav.scroll))):
-            idx = nav.scroll + offset
-            attr = curses.A_REVERSE if idx == nav.cursor else 0
-            line = f"  {env_names[idx]}".ljust(safe_w)
-            stdscr.addnstr(list_top + offset, 0, line, safe_w, attr)
+        visible = max(height - self.LIST_TOP, 1)
+        self.nav.follow(visible)
+        shown = self.env_names[self.nav.scroll : self.nav.scroll + visible]
+        for offset, name in enumerate(shown):
+            attr = (
+                curses.A_REVERSE if self.nav.scroll + offset == self.nav.cursor else 0
+            )
+            line = f"  {name}"
+            if name in self.up_to_date:
+                line += f" {self.mark}"
+                attr |= self.ok_attr
+            self.stdscr.addnstr(
+                self.LIST_TOP + offset, 0, line.ljust(safe_w), safe_w, attr
+            )
+        self.stdscr.refresh()
+        return visible
 
-        stdscr.refresh()
-        key = stdscr.getch()
-        if key in (ord("q"), 27):
-            return None
-        if key in (10, 13, curses.KEY_ENTER):
-            return env_names[nav.cursor]
-        nav.navigate(key, total, visible)
+
+def interactive_select_env(stdscr, env_names, up_to_date=frozenset()):
+    """Curses-based selector for conda environment names.
+
+    Environments in ``up_to_date`` were found to have nothing to update
+    earlier in this run and are shown in green with a check mark.
+    """
+    return _EnvironmentSelector(stdscr, env_names, up_to_date).run()
 
 
 def _conda_json(conda, args, action):
@@ -6792,6 +6834,7 @@ class _UpdateTarget:
     prefix: str
     fixed: bool
     env_key: str = dataclasses.field(init=False)
+    up_to_date: bool = dataclasses.field(default=False, init=False)
 
     def __post_init__(self):
         self.env_key = str(Path(self.prefix).resolve())
@@ -6810,7 +6853,7 @@ def _fixed_environment(args, environments, root_prefix):
     return fixed
 
 
-def _choose_environment(selectable, environments):
+def _choose_environment(selectable, environments, up_to_date):
     """Let the user pick an environment; None when they quit."""
     if not sys.stdin.isatty() or not sys.stdout.isatty():
         raise UpdaterError(
@@ -6818,7 +6861,7 @@ def _choose_environment(selectable, environments):
             "environments: " + ", ".join(selectable)
         )
     try:
-        env_name = curses.wrapper(interactive_select_env, selectable)
+        env_name = curses.wrapper(interactive_select_env, selectable, up_to_date)
     except curses.error as exc:
         raise UpdaterError(
             f"Failed to initialize environment selector ({exc}). "
@@ -7105,6 +7148,7 @@ def _update_environment(target, root_prefix):
 
     found = _find_outdated(target)
     if found is None:
+        target.up_to_date = True
         return _another_environment_wanted(target)
     packages, from_cache, live = found
     if args.all or args.packages:
@@ -7148,8 +7192,12 @@ def main():
         )
 
     fixed_environment = _fixed_environment(args, environments, root_prefix)
+    # Remembered for this run only; the next run scans every environment anew.
+    up_to_date = set()
     while True:
-        chosen = fixed_environment or _choose_environment(selectable, environments)
+        chosen = fixed_environment or _choose_environment(
+            selectable, environments, up_to_date
+        )
         if chosen is None:
             print("No environment selected. Exiting.")
             return
@@ -7157,6 +7205,10 @@ def main():
         target = _UpdateTarget(args, env_name, prefix, fixed=bool(fixed_environment))
         if not _update_environment(target, root_prefix):
             return
+        if target.up_to_date:
+            up_to_date.add(env_name)
+        else:
+            up_to_date.discard(env_name)
 
 
 def report_fatal(label, *details, lead=""):
