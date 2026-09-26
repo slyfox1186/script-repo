@@ -1060,9 +1060,8 @@ class DownloadProgress(CountedProgress):
         pip downloads each wheel to a temporary file and only copies it into
         ``--dest`` once it is complete, so a counter based on the destination
         alone reads zero for the whole of a multi-gigabyte fetch.  Reading the
-        child's open files gives a live figure instead.  This is advisory and
-        best-effort: where /proc is unavailable the counter simply advances once
-        per finished wheel.
+        child's open files gives a live figure instead.  This is advisory: where
+        /proc is unavailable the counter simply advances once per finished wheel.
         """
         largest = 0
         for name, handle in open_file_names(self.pid):
@@ -1129,8 +1128,9 @@ class InstallProgress(CountedProgress):
     def _inflight_label(self):
         """Name the package whose wheel the child currently holds open."""
         for name, _ in open_file_names(self.pid):
-            if self._labels.get(name):
-                return self._labels[name]
+            label = self._labels.get(name)
+            if label:
+                return label
         return ""
 
     def _measure(self):
@@ -1184,8 +1184,11 @@ class PackageScanProgress:
         }
 
     def update(self, **changes):
-        """Record the scan's ``phase`` (the stage shown), ``scope`` (installed
-        distributions covered) or ``found`` (eligible updates)."""
+        """Record any of the scan's measured facts.
+
+        ``phase`` is the stage shown, ``scope`` the installed distributions
+        covered, and ``found`` the eligible updates.
+        """
         with self._lock:
             self._state.update(changes)
 
@@ -1324,12 +1327,7 @@ def wheel_filename_from_url(url):
 
 
 def secure_directory(path):
-    """Create a private, non-symlinked, owner-only directory.
-
-    Every updater-owned directory (cache root, locks, transactions) needs the
-    same guarantees, so the checks live in one place instead of being repeated
-    with slightly different strictness.
-    """
+    """Create a private, non-symlinked, owner-only directory."""
     path = Path(path)
     if path.is_symlink():
         raise UpdaterError(f"Refusing symlinked updater directory {path}.")
@@ -1376,6 +1374,7 @@ def write_json_atomic(
             handle.flush()
             os.fsync(handle.fileno())
         os.replace(tmp, path)
+        tmp = None  # The name now belongs to ``path``; nothing to clean up.
         _fsync_directory(path.parent)
     finally:
         if tmp is not None:
@@ -1454,9 +1453,8 @@ def load_cache():
     try:
         with open(CACHE_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
-    except FileNotFoundError:
-        return empty
-    except (OSError, json.JSONDecodeError):
+    # ValueError covers both malformed JSON and bytes that are not UTF-8.
+    except (OSError, ValueError):
         return empty
 
     if not isinstance(data, dict) or data.get("version") != CACHE_VERSION:
@@ -1559,6 +1557,26 @@ def set_cached_holds(prefix, holds):
     cache = load_cache()
     cache["holds"][str(prefix)] = holds
     save_cache(cache)
+
+
+def prune_stale_cache():
+    """Drop cached scans and holds of environments whose prefix is gone.
+
+    Entries are keyed by absolute prefix, so a deleted or renamed environment
+    would otherwise stay in the cache forever.  An environment recreated at
+    the same path is simply scanned again.
+    """
+    cache = load_cache()
+    kept = {
+        section: {
+            prefix: entry
+            for prefix, entry in cache[section].items()
+            if Path(prefix).is_absolute() and Path(prefix).is_dir()
+        }
+        for section in ("envs", "holds")
+    }
+    if any(kept[section] != cache[section] for section in kept):
+        save_cache({**cache, **kept})
 
 
 def _local_build(version):
@@ -2084,8 +2102,13 @@ def load_conda_ownership(prefix):
         try:
             raw = record_path.read_bytes()
             record = json.loads(raw)
-        except (OSError, json.JSONDecodeError) as exc:
+        # ValueError covers both malformed JSON and bytes that are not UTF-8.
+        except (OSError, ValueError) as exc:
             raise UpdaterError(f"Invalid conda record {record_path}: {exc}") from exc
+        if not isinstance(record, dict):
+            raise UpdaterError(
+                f"Invalid conda record {record_path}: not a JSON object."
+            )
         digest.update(record_path.name.encode("utf-8"))
         digest.update(b"\0")
         digest.update(raw)
@@ -2322,6 +2345,7 @@ def refresh_packages_background(env_key, prefix, package_state, progress):
     """Background refresh: rescan env, update cache, and mark if list changed."""
     try:
         fresh_packages = scan_outdated_packages(prefix, progress=progress)
+        set_cached_packages(env_key, fresh_packages)
     # A thread boundary must publish every failure, or the selector would wait
     # on a scan that never reports back.
     except Exception as exc:  # noqa: BLE001  # pylint: disable=broad-exception-caught
@@ -2330,8 +2354,6 @@ def refresh_packages_background(env_key, prefix, package_state, progress):
             package_state["scan_done"] = True
             package_state["scan_error"] = str(exc) or exc.__class__.__name__
         return
-
-    set_cached_packages(env_key, fresh_packages)
 
     with package_state["lock"]:
         old_signature = package_signature(package_state["packages"])
@@ -2370,7 +2392,6 @@ def _init_curses_colors():
         curses.init_pair(3, curses.COLOR_GREEN, -1)
         return curses.color_pair(2), curses.color_pair(3) | curses.A_BOLD
     except curses.error:
-        # Some terminals don't support colors; keep rendering without color attributes.
         return 0, 0
 
 
@@ -2511,7 +2532,9 @@ class _PackageSelector:
         total = len(packages) + 2  # update all + packages + confirm
         self.nav.cursor = min(self.nav.cursor, total - 1)
 
-        self.stdscr.clear()
+        # erase(), not clear(): clear() forces a full repaint on every refresh,
+        # which flickers at this loop's 150 ms redraw rate.
+        self.stdscr.erase()
         height, width = self.stdscr.getmaxyx()
         safe_w = max(1, width - 1)
         self._draw_header(len(packages), _scan_status(state, safe_w), safe_w)
@@ -2533,7 +2556,7 @@ class _PackageSelector:
         self.stdscr.addnstr(
             0,
             0,
-            f" {package_count} package(s) eligible for update",
+            f" {count_label(package_count, 'package')} eligible for update",
             safe_w,
             curses.A_BOLD,
         )
@@ -2583,7 +2606,7 @@ def interactive_select_env(stdscr, env_names, up_to_date=frozenset()):
     nav = ListCursor()
     list_top = 3
     while True:
-        stdscr.clear()
+        stdscr.erase()
         height, safe_w = stdscr.getmaxyx()
         safe_w = max(1, safe_w - 1)
         stdscr.addnstr(0, 0, " Select a conda environment", safe_w, curses.A_BOLD)
@@ -2862,22 +2885,6 @@ def print_conda_inconsistencies(issues):
     print("    fatal. Any change that makes it worse is undone automatically.")
 
 
-def damaged_conda_packages(lines):
-    """Extract conda package names from a doctor report's problem lines."""
-    names = []
-    for raw_line in lines:
-        line = raw_line.strip()
-        head, separator, count = line.rpartition(":")
-        if not separator or not count.strip().isdigit():
-            continue
-        # "wheel-0.47.0-py313h06a4308_0: 6" -> "wheel"
-        parts = head.strip().rsplit("-", 2)
-        name = parts[0] if len(parts) == 3 else head.strip()
-        if name and name not in names:
-            names.append(name)
-    return names
-
-
 # Every check `conda doctor` runs prints one headline containing its own
 # subject word, so the word identifies which check spoke.
 DOCTOR_CHECK_KEYWORDS = (
@@ -2894,8 +2901,7 @@ def doctor_sections(snapshot):
     interchangeable: altered or missing files mean Conda's own files are
     already damaged and only Conda can put them back, while an inconsistency is
     a statement about dependency metadata with no damaged file anywhere.
-    Treating any cross in the report as file damage reports the second as the
-    first, which is simply untrue and sends the reader after the wrong repair.
+    Reporting an inconsistency as file damage sends the reader after the wrong repair.
     """
     sections = []
     for raw_line in snapshot.splitlines():
@@ -3052,11 +3058,13 @@ def pip_replaced_conda_packages(prefix, conda_names):
 
 def explain_conda_file_damage(sections, snapshot):
     """Explain Conda file damage found where it cannot be repaired right now."""
-    damaged = []
-    for section in sections:
-        for name in damaged_conda_packages(section["detail"]):
-            if name not in damaged:
-                damaged.append(name)
+    # "wheel-0.47.0-py313h06a4308_0" -> "wheel"
+    damaged = dict.fromkeys(
+        dist.rsplit("-", 2)[0]
+        for dist in damaged_conda_dists(
+            line for section in sections for line in section["detail"]
+        )
+    )
     return (
         "Conda reports altered or missing files in "
         f"{', '.join(damaged) or 'one or more packages'}.\n\n"
@@ -3468,8 +3476,8 @@ def _active_extras(parsed, marker_env):
 
     An extra-gated requirement constrains the install only when some package
     asks for that extra.  torch requires `cuda-toolkit[cublas,...]`, and the
-    extras are what pin every nvidia-* library, so ignoring them left most
-    CUDA holds unexplained.  Extras can enable further extras; iterate.
+    extras are what pin every nvidia-* library, so without them most
+    CUDA holds go unexplained.  Extras can enable further extras; iterate.
     """
     active = {}
     changed = True
@@ -3858,7 +3866,7 @@ class InstalledRequirements:
         The newest wheel was found ignoring dependencies, so it can need a
         version of another package the environment keeps (sentence-transformers
         6.1.0 needs transformers>=5 while vllm holds transformers<5); pinned to
-        it, the whole solve was impossible, while a range lets pip hold that
+        it, the whole solve is impossible, while a range lets pip hold that
         selection back or stop at an older release.  The floor stops the plan
         from downgrading a selection.  Extras another package requests stay
         installed.
@@ -4404,11 +4412,28 @@ def _split_rebuilt(found, inventory):
 
 def _plan_pins(report):
     """Pin every package a pip report plans at its planned version."""
-    items = [item.get("metadata") or {} for item in report.get("install", [])]
+    items = [
+        item.get("metadata") or {}
+        for item in report_install_items(
+            report, "pip's resolver report did not contain an install list."
+        )
+    ]
     return (
         [f"{item.get('name')}=={item.get('version')}" for item in items],
         {canonicalize_name(str(item.get("name"))) for item in items},
     )
+
+
+def _repair_side(option, options):
+    """Name what one of several repair options updates, for its step label.
+
+    A version conflict can be repaired from either side; without this the
+    two solves log identical lines.
+    """
+    if len(options) < 2:
+        return ""
+    moves = ", ".join(f"{name} to {version}" for _, (name, version) in option.packages)
+    return f" · update {moves}"
 
 
 def _grow_plan(solve, base, units):
@@ -4436,14 +4461,11 @@ def _grow_plan(solve, base, units):
         for position, (key, label, options) in pending:
             for option in options:
                 pins, fixed = _plan_pins(report)
-                # A conflict can be repaired from either side; name the side
-                # each solve tries, or its log line repeats the previous one.
-                moves = ", ".join(f"{n} to {v}" for _, (n, v) in option.packages)
-                via = f" · update {moves}" if len(options) > 1 else ""
                 try:
                     report = solve(
                         (dict(option.packages), [*pins, *option.specs], fixed),
-                        f"[{position}/{len(units)}] {label}{via}{retry}",
+                        f"[{position}/{len(units)}] {label}"
+                        f"{_repair_side(option, options)}{retry}",
                     )
                 except UnsolvableError:
                     continue
@@ -5158,9 +5180,9 @@ def pip_install_report(
 
 
 def report_install_items(report, message):
-    """Return a pip report's install list, or raise ``message``."""
-    items = report.get("install", [])
-    if not isinstance(items, list):
+    """Return a pip report's install list of objects, or raise ``message``."""
+    items = report.get("install", []) if isinstance(report, dict) else None
+    if not isinstance(items, list) or not all(isinstance(item, dict) for item in items):
         raise UpdaterError(message)
     return items
 
@@ -5305,7 +5327,7 @@ def copy_verified_cache_body(body, target, expected_sha256):
         os.replace(temporary, target)
         return True
     except OSError:
-        with contextlib.suppress(FileNotFoundError, OSError):
+        with contextlib.suppress(OSError):
             temporary.unlink()
         return False
 
@@ -5367,7 +5389,7 @@ def download_with_aria2(artifacts, destination, progress):
         for item in artifacts:
             target = Path(destination) / item["filename"]
             for partial in (target, Path(str(target) + ".aria2")):
-                with contextlib.suppress(FileNotFoundError, OSError):
+                with contextlib.suppress(OSError):
                     partial.unlink()
         print(
             " ",
@@ -6245,36 +6267,220 @@ def update_packages(prefix, env_label, names, expected_plan):
         apply_transaction(transaction_dir, manifest)
 
 
+# ─── Help screen ─────────────────────────────────────────────────────────────
+# The same block is pasted into each standalone script in this folder; keep the copies identical.
+
+_HELP_MAX_WIDTH = 100
+_HELP_FLAG_MAX_WIDTH = 28
+_HELP_DEFAULT_RE = re.compile(r'\s*(\(default: [^)]*\))$')
+_HELP_STYLES = {
+    'heading': '\033[1m\033[96m',
+    'flag': '\033[92m',
+    'value': '\033[93m',
+    'bold': '\033[1m',
+    'dim': '\033[2m',
+}
+
+
+def _help_color_enabled() -> bool:
+    """Color help on a terminal unless NO_COLOR, TERM=dumb or --no-color opts out; FORCE_COLOR opts in."""
+    if os.environ.get('NO_COLOR') or '--no-color' in sys.argv:
+        return False
+    if os.environ.get('FORCE_COLOR'):
+        return True
+    return sys.stdout.isatty() and os.environ.get('TERM') != 'dumb'
+
+
+class HelpParser(argparse.ArgumentParser):
+    """ArgumentParser with a short usage line and a grouped, colored help screen.
+
+    Sections are the parser's argument groups, in order. ``examples`` holds
+    ``(what it does, arguments after the program name)`` pairs. Automatic -h is
+    off, so add ``-h/--help`` with ``action='help'`` to the group it belongs in.
+    """
+
+    def __init__(self, *args, title: str, version: str = '', examples=(), **kwargs):
+        super().__init__(*args, add_help=False, **kwargs)
+        self.help_title = title
+        self.help_version = version
+        self.help_examples = examples
+
+    def _positional_usage(self) -> list[str]:
+        parts = []
+        for action in self._actions:
+            if action.option_strings or action.help == argparse.SUPPRESS:
+                continue
+            name = action.metavar or action.dest.upper()
+            parts.append({'?': f'[{name}]', '*': f'[{name} ...]', '+': f'{name} ...'}.get(action.nargs, name))
+        return parts
+
+    def format_usage(self) -> str:
+        return f"usage: {' '.join([self.prog, '[OPTIONS]', *self._positional_usage()])}\n"
+
+    def error(self, message: str):
+        self.print_usage(sys.stderr)
+        self.exit(2, f"{self.prog}: error: {message}\nRun '{self.prog} --help' to see all options.\n")
+
+    def format_help(self) -> str:
+        use_color = _help_color_enabled()
+
+        def paint(text: str, style: str) -> str:
+            return f"{_HELP_STYLES[style]}{text}\033[0m" if use_color and text else text
+
+        def help_text(action) -> str:
+            text = action.help or ''
+            return text % {**vars(action), 'prog': self.prog} if '%' in text else text
+
+        width = min(shutil.get_terminal_size((_HELP_MAX_WIDTH, 24)).columns, _HELP_MAX_WIDTH)
+        # Action groups are argparse's only record of section membership and order.
+        sections = [
+            (group.title, [a for a in group._group_actions
+                           if a.option_strings and a.help != argparse.SUPPRESS])
+            for group in self._action_groups
+        ]
+        sections = [(title, actions) for title, actions in sections if actions]
+        all_options = [a for _, actions in sections for a in actions]
+
+        def split_flags(action) -> tuple[str, str, str]:
+            shorts = [o for o in action.option_strings if not o.startswith('--')]
+            longs = [o for o in action.option_strings if o.startswith('--')]
+            short = ', '.join(shorts) + (', ' if shorts and longs else '')
+            metavar = ''
+            if action.nargs != 0:
+                metavar = action.metavar or action.dest.upper()
+                if action.nargs in ('+', '*'):
+                    metavar += '...'
+                elif action.nargs == '?':
+                    metavar = f'[{metavar}]'
+            return short, ', '.join(longs), metavar
+
+        short_col = max((len(split_flags(a)[0]) for a in all_options), default=0)
+
+        def flag_cell(action) -> tuple[str, str]:
+            short, long, metavar = split_flags(action)
+            plain = short.rjust(short_col) + long + (f" {metavar}" if metavar else '')
+            colored = (' ' * (short_col - len(short)) + paint(short, 'flag')
+                       + paint(long, 'flag')
+                       + (f" {paint(metavar, 'value')}" if metavar else ''))
+            return plain, colored
+
+        flag_width = min(max((len(flag_cell(a)[0]) for a in all_options), default=0),
+                         _HELP_FLAG_MAX_WIDTH)
+        help_col = 2 + flag_width + 3
+        # Too narrow for two columns: put each description under its flags.
+        stacked = width - help_col < 24
+        text_col = short_col + 4 if stacked else help_col
+        text_width = max(width - text_col, 20)
+
+        def row(plain: str, colored: str, text: str) -> list[str]:
+            match = _HELP_DEFAULT_RE.search(text)
+            body = text[:match.start()] if match else text
+            lines = textwrap.wrap(body, text_width) or ['']
+            if match:
+                default = match.group(1)
+                if len(lines[-1]) + 1 + len(default) <= text_width:
+                    lines[-1] = f"{lines[-1]} {paint(default, 'dim')}".lstrip()
+                else:
+                    lines.append(paint(default, 'dim'))
+            indent = ' ' * text_col
+            if stacked or len(plain) > flag_width:
+                return [f"  {colored}"] + [indent + line for line in lines]
+            first = f"  {colored}{' ' * (help_col - 2 - len(plain))}{lines[0]}"
+            return [first] + [indent + line for line in lines[1:]]
+
+        def heading(title: str) -> list[str]:
+            return ['', paint(title.upper(), 'heading')]
+
+        out = [paint(self.help_title, 'heading')
+               + (paint(f" v{self.help_version}", 'dim') if self.help_version else '')]
+        if self.description:
+            out += textwrap.wrap(self.description, width)
+
+        out += heading("Usage")
+        out.append(' '.join([f"  {paint(self.prog, 'bold')}", paint('[OPTIONS]', 'flag'),
+                             *(paint(p, 'value') for p in self._positional_usage())]))
+        for action in self._actions:
+            if not action.option_strings and action.help != argparse.SUPPRESS:
+                name = action.metavar or action.dest.upper()
+                out.append('')
+                out += row(name, paint(name, 'value'), help_text(action))
+
+        for title, actions in sections:
+            out += heading(title)
+            for action in actions:
+                out += row(*flag_cell(action), help_text(action))
+
+        if self.help_examples:
+            out += heading("Examples")
+            for what, cmd_args in self.help_examples:
+                out.append(f"  {paint('# ' + what, 'dim')}")
+                out.append(f"  {paint('$', 'dim')} {paint(self.prog, 'bold')} {cmd_args}".rstrip())
+        out.append('')
+        return '\n'.join(out)
+
+
+# (what it does, arguments after the program name)
+HELP_EXAMPLES = [
+    ("Pick an environment, then packages, from menus", ""),
+    ("Pick packages in the 'myenv' environment", "myenv"),
+    ("Preview every update without installing anything", "myenv --all --dry-run"),
+    ("Update everything without being asked to confirm", "myenv --all -y"),
+    ("Update just two packages", "myenv --packages numpy,requests"),
+]
+
+
 def parse_args():
     """Parse command-line arguments."""
-    parser = argparse.ArgumentParser(
-        description="Interactive/non-interactive pip package updater for conda environments."
+    parser = HelpParser(
+        title="Conda pip Updater",
+        description=(
+            "Safely update pip- and uv-installed packages in a named conda environment. "
+            "Never touches base or conda-owned packages, and every update can be rolled back."
+        ),
+        examples=HELP_EXAMPLES,
     )
-    parser.add_argument("env_name", nargs="?", help="Conda environment name")
-    group = parser.add_mutually_exclusive_group()
-    group.add_argument(
+    parser.add_argument(
+        "env_name",
+        nargs="?",
+        metavar="ENV",
+        help="Conda environment to update. Leave it out to pick one from a menu",
+    )
+    what = parser.add_argument_group("What to update (pick one, or use the menu)")
+    choice = what.add_mutually_exclusive_group()
+    choice.add_argument(
         "--all",
         action="store_true",
-        help="Update all outdated packages without opening the interactive selector",
+        help="Update every outdated package, skipping the selection menu",
     )
-    group.add_argument(
+    choice.add_argument(
         "--packages",
-        metavar="PKG1,PKG2",
-        help="Comma-separated package names to update (non-interactive)",
+        metavar="NAMES",
+        help="Update only these packages, comma-separated, e.g. numpy,requests",
     )
-    for flags, help_text in (
-        (
-            ("-y", "--yes"),
-            "Skip the final confirmation prompt in non-interactive modes",
-        ),
-        (("--refresh",), "Ignore cache and force a fresh package scan"),
-        (
-            ("--dry-run",),
-            "Preview updates and recommended next steps without changing packages",
-        ),
-        (("--details",), "Show technical paths and full package artifact checksums"),
-    ):
-        parser.add_argument(*flags, action="store_true", help=help_text)
+    how = parser.add_argument_group("How to run")
+    how.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show what would be updated and what to run next, without changing anything",
+    )
+    how.add_argument(
+        "-y",
+        "--yes",
+        action="store_true",
+        help="Skip the final confirmation (with --all or --packages)",
+    )
+    how.add_argument(
+        "--refresh",
+        action="store_true",
+        help="Ignore the cached scan and check for updates again",
+    )
+    how.add_argument(
+        "--details",
+        action="store_true",
+        help="Also show file paths and full package checksums",
+    )
+    general = parser.add_argument_group("General")
+    general.add_argument("-h", "--help", action="help", help="Show this help and exit")
     return parser.parse_args()
 
 
@@ -6524,7 +6730,7 @@ def print_dry_run_result(env_name, args, selected, plan, baseline=None):
     untouched = "Conda-managed packages and core update tools will stay untouched."
     if repair_pending:
         untouched = "Apart from that repair, " + untouched[0].lower() + untouched[1:]
-    announce("OK", f"{untouched}")
+    announce("OK", untouched)
     announce(
         "INFO", "Package files are downloaded and inspected only during a real update."
     )
@@ -6664,7 +6870,8 @@ def print_update_success(env_name, plan, before_conflicts=(), after_conflicts=()
             announce(
                 "OK",
                 f"The {count_label(len(before), 'conflict')} that existed "
-                "before this update is now resolved.",
+                f"before this update {'is' if len(before) == 1 else 'are'} now "
+                "resolved.",
             )
     announce("OK", "Conda-managed files and environment health are unchanged.")
     print(
@@ -6826,11 +7033,10 @@ def _start_background_refresh(target, package_state):
 def _choose_interactive(target, packages, from_cache):
     """Run the selector; return ``(selected, packages, live)`` or BACK_TO_ENV."""
     if not sys.stdin.isatty() or not sys.stdout.isatty():
-        print(
-            paint("Error:", "error"), "interactive selection requires a TTY terminal."
+        raise UpdaterError(
+            "Interactive selection requires a TTY terminal; use --all or "
+            "--packages for non-interactive usage."
         )
-        print("Use --all or --packages for non-interactive usage.")
-        sys.exit(1)
 
     package_state = {
         "lock": threading.Lock(),
@@ -6848,7 +7054,9 @@ def _choose_interactive(target, packages, from_cache):
             target, package_state
         )
 
-    print(f"Opening the selector with {len(packages)} available update(s)...")
+    print(
+        f"Opening the selector with {count_label(len(packages), 'available update')}..."
+    )
     try:
         selected = curses.wrapper(interactive_select, package_state, not target.fixed)
     except curses.error as exc:
@@ -6938,12 +7146,12 @@ def _unselected(packages, selected):
 
 def _confirmed(env_name):
     if not sys.stdin.isatty():
-        print(
-            paint("Error:", "error"),
-            "confirmation prompt requires a TTY. Re-run with --yes.",
-        )
         raise UpdaterError("Confirmation requires a TTY; re-run with --yes.")
-    answer = input(f"\nApply these changes to '{env_name}'? [y/N] ")
+    try:
+        answer = input(f"\nApply these changes to '{env_name}'? [y/N] ")
+    except EOFError:  # Ctrl-D answers no, like any other non-"y" reply.
+        print()
+        return False
     return answer.strip().lower() == "y"
 
 
@@ -7048,7 +7256,7 @@ def _update_environment(target, root_prefix):
         return False
     # A list from a scan seconds ago in this same run is not rescanned: that
     # only repeats a network round trip (measured at ~2.6s, about a quarter of
-    # total runtime).  The authoritative time-of-use checks are unchanged:
+    # total runtime).  Time-of-use safety does not depend on it:
     # resolve_update_plan queries pip live, and update_packages re-resolves
     # under the environment lock and refuses to proceed if the plan moved.
     return _plan_and_apply(target, selected, packages if live else None, baseline)
@@ -7059,8 +7267,9 @@ def main():
     args = parse_args()
     paint.configure(sys.stdout)
     install_termination_handlers()
-    with contextlib.suppress(UpdaterError):
-        prune_stale_locks()
+    for prune in (prune_stale_locks, prune_stale_cache):
+        with contextlib.suppress(UpdaterError):
+            prune()
 
     environments, root_prefix = get_known_environments()
     selectable = sorted(
