@@ -5304,7 +5304,14 @@ def is_index_artifact(raw_item):
 
 
 def _rollback_artifact(raw_item, expected):
-    """Validate one rollback report item against ``expected`` exact versions."""
+    """Validate one rollback report item against ``expected`` exact versions.
+
+    A yanked release is accepted here, unlike in the update plan: the rollback
+    copy restores the version that is already installed, pip honours an exact
+    ``==`` pin on a yanked release, and the file is still pinned by SHA-256.
+    Refusing it would block every update of a package whose installed release
+    was later withdrawn, which is exactly when updating matters most.
+    """
     metadata = raw_item.get("metadata") or {}
     name = str(metadata.get("name") or "")
     version = str(metadata.get("version") or "")
@@ -5314,9 +5321,13 @@ def _rollback_artifact(raw_item, expected):
             f"pip selected {name} {version}, not rollback version {expected_version}."
         )
     url, sha256 = report_download(raw_item)
-    if not is_index_artifact(raw_item) or raw_item.get("is_yanked") or not sha256:
+    if not is_index_artifact(raw_item):
         raise UpdaterError(
-            f"pip did not select a reproducible rollback wheel for {name}."
+            f"pip did not select a package-index rollback wheel for {name} {version}."
+        )
+    if not sha256:
+        raise UpdaterError(
+            f"The rollback wheel for {name} {version} lacks a SHA-256 digest."
         )
     return {
         "name": expected_name,
@@ -5324,6 +5335,7 @@ def _rollback_artifact(raw_item, expected):
         "sha256": sha256,
         "url": url,
         "filename": wheel_filename_from_url(url),
+        "yanked": bool(raw_item.get("is_yanked")),
     }
 
 
@@ -6155,6 +6167,17 @@ def _download_rollback_wheels(prefix, old_versions, old_dir):
     if old_specs:
         announce("INFO", "Locating exact rollback wheels...", flush=True)
     old_artifacts = resolve_exact_download_artifacts(prefix, old_specs)
+    withdrawn = [item for item in old_artifacts if item.get("yanked")]
+    if withdrawn:
+        announce(
+            "INFO",
+            "Installed "
+            + ", ".join(f"{item['name']} {item['version']}" for item in withdrawn)
+            + (" was" if len(withdrawn) == 1 else " were")
+            + " withdrawn (yanked) from the package index; the exact copy is"
+            " still used as the rollback copy.",
+            flush=True,
+        )
     download_exact_wheels(
         prefix,
         old_specs,
