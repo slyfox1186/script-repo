@@ -12,6 +12,7 @@ cannot strand the install behind a password prompt.
 from __future__ import annotations
 
 import argparse
+import fcntl
 import os
 import glob
 import re
@@ -28,7 +29,14 @@ from typing import Any, Sequence
 
 REPO_URL = "https://github.com/ggml-org/llama.cpp"
 REPO_DIR = "llama.cpp"
+BUILD_SUBDIR = "build"
 INSTALL_DIR = "/usr/local/bin"
+
+# Written inside .git of every clone this script makes, listing the commits it
+# checked out. Only a checkout carrying it, with no changes beyond the build
+# directory and no commits of its own, is treated as disposable. Keeping it in
+# .git leaves the working tree status clean.
+CHECKOUT_MARKER = "llama-cpp-installer-checkout"
 
 SYSTEM_PACKAGES = (
     "build-essential",
@@ -319,19 +327,23 @@ def capture(
     return str(result.stdout or "").strip()
 
 
-def capture_all(
-    cmd: Sequence[str], *, env: dict[str, str] | None = None, quiet: bool = False
-) -> str:
-    """Run a command and return stdout and stderr together.
+def smoke_test(cmd: Sequence[str], *, env: dict[str, str] | None = None) -> str:
+    """Run a built binary and return stdout and stderr together.
 
     Some llama.cpp binaries print version and device banners on stderr, so a
     stdout-only read would come back empty. Output is not echoed here; callers
-    format it, which avoids printing the same block twice.
+    format it, which avoids printing the same block twice. A non-zero exit
+    (a loader failure, a crash) raises, so it can never pass as a verified build.
     """
-    result = run(
-        cmd, env=env, capture=True, check=False, quiet=quiet, show_output=False
-    )
-    return ((result.stdout or "") + (result.stderr or "")).strip()
+    result = run(cmd, env=env, capture=True, check=False, show_output=False)
+    output = ((result.stdout or "") + (result.stderr or "")).strip()
+    if result.returncode != 0:
+        lines = output.splitlines()
+        detail = "\n".join(f"  {line}" for line in lines[-10:]) or "  (no output)"
+        raise RuntimeError(
+            f"{shlex.join(cmd)} exited with status {result.returncode}:\n{detail}"
+        )
+    return output
 
 
 def require_executable(command: str, *, env: dict[str, str] | None = None) -> str:
@@ -625,14 +637,36 @@ def _make_toolchain(
     )
 
 
+def _which_non_shim(name: str, search_path: str) -> str | None:
+    """First executable called name on search_path that is not a ccache shim.
+
+    shutil.which stops at the first hit, and with /usr/lib/ccache ahead of
+    /usr/bin (Ubuntu's documented ccache setup) that hit is always the shim,
+    hiding the real compiler later on PATH. Empty components are skipped
+    because they mean the current directory.
+    """
+    for directory in search_path.split(os.pathsep):
+        if not directory:
+            continue
+        candidate = os.path.join(directory, name)
+        if (
+            os.path.isfile(candidate)
+            and os.access(candidate, os.X_OK)
+            and not _is_ccache_shim(candidate)
+        ):
+            return candidate
+    return None
+
+
 def installed_gcc_toolchains(*, env: dict[str, str]) -> list[GccToolchain]:
     """Find usable GCC toolchains, newest major version first."""
     search_path = env.get("PATH", os.defpath)
     version_pattern = re.compile(r"^gcc-(\d+)$")
     installed_majors: set[int] = set()
 
-    for directory_name in search_path.split(os.pathsep):
-        directory = directory_name or os.curdir
+    for directory in search_path.split(os.pathsep):
+        if not directory:
+            continue
         try:
             entries = os.scandir(directory)
         except OSError:
@@ -650,8 +684,8 @@ def installed_gcc_toolchains(*, env: dict[str, str]) -> list[GccToolchain]:
 
     toolchains: list[GccToolchain] = []
     for major in sorted(installed_majors, reverse=True):
-        cc = shutil.which(f"gcc-{major}", path=search_path)
-        cxx = shutil.which(f"g++-{major}", path=search_path)
+        cc = _which_non_shim(f"gcc-{major}", search_path)
+        cxx = _which_non_shim(f"g++-{major}", search_path)
         if cc is None or cxx is None:
             log.info(f"skipping gcc-{major}: no matching g++-{major}")
             continue
@@ -663,8 +697,8 @@ def installed_gcc_toolchains(*, env: dict[str, str]) -> list[GccToolchain]:
 
     # Some installs expose only unversioned executables, which is how a
     # hand-built GCC under /usr/local shows up.
-    cc = shutil.which("gcc", path=search_path)
-    cxx = shutil.which("g++", path=search_path)
+    cc = _which_non_shim("gcc", search_path)
+    cxx = _which_non_shim("g++", search_path)
     if cc is not None and cxx is not None:
         toolchain = _make_toolchain(
             cc, cxx, expected_major=None, env=env, label=f"unversioned gcc ({cc})"
@@ -883,15 +917,107 @@ def remote_default_branch(repo_url: str, *, env: dict[str, str]) -> str:
     raise RuntimeError(f"Could not determine default branch for {repo_url}")
 
 
-def remove_existing_repo(repo_dir: str) -> None:
-    """Remove an existing repository path before cloning."""
+def acquire_run_lock() -> int:
+    """Hold an exclusive lock on the working directory for the whole run.
+
+    Two runs from the same directory would delete and clone the same checkout
+    underneath each other. Locking the directory itself leaves no lock file
+    behind; the lock is released when the process exits.
+    """
+    fd = os.open(os.curdir, os.O_RDONLY)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        os.close(fd)
+        raise RuntimeError(
+            f"Another llama.cpp installer run is using {os.getcwd()}; "
+            "wait for it to finish."
+        ) from None
+    return fd
+
+
+def _git_output(repo_dir: str, args: Sequence[str], *, env: dict[str, str]) -> str:
+    """Run a read-only git query in repo_dir, raising RuntimeError on failure."""
+    result = run(
+        ["git", "-C", repo_dir, *args], check=False, capture=True, env=env, quiet=True
+    )
+    if result.returncode != 0:
+        stderr = (result.stderr or "").strip()
+        reason = stderr.splitlines()[-1] if stderr else f"exit status {result.returncode}"
+        raise RuntimeError(f"git {args[0]} failed: {reason}")
+    return str(result.stdout or "")
+
+
+def record_checkout(repo_dir: str, revisions: Sequence[str], *, env: dict[str, str]) -> None:
+    """Mark a checkout as created by this script and note the commits it fetched."""
+    shas = [
+        _git_output(repo_dir, ["rev-parse", "--verify", f"{rev}^{{commit}}"], env=env).strip()
+        for rev in revisions
+    ]
+    with open(os.path.join(repo_dir, ".git", CHECKOUT_MARKER), "a", encoding="utf-8") as marker:
+        marker.writelines(f"{sha}\n" for sha in shas)
+
+
+def checkout_removal_blockers(repo_dir: str, *, env: dict[str, str]) -> list[str]:
+    """Reasons an existing checkout must not be deleted; empty if it is disposable.
+
+    A marker alone only proves the directory started as this script's clone, not
+    that everything in it now is. Edits, untracked or ignored files outside the
+    build directory (models, notes), stashes and local commits all belong to
+    the user.
+    """
+    if os.path.islink(repo_dir) or not os.path.isdir(repo_dir):
+        return [f"{repo_dir} is not a plain directory"]
+    marker = os.path.join(repo_dir, ".git", CHECKOUT_MARKER)
+    if os.path.islink(marker) or not os.path.isfile(marker):
+        return [f"{repo_dir} was not created by this installer"]
+    try:
+        with open(marker, encoding="utf-8") as handle:
+            recorded = [line.strip() for line in handle if line.strip()]
+        status = _git_output(
+            repo_dir,
+            ["status", "--porcelain", "-z", "--untracked-files=normal", "--ignored=traditional"],
+            env=env,
+        )
+        # Every ref, stash included, minus what upstream and this script supplied.
+        own_commits = _git_output(
+            repo_dir, ["rev-list", "--all", "--not", "--remotes", *recorded], env=env
+        )
+    except (OSError, RuntimeError) as error:
+        return [f"could not inspect {repo_dir}: {error}"]
+
+    blockers: list[str] = []
+    changed: list[str] = []
+    for entry in status.split("\0"):
+        if not entry:
+            continue
+        code, path = entry[:2], entry[3:].rstrip("/")
+        installer_output = path == BUILD_SUBDIR or path.startswith(BUILD_SUBDIR + "/")
+        if code in ("??", "!!") and installer_output:
+            continue
+        changed.append(path or entry)
+    if changed:
+        shown = ", ".join(changed[:5]) + (" ..." if len(changed) > 5 else "")
+        blockers.append(f"{repo_dir} contains changes or files of your own: {shown}")
+    if own_commits.strip():
+        count = len(own_commits.split())
+        blockers.append(f"{repo_dir} has {plural(count, 'commit')} not on the upstream remote")
+    return blockers
+
+
+def remove_existing_repo(repo_dir: str, *, env: dict[str, str]) -> None:
+    """Delete a previous checkout of this script's, refusing anything else."""
     if not os.path.lexists(repo_dir):
         return
-    log.info(f"removing existing {repo_dir}")
-    if os.path.islink(repo_dir) or not os.path.isdir(repo_dir):
-        os.remove(repo_dir)
-    else:
-        shutil.rmtree(repo_dir)
+    blockers = checkout_removal_blockers(repo_dir, env=env)
+    if blockers:
+        reasons = "\n".join(f"  - {reason}" for reason in blockers)
+        raise RuntimeError(
+            f"Refusing to delete {os.path.abspath(repo_dir)}:\n{reasons}\n"
+            "Move it aside or run the installer from another directory."
+        )
+    log.info(f"removing previous checkout {repo_dir}")
+    shutil.rmtree(repo_dir)
 
 
 def describe_head(repo_dir: str, *, env: dict[str, str]) -> dict[str, str]:
@@ -910,17 +1036,22 @@ def describe_head(repo_dir: str, *, env: dict[str, str]) -> dict[str, str]:
         quiet=True,
     ).split(separator)
     keys = ("sha", "short_sha", "subject", "author", "authored")
-    head = dict(zip(keys, fields, strict=False))
+    head = dict(zip(keys, fields))
     for key in keys:
         head.setdefault(key, "unknown")
     return head
 
 
 def sync_repo_to_latest(repo_dir: str, repo_url: str, *, env: dict[str, str]) -> str:
-    """Clone a fresh shallow copy of the latest upstream default branch."""
-    remove_existing_repo(repo_dir)
+    """Clone a fresh shallow copy of the latest upstream default branch.
+
+    The remote is queried first so an offline run fails before the previous
+    checkout is deleted.
+    """
     branch = remote_default_branch(repo_url, env=env)
+    remove_existing_repo(repo_dir, env=env)
     run(["git", "clone", "--depth", "1", "--branch", branch, repo_url, repo_dir], env=env)
+    record_checkout(repo_dir, ["HEAD"], env=env)
     return branch
 
 
@@ -928,14 +1059,19 @@ def sync_repo_to_pr(
     repo_dir: str, repo_url: str, pr_number: int, *, env: dict[str, str]
 ) -> str:
     """Clone shallowly and check out a specific PR branch for beta testing."""
-    remove_existing_repo(repo_dir)
     ref = f"refs/pull/{pr_number}/head"
     local_branch = f"pr-{pr_number}"
+    # Confirm the PR exists (and the network works) before deleting anything.
+    if not capture(["git", "ls-remote", repo_url, ref], env=env, quiet=True):
+        raise RuntimeError(f"PR #{pr_number} was not found at {repo_url}")
+    remove_existing_repo(repo_dir, env=env)
     run(["git", "clone", "--depth", "1", repo_url, repo_dir], env=env)
+    record_checkout(repo_dir, ["HEAD"], env=env)
     run(
         ["git", "-C", repo_dir, "fetch", "--depth", "1", "origin", f"{ref}:{local_branch}"],
         env=env,
     )
+    record_checkout(repo_dir, [local_branch], env=env)
     run(["git", "-C", repo_dir, "checkout", local_branch], env=env)
     return local_branch
 
@@ -1018,6 +1154,58 @@ def install_atomically(source: str, target: str) -> None:
         raise
 
 
+def join_search_path(*path_lists: str) -> str:
+    """Join colon-separated path lists, dropping empty and repeated components.
+
+    An empty component, from an unset variable or a stray colon, means the
+    current directory to both the shell and the dynamic loader, so child
+    processes would pick up executables and libraries from wherever they run.
+    """
+    components: list[str] = []
+    for path_list in path_lists:
+        for component in path_list.split(os.pathsep):
+            if component and component not in components:
+                components.append(component)
+    return os.pathsep.join(components)
+
+
+def build_environment(cuda_home: str, base: dict[str, str]) -> dict[str, str]:
+    """The environment for build and smoke-test children, with CUDA first."""
+    env = dict(base)
+    env["CUDA_HOME"] = cuda_home
+    env["PATH"] = join_search_path(f"{cuda_home}/bin", base.get("PATH", ""))
+    env["LD_LIBRARY_PATH"] = join_search_path(
+        f"{cuda_home}/lib64", base.get("LD_LIBRARY_PATH", "")
+    )
+    return env
+
+
+def verify_binaries(bin_dir: str, *, env: dict[str, str]) -> tuple[str, list[str]]:
+    """Run the binaries in bin_dir; return (version line, devices they report).
+
+    Raises if either smoke test exits non-zero. A device list without a CUDA
+    entry is reported by the caller as a warning, since the binary itself ran.
+    """
+    version_output = smoke_test([os.path.join(bin_dir, "llama-server"), "--version"], env=env)
+    version_line = "unknown"
+    if version_output:
+        log.output(version_output, limit=6)
+        version_line = re.sub(r"^version:\s*", "", version_output.splitlines()[0].strip())
+    else:
+        log.warn("llama-server --version succeeded but printed nothing.")
+    devices = parse_devices(
+        smoke_test([os.path.join(bin_dir, "llama-cli"), "--list-devices"], env=env)
+    )
+    return version_line, devices
+
+
+def exit_status(returncode: int) -> int:
+    """Shell exit status for a failed child: 128+N when signal N killed it."""
+    if returncode < 0:
+        return 128 - returncode
+    return returncode or 1
+
+
 def parse_devices(text: str) -> list[str]:
     """Extract unique device lines from `--list-devices` output.
 
@@ -1089,23 +1277,32 @@ def main() -> None:
         raise RuntimeError(f"--jobs must be at least 1, got {args.jobs}")
 
     cuda_home = "/usr/local/cuda"
-    env = os.environ.copy()
-    env.update(
-        {
-            "CUDA_HOME": cuda_home,
-            "PATH": f"{cuda_home}/bin:{env.get('PATH', '')}:/usr/lib/x86_64-linux-gnu",
-            "LD_LIBRARY_PATH": (
-                f"{cuda_home}/lib64:{env.get('LD_LIBRARY_PATH', '')}"
-                ":/usr/lib/x86_64-linux-gnu"
-            ),
-        }
-    )
+    env = build_environment(cuda_home, dict(os.environ))
+    acquire_run_lock()
 
     # ---------------------------------------------------------------- step 1
     log.step("Preflight: host, CUDA toolkit and GPU inventory")
 
     free_gib = free_disk_gib(os.getcwd())
     log.table(list(host_inventory(free_gib=free_gib).items()))
+
+    # Refuse before apt and a long compile, not after, if the checkout path is
+    # occupied by something this script may not delete. It is checked again
+    # right before removal.
+    if os.path.lexists(REPO_DIR):
+        if shutil.which("git", path=env.get("PATH")) is None:
+            raise RuntimeError(
+                f"{os.path.abspath(REPO_DIR)} exists and git is not installed to "
+                "check whether it is safe to replace. Move it aside or install git."
+            )
+        blockers = checkout_removal_blockers(REPO_DIR, env=env)
+        if blockers:
+            reasons = "\n".join(f"  - {reason}" for reason in blockers)
+            raise RuntimeError(
+                f"Refusing to replace {os.path.abspath(REPO_DIR)}:\n{reasons}\n"
+                "Move it aside or run the installer from another directory."
+            )
+        log.info(f"previous checkout at {os.path.abspath(REPO_DIR)} will be replaced")
 
     if free_gib is not None and free_gib < LOW_DISK_WARN_GIB:
         log.warn(
@@ -1278,7 +1475,7 @@ def main() -> None:
         # llama.cpp only derives this itself when the caller has not set it.
         configure_args.append(f"-DLLAMA_BUILD_NUMBER={build_number}")
 
-    build_dir = f"{REPO_DIR}/build"
+    build_dir = os.path.join(REPO_DIR, BUILD_SUBDIR)
     run(
         [cmake_bin, REPO_DIR, "-B", build_dir, *configure_args, "-G", "Ninja"],
         env=env,
@@ -1323,6 +1520,16 @@ def main() -> None:
         ]
     )
 
+    # Run the fresh binaries before they replace the installed ones, so a build
+    # that cannot start never overwrites a working install.
+    version_line, devices = verify_binaries(bin_dir, env=env)
+    cuda_devices = [device for device in devices if device.startswith("CUDA")]
+    log.table([("device", device) for device in devices])
+    if cuda_devices:
+        log.ok(f"{plural(len(cuda_devices), 'CUDA device')} visible to the new build")
+    else:
+        log.warn("No CUDA device was enumerated; check the driver and CUDA runtime.")
+
     ensure_sudo(reason="installing binaries")
     installed: list[str] = []
     for target, source_path in built.items():
@@ -1350,30 +1557,22 @@ def main() -> None:
         elif os.path.realpath(resolved) != os.path.realpath(expected):
             log.warn(f"{target} resolves to {resolved}, shadowing {expected}.")
 
-    version_line = "unknown"
-    version_output = capture_all([os.path.join(INSTALL_DIR, "llama-server"), "--version"], env=env)
-    if version_output:
-        log.output(version_output, limit=6)
-        version_line = re.sub(r"^version:\s*", "", version_output.splitlines()[0].strip())
-
-    devices = parse_devices(
-        capture_all([os.path.join(INSTALL_DIR, "llama-cli"), "--list-devices"], env=env)
-    )
-    cuda_devices = [device for device in devices if device.startswith("CUDA")]
-    log.table([("device", device) for device in devices])
-    if cuda_devices:
-        log.ok(
-            f"{plural(len(cuda_devices), 'CUDA device')} visible to the installed binary"
-        )
-    else:
-        log.warn("No CUDA device was enumerated; check the driver and CUDA runtime.")
+    for destination in installed:
+        smoke_test([destination, "--version"], env=env)
+    log.ok("installed binaries start")
 
     if os.path.isdir(REPO_DIR):
         if args.keep:
             log.info(f"source kept at {os.path.abspath(REPO_DIR)}")
         else:
-            shutil.rmtree(REPO_DIR)
-            log.info("source directory removed")
+            blockers = checkout_removal_blockers(REPO_DIR, env=env)
+            if blockers:
+                log.warn(
+                    f"source left at {os.path.abspath(REPO_DIR)}: {'; '.join(blockers)}"
+                )
+            else:
+                shutil.rmtree(REPO_DIR)
+                log.info("source directory removed")
 
     log.finish_step()
 
@@ -1455,7 +1654,7 @@ if __name__ == "__main__":
             failure.cmd if isinstance(failure.cmd, str) else shlex.join(failure.cmd)
         )
         fail(f"exit code {failure.returncode} from: {command}")
-        sys.exit(failure.returncode or 1)
+        sys.exit(exit_status(failure.returncode))
     except (RuntimeError, OSError, subprocess.SubprocessError) as failure:
         fail(str(failure) or failure.__class__.__name__)
         sys.exit(1)

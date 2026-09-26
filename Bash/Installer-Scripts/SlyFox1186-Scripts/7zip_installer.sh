@@ -3,8 +3,8 @@
 
 # Set variables
 readonly script_version="4.3"
-readonly working="$PWD/7zip-install-script"
 readonly install_dir="/usr/local/bin"
+working=""
 no_cleanup=false
 use_beta=false
 
@@ -83,6 +83,7 @@ detect_os_distro() {
         if [[ -f /etc/os-release ]]; then
             source /etc/os-release
             DISTRO="$ID"
+            DISTRO_LIKE="${ID_LIKE:-}"
         elif command -v lsb_release &>/dev/null; then
             DISTRO=$(lsb_release -si | tr '[:upper:]' '[:lower:]')
         elif [[ -f /etc/redhat-release ]]; then
@@ -93,33 +94,55 @@ detect_os_distro() {
     fi
 }
 
+# Print the package-manager family for the distribution. Derivatives such as
+# Linux Mint or Pop!_OS are matched through the ID_LIKE list in os-release.
+linux_package_family() {
+    local candidate
+    local -a candidates
+    read -r -a candidates <<< "$DISTRO ${DISTRO_LIKE:-}"
+    for candidate in ${candidates[@]+"${candidates[@]}"}; do
+        case "$candidate" in
+            ubuntu|debian|raspbian) echo apt; return 0 ;;
+            centos|fedora|rhel) echo rpm; return 0 ;;
+            arch|manjaro) echo pacman; return 0 ;;
+            opensuse*|suse) echo zypper; return 0 ;;
+        esac
+    done
+    return 1
+}
+
 # Function to install dependencies
 install_dependencies() {
+    local family
     log "Installing dependencies..."
     case "$OS" in
         linux)
-            case "$DISTRO" in
-                ubuntu|debian|raspbian)
-                    sudo apt update && \
-                    sudo apt -y install tar wget xz-utils
+            family=$(linux_package_family) || fail "Unsupported Linux distribution: $DISTRO. Install tar, wget and xz, then run this script again."
+            case "$family" in
+                apt)
+                    { sudo apt-get update && sudo apt-get install -y tar wget xz-utils; } || fail "Failed to install dependencies with apt-get."
                     ;;
-                centos|fedora|rhel)
-                    sudo yum install -y tar wget
+                rpm)
+                    if command -v dnf &>/dev/null; then
+                        sudo dnf install -y tar wget xz || fail "Failed to install dependencies with dnf."
+                    else
+                        sudo yum install -y tar wget xz || fail "Failed to install dependencies with yum."
+                    fi
                     ;;
-                arch|manjaro)
-                    sudo pacman -Syu --needed --noconfirm tar wget xz
+                pacman)
+                    # Installing without -Sy avoids a partial upgrade and does not
+                    # upgrade the whole system. If the package database is stale,
+                    # pacman fails and the user should run 'pacman -Syu' first.
+                    sudo pacman -S --needed --noconfirm tar wget xz || fail "Failed to install dependencies with pacman. If the package database is out of date, run 'sudo pacman -Syu' and try again."
                     ;;
-                opensuse*)
-                    sudo zypper install -y tar wget
-                    ;;
-                *)
-                    fail "Unsupported Linux distribution: $DISTRO"
+                zypper)
+                    sudo zypper install -y tar wget xz || fail "Failed to install dependencies with zypper."
                     ;;
             esac
             ;;
         macos)
             command -v brew &>/dev/null || fail "Homebrew is not installed. Please install Homebrew and try again."
-            brew install tar wget
+            brew install tar wget || fail "Failed to install dependencies with Homebrew."
             ;;
         *)
             fail "Unsupported operating system: $OS"
@@ -141,7 +164,7 @@ Usage:
 
 Options:
   -b, --beta        Prefer the latest beta; use stable if no beta is published.
-  -n, --no-cleanup  Keep downloaded and extracted installation files.
+  -n, --no-cleanup  Keep the downloaded and extracted files and print their path.
   -h, --help        Display this help menu and exit.
   -v, --version     Display the script version and exit.
 
@@ -150,6 +173,8 @@ Behavior:
   Matching versions exit without reinstalling. Different versions require y/Y
   confirmation before the release archive is downloaded or installed. When no
   beta is published, --beta automatically selects the latest stable release.
+  Files are downloaded to a new private directory under \${TMPDIR:-/tmp},
+  which is removed when the script exits unless --no-cleanup is given.
 
 Examples:
   ${0##*/}                 Install or update to the latest stable release.
@@ -290,19 +315,33 @@ esac
 
 log "Download URL: $url"
 
+# Download into a private directory created for this run, so an existing
+# directory with the same name is never reused or deleted. Everything in it is
+# created by the invoking user, so no sudo is needed to remove it.
+cleanup_working_dir() {
+    [[ -n "$working" && -d "$working" ]] || return 0
+    if [[ "$no_cleanup" == false ]]; then
+        rm -fr -- "${working:?}"
+    else
+        log "Installation files kept in: $working"
+    fi
+}
+
+working=$(mktemp -d "${TMPDIR:-/tmp}/7zip-install.XXXXXX") || fail "Failed to create a temporary working directory."
+trap cleanup_working_dir EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
 # Create variables to make the script easier to read
 tar_file="7zip-$version.tar.xz"
 download_files_dir="$working/7zip-$version"
 
-# Clean up any found existing installation directory (use sudo in case it was root-owned)
-[[ -d "$working" ]] && { log "Deleting existing 7zip-install-script directory..."; sudo rm -fr "$working"; }
+# Create the output folder to store the sourced files
+mkdir -p "$download_files_dir" || fail "Failed to create the directory: $download_files_dir"
 
-# Create the installation directory and the output folder to store the sourced files
-mkdir -p "$download_files_dir"
-
-# Download the source files if not already downloaded
 log "Downloading 7-Zip $version_label..."
-[[ ! -f "$working/$tar_file" ]] && download "$url" "$working/$tar_file"
+download "$url" "$working/$tar_file"
 
 # Extract the downloaded files
 log "Extracting archive..."
@@ -326,13 +365,5 @@ log_update "7-Zip installation completed successfully."
 
 # Display the installed version
 print_version
-
-# Cleanup the leftover install files if specified by an argument
-if [[ "$no_cleanup" == false ]]; then
-    log "Cleaning up installation files..."
-    sudo rm -fr "$working"
-else
-    log "Skipped the cleanup of install files as specified."
-fi
 
 log "Installation complete! You can now use 7-Zip with the '7z' command."

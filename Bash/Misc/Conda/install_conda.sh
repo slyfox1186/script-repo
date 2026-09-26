@@ -2,14 +2,10 @@
 
 # GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Misc/Conda/install_conda.sh
 
-set -euo pipefail
-
-# Generate a unique temporary directory
-TEMP_DIR="/tmp/conda_installer_$(date +%s)_$RANDOM"
-mkdir -p "$TEMP_DIR"
-
-# Variables
-LOGFILE="$TEMP_DIR/miniconda_install.log"
+# main creates the private workspace and log. Until then, log only to stderr so
+# the functions can be sourced by tests without side effects.
+TEMP_DIR=""
+LOGFILE=/dev/null
 
 # Log function for feedback
 log() {
@@ -22,11 +18,46 @@ fail() {
     exit 1
 }
 
+# Create the private per-run workspace. mktemp creates it exclusively with
+# mode 0700, so a directory or symlink planted by another user is never reused.
+init_workspace() {
+    local tmp_root
+    tmp_root="${TMPDIR:-/tmp}"
+    TEMP_DIR="$(mktemp -d "${tmp_root%/}/conda_installer.XXXXXX")" || {
+        echo "Error: Failed to create a temporary directory." >&2
+        exit 1
+    }
+    LOGFILE="$TEMP_DIR/miniconda_install.log"
+    trap cleanup_workspace EXIT
+    trap 'exit 129' HUP
+    trap 'exit 130' INT
+    trap 'exit 143' TERM
+}
+
+# Remove the workspace on every exit. After a failure, copy the log to the home
+# directory first so the reason stays available.
+cleanup_workspace() {
+    # Read the exit status before any other command replaces it.
+    local status=$?
+    local kept_log
+    trap - EXIT
+    if [[ -n "$TEMP_DIR" && -d "$TEMP_DIR" ]]; then
+        if (( status != 0 )) && [[ -s "$LOGFILE" ]]; then
+            if kept_log="$(mktemp "$HOME/miniconda_install_log.XXXXXX")" && cat -- "$LOGFILE" > "$kept_log"; then
+                echo "Installation log kept at: $kept_log" >&2
+            fi
+        fi
+        rm -rf -- "${TEMP_DIR:?}"
+    fi
+    exit "$status"
+}
+
 # Function to detect the operating system and distribution
 detect_os_distro() {
-    local ID=""
+    local ID="" ID_LIKE=""
 
     log "Detecting operating system and distribution..."
+    DISTRO_LIKE=""
     if [[ $(uname -s) == Darwin ]]; then
         OS=macos
         DISTRO=macos
@@ -35,6 +66,7 @@ detect_os_distro() {
         if [[ -f /etc/os-release ]]; then
             source /etc/os-release
             DISTRO="${ID,,}"
+            DISTRO_LIKE="${ID_LIKE,,}"
             if [[ -z "$DISTRO" ]]; then
                 DISTRO=unknown
             fi
@@ -66,27 +98,68 @@ detect_architecture() {
     log "Architecture detected: $arch_suffix"
 }
 
+# Print the package-manager family for the distribution. Derivatives such as
+# Linux Mint or Pop!_OS are matched through the ID_LIKE list in os-release.
+linux_package_family() {
+    local candidate
+    local -a candidates
+    read -r -a candidates <<< "$DISTRO ${DISTRO_LIKE:-}"
+    for candidate in ${candidates[@]+"${candidates[@]}"}; do
+        case "$candidate" in
+            ubuntu|debian|raspbian) echo apt; return 0 ;;
+            centos|fedora|rhel) echo rpm; return 0 ;;
+            arch|manjaro) echo pacman; return 0 ;;
+            opensuse*|suse) echo zypper; return 0 ;;
+        esac
+    done
+    return 1
+}
+
+# Succeed when a tool the installer needs is missing: a downloader (wget or
+# curl) and tar.
+missing_required_tools() {
+    if ! command -v wget &>/dev/null && ! command -v curl &>/dev/null; then
+        return 0
+    fi
+    ! command -v tar &>/dev/null
+}
+
+# Install packages only when a required tool is missing, then verify the tools.
+ensure_dependencies() {
+    if missing_required_tools; then
+        install_dependencies
+    else
+        log "Required download and archive tools are already installed."
+    fi
+    check_prerequisites
+}
+
 # Function to install dependencies
 install_dependencies() {
+    local family
     log "Installing dependencies..."
     case "$OS" in
         linux)
-            case "$DISTRO" in
-                ubuntu|debian|raspbian)
-                    sudo apt update && \
-                    sudo apt -y install curl sudo tar wget xz-utils
+            family="$(linux_package_family)" || fail "Unsupported Linux distribution: $DISTRO. Install curl or wget, and tar, then run this script again."
+            case "$family" in
+                apt)
+                    { sudo apt-get update && sudo apt-get install -y curl sudo tar wget xz-utils; } || fail "Failed to install dependencies with apt-get."
                     ;;
-                centos|fedora|rhel)
-                    sudo yum install -y curl sudo tar wget xz
+                rpm)
+                    if command -v dnf &>/dev/null; then
+                        sudo dnf install -y curl sudo tar wget xz || fail "Failed to install dependencies with dnf."
+                    else
+                        sudo yum install -y curl sudo tar wget xz || fail "Failed to install dependencies with yum."
+                    fi
                     ;;
-                arch|manjaro)
-                    sudo pacman -Syu --needed --noconfirm curl sudo tar wget xz
+                pacman)
+                    # Installing without -Sy avoids a partial upgrade and does not
+                    # upgrade the whole system. If the package database is stale,
+                    # pacman fails and the user should run 'pacman -Syu' first.
+                    sudo pacman -S --needed --noconfirm curl sudo tar wget xz || fail "Failed to install dependencies with pacman. If the package database is out of date, run 'sudo pacman -Syu' and try again."
                     ;;
-                opensuse*|suse)
-                    sudo zypper install -y curl sudo tar wget xz
-                    ;;
-                *)
-                    fail "Unsupported Linux distribution: $DISTRO"
+                zypper)
+                    sudo zypper install -y curl sudo tar wget xz || fail "Failed to install dependencies with zypper."
                     ;;
             esac
             ;;
@@ -94,8 +167,7 @@ install_dependencies() {
             if ! command -v brew &>/dev/null; then
                 fail "Homebrew is not installed. Please install Homebrew from https://brew.sh/ and try again."
             fi
-            brew update
-            brew install tar wget xz
+            brew install tar wget xz || fail "Failed to install dependencies with Homebrew."
             ;;
         *)
             fail "Unsupported operating system: $OS"
@@ -113,19 +185,19 @@ install_7zip() {
 
     log "Downloading 7-Zip installer from $installer_url..."
     if command -v wget &> /dev/null; then
-        wget $installer_url -O $installer_script 2>>"$LOGFILE" || fail "Failed to download 7-Zip installer using wget."
+        wget "$installer_url" -O "$installer_script" 2>>"$LOGFILE" || fail "Failed to download 7-Zip installer using wget."
     elif command -v curl &> /dev/null; then
-        curl -fsSL $installer_url -o $installer_script 2>>"$LOGFILE" || fail "Failed to download 7-Zip installer using curl."
+        curl -fsSL "$installer_url" -o "$installer_script" 2>>"$LOGFILE" || fail "Failed to download 7-Zip installer using curl."
     else
         fail "Neither wget nor curl is available for downloading the 7-Zip installer."
     fi
 
-    if [[ ! -f $installer_script ]]; then
+    if [[ ! -f "$installer_script" ]]; then
         fail "7-Zip installer script was not downloaded successfully."
     fi
 
     log "Executing 7-Zip installer script with sudo privileges..."
-    sudo bash $installer_script 2>>"$LOGFILE" || fail "Failed to execute the 7-Zip installer script."
+    sudo bash "$installer_script" 2>>"$LOGFILE" || fail "Failed to execute the 7-Zip installer script."
 
     log "7-Zip installed successfully."
 }
@@ -196,7 +268,7 @@ download_installer() {
     if command -v wget &> /dev/null; then
         wget "$MINICONDA_URL" -O "$TEMP_DIR/$INSTALLER" 2>>"$LOGFILE" || fail "Failed to download Miniconda installer using wget."
     elif command -v curl &> /dev/null; then
-        curl -L "$MINICONDA_URL" -o "$TEMP_DIR/$INSTALLER" 2>>"$LOGFILE" || fail "Failed to download Miniconda installer using curl."
+        curl -fL "$MINICONDA_URL" -o "$TEMP_DIR/$INSTALLER" 2>>"$LOGFILE" || fail "Failed to download Miniconda installer using curl."
     fi
 
     if [[ ! -f "$TEMP_DIR/$INSTALLER" ]]; then
@@ -205,19 +277,29 @@ download_installer() {
     log "Miniconda installer downloaded successfully."
 }
 
-# Check for disk space (at least 1 GB free required)
+# Check for disk space (at least 1 GB free required) on the filesystem that
+# will hold the installation. The directory may not exist yet, so measure its
+# nearest existing parent. 'df -Pk' is POSIX output that Linux and macOS share.
 check_disk_space() {
-    log "Checking available disk space..."
-    local available_space_kb required_space_kb
+    local available_space_kb location required_space_kb
+    location="$1"
     required_space_kb=1048576 # 1 GB in KB
 
-    if command -v df &>/dev/null; then
-        available_space_kb=$(df --output=avail "$HOME" | tail -1 | tr -d ' ')
-    else
+    while [[ ! -d "$location" ]]; do
+        location="${location%/*}"
+        [[ -n "$location" ]] || location=/
+    done
+    log "Checking available disk space for '$location'..."
+
+    if ! command -v df &>/dev/null; then
         fail "'df' command not found to check disk space."
     fi
+    available_space_kb="$(df -Pk "$location" | awk 'NR == 2 {print $4}')" || fail "Failed to check the disk space for '$location'."
+    if [[ ! "$available_space_kb" =~ ^[0-9]+$ ]]; then
+        fail "Could not determine the free disk space for '$location'."
+    fi
 
-    if [[ "$available_space_kb" -lt "$required_space_kb" ]]; then
+    if (( available_space_kb < required_space_kb )); then
         fail "Not enough disk space. At least 1 GB is required."
     fi
     log "Sufficient disk space available."
@@ -227,7 +309,9 @@ check_disk_space() {
 normalize_install_directory() {
     local install_dir
     install_dir="$1"
-    install_dir="${install_dir/#\~/$HOME}"
+    case "$install_dir" in
+        \~|\~/*) install_dir="$HOME${install_dir:1}" ;;
+    esac
     install_dir="${install_dir//\$\{HOME\}/$HOME}"
     install_dir="${install_dir//\$HOME/$HOME}"
 
@@ -238,51 +322,155 @@ normalize_install_directory() {
     echo "$install_dir"
 }
 
-# Prompt the user for installation directory and handle existing installation
+# Print the physical absolute path, resolving symlinks and '..' in the part that
+# exists. Components that do not exist yet cannot be symlinks, so they are
+# normalized textually.
+canonicalize_path() {
+    local component existing resolved tail
+    local -a parts
+    existing="$1"
+    [[ "$existing" == /* ]] || existing="$PWD/$existing"
+    tail=""
+
+    while [[ ! -d "$existing" ]]; do
+        tail="${existing##*/}/$tail"
+        existing="${existing%/*}"
+        [[ -n "$existing" ]] || existing=/
+    done
+    resolved="$(cd -P -- "$existing" && pwd -P)" || return 1
+
+    IFS=/ read -r -a parts <<< "$tail"
+    for component in ${parts[@]+"${parts[@]}"}; do
+        case "$component" in
+            ''|.) ;;
+            ..)
+                resolved="${resolved%/*}"
+                [[ -n "$resolved" ]] || resolved=/
+                ;;
+            *)
+                if [[ "$resolved" == / ]]; then
+                    resolved="/$component"
+                else
+                    resolved="$resolved/$component"
+                fi
+                ;;
+        esac
+    done
+    printf '%s\n' "$resolved"
+}
+
+# Classify a canonical installation path as "new" (absent), "empty", or "conda"
+# (an existing conda installation). Any other path is refused with a message,
+# because replacing it could delete unrelated data.
+classify_install_directory() {
+    local home_dir install_dir
+    install_dir="$1"
+    home_dir="$(canonicalize_path "$HOME")" || home_dir="$HOME"
+
+    if [[ "$install_dir" == / ]]; then
+        log "ERROR: Refusing to use the filesystem root as the installation directory."
+        return 1
+    fi
+    if [[ "$install_dir" == "$home_dir" || "$home_dir" == "$install_dir"/* ]]; then
+        log "ERROR: Refusing to use '$install_dir' because it is your home directory or contains it."
+        return 1
+    fi
+    if [[ -L "$install_dir" ]]; then
+        log "ERROR: '$install_dir' is a symbolic link. Enter the real directory path instead."
+        return 1
+    fi
+    if [[ ! -e "$install_dir" ]]; then
+        echo new
+        return 0
+    fi
+    if [[ ! -d "$install_dir" ]]; then
+        log "ERROR: '$install_dir' exists and is not a directory."
+        return 1
+    fi
+    if [[ -z "$(ls -A -- "$install_dir" 2>/dev/null)" ]]; then
+        echo empty
+        return 0
+    fi
+    if [[ -d "$install_dir/conda-meta" && -x "$install_dir/bin/conda" ]]; then
+        echo conda
+        return 0
+    fi
+    log "ERROR: '$install_dir' is not empty and is not a conda installation. Choose another path."
+    return 1
+}
+
+# Prompt the user for the installation directory. An existing conda
+# installation is replaced only after explicit confirmation; the removal itself
+# happens in prepare_install_directory, after the installer has downloaded.
 get_install_directory() {
-    local default_dir first_prompt install_dir
+    local default_dir first_prompt install_dir kind overwrite_choice requested
     default_dir="$HOME/miniconda3"
     first_prompt=true
 
     while true; do
         if $first_prompt; then
-            read -rp "Enter the installation directory (default: \$HOME/miniconda3): " install_dir
-            install_dir=${install_dir:-"$default_dir"}
+            read -rp "Enter the installation directory (default: \$HOME/miniconda3): " requested || fail "No installation directory was entered."
+            requested=${requested:-"$default_dir"}
             first_prompt=false
         else
-            read -rp "Enter a different installation directory: " install_dir
+            read -rp "Enter a different installation directory: " requested || fail "No installation directory was entered."
         fi
 
-        install_dir="$(normalize_install_directory "$install_dir")"
+        requested="$(normalize_install_directory "$requested")"
+        if [[ "$requested" != / && -L "${requested%/}" ]]; then
+            log "ERROR: '$requested' is a symbolic link. Enter the real directory path instead."
+            continue
+        fi
+        if ! install_dir="$(canonicalize_path "$requested")"; then
+            log "ERROR: Could not resolve '$requested'. Please enter a valid path."
+            continue
+        fi
 
-        # Check for spaces in the path
+        # Miniconda's installer rejects prefixes that contain spaces.
         if [[ "$install_dir" =~ \  ]]; then
             log "ERROR: Installation directory path cannot contain spaces. Please enter a valid path."
             continue
         fi
 
-        if [[ -d "$install_dir" ]]; then
-            read -rp "The directory '$install_dir' already exists. Do you want to overwrite it? (y/n): " overwrite_choice
+        kind="$(classify_install_directory "$install_dir")" || continue
+        if [[ "$kind" == conda ]]; then
+            read -rp "'$install_dir' is an existing conda installation. Replacing it permanently deletes it and every environment inside it. Replace it? (y/n): " overwrite_choice || fail "No answer was entered."
             case "$overwrite_choice" in
-                y|Y)
-                    log "Overwriting existing Miniconda installation at '$install_dir'..."
-                    rm -fr "$install_dir"
-                    log "Existing installation removed."
-                    echo "$install_dir"
-                    break
-                    ;;
+                y|Y) ;;
                 n|N)
                     log "Please choose a different installation directory."
+                    continue
                     ;;
                 *)
                     log "Invalid choice. Please enter 'y' or 'n'."
+                    continue
                     ;;
             esac
-        else
-            echo "$install_dir"
-            break
         fi
+        echo "$install_dir"
+        return 0
     done
+}
+
+# Make the chosen directory ready for the Miniconda installer, which refuses an
+# existing prefix. The path is classified again so that only a conda
+# installation is removed recursively; an empty directory is removed with rmdir,
+# which cannot delete contents.
+prepare_install_directory() {
+    local install_dir kind
+    install_dir="$1"
+    kind="$(classify_install_directory "$install_dir")" || fail "Refusing to install to '$install_dir'."
+
+    case "$kind" in
+        conda)
+            log "Removing the existing conda installation at '$install_dir'..."
+            rm -fr -- "${install_dir:?}" || fail "Failed to remove the existing conda installation at '$install_dir'."
+            log "Existing installation removed."
+            ;;
+        empty)
+            rmdir -- "$install_dir" || fail "Failed to prepare the empty directory '$install_dir'."
+            ;;
+    esac
 }
 
 # Install Miniconda
@@ -298,16 +486,25 @@ install_miniconda() {
     log "Miniconda installed successfully to '$install_dir'."
 }
 
-# Clean up the installer
+# The workspace, including the installer, is removed on exit. A kept installer
+# is moved to the home directory without replacing an existing file.
 cleanup_installer() {
-    read -rp "Do you want to remove the Miniconda installer after installation? (y/n): " cleanup_choice
+    local cleanup_choice kept_installer
+    read -rp "Do you want to remove the Miniconda installer after installation? (y/n): " cleanup_choice || cleanup_choice=y
     case "$cleanup_choice" in
         y|Y)
-            rm -f "$TEMP_DIR/$INSTALLER"
             log "Installer removed."
             ;;
         *)
-            log "Installer kept for future use."
+            kept_installer="$HOME/$INSTALLER"
+            if [[ ! -e "$kept_installer" && ! -L "$kept_installer" ]]; then
+                mv -n -- "$TEMP_DIR/$INSTALLER" "$kept_installer" || true
+            fi
+            if [[ -e "$TEMP_DIR/$INSTALLER" ]]; then
+                kept_installer="$(mktemp "$HOME/$INSTALLER.XXXXXX")" || fail "Failed to create a file for the kept installer."
+                mv -f -- "$TEMP_DIR/$INSTALLER" "$kept_installer" || fail "Failed to keep the installer."
+            fi
+            log "Installer kept at: $kept_installer"
             ;;
     esac
 }
@@ -440,19 +637,23 @@ create_conda_env() {
 
 # Main execution
 main() {
+    set -euo pipefail
+    init_workspace
+
     log "==== Starting Miniconda Installation ===="
 
     detect_os_distro
-    check_prerequisites
     detect_architecture
-    install_dependencies
+    ensure_dependencies
     handle_7zip_installation
     set_miniconda_url
-    check_disk_space
-    download_installer
 
-    # Get installation directory and install
+    # Choose the directory before downloading, but replace an existing
+    # installation only once the new installer is ready.
     install_dir="$(get_install_directory)"
+    check_disk_space "$install_dir"
+    download_installer
+    prepare_install_directory "$install_dir"
     install_miniconda "$install_dir"
 
     # Initialize Conda
@@ -499,5 +700,7 @@ main() {
     log "Full command: source ~/.bashrc; conda activate $env_name"
 }
 
-# Run the script
-main "$@"
+# Run the script only when executed, so tests can source its functions.
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    main "$@"
+fi
