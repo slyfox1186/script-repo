@@ -117,6 +117,23 @@ def run_command(args, *, capture_output=False, timeout=None, env=None):
         ) from exc
 
 
+def run_checked(args, action, *, timeout, env=None):
+    """Run a command capturing its output; raise ``command_failure`` on failure.
+
+    ``action`` names the step in errors, e.g. "Reading conda information".
+    """
+    result = run_command(args, capture_output=True, timeout=timeout, env=env)
+    if result.returncode != 0:
+        raise command_failure(action, result)
+    return result
+
+
+def json_command(args, action, *, timeout=60):
+    """Run a read-only command that prints JSON and return the parsed value."""
+    result = run_checked(args, action, timeout=timeout)
+    return parse_json_output(result.stdout, action[:1].lower() + action[1:])
+
+
 @dataclasses.dataclass
 class StreamHooks:
     """Callbacks stream_command makes while a child runs; any may be None."""
@@ -309,9 +326,12 @@ STATUS_ROLES = {
 }
 
 
-def announce(tag, *parts, **print_options):
-    """Print a message led by its colored ``[TAG]``."""
-    print(paint(f"[{tag}]", STATUS_ROLES[tag]), *parts, **print_options)
+def announce(tag, *parts):
+    """Print a message led by its colored ``[TAG]``.
+
+    Flushed at once, since it interleaves with child output and live rows.
+    """
+    print(paint(f"[{tag}]", STATUS_ROLES[tag]), *parts, flush=True)
 
 
 def print_banner(title, role="heading"):
@@ -492,6 +512,22 @@ class ProcessSampler:
     def figures(self):
         """Return the measured facts ("CPU n%", "RAM n MB") available so far."""
         return process_figures(*self.readings())
+
+
+def open_file_names(pid):
+    """Yield ``(basename, fd path)`` for each file ``pid`` holds open.
+
+    Advisory: yields nothing where /proc is unavailable or the process is gone.
+    """
+    if pid is None:
+        return
+    try:
+        handles = list(Path(f"/proc/{pid}/fd").iterdir())
+    except OSError:
+        return
+    for handle in handles:
+        with contextlib.suppress(OSError):
+            yield os.path.basename(os.readlink(str(handle))), handle
 
 
 class LiveDisplay:
@@ -700,45 +736,14 @@ class ResolverProgress:
         filled = self.WIDTH if not self.total else self.WIDTH * loaded // self.total
         return "#" * filled + "-" * (self.WIDTH - filled)
 
-    def _line(self, max_width):
-        graph = self.graph
-        elapsed = format_elapsed(self.pacer.elapsed())
-        loaded = len(graph.loaded)
-        selected = f"selected [{self._selected_bar()}] {loaded}/{self.total} loaded"
-        counts = (
-            f"graph {count_label(len(graph.packages), 'package')} / "
-            f"{count_label(len(graph.candidates), 'candidate')}"
-        )
-        current = graph.current
-        if len(current) > 30:
-            current = current[:27] + "..."
-
-        optional = []
-        if current:
-            optional.append(f"current {current}")
-        if graph.backtracking:
-            optional.append(
-                f"backtracking {count_label(len(graph.backtracking), 'package')}"
-            )
-        process = self.sampler.figures()
-        if process:
-            optional.append(" / ".join(process))
-
-        parts = [f"  {self.phase}", selected, counts]
-        for item in optional:
-            candidate = " | ".join([*parts, item, elapsed])
-            if len(candidate) <= max_width:
-                parts.append(item)
-        line = " | ".join([*parts, elapsed])
-        if len(line) > max_width:
-            compact = [
-                f"  {self.phase}",
-                f"selected {loaded}/{self.total}",
-                f"graph {len(graph.packages)}/{len(graph.candidates)}",
-                elapsed,
-            ]
-            line = " | ".join(compact)
-        return line[:max_width]
+    def _log_line(self):
+        """Return the dashboard as one line, for output that is not a terminal."""
+        rows = [row.strip() for row in self._terminal_lines(10_000)]
+        if self.graph.backtracking and self.phase in RESOLVER_PHASE_ACTIVITY:
+            # These phases' activity text hides the count the log must keep.
+            count = count_label(len(self.graph.backtracking), "package")
+            rows.insert(-1, f"backtracking {count}")
+        return "  " + " | ".join(rows)
 
     def _resolver_activity(self):
         activity = RESOLVER_PHASE_ACTIVITY.get(self.phase)
@@ -807,7 +812,7 @@ class ResolverProgress:
         # real CPU/RAM, not the figure from the moment it was spawned.
         self.sampler.sample()
         if self.pacer.log_due():
-            self.display.log(self._line(10_000))
+            self.display.log(self._log_line())
 
     def finish(self, success):
         """Settle the telemetry without claiming success on failure."""
@@ -819,7 +824,7 @@ class ResolverProgress:
             self._paint()
             self.display.end()
         else:
-            self.display.log(self._line(10_000))
+            self.display.log(self._log_line())
 
 
 class CountedProgress:
@@ -831,6 +836,7 @@ class CountedProgress:
     """
 
     HEARTBEAT_SECONDS = 30
+    EMPTY_METER_FILL = 0
 
     def __init__(self, title, total, stream=None):
         self.title = title
@@ -850,8 +856,12 @@ class CountedProgress:
         raise NotImplementedError
 
     def _meter_line(self):
-        """Return the repainted line, before the in-flight label."""
-        raise NotImplementedError
+        """Return the counted prefix; zero-total fill follows the subclass."""
+        filled = (
+            round(20 * self.done / self.total) if self.total else self.EMPTY_METER_FILL
+        )
+        meter = "#" * filled + "-" * (20 - filled)
+        return f"  {self.title} [{meter}] {self.done}/{self.total}"
 
     def _summary(self):
         """Return the logged sentence for the current completed count."""
@@ -995,6 +1005,7 @@ class DownloadProgress(CountedProgress):
     # pip says "Downloading x.whl (5 MB)" for a fetch and "Using cached x.whl
     # (5 MB)" when it serves the same wheel from its own HTTP cache.
     FETCH_PREFIXES = ("Downloading ", "Using cached ")
+    EMPTY_METER_FILL = 20
 
     def __init__(self, title, total, destination, stream=None):
         super().__init__(title, total, stream)
@@ -1051,26 +1062,16 @@ class DownloadProgress(CountedProgress):
         alone reads zero for the whole of a multi-gigabyte fetch.  Reading the
         child's open files gives a live figure instead.  This is advisory and
         best-effort: where /proc is unavailable the counter simply advances once
-        per finished wheel, exactly as it did before.
+        per finished wheel.
         """
-        if self.pid is None:
-            return 0
-        try:
-            handles = list(Path(f"/proc/{self.pid}/fd").iterdir())
-        except OSError:
-            return 0
         largest = 0
-        for handle in handles:
-            try:
-                name = os.path.basename(os.readlink(str(handle)))
-                if not name.endswith(".whl") or self.folder.is_complete(name):
-                    continue
+        for name, handle in open_file_names(self.pid):
+            if name.endswith(".whl") and not self.folder.is_complete(name):
                 # pip fetches one wheel at a time, so the largest open wheel is
                 # the one in flight; max() also avoids double counting during
                 # the moment a finished file is being copied into place.
-                largest = max(largest, handle.stat().st_size)
-            except OSError:
-                continue
+                with contextlib.suppress(OSError):
+                    largest = max(largest, handle.stat().st_size)
         return largest
 
     def _measure(self):
@@ -1099,12 +1100,7 @@ class DownloadProgress(CountedProgress):
         return [format_bytes(self.downloaded), self.rate.status()]
 
     def _meter_line(self):
-        filled = round(20 * self.done / self.total) if self.total else 20
-        meter = "#" * filled + "-" * (20 - filled)
-        line = (
-            f"  {self.title} [{meter}] {self.done}/{self.total}  "
-            f"{format_bytes(self.downloaded)}"
-        )
+        line = super()._meter_line() + f"  {format_bytes(self.downloaded)}"
         status = self.rate.status()
         if status:
             line += f"  {status}"
@@ -1132,20 +1128,9 @@ class InstallProgress(CountedProgress):
 
     def _inflight_label(self):
         """Name the package whose wheel the child currently holds open."""
-        if self.pid is None:
-            return ""
-        try:
-            handles = list(Path(f"/proc/{self.pid}/fd").iterdir())
-        except OSError:
-            return ""
-        for handle in handles:
-            try:
-                name = os.path.basename(os.readlink(str(handle)))
-            except OSError:
-                continue
-            label = self._labels.get(name)
-            if label:
-                return label
+        for name, _ in open_file_names(self.pid):
+            if self._labels.get(name):
+                return self._labels[name]
         return ""
 
     def _measure(self):
@@ -1166,11 +1151,8 @@ class InstallProgress(CountedProgress):
         return f"{self.done} of {count_label(self.total, 'package')} in place."
 
     def _meter_line(self):
-        filled = round(20 * self.done / self.total) if self.total else 0
-        meter = "#" * filled + "-" * (20 - filled)
         return (
-            f"  {self.title} [{meter}] {self.done}/{self.total} in place  "
-            f"{format_elapsed(self.pacer.elapsed())}"
+            super()._meter_line() + " in place  " + format_elapsed(self.pacer.elapsed())
         )
 
 
@@ -1201,21 +1183,11 @@ class PackageScanProgress:
             "success": None,
         }
 
-    def _set(self, **changes):
+    def update(self, **changes):
+        """Record the scan's ``phase`` (the stage shown), ``scope`` (installed
+        distributions covered) or ``found`` (eligible updates)."""
         with self._lock:
             self._state.update(changes)
-
-    def set_phase(self, phase):
-        """Record the scan stage shown to the user."""
-        self._set(phase=phase)
-
-    def set_scope(self, count):
-        """Record how many installed distributions the scan covers."""
-        self._set(scope=count)
-
-    def set_found(self, count):
-        """Record how many eligible updates the scan found."""
-        self._set(found=count)
 
     def watch(self, pid):
         """Attach the running scan process for CPU and RAM sampling."""
@@ -1298,7 +1270,7 @@ class PackageScanProgress:
     def finish(self, success):
         """Mark the scan finished and draw its final state."""
         self.sampler.stop()
-        self._set(
+        self.update(
             success=success,
             phase=(
                 "Package index scan complete"
@@ -1323,6 +1295,11 @@ def parse_json_output(raw, context):
         raise UpdaterError(
             f"Unexpected JSON output while {context} ({len(raw)} bytes received)."
         ) from exc
+
+
+def requirement_name(requirement):
+    """Return the project name a PEP 508 requirement string starts with."""
+    return re.split(r"[\s\[<>=!~;(]", str(requirement), maxsplit=1)[0]
 
 
 def canonicalize_name(name):
@@ -1372,6 +1349,38 @@ def secure_directory(path):
 def ensure_cache_root():
     """Create the private cache root and enforce owner-only permissions."""
     return secure_directory(CACHE_ROOT)
+
+
+def write_json_atomic(
+    path, payload, *, cleanup_errors=(FileNotFoundError,), **dump_options
+):
+    """Write owner-only JSON that survives power loss whole or not at all.
+
+    A transaction status change must survive power loss, otherwise recovery
+    cannot tell whether the environment was mutated.
+    """
+    path = Path(path)
+    tmp = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=path.parent,
+            prefix=f"{path.stem}-",
+            suffix=".tmp",
+            delete=False,
+        ) as handle:
+            tmp = Path(handle.name)
+            os.fchmod(handle.fileno(), 0o600)
+            json.dump(payload, handle, **dump_options)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(tmp, path)
+        _fsync_directory(path.parent)
+    finally:
+        if tmp is not None:
+            with contextlib.suppress(*cleanup_errors):
+                tmp.unlink()
 
 
 def _fsync_directory(path):
@@ -1463,31 +1472,21 @@ def load_cache():
 
 def save_cache(cache):
     """Persist cache atomically in a private, symlink-safe directory."""
-    tmp_path = None
-    try:
+    # Cache persistence must never block updater behavior.
+    with contextlib.suppress(OSError):
         ensure_cache_root()
-        with tempfile.NamedTemporaryFile(
-            mode="w",
-            encoding="utf-8",
-            dir=CACHE_ROOT,
-            prefix="cache-",
-            suffix=".tmp",
-            delete=False,
-        ) as f:
-            tmp_path = Path(f.name)
-            os.fchmod(f.fileno(), 0o600)
-            json.dump(cache, f, separators=(",", ":"))
-            f.flush()
-            os.fsync(f.fileno())
-        os.replace(tmp_path, CACHE_FILE)
-        _fsync_directory(CACHE_ROOT)
-    except OSError:
-        # Cache persistence must never block updater behavior.
-        pass
-    finally:
-        if tmp_path is not None:
-            with contextlib.suppress(FileNotFoundError, OSError):
-                tmp_path.unlink()
+        write_json_atomic(
+            CACHE_FILE, cache, cleanup_errors=(OSError,), separators=(",", ":")
+        )
+
+
+def package_entry(name, package):
+    """Return the stored form of one outdated package from pip's list."""
+    return {
+        "name": str(name),
+        "version": str(package.get("version", "?")),
+        "latest_version": str(package.get("latest_version", "?")),
+    }
 
 
 def get_cached_packages(env_name):
@@ -1499,20 +1498,11 @@ def get_cached_packages(env_name):
     packages = entry.get("packages")
     if not isinstance(packages, list):
         return None
-    normalized = []
-    for pkg in packages:
-        if not isinstance(pkg, dict):
-            continue
-        name = pkg.get("name")
-        if not name:
-            continue
-        normalized.append(
-            {
-                "name": str(name),
-                "version": str(pkg.get("version", "?")),
-                "latest_version": str(pkg.get("latest_version", "?")),
-            }
-        )
+    normalized = [
+        package_entry(pkg["name"], pkg)
+        for pkg in packages
+        if isinstance(pkg, dict) and pkg.get("name")
+    ]
     normalized.sort(key=lambda p: p["name"].lower())
     return normalized
 
@@ -1624,14 +1614,10 @@ for dist in metadata.distributions():
     })
 print(json.dumps(rows, separators=(",", ":")))
 """
-    result = run_command(
+    rows = json_command(
         [environment_python(prefix), "-I", "-c", helper],
-        capture_output=True,
-        timeout=60,
+        f"Reading installed packages in {prefix}",
     )
-    if result.returncode != 0:
-        raise command_failure(f"Reading installed packages in {prefix}", result)
-    rows = parse_json_output(result.stdout, f"reading installed packages in {prefix}")
     if not isinstance(rows, list):
         raise UpdaterError(f"Installed package inventory for {prefix} was not a list.")
     return rows
@@ -1713,6 +1699,14 @@ def _file_hash_field(path):
         return None
 
 
+def read_record(metadata_path):
+    """Return the rows of a distribution's RECORD; raises OSError if unreadable."""
+    with open(
+        metadata_path / "RECORD", newline="", encoding="utf-8", errors="replace"
+    ) as handle:
+        return list(csv.reader(handle))
+
+
 def _record_hashes(metadata_path, prefix_path):
     """Map the prefix-relative paths one RECORD hashes to their hash fields.
 
@@ -1720,10 +1714,7 @@ def _record_hashes(metadata_path, prefix_path):
     are left out, so a RECORD cannot direct a read elsewhere.
     """
     try:
-        with open(
-            metadata_path / "RECORD", newline="", encoding="utf-8", errors="replace"
-        ) as handle:
-            rows = list(csv.reader(handle))
+        rows = read_record(metadata_path)
     except OSError:
         return None
     hashes = {}
@@ -1798,21 +1789,28 @@ def _conda_record_hashes(record, site_packages):
     return hashes
 
 
-def conda_metadata_hashes(prefix_path):
-    """Map each Python metadata directory Conda installed to its record's hashes.
+def readable_conda_records(prefix):
+    """Yield each readable conda-meta record of ``prefix`` as a dict, in order.
 
-    Keys are prefix-relative directories such as
-    ``lib/python3.13/site-packages/setuptools-80.10.2-py3.13.egg-info``.  An
-    unreadable record is skipped, so it vouches for nothing.
+    An unreadable or malformed record is skipped, so it vouches for nothing.
     """
-    ledgers = {}
-    for record_path in sorted((prefix_path / "conda-meta").glob("*.json")):
+    for record_path in sorted((Path(prefix) / "conda-meta").glob("*.json")):
         try:
             record = json.loads(record_path.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             continue
-        if not isinstance(record, dict):
-            continue
+        if isinstance(record, dict):
+            yield record
+
+
+def conda_metadata_hashes(prefix_path):
+    """Map each Python metadata directory Conda installed to its record's hashes.
+
+    Keys are prefix-relative directories such as
+    ``lib/python3.13/site-packages/setuptools-80.10.2-py3.13.egg-info``.
+    """
+    ledgers = {}
+    for record in readable_conda_records(prefix_path):
         directories = {
             PurePosixPath(raw_path).parent
             for raw_path in record.get("files", [])
@@ -2113,6 +2111,26 @@ def load_conda_ownership(prefix):
     }
 
 
+def ownership_problem(normalized, installed, ownership, prefix):
+    """Return why pip must not replace this distribution, or None.
+
+    ``installed`` is its inventory row, or None for a distribution that is not
+    installed, which can only be refused as protected or Conda-owned.
+    """
+    if normalized in PROTECTED_BOOTSTRAP_PACKAGES:
+        return "bootstrap tooling is protected"
+    if normalized in ownership["distributions"]:
+        return "owned by conda"
+    if installed is None:
+        return None
+    if installed.get("installer") not in UPDATABLE_INSTALLERS:
+        return f"installer is {installed.get('installer') or 'unknown'}"
+    if not _is_within(installed.get("metadata_path", ""), prefix):
+        return "outside the selected environment"
+    direct = installed.get("direct_url")
+    return "editable/direct-URL installs are not reproducible" if direct else None
+
+
 def filter_outdated_packages(packages, inventory, conda_ownership, prefix):
     """Split pip's outdated list into eligible and excluded distributions."""
     inventory_by_name = index_inventory(inventory, prefix)
@@ -2125,19 +2143,11 @@ def filter_outdated_packages(packages, inventory, conda_ownership, prefix):
         name = str(package["name"])
         normalized = canonicalize_name(name)
         installed = inventory_by_name.get(normalized)
-        reason = None
-        if normalized in PROTECTED_BOOTSTRAP_PACKAGES:
-            reason = "bootstrap tooling is protected"
-        elif normalized in conda_ownership["distributions"]:
-            reason = "owned by conda"
+        reason = ownership_problem(normalized, installed, conda_ownership, prefix)
+        if reason:
+            pass
         elif installed is None:
             reason = "installed metadata is missing"
-        elif installed.get("installer") not in UPDATABLE_INSTALLERS:
-            reason = f"installer is {installed.get('installer') or 'unknown'}"
-        elif not _is_within(installed.get("metadata_path", ""), prefix):
-            reason = "outside the selected environment"
-        elif installed.get("direct_url"):
-            reason = "editable/direct-URL installs are not reproducible"
         elif not SAFE_PROJECT_NAME.fullmatch(name):
             reason = "invalid or unsafe project name"
         elif swap := build_change(
@@ -2151,14 +2161,8 @@ def filter_outdated_packages(packages, inventory, conda_ownership, prefix):
 
         if reason:
             excluded.append((name, reason))
-            continue
-        eligible.append(
-            {
-                "name": name,
-                "version": str(package.get("version", "?")),
-                "latest_version": str(package.get("latest_version", "?")),
-            }
-        )
+        else:
+            eligible.append(package_entry(name, package))
     eligible.sort(key=lambda package: package["name"].lower())
     return eligible, excluded
 
@@ -2208,11 +2212,11 @@ def scan_outdated_packages(prefix, *, report_exclusions=False, progress=None):
     eligible = []
     excluded = []
     try:
-        progress.set_phase("Reading installed package metadata")
+        progress.update(phase="Reading installed package metadata")
         progress.tick()
         inventory = get_environment_inventory(prefix)
-        progress.set_scope(len(inventory))
-        progress.set_phase("Querying configured package indexes")
+        progress.update(scope=len(inventory))
+        progress.update(phase="Querying configured package indexes")
         progress.tick()
         result = stream_command(
             pip_command(prefix)
@@ -2239,13 +2243,13 @@ def scan_outdated_packages(prefix, *, report_exclusions=False, progress=None):
             raise UpdaterError(
                 f"Outdated package response for {prefix} was not a list."
             )
-        progress.set_phase("Checking package ownership and safety")
+        progress.update(phase="Checking package ownership and safety")
         progress.tick()
         ownership = load_conda_ownership(prefix)
         eligible, excluded = filter_outdated_packages(
             packages, inventory, ownership, prefix
         )
-        progress.set_found(len(eligible))
+        progress.update(found=len(eligible))
         success = True
     finally:
         progress.finish(success)
@@ -2256,42 +2260,35 @@ def scan_outdated_packages(prefix, *, report_exclusions=False, progress=None):
 
 def print_excluded_packages(excluded):
     """Explain intentionally skipped packages without treating them as errors."""
-    conda_managed = sorted(
-        name for name, reason in excluded if reason == "owned by conda"
-    )
-    protected = sorted(
-        name for name, reason in excluded if reason == "bootstrap tooling is protected"
-    )
-    held = sorted(
-        name for name, reason in excluded if reason.startswith("held back by")
-    )
-    other = sorted(
-        (
-            (name, reason)
-            for name, reason in excluded
-            if reason not in {"owned by conda", "bootstrap tooling is protected"}
-            and not reason.startswith("held back by")
-        ),
-        key=lambda item: item[0].lower(),
-    )
-
+    groups = {"owned by conda": [], "bootstrap tooling is protected": [], None: []}
+    other = []
+    for name, reason in excluded:
+        key = None if reason.startswith("held back by") else reason
+        if key in groups:
+            groups[key].append(name)
+        else:
+            other.append((name, reason))
+    groups = {key: sorted(names) for key, names in groups.items()}
+    other.sort(key=lambda item: item[0].lower())
     print_section(f"Skipped automatically ({len(excluded)}) — no action is needed:")
-    if conda_managed:
-        print_labeled(
-            "Conda-managed:",
-            ", ".join(conda_managed) + " (pip must not replace these)",
-        )
-    if protected:
-        print_labeled(
+    for key, label, explanation in (
+        ("owned by conda", "Conda-managed:", " (pip must not replace these)"),
+        (
+            "bootstrap tooling is protected",
             "Core update tools:",
-            ", ".join(protected) + " (protected so the updater cannot break itself)",
-        )
-    if held:
-        print_labeled(
+            " (protected so the updater cannot break itself)",
+        ),
+        (
+            None,
             "Version-capped:",
-            ", ".join(held) + " (an installed package pins each of these; they "
-            "will be offered again once the capping package updates)",
-        )
+            (
+                " (an installed package pins each of these; they "
+                "will be offered again once the capping package updates)"
+            ),
+        ),
+    ):
+        if groups[key]:
+            print_labeled(label, ", ".join(groups[key]) + explanation)
     for name, reason in other:
         print_labeled(f"{name}:", f"skipped for safety ({reason})")
 
@@ -2575,78 +2572,41 @@ def interactive_select(stdscr, package_state, allow_back=False):
     return _PackageSelector(stdscr, package_state, allow_back).run()
 
 
-class _EnvironmentSelector:
-    """Curses list of conda environments to pick one from."""
-
-    LIST_TOP = 3
-
-    def __init__(self, stdscr, env_names, finished):
-        self.stdscr = stdscr
-        self.env_names = env_names
-        self.finished = finished
-        self.hint_attr, self.ok_attr = _init_curses_colors()
-        self.mark = _check_mark(stdscr)
-        self.nav = ListCursor()
-
-    def run(self):
-        """Return the chosen environment name, or None to quit."""
-        while True:
-            visible = self.draw()
-            key = self.stdscr.getch()
-            if key in (ord("q"), 27):
-                return None
-            if key in (10, 13, curses.KEY_ENTER):
-                return self.env_names[self.nav.cursor]
-            self.nav.navigate(key, len(self.env_names), visible)
-
-    def draw(self):
-        """Paint one frame; return the visible row count."""
-        self.stdscr.clear()
-        height, width = self.stdscr.getmaxyx()
-        safe_w = max(1, width - 1)
-        self.stdscr.addnstr(0, 0, " Select a conda environment", safe_w, curses.A_BOLD)
-        self.stdscr.addnstr(
-            1, 0, " [UP/DOWN] Move  [ENTER] Select  [q] Quit", safe_w, self.hint_attr
-        )
-        self.stdscr.addnstr(2, 0, "-" * safe_w, safe_w)
-
-        visible = max(height - self.LIST_TOP, 1)
-        self.nav.follow(visible)
-        shown = self.env_names[self.nav.scroll : self.nav.scroll + visible]
-        for offset, name in enumerate(shown):
-            attr = (
-                curses.A_REVERSE if self.nav.scroll + offset == self.nav.cursor else 0
-            )
-            line = f"  {name}"
-            if name in self.finished:
-                line += f" {self.mark}"
-                attr |= self.ok_attr
-            self.stdscr.addnstr(
-                self.LIST_TOP + offset, 0, line.ljust(safe_w), safe_w, attr
-            )
-        self.stdscr.refresh()
-        return visible
-
-
-def interactive_select_env(stdscr, env_names, finished=frozenset()):
+def interactive_select_env(stdscr, env_names, up_to_date=frozenset()):
     """Curses-based selector for conda environment names.
 
-    Environments in ``finished`` were updated successfully or found to have
-    nothing to update earlier in this run, and are shown in green with a
-    check mark.
+    Environments in ``up_to_date`` were left with no offered update waiting
+    earlier in this run, and are shown in green with a check mark.
     """
-    return _EnvironmentSelector(stdscr, env_names, finished).run()
-
-
-def _conda_json(conda, args, action):
-    """Run a read-only ``conda ... --json`` command and parse its output.
-
-    ``action`` names the step in errors, e.g. "Reading conda information".
-    """
-    result = run_command([conda, *args], capture_output=True, timeout=60)
-    if result.returncode != 0:
-        raise command_failure(action, result)
-    return parse_json_output(result.stdout, action[:1].lower() + action[1:])
+    colors = _init_curses_colors()
+    mark = _check_mark(stdscr)
+    nav = ListCursor()
+    list_top = 3
+    while True:
+        stdscr.clear()
+        height, safe_w = stdscr.getmaxyx()
+        safe_w = max(1, safe_w - 1)
+        stdscr.addnstr(0, 0, " Select a conda environment", safe_w, curses.A_BOLD)
+        stdscr.addnstr(
+            1, 0, " [UP/DOWN] Move  [ENTER] Select  [q] Quit", safe_w, colors[0]
+        )
+        stdscr.addnstr(2, 0, "-" * safe_w, safe_w)
+        visible = max(height - list_top, 1)
+        nav.follow(visible)
+        for offset, name in enumerate(env_names[nav.scroll : nav.scroll + visible]):
+            attr = curses.A_REVERSE if nav.scroll + offset == nav.cursor else 0
+            line = f"  {name}"
+            if name in up_to_date:
+                line += f" {mark}"
+                attr |= colors[1]
+            stdscr.addnstr(list_top + offset, 0, line.ljust(safe_w), safe_w, attr)
+        stdscr.refresh()
+        key = stdscr.getch()
+        if key in (ord("q"), 27):
+            return None
+        if key in (10, 13, curses.KEY_ENTER):
+            return env_names[nav.cursor]
+        nav.navigate(key, len(env_names), visible)
 
 
 def environment_labels(env_paths, root_prefix):
@@ -2684,13 +2644,13 @@ def environment_labels(env_paths, root_prefix):
 def get_known_environments():
     """Return display-name-to-prefix mapping and Conda's root prefix."""
     conda = conda_executable()
-    info = _conda_json(conda, ["info", "--json"], "Reading conda information")
+    info = json_command([conda, "info", "--json"], "Reading conda information")
     raw_root_prefix = info.get("root_prefix") or info.get("default_prefix")
     if not raw_root_prefix:
         raise UpdaterError("Conda did not report a root prefix.")
     root_prefix = str(Path(raw_root_prefix).resolve())
-    env_paths = _conda_json(
-        conda, ["env", "list", "--json"], "Listing conda environments"
+    env_paths = json_command(
+        [conda, "env", "list", "--json"], "Listing conda environments"
     ).get("envs", [])
     return environment_labels(env_paths, root_prefix), root_prefix
 
@@ -2723,7 +2683,7 @@ def activate_environment(prefix, root_prefix):
         "print(json.dumps(dict(os.environ),ensure_ascii=True,separators=(',',':')))"
     )
     activation_script = 'source "$1" && conda activate "$2" && exec "$3" -I -c "$4"'
-    result = run_command(
+    result = run_checked(
         [
             bash,
             "-c",
@@ -2734,13 +2694,10 @@ def activate_environment(prefix, root_prefix):
             target_python,
             environment_helper,
         ],
-        capture_output=True,
+        f"Activating Conda environment {prefix}",
         timeout=60,
         env=PROCESS_START_ENVIRONMENT,
     )
-    if result.returncode != 0:
-        raise command_failure(f"Activating Conda environment {prefix}", result)
-
     activated = parse_json_output(
         result.stdout, f"activating Conda environment {prefix}"
     )
@@ -2771,7 +2728,6 @@ def activate_environment(prefix, root_prefix):
     announce(
         "OK",
         f"Activated Conda environment '{Path(prefix).name}'.",
-        flush=True,
     )
 
 
@@ -2794,25 +2750,21 @@ def resolve_environment(requested, environments):
     )
 
 
+def conda_doctor(prefix, checks, action):
+    """Return the output of ``conda doctor`` running ``checks`` on ``prefix``."""
+    command = [conda_executable(), "doctor", "-p", str(prefix), *checks]
+    return run_checked(command, action, timeout=300).stdout
+
+
 def doctor_snapshot(prefix):
     """Return a normalized Conda health report for mutation-sensitive checks."""
-    result = run_command(
-        [
-            conda_executable(),
-            "doctor",
-            "-p",
-            str(prefix),
-            "altered-files",
-            "missing-files",
-            "consistency",
-        ],
-        capture_output=True,
-        timeout=300,
+    report = conda_doctor(
+        prefix,
+        ["altered-files", "missing-files", "consistency"],
+        f"Running conda doctor for {prefix}",
     )
-    if result.returncode != 0:
-        raise command_failure(f"Running conda doctor for {prefix}", result)
     lines = []
-    for line in result.stdout.splitlines():
+    for line in report.splitlines():
         if line.startswith("Environment Health Report for:"):
             lines.append("Environment Health Report")
         else:
@@ -3006,7 +2958,7 @@ def describe_consistency_issue(package, issue, installed):
     """Turn one Conda dependency complaint into a sentence."""
     if issue["kind"] == "inconsistent":
         return f"{package} needs {issue['spec']}, but {issue['installed']} is installed"
-    name = canonicalize_name(re.split(r"[\s\[<>=!~;(]", issue["spec"], maxsplit=1)[0])
+    name = canonicalize_name(requirement_name(issue["spec"]))
     version = installed.get(name)
     if version:
         # Conda only sees what Conda installed, so a requirement satisfied by
@@ -3027,14 +2979,13 @@ def conda_consistency_issues(prefix):
     what it wants, and costs well under a second because it reads metadata and
     hashes no files.
     """
-    result = run_command(
-        [conda_executable(), "doctor", "-p", str(prefix), "consistency", "--verbose"],
-        capture_output=True,
-        timeout=300,
+    issues = parse_consistency_detail(
+        conda_doctor(
+            prefix,
+            ["consistency", "--verbose"],
+            f"Reading dependency details for {prefix}",
+        )
     )
-    if result.returncode != 0:
-        raise command_failure(f"Reading dependency details for {prefix}", result)
-    issues = parse_consistency_detail(result.stdout)
     if not issues:
         return {}
     installed = {}
@@ -3062,13 +3013,8 @@ def pip_replaced_conda_packages(prefix, conda_names):
     """
     wanted = set(conda_names)
     distributions = {}
-    meta_dir = Path(prefix) / "conda-meta"
-    for record_path in sorted(meta_dir.glob("*.json")):
-        try:
-            record = json.loads(record_path.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            continue
-        if not isinstance(record, dict) or record.get("name") not in wanted:
+    for record in readable_conda_records(prefix):
+        if record.get("name") not in wanted:
             continue
         for raw_path in record.get("files", []):
             if not isinstance(raw_path, str):
@@ -3168,24 +3114,12 @@ def damaged_conda_records(prefix, sections):
         line for section in sections for line in section["detail"]
     )
     if not dists:
-        result = run_command(
-            [
-                conda_executable(),
-                "doctor",
-                "-p",
-                str(prefix),
-                "altered-files",
-                "missing-files",
-                "--verbose",
-            ],
-            capture_output=True,
-            timeout=300,
+        report = conda_doctor(
+            prefix,
+            ["altered-files", "missing-files", "--verbose"],
+            f"Running conda doctor --verbose for {prefix}",
         )
-        if result.returncode != 0:
-            raise command_failure(
-                f"Running conda doctor --verbose for {prefix}", result
-            )
-        dists = damaged_conda_dists(result.stdout.splitlines())
+        dists = damaged_conda_dists(report.splitlines())
     return [_conda_record(prefix, dist) for dist in dists]
 
 
@@ -3260,7 +3194,6 @@ def _fetch_conda_package(prefix, record):
         "INFO",
         f"Build {record['build']} is unavailable; using another build "
         f"of {name} {version}.",
-        flush=True,
     )
     spec = f"{name}=={version}"
     result = _conda_install(prefix, spec, download_only=True)
@@ -3292,22 +3225,16 @@ def repair_conda_file_damage(prefix, sections, *, dry_run):
         return
     # Fetch first: once pip's copy is removed, a failed download would leave
     # the environment without the package at all.
-    announce(
-        "INFO", "Fetching Conda's packages before changing anything...", flush=True
-    )
+    announce("INFO", "Fetching Conda's packages before changing anything...")
     specs = [_fetch_conda_package(prefix, record) for record in records]
     distributions = [e["distribution"] for es in replaced.values() for e in es]
     if distributions:
-        announce(
-            "INFO", f"Removing pip's copy of {', '.join(distributions)}...", flush=True
-        )
-        result = run_command(
+        announce("INFO", f"Removing pip's copy of {', '.join(distributions)}...")
+        run_checked(
             [*pip_command(prefix), "uninstall", "-y", *distributions],
-            capture_output=True,
+            "Removing pip's copy",
             timeout=300,
         )
-        if result.returncode != 0:
-            raise command_failure("Removing pip's copy", result)
     for record, spec in zip(records, specs):
         announce(
             "INFO", f"Reinstalling Conda's {record['name']} {record['version']}..."
@@ -3562,6 +3489,15 @@ def _active_extras(parsed, marker_env):
     return active
 
 
+def cap_cause(capper, capper_version, text):
+    """Return a hold cause: the package and version whose requirement caps."""
+    return {"capper": str(capper), "capper_version": str(capper_version), "text": text}
+
+
+def _requirement_text(owner, version, requirement):
+    return f"{owner} {version} requires {requirement.name}{requirement.specifier}"
+
+
 def _caps_rejecting(normalized, latest_version, parsed, active_extras, marker_env):
     """Return a cause for each applicable requirement that rejects the version."""
     causes = []
@@ -3574,16 +3510,8 @@ def _caps_rejecting(normalized, latest_version, parsed, active_extras, marker_en
                 and requirement.specifier
                 and latest_version not in requirement.specifier
             ):
-                causes.append(
-                    {
-                        "capper": str(capper_name),
-                        "capper_version": str(capper_version),
-                        "text": (
-                            f"{capper_name} {capper_version} requires "
-                            f"{requirement.name}{requirement.specifier}"
-                        ),
-                    }
-                )
+                text = _requirement_text(capper_name, capper_version, requirement)
+                causes.append(cap_cause(capper_name, capper_version, text))
     return causes
 
 
@@ -3622,14 +3550,11 @@ def broken_installed_requirements(inventory, marker_env):
             ):
                 continue
             broken.setdefault(normalized, []).append(
-                {
-                    "capper": str(capper_name),
-                    "capper_version": str(capper_version),
-                    "text": (
-                        f"{capper_name} {capper_version} requires "
-                        f"{requirement.name}{requirement.specifier}"
-                    ),
-                }
+                cap_cause(
+                    capper_name,
+                    capper_version,
+                    _requirement_text(capper_name, capper_version, requirement),
+                )
             )
     return broken
 
@@ -3690,18 +3615,12 @@ def _unmet_newest_requirements(label, requires, planned, extras, marker_env):
             or requirement.specifier.contains(dependency.version, prereleases=True)
         ):
             continue
-        causes.append(
-            {
-                "capper": dependency.name,
-                "capper_version": dependency.text,
-                "text": (
-                    f"{label} requires {requirement.name}{requirement.specifier}, "
-                    f"and {dependency.name} "
-                    f"{'moves only to' if dependency.moved else 'stays at'} "
-                    f"{dependency.text}"
-                ),
-            }
+        movement = "moves only to" if dependency.moved else "stays at"
+        text = (
+            f"{label} requires {requirement.name}{requirement.specifier}, "
+            f"and {dependency.name} {movement} {dependency.text}"
         )
+        causes.append(cap_cause(dependency.name, dependency.text, text))
     return causes
 
 
@@ -3794,19 +3713,11 @@ def _cause_suffix(causes):
 
 def _ownership_refusal(name, inventory, ownership, prefix):
     """Return why the updater must not or cannot replace ``name``, or None."""
-    normalized = canonicalize_name(name)
-    installed = inventory.get(normalized)
-    if normalized in PROTECTED_BOOTSTRAP_PACKAGES:
-        return f"Refusing to update protected bootstrap package {name}."
-    if normalized in ownership["distributions"]:
-        return f"Refusing to update Conda-owned package {name}."
-    if not installed or installed.get("installer") not in UPDATABLE_INSTALLERS:
-        return f"{name} is not an unambiguous pip- or uv-installed distribution."
-    if not _is_within(installed.get("metadata_path", ""), prefix):
-        return f"{name} is outside the selected environment."
-    if installed.get("direct_url"):
-        return f"{name} is an editable/direct-URL install and cannot be reproduced."
-    return None
+    installed = inventory.get(canonicalize_name(name))
+    reason = ownership_problem(canonicalize_name(name), installed, ownership, prefix)
+    if installed is None and reason is None:
+        reason = "it is not installed"
+    return f"Refusing to update {name}: {reason}." if reason else None
 
 
 def _check_selected_ownership(names, inventory, ownership, prefix):
@@ -4103,14 +4014,7 @@ class InstalledRequirements:
         text = f"{cause['text']}, which installed {row['name']} {row['version']} fails"
         if normalized not in (package, canonicalize_name(cause["capper"])):
             text = f"{name} needs {cause['capper']}; {text}"
-        return [
-            {**cause, "text": text},
-            {
-                "capper": str(row["name"]),
-                "capper_version": str(row["version"]),
-                "text": text,
-            },
-        ]
+        return [{**cause, "text": text}, cap_cause(row["name"], row["version"], text)]
 
 
 def _plan_item(raw_item, inventory, ownership, prefix):
@@ -4118,24 +4022,10 @@ def _plan_item(raw_item, inventory, ownership, prefix):
     metadata = raw_item.get("metadata") or {}
     name = str(metadata.get("name") or "")
     version = str(metadata.get("version") or "")
-    normalized = canonicalize_name(name)
-    if normalized in PROTECTED_BOOTSTRAP_PACKAGES:
-        raise UpdaterError(f"The update would modify protected package {name}.")
-    if normalized in ownership["distributions"]:
-        raise UpdaterError(
-            f"The update would overwrite Conda-owned dependency {name} {version}."
-        )
-
-    installed = inventory.get(normalized)
-    if installed:
-        if installed.get("installer") not in UPDATABLE_INSTALLERS or not _is_within(
-            installed.get("metadata_path", ""), prefix
-        ):
-            raise UpdaterError(
-                f"The update would replace {name}, which pip or uv did not install."
-            )
-        if installed.get("direct_url"):
-            raise UpdaterError(f"The update would replace direct-URL package {name}.")
+    installed = inventory.get(canonicalize_name(name))
+    problem = ownership_problem(canonicalize_name(name), installed, ownership, prefix)
+    if problem:
+        raise UpdaterError(f"The update would replace {name} {version}: {problem}.")
 
     url, sha256 = report_download(raw_item)
     if not is_index_artifact(raw_item):
@@ -4302,7 +4192,6 @@ def _announce_conflict_repairs(plan, broken):
                 "Also repairs an existing conflict: "
                 f"{item['name']} {item['current_version']} -> {item['version']} "
                 f"({reasons})",
-                flush=True,
             )
 
 
@@ -4320,7 +4209,6 @@ def _announce_missing_wheels(names, outcome):
             "No newer wheel is available for this environment: "
             + ", ".join(no_wheel)
             + " (a newer source-only release needs a manual build)",
-            flush=True,
         )
 
 
@@ -4548,10 +4436,14 @@ def _grow_plan(solve, base, units):
         for position, (key, label, options) in pending:
             for option in options:
                 pins, fixed = _plan_pins(report)
+                # A conflict can be repaired from either side; name the side
+                # each solve tries, or its log line repeats the previous one.
+                moves = ", ".join(f"{n} to {v}" for _, (n, v) in option.packages)
+                via = f" · update {moves}" if len(options) > 1 else ""
                 try:
                     report = solve(
                         (dict(option.packages), [*pins, *option.specs], fixed),
-                        f"[{position}/{len(units)}] {label}{retry}",
+                        f"[{position}/{len(units)}] {label}{via}{retry}",
                     )
                 except UnsolvableError:
                     continue
@@ -4674,7 +4566,9 @@ def _logged_solve(progress, label, solve):
     try:
         report = solve()
     except UnsolvableError:
-        progress.end_step("no solution, left out")
+        # Not "left out": another repair option or a retry may still fit, and
+        # the units that never fit are reported once resolution ends.
+        progress.end_step("no solution")
         raise
     progress.end_step("solved")
     return report
@@ -4727,7 +4621,6 @@ def _announce_unrepairable(outcome):
             "INFO",
             "These conflicts already existed, and no update of the packages "
             "involved repairs them (the updater never downgrades):",
-            flush=True,
         )
         for reason in sorted(set(outcome.unrepairable)):
             print(f"      {reason}", flush=True)
@@ -4740,7 +4633,6 @@ def _announce_rebuilt(outcome):
             "INFO",
             f"{name} stays at {installed}: the newest wheel pip finds, {newest}, "
             "is a different build",
-            flush=True,
         )
 
 
@@ -4755,7 +4647,6 @@ def _announce_set_aside(outcome):
             ", ".join(names)
             + " could not be planned with the rest: each touches a dependency "
             "conflict this environment already has, so they stay as they are.",
-            flush=True,
         )
 
 
@@ -4808,14 +4699,10 @@ def environment_layout(prefix):
         "print(json.dumps({k:sysconfig.get_paths()[k] for k in "
         "('purelib','platlib','scripts','data','include')}))"
     )
-    result = run_command(
+    layout = json_command(
         [environment_python(prefix), "-I", "-c", helper],
-        capture_output=True,
-        timeout=60,
+        f"Reading Python installation paths in {prefix}",
     )
-    if result.returncode != 0:
-        raise command_failure(f"Reading Python installation paths in {prefix}", result)
-    layout = parse_json_output(result.stdout, f"reading installation paths in {prefix}")
     for key, value in layout.items():
         if not _is_within(value, prefix) and key != "include":
             raise UpdaterError(
@@ -5022,14 +4909,10 @@ def inspect_wheelhouse(directory, prefix):
 
 def _record_claims(metadata_path, prefix_path, prefix):
     """Return the prefix-relative paths one RECORD claims, in RECORD order."""
-    record_path = metadata_path / "RECORD"
     try:
-        with open(
-            record_path, newline="", encoding="utf-8", errors="replace"
-        ) as handle:
-            rows = list(csv.reader(handle))
+        rows = read_record(metadata_path)
     except OSError as exc:
-        raise UpdaterError(f"Could not read {record_path}: {exc}") from exc
+        raise UpdaterError(f"Could not read {metadata_path / 'RECORD'}: {exc}") from exc
     claims = []
     for row in rows:
         if not row or not row[0]:
@@ -5112,7 +4995,7 @@ def declared_dependents(rows):
             text = str(requirement)
             if re.search(r"\bextra\s*==", text):
                 continue
-            name = re.split(r"[\s\[<>=!~;(]", text, maxsplit=1)[0]
+            name = requirement_name(text)
             if name and holder:
                 dependents.setdefault(canonicalize_name(name), set()).add(holder)
     return dependents
@@ -5597,7 +5480,7 @@ def _reverse_requirements(plan):
             # implicate unrelated updates (for example diffusers -> phonemizer).
             if separator and re.search(r"\bextra\b", marker, re.IGNORECASE):
                 continue
-            dependency = re.split(r"[\s\[<>=!~;(]", requirement_text, maxsplit=1)[0]
+            dependency = requirement_name(requirement_text)
             if dependency:
                 reverse.setdefault(canonicalize_name(dependency), set()).add(parent)
     return reverse
@@ -5862,52 +5745,26 @@ def validate_introduced_wheels(prefix, plan, new_wheels, inventory, ownership):
     _check_wheel_ownership(prefix, plan, new_wheels, inventory, ownership)
 
 
-def _write_json_atomic(path, payload):
-    """Atomically write a private transaction manifest."""
-    path = Path(path)
-    tmp = None
-    try:
-        with tempfile.NamedTemporaryFile(
-            mode="w",
-            encoding="utf-8",
-            dir=path.parent,
-            prefix="manifest-",
-            delete=False,
-        ) as handle:
-            tmp = Path(handle.name)
-            os.fchmod(handle.fileno(), 0o600)
-            json.dump(payload, handle, indent=2, sort_keys=True)
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.replace(tmp, path)
-        # A transaction status change must survive power loss, otherwise
-        # recovery cannot tell whether the environment was mutated.
-        _fsync_directory(path.parent)
-    finally:
-        if tmp is not None:
-            with contextlib.suppress(FileNotFoundError):
-                tmp.unlink()
-
-
-def transaction_root():
-    """Return the private persistent transaction directory."""
+def _cache_subdir(name):
+    """Return a private child after securing the updater cache root."""
     ensure_cache_root()
-    return secure_directory(CACHE_ROOT / "transactions")
+    return secure_directory(CACHE_ROOT / name)
+
+
+def _save_manifest(transaction_dir, manifest):
+    """Journal a transaction's manifest before its next step can run."""
+    write_json_atomic(
+        Path(transaction_dir) / "manifest.json", manifest, indent=2, sort_keys=True
+    )
 
 
 def _safe_remove_transaction(path):
     """Remove only a validated updater-owned transaction directory."""
-    root = transaction_root().resolve()
+    root = _cache_subdir("transactions").resolve()
     candidate = Path(path).resolve()
     if candidate.parent != root or not candidate.name.startswith("txn-"):
         raise UpdaterError(f"Refusing to remove unsafe transaction path {candidate}.")
     shutil.rmtree(candidate)
-
-
-def lock_root():
-    """Return the private directory holding per-environment lock files."""
-    ensure_cache_root()
-    return secure_directory(CACHE_ROOT / "locks")
 
 
 def prune_stale_locks():
@@ -5918,7 +5775,7 @@ def prune_stale_locks():
     it, and the recorded prefix is gone.
     """
     removed = 0
-    for lock_path in lock_root().glob("*.lock"):
+    for lock_path in _cache_subdir("locks").glob("*.lock"):
         try:
             with open(lock_path, "r+", encoding="utf-8") as handle:
                 recorded = handle.read().strip()
@@ -5940,7 +5797,7 @@ def environment_lock(prefix):
     """Prevent concurrent updater transactions for the same prefix."""
     resolved = str(Path(prefix).resolve())
     digest = hashlib.sha256(resolved.encode("utf-8")).hexdigest()
-    lock_path = lock_root() / f"{digest}.lock"
+    lock_path = _cache_subdir("locks") / f"{digest}.lock"
     flags = os.O_RDWR | os.O_CREAT
     if hasattr(os, "O_NOFOLLOW"):
         flags |= os.O_NOFOLLOW
@@ -5968,71 +5825,78 @@ def environment_lock(prefix):
         os.close(fd)
 
 
-def _verify_expected_versions(prefix, expected):
-    """Verify exact installed versions and pip ownership after a transaction."""
+def _verify_transaction_result(prefix, versions, baseline, failures):
+    """Prove the environment holds ``versions`` and is no less healthy than before.
+
+    Every package in ``versions`` must be installed by pip at exactly that
+    version.  Only *new* ``pip check`` conflicts fail: one that already existed
+    is not caused by the transaction, and may even be resolved by it.  Conda's
+    records and health report must be unchanged.  ``failures`` gives the
+    messages for a new conflict, changed Conda records and changed Conda health.
+    """
     inventory = index_inventory(get_environment_inventory(prefix), prefix)
-    for normalized, version in expected.items():
+    for name, version in versions.items():
+        normalized = canonicalize_name(name)
         item = inventory.get(normalized)
         if not item or item.get("version") != version or item.get("installer") != "pip":
             actual = item.get("version") if item else "missing"
             raise UpdaterError(
                 f"Postflight version mismatch for {normalized}: {actual} != {version}."
             )
+    conflicts, records, health = failures
+    regressions = pip_check_report(prefix) - set(baseline.get("pip_broken", []))
+    if regressions:
+        raise UpdaterError(
+            f"{conflicts}:\n  "
+            + "\n  ".join(describe_pip_conflict(line) for line in sorted(regressions))
+        )
+    digest = load_conda_ownership(prefix)["records_digest"]
+    if digest != baseline["conda_records_digest"]:
+        raise UpdaterError(records)
+    if doctor_snapshot(prefix) != baseline["doctor"]:
+        raise UpdaterError(health)
 
 
 def rollback_transaction(transaction_dir, manifest):
     """Restore exact pre-transaction wheels and verify the restored environment."""
     prefix = manifest["prefix"]
     manifest["status"] = "rolling_back"
-    _write_json_atomic(Path(transaction_dir) / "manifest.json", manifest)
+    _save_manifest(transaction_dir, manifest)
     new_only = manifest.get("new_only", [])
     if new_only:
-        announce("INFO", "Removing the newly introduced packages...", flush=True)
-        result = run_command(
+        announce("INFO", "Removing the newly introduced packages...")
+        run_checked(
             pip_command(prefix) + ["uninstall", "-y", "--quiet"] + new_only,
-            capture_output=True,
+            "Removing newly introduced packages during rollback",
             timeout=1800,
         )
-        if result.returncode != 0:
-            raise command_failure(
-                "Removing newly introduced packages during rollback", result
-            )
     old_versions = manifest.get("old_versions", {})
     if old_versions:
-        announce("INFO", "Restoring the previous package versions...", flush=True)
-        specs = [f"{name}=={version}" for name, version in sorted(old_versions.items())]
-        result = _install_local_wheels(
-            prefix, Path(transaction_dir) / "old", specs, "Restoring        "
+        announce("INFO", "Restoring the previous package versions...")
+        _install_local_wheels(
+            prefix,
+            Path(transaction_dir) / "old",
+            dict(sorted(old_versions.items())),
+            ("Restoring        ", "Restoring previous wheels"),
         )
-        if result.returncode != 0:
-            raise command_failure("Restoring previous wheels", result)
-    announce("INFO", "Verifying the restored environment...", flush=True)
-    _verify_expected_versions(
+    announce("INFO", "Verifying the restored environment...")
+    _verify_transaction_result(
         prefix,
-        {canonicalize_name(name): version for name, version in old_versions.items()},
+        old_versions,
+        manifest["baseline"],
+        (
+            "Rollback left dependency conflicts that were not there before",
+            "Conda records changed and rollback could not restore them.",
+            "Conda health differs after rollback; manual recovery is required.",
+        ),
     )
-    regressions = pip_check_report(prefix) - set(
-        manifest["baseline"].get("pip_broken", [])
-    )
-    if regressions:
-        raise UpdaterError(
-            "Rollback left dependency conflicts that were not there before:\n  "
-            + "\n  ".join(describe_pip_conflict(line) for line in sorted(regressions))
-        )
-    ownership = load_conda_ownership(prefix)
-    if ownership["records_digest"] != manifest["baseline"]["conda_records_digest"]:
-        raise UpdaterError("Conda records changed and rollback could not restore them.")
-    if doctor_snapshot(prefix) != manifest["baseline"]["doctor"]:
-        raise UpdaterError(
-            "Conda health differs after rollback; manual recovery is required."
-        )
     manifest["status"] = "rolled_back"
-    _write_json_atomic(Path(transaction_dir) / "manifest.json", manifest)
+    _save_manifest(transaction_dir, manifest)
 
 
 def recover_incomplete_transactions(prefix):
     """Recover transactions interrupted after mutation began."""
-    root = transaction_root()
+    root = _cache_subdir("transactions")
     resolved_prefix = str(Path(prefix).resolve())
     now = time.time()
     for transaction_dir in sorted(root.glob("txn-*")):
@@ -6080,7 +5944,7 @@ def recover_incomplete_transactions(prefix):
                 rollback_transaction(transaction_dir, manifest)
             except Exception as exc:
                 manifest["status"] = "rollback_failed"
-                _write_json_atomic(manifest_path, manifest)
+                _save_manifest(transaction_dir, manifest)
                 raise UpdaterError(
                     f"Automatic recovery failed; preserved journal at {transaction_dir}: {exc}"
                 ) from exc
@@ -6096,8 +5960,8 @@ def _initialize_transaction(transaction_dir, prefix):
     # several subprocess calls and two network downloads; a signal arriving
     # in any of them must leave behind either nothing at all or a journal
     # that identifies the prefix -- never an anonymous directory of wheels.
-    _write_json_atomic(
-        transaction_dir / "manifest.json",
+    _save_manifest(
+        transaction_dir,
         {
             "version": 1,
             "prefix": str(Path(prefix).resolve()),
@@ -6127,7 +5991,6 @@ def _download_new_wheels(prefix, plan, transaction_dir, inventory, ownership):
         announce(
             "INFO",
             "Checking newly introduced dependencies before the large download...",
-            flush=True,
         )
         download_exact_wheels(
             prefix,
@@ -6166,7 +6029,7 @@ def _download_rollback_wheels(prefix, old_versions, old_dir):
     """Download exact wheels of the installed versions an update replaces."""
     old_specs = [f"{name}=={version}" for name, version in old_versions.items()]
     if old_specs:
-        announce("INFO", "Locating exact rollback wheels...", flush=True)
+        announce("INFO", "Locating exact rollback wheels...")
     old_artifacts = resolve_exact_download_artifacts(prefix, old_specs)
     withdrawn = [item for item in old_artifacts if item.get("yanked")]
     if withdrawn:
@@ -6177,7 +6040,6 @@ def _download_rollback_wheels(prefix, old_versions, old_dir):
             + (" was" if len(withdrawn) == 1 else " were")
             + " withdrawn (yanked) from the package index; the exact copy is"
             " still used as the rollback copy.",
-            flush=True,
         )
     download_exact_wheels(
         prefix,
@@ -6198,7 +6060,9 @@ def prepare_transaction(prefix, plan, baseline):
     """Download new and rollback wheels, then validate all target paths."""
     transaction_dir = None
     try:
-        transaction_dir = Path(tempfile.mkdtemp(prefix="txn-", dir=transaction_root()))
+        transaction_dir = Path(
+            tempfile.mkdtemp(prefix="txn-", dir=_cache_subdir("transactions"))
+        )
         _initialize_transaction(transaction_dir, prefix)
         inventory = index_inventory(get_environment_inventory(prefix), prefix)
         ownership = load_conda_ownership(prefix)
@@ -6224,7 +6088,7 @@ def prepare_transaction(prefix, plan, baseline):
             "new_versions": {item["name"]: item["version"] for item in plan},
             "plan_signature": plan_signature(plan),
         }
-        _write_json_atomic(transaction_dir / "manifest.json", manifest)
+        _save_manifest(transaction_dir, manifest)
         return transaction_dir, manifest
     except BaseException:
         # Preparation never mutates the environment, so any failure -- including
@@ -6265,8 +6129,12 @@ def installed_record_targets(prefix, wheel_dir):
     return targets
 
 
-def _install_local_wheels(prefix, wheel_dir, specs, title):
-    """Install prevalidated wheels from one wheelhouse with live progress."""
+def _install_local_wheels(prefix, wheel_dir, versions, labels):
+    """Install exact ``versions`` of prevalidated wheels with live progress.
+
+    ``labels`` is ``(progress title, action named if pip fails)``.
+    """
+    title, action = labels
     try:
         expected = installed_record_targets(prefix, wheel_dir)
     except (UpdaterError, OSError):
@@ -6289,56 +6157,39 @@ def _install_local_wheels(prefix, wheel_dir, specs, title):
                 "--quiet",
                 "--disable-pip-version-check",
             ]
-            + specs,
+            + [f"{name}=={version}" for name, version in versions.items()],
             timeout=1800,
             hooks=StreamHooks(on_start=progress.watch, on_tick=progress.tick),
         )
     finally:
         progress.finish()
-    return result
+    if result.returncode != 0:
+        raise command_failure(action, result)
 
 
 def apply_transaction(transaction_dir, manifest):
     """Install only prevalidated local wheels and roll back on any failure."""
     prefix = manifest["prefix"]
     manifest["status"] = "applying"
-    _write_json_atomic(Path(transaction_dir) / "manifest.json", manifest)
-    specs = [f"{name}=={version}" for name, version in manifest["new_versions"].items()]
+    _save_manifest(transaction_dir, manifest)
     try:
-        result = _install_local_wheels(
-            prefix, Path(transaction_dir) / "new", specs, "Installing       "
-        )
-        if result.returncode != 0:
-            raise command_failure("Applying prevalidated wheels", result)
-        announce("INFO", "Verifying the updated environment...", flush=True)
-        _verify_expected_versions(
+        _install_local_wheels(
             prefix,
-            {
-                canonicalize_name(name): version
-                for name, version in manifest["new_versions"].items()
-            },
+            Path(transaction_dir) / "new",
+            manifest["new_versions"],
+            ("Installing       ", "Applying prevalidated wheels"),
         )
-        # Only *new* conflicts are a failure.  A conflict that already existed
-        # before the update is not caused by it, and may even be resolved by it.
-        regressions = pip_check_report(prefix) - set(
-            manifest["baseline"].get("pip_broken", [])
+        announce("INFO", "Verifying the updated environment...")
+        _verify_transaction_result(
+            prefix,
+            manifest["new_versions"],
+            manifest["baseline"],
+            (
+                "the update would have created new dependency conflicts",
+                "Conda package records changed during the pip transaction.",
+                "Conda-managed files or health changed during the pip transaction.",
+            ),
         )
-        if regressions:
-            raise UpdaterError(
-                "the update would have created new dependency conflicts:\n  "
-                + "\n  ".join(
-                    describe_pip_conflict(line) for line in sorted(regressions)
-                )
-            )
-        ownership = load_conda_ownership(prefix)
-        if ownership["records_digest"] != manifest["baseline"]["conda_records_digest"]:
-            raise UpdaterError(
-                "Conda package records changed during the pip transaction."
-            )
-        if doctor_snapshot(prefix) != manifest["baseline"]["doctor"]:
-            raise UpdaterError(
-                "Conda-managed files or health changed during the pip transaction."
-            )
     except BaseException as exc:
         # BaseException, not Exception: KeyboardInterrupt and the SIGTERM/SIGHUP
         # exception must also unwind through rollback, because the environment
@@ -6347,7 +6198,7 @@ def apply_transaction(transaction_dir, manifest):
             rollback_transaction(transaction_dir, manifest)
         except BaseException as rollback_exc:
             manifest["status"] = "rollback_failed"
-            _write_json_atomic(Path(transaction_dir) / "manifest.json", manifest)
+            _save_manifest(transaction_dir, manifest)
             raise UpdaterError(
                 f"Update failed ({exc}); automatic rollback also failed ({rollback_exc}). "
                 f"Recovery data is preserved at {transaction_dir}."
@@ -6360,7 +6211,7 @@ def apply_transaction(transaction_dir, manifest):
         ) from exc
 
     manifest["status"] = "complete"
-    _write_json_atomic(Path(transaction_dir) / "manifest.json", manifest)
+    _save_manifest(transaction_dir, manifest)
     _safe_remove_transaction(transaction_dir)
 
 
@@ -6373,7 +6224,6 @@ def update_packages(prefix, env_label, names, expected_plan):
     announce(
         "INFO",
         "Downloading both the new packages and rollback copies first.",
-        flush=True,
     )
     with environment_lock(prefix):
         recover_incomplete_transactions(prefix)
@@ -6387,12 +6237,10 @@ def update_packages(prefix, env_label, names, expected_plan):
         announce(
             "OK",
             "Downloads, checksums, and file-ownership checks passed.",
-            flush=True,
         )
         announce(
             "INFO",
             f"Installing the verified packages into '{env_label}'...",
-            flush=True,
         )
         apply_transaction(transaction_dir, manifest)
 
@@ -6414,27 +6262,19 @@ def parse_args():
         metavar="PKG1,PKG2",
         help="Comma-separated package names to update (non-interactive)",
     )
-    parser.add_argument(
-        "-y",
-        "--yes",
-        action="store_true",
-        help="Skip the final confirmation prompt in non-interactive modes",
-    )
-    parser.add_argument(
-        "--refresh",
-        action="store_true",
-        help="Ignore cache and force a fresh package scan",
-    )
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Preview updates and recommended next steps without changing packages",
-    )
-    parser.add_argument(
-        "--details",
-        action="store_true",
-        help="Show technical paths and full package artifact checksums",
-    )
+    for flags, help_text in (
+        (
+            ("-y", "--yes"),
+            "Skip the final confirmation prompt in non-interactive modes",
+        ),
+        (("--refresh",), "Ignore cache and force a fresh package scan"),
+        (
+            ("--dry-run",),
+            "Preview updates and recommended next steps without changing packages",
+        ),
+        (("--details",), "Show technical paths and full package artifact checksums"),
+    ):
+        parser.add_argument(*flags, action="store_true", help=help_text)
     return parser.parse_args()
 
 
@@ -6452,25 +6292,9 @@ def parse_package_list(raw):
 
 def select_non_interactive(packages, *, select_all=False, requested_csv=None):
     """Choose packages without curses UI based on CLI flags."""
-    outdated_map = {canonicalize_name(pkg["name"]): pkg["name"] for pkg in packages}
     if select_all:
         return [pkg["name"] for pkg in packages]
-
-    requested = parse_package_list(requested_csv)
-    selected = []
-    missing = []
-    seen = set()
-
-    for name in requested:
-        key = canonicalize_name(name)
-        if key not in outdated_map:
-            missing.append(name)
-            continue
-        actual = outdated_map[key]
-        if canonicalize_name(actual) not in seen:
-            selected.append(actual)
-            seen.add(canonicalize_name(actual))
-
+    selected, missing = reconcile_selected(parse_package_list(requested_csv), packages)
     if missing:
         available = ", ".join(pkg["name"] for pkg in packages) or "<none>"
         raise UpdaterError(
@@ -6483,21 +6307,21 @@ def select_non_interactive(packages, *, select_all=False, requested_csv=None):
 
 
 def reconcile_selected(selected, packages):
-    """Drop selections that are no longer outdated in latest package list."""
+    """Match names to ``packages``; return ``(kept, dropped)``.
+
+    ``kept`` holds each matched package's own spelling once, in selection
+    order; ``dropped`` the names no package in the list matches.
+    """
     latest_map = {canonicalize_name(pkg["name"]): pkg["name"] for pkg in packages}
-    kept = []
+    kept = {}
     dropped = []
-    seen = set()
     for name in selected:
-        key = canonicalize_name(name)
-        actual = latest_map.get(key)
+        actual = latest_map.get(canonicalize_name(name))
         if not actual:
             dropped.append(name)
-            continue
-        if canonicalize_name(actual) not in seen:
-            kept.append(actual)
-            seen.add(canonicalize_name(actual))
-    return kept, dropped
+        else:
+            kept.setdefault(actual)
+    return list(kept), dropped
 
 
 def version_major(version):
@@ -6609,29 +6433,18 @@ def display_script_command():
 
 def build_apply_command(env_name, args, selected):
     """Build the non-dry-run command matching the user's selection mode."""
-    command = [sys.executable, display_script_command(), env_name]
     if args.all:
-        command.append("--all")
-    elif args.packages:
-        command.extend(["--packages", args.packages])
-    else:
-        command.extend(["--packages", ",".join(selected)])
+        return build_update_command(env_name, ["--all"], show_details=args.details)
+    packages = args.packages or ",".join(selected)
+    return build_update_command(
+        env_name, ["--packages", packages], show_details=args.details
+    )
+
+
+def build_update_command(env_name, selection, *, show_details=False):
+    """Build a copy-and-paste command updating ``selection`` after a fresh scan."""
+    command = [sys.executable, display_script_command(), env_name, *selection]
     command.append("--refresh")
-    if args.details:
-        command.append("--details")
-    return shlex.join(command)
-
-
-def build_single_package_command(env_name, package_name, *, show_details=False):
-    """Build a copy-and-paste command for one higher-risk package update."""
-    command = [
-        sys.executable,
-        display_script_command(),
-        env_name,
-        "--packages",
-        package_name,
-        "--refresh",
-    ]
     if show_details:
         command.append("--details")
     return shlex.join(command)
@@ -6734,8 +6547,8 @@ def print_dry_run_result(env_name, args, selected, plan, baseline=None):
             "one at a time:"
         )
         for item in sorted(major_changes, key=lambda value: value["name"].lower()):
-            command = build_single_package_command(
-                env_name, item["name"], show_details=args.details
+            command = build_update_command(
+                env_name, ["--packages", item["name"]], show_details=args.details
             )
             print("\n    " + paint(command, "command"))
         print("\n  After each update, start the application or run its tests.")
@@ -6761,19 +6574,30 @@ def print_dry_run_result(env_name, args, selected, plan, baseline=None):
     )
 
 
-def print_no_updates_result(env_name, *, all_held=False):
-    """Explain a clean scan as a successful no-op."""
-    print_banner("NOTHING TO UPDATE", "ok")
+def print_no_updates_result(env_name, *, all_held=False, waiting=()):
+    """Explain a pass that changed nothing as a successful no-op.
+
+    ``waiting`` lists offered updates left unselected, so the result must not
+    claim the whole environment is current.
+    """
+    print_banner(
+        "NO SELECTED UPDATES TO APPLY" if waiting else "NOTHING TO UPDATE", "ok"
+    )
     if all_held:
         announce(
             "OK",
             "Every selected package is already as new as this updater can "
             "install (see the reasons above).",
         )
+    elif waiting:
+        announce("OK", "Nothing you selected still needs an update.")
     else:
         announce(
             "OK", f"All eligible pip packages in '{env_name}' are already current."
         )
+    if waiting:
+        names = ", ".join(package["name"] for package in waiting)
+        announce("INFO", f"Not selected, still waiting: {names}")
     announce(
         "INFO", "Automatically skipped Conda-managed/core packages need no action."
     )
@@ -6858,9 +6682,10 @@ class _UpdateTarget:
     prefix: str
     fixed: bool
     env_key: str = dataclasses.field(init=False)
-    # Set when this pass updated the environment or found nothing to update;
-    # the picker then shows it in green with a check mark.
-    finished: bool = dataclasses.field(default=False, init=False)
+    # Set when this pass leaves no offered update waiting: everything was
+    # installed or held back, or nothing was outdated.  The picker then shows
+    # the environment in green with a check mark.
+    up_to_date: bool = dataclasses.field(default=False, init=False)
 
     def __post_init__(self):
         self.env_key = str(Path(self.prefix).resolve())
@@ -6879,7 +6704,7 @@ def _fixed_environment(args, environments, root_prefix):
     return fixed
 
 
-def _choose_environment(selectable, environments, finished):
+def _choose_environment(selectable, environments, up_to_date):
     """Let the user pick an environment; None when they quit."""
     if not sys.stdin.isatty() or not sys.stdout.isatty():
         raise UpdaterError(
@@ -6887,7 +6712,7 @@ def _choose_environment(selectable, environments, finished):
             "environments: " + ", ".join(selectable)
         )
     try:
-        env_name = curses.wrapper(interactive_select_env, selectable, finished)
+        env_name = curses.wrapper(interactive_select_env, selectable, up_to_date)
     except curses.error as exc:
         raise UpdaterError(
             f"Failed to initialize environment selector ({exc}). "
@@ -6953,12 +6778,10 @@ def _find_outdated(target):
         )
         return packages, from_cache, not from_cache
     if not from_cache or args.refresh:
-        print_no_updates_result(target.env_name)
         return None
     print("Cached result is empty; verifying with a live scan...")
     packages = _live_scan(target)
     if not packages:
-        print_no_updates_result(target.env_name)
         return None
     announce(
         "OK",
@@ -6974,7 +6797,6 @@ def _choose_non_interactive(target, packages, live):
         announce("INFO", "Confirming the cached list with a live scan...")
         packages = _live_scan(target)
         if not packages:
-            print_no_updates_result(target.env_name)
             return None
     selected = select_non_interactive(
         packages,
@@ -7098,6 +6920,22 @@ def _another_environment_wanted(target):
             return False
 
 
+def _nothing_to_update(target, waiting=(), *, all_held=False):
+    """Report a pass that changed nothing; True means choose another environment.
+
+    ``waiting`` lists the outdated packages the user left unselected.
+    """
+    print_no_updates_result(target.env_name, all_held=all_held, waiting=waiting)
+    target.up_to_date = not waiting
+    return _another_environment_wanted(target)
+
+
+def _unselected(packages, selected):
+    """Return the packages in ``packages`` that ``selected`` does not name."""
+    chosen = {canonicalize_name(name) for name in selected}
+    return [p for p in packages if canonicalize_name(p["name"]) not in chosen]
+
+
 def _confirmed(env_name):
     if not sys.stdin.isatty():
         print(
@@ -7122,14 +6960,20 @@ def _plan_and_apply(target, selected, live_packages, baseline):
     selected, dropped = reconcile_selected(selected, live_packages)
     if dropped:
         announce("INFO", "No longer need an update: " + ", ".join(dropped))
+    waiting = _unselected(live_packages, selected)
     if not selected:
-        print_no_updates_result(target.env_name)
-        return _another_environment_wanted(target)
+        return _nothing_to_update(target, waiting)
 
     plan = resolve_update_plan(target.prefix, selected)
+    planned = {canonicalize_name(item["name"]) for item in plan}
+    held = [name for name in selected if canonicalize_name(name) not in planned]
+    if held:
+        # The resolver just recorded these holds; a cached list that still
+        # offered them would bring them back the next time this environment
+        # is opened, until the background rescan filtered them out.
+        remove_cached_packages(target.env_key, held)
     if not plan:
-        print_no_updates_result(target.env_name, all_held=True)
-        return _another_environment_wanted(target)
+        return _nothing_to_update(target, waiting, all_held=True)
     announce("OK", "pip found a compatible update plan.")
     print_resolved_plan(plan, show_details=args.details)
     try:
@@ -7150,14 +6994,25 @@ def _plan_and_apply(target, selected, live_packages, baseline):
         return _another_environment_wanted(target)
 
     update_packages(target.prefix, target.env_name, selected, plan)
-    remove_cached_packages(target.env_key, selected)
+    # The plan can also update unselected offered packages (conflict repairs,
+    # dependencies); one now at its offered version is no longer waiting.
+    # pip reports raw METADATA text but normalized latest_version, so a
+    # spelling difference errs toward still offering the update.
+    reached = {canonicalize_name(item["name"]): item["version"] for item in plan}
+    done = [
+        package["name"]
+        for package in waiting
+        if reached.get(canonicalize_name(package["name"])) == package["latest_version"]
+    ]
+    waiting = _unselected(waiting, done)
+    remove_cached_packages(target.env_key, [*selected, *done])
     print_update_success(
         target.env_name,
         plan,
         set(baseline["pip_broken"]),
         pip_check_report(target.prefix),
     )
-    target.finished = True
+    target.up_to_date = not waiting
     return _another_environment_wanted(target)
 
 
@@ -7175,13 +7030,12 @@ def _update_environment(target, root_prefix):
 
     found = _find_outdated(target)
     if found is None:
-        target.finished = True
-        return _another_environment_wanted(target)
+        return _nothing_to_update(target)
     packages, from_cache, live = found
     if args.all or args.packages:
         chosen = _choose_non_interactive(target, packages, live)
         if chosen is None:
-            return _another_environment_wanted(target)
+            return _nothing_to_update(target)
         (selected, packages), live = chosen, True
     else:
         chosen = _choose_interactive(target, packages, from_cache)
@@ -7220,10 +7074,10 @@ def main():
 
     fixed_environment = _fixed_environment(args, environments, root_prefix)
     # Remembered for this run only; the next run scans every environment anew.
-    finished = set()
+    up_to_date = set()
     while True:
         chosen = fixed_environment or _choose_environment(
-            selectable, environments, finished
+            selectable, environments, up_to_date
         )
         if chosen is None:
             print("No environment selected. Exiting.")
@@ -7232,10 +7086,10 @@ def main():
         target = _UpdateTarget(args, env_name, prefix, fixed=bool(fixed_environment))
         if not _update_environment(target, root_prefix):
             return
-        if target.finished:
-            finished.add(env_name)
+        if target.up_to_date:
+            up_to_date.add(env_name)
         else:
-            finished.discard(env_name)
+            up_to_date.discard(env_name)
 
 
 def report_fatal(label, *details, lead=""):
