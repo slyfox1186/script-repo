@@ -1,8 +1,17 @@
 #!/usr/bin/env python3
-"""Build and install CUDA-enabled llama.cpp binaries.
+"""
+Build and install these CUDA-enabled llama.cpp binaries:
 
-Tuned for this host: AMD Ryzen 9 7900X (Zen 4), NVIDIA RTX 4090 (compute
-capability 8.9), Ubuntu 24.04, system CUDA under /usr/local/cuda.
+llama
+llama-cli
+llama-server
+
+and install the latest llama-swap release binary alongside them.
+
+Tuned for this host:
+
+AMD Ryzen 9 7900X (Zen 4), NVIDIA RTX 4090 (compute capability 8.9),
+Ubuntu 24.04, system CUDA under /usr/local/cuda.
 
 Run without sudo. The script escalates only for apt and for installing the
 finished binaries, and it primes the sudo timestamp up front so a long compile
@@ -12,31 +21,31 @@ cannot strand the install behind a password prompt.
 from __future__ import annotations
 
 import argparse
-import fcntl
+import hashlib
+import json
 import os
-import glob
+import platform
 import re
 import shlex
 import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
 import textwrap
 import time
+import urllib.error
+import urllib.request
+from collections.abc import Sequence
 from dataclasses import dataclass
 from types import TracebackType
-from typing import Any, Sequence
+from typing import Any, ClassVar
 
 REPO_URL = "https://github.com/ggml-org/llama.cpp"
 REPO_DIR = "llama.cpp"
-BUILD_SUBDIR = "build"
+LLAMA_SWAP_DIR = "llama-swap"
 INSTALL_DIR = "/usr/local/bin"
-
-# Written inside .git of every clone this script makes, listing the commits it
-# checked out. Only a checkout carrying it, with no changes beyond the build
-# directory and no commits of its own, is treated as disposable. Keeping it in
-# .git leaves the working tree status clean.
-CHECKOUT_MARKER = "llama-cpp-installer-checkout"
+CUDA_HOME = "/usr/local/cuda"
 
 SYSTEM_PACKAGES = (
     "build-essential",
@@ -47,22 +56,33 @@ SYSTEM_PACKAGES = (
     "ninja-build",
 )
 
-BUILD_TARGETS = ("llama-cli", "llama-server")
+# CMake target -> binary it produces. llama-app is upstream's unified `llama`
+# binary, which the README now leads with: `llama serve`, `llama cli`, `llama
+# download`, plus bench, batched-bench, quantize, perplexity, fit-params and
+# completion (`llama help all`). llama-cli and llama-server remain for callers
+# that use those names; all three link the same llama-*-impl libraries, so the
+# extra binaries cost little compile time.
+BUILD_TARGETS = {
+    "llama-app": "llama",
+    "llama-cli": "llama-cli",
+    "llama-server": "llama-server",
+}
 
-# Directories checked for build tools before falling back to a PATH search.
+# llama-swap is a separate Go project, not a llama.cpp CMake target, so it is
+# installed from its GitHub release (linux_<arch> tarball, verified against the
+# release's own checksums file) rather than compiled here.
+LLAMA_SWAP_REPO = "mostlygeek/llama-swap"
+LLAMA_SWAP_BINARY = "llama-swap"
+LLAMA_SWAP_ARCHES = {"x86_64": "amd64", "aarch64": "arm64"}
+HTTP_TIMEOUT_SECONDS = 60
+
+# Directories checked, in order, for build tools before falling back to a PATH
+# search, so a local install under /usr/local wins over the distro package.
 # Copies inside a conda or venv prefix are skipped so the build does not depend
-# on which environment was active. See require_build_tool for why cmake also
-# picks the newest candidate rather than the first one found.
+# on which environment was active.
 SYSTEM_TOOL_DIRS = ("/usr/local/bin", "/usr/bin")
 
-# K/V type combinations to compile FlashAttention kernels for. Upstream replaced
-# the old GGML_CUDA_FA_ALL_QUANTS boolean with this list; ALL_QUANTS is now just
-# a deprecated alias for "all", which compiles every combination and takes far
-# longer. This list covers the configurations usable on a 24 GB card.
-# Combinations not compiled fall back to f16-f16 with a runtime warning.
-CUDA_FA_QUANTS = "f16-f16;bf16-bf16;q8_0-q8_0;q4_0-q4_0"
-
-TOTAL_STEPS = 8
+TOTAL_STEPS = 9
 
 # Heuristic, not a measured requirement: a single-architecture CUDA build plus
 # its ccache growth runs to several GiB, so anything under this is worth a look
@@ -76,7 +96,7 @@ class Log:
     LABEL_WIDTH = 5
     INDENT = " " * 14  # len("[mm:ss] ") + LABEL_WIDTH + 1
     RULE_WIDTH = 78
-    COLORS = {
+    COLORS: ClassVar[dict[str, str]] = {
         "RUN": "36",
         "OK": "32",
         "WARN": "33",
@@ -100,7 +120,7 @@ class Log:
     def format_duration(seconds: float) -> str:
         if seconds < 60:
             return f"{seconds:.1f}s"
-        minutes, secs = divmod(int(round(seconds)), 60)
+        minutes, secs = divmod(round(seconds), 60)
         if minutes < 60:
             return f"{minutes}m{secs:02d}s"
         hours, minutes = divmod(minutes, 60)
@@ -130,7 +150,7 @@ class Log:
     def ok(self, message: str) -> None:
         self._emit("OK", message)
 
-    def warn(self, message: str) -> None:
+    def warning(self, message: str) -> None:
         self.warnings.append(message)
         self._emit("WARN", message)
 
@@ -146,7 +166,6 @@ class Log:
         A fixed column width leaves a short key like "device" stranded far from
         its value, so the width is computed per group instead.
         """
-        rows = [row for row in rows if row is not None]
         if not rows:
             return
         width = min(max(len(key) for key, _ in rows), 26)
@@ -156,13 +175,16 @@ class Log:
     def bullet(self, text: str) -> None:
         print(f"{self.INDENT}{self._paint(text, 'DIM')}", flush=True)
 
-    def result_banner(self, succeeded: bool, segments: Sequence[str]) -> None:
+    def result_banner(
+        self, succeeded: bool, segments: Sequence[str], *, verdict: str | None = None
+    ) -> None:
         """Final, unmissable verdict. Always the last output of the run.
 
         Segments are packed onto lines at the " | " separators, so a fact is
         never split across a line break the way "1" / "warning(s)" was.
         """
-        verdict = "BUILD SUCCEEDED" if succeeded else "BUILD FAILED"
+        if verdict is None:
+            verdict = "BUILD SUCCEEDED" if succeeded else "BUILD FAILED"
         key = "SUCCESS" if succeeded else "FAILURE"
         width = self.RULE_WIDTH
         inner = width - 6  # leading "## " and trailing " ##"
@@ -327,23 +349,17 @@ def capture(
     return str(result.stdout or "").strip()
 
 
-def smoke_test(cmd: Sequence[str], *, env: dict[str, str] | None = None) -> str:
-    """Run a built binary and return stdout and stderr together.
+def capture_all(
+    cmd: Sequence[str], *, env: dict[str, str] | None = None
+) -> tuple[int, str]:
+    """Run a command and return (exit code, stdout and stderr together).
 
     Some llama.cpp binaries print version and device banners on stderr, so a
     stdout-only read would come back empty. Output is not echoed here; callers
-    format it, which avoids printing the same block twice. A non-zero exit
-    (a loader failure, a crash) raises, so it can never pass as a verified build.
+    format it, which avoids printing the same block twice.
     """
     result = run(cmd, env=env, capture=True, check=False, show_output=False)
-    output = ((result.stdout or "") + (result.stderr or "")).strip()
-    if result.returncode != 0:
-        lines = output.splitlines()
-        detail = "\n".join(f"  {line}" for line in lines[-10:]) or "  (no output)"
-        raise RuntimeError(
-            f"{shlex.join(cmd)} exited with status {result.returncode}:\n{detail}"
-        )
-    return output
+    return result.returncode, ((result.stdout or "") + (result.stderr or "")).strip()
 
 
 def require_executable(command: str, *, env: dict[str, str] | None = None) -> str:
@@ -400,7 +416,7 @@ def gpu_inventory(*, env: dict[str, str]) -> list[Gpu]:
     """Query the driver once for everything the build and the log need."""
     nvidia_smi = shutil.which("nvidia-smi", path=env.get("PATH"))
     if nvidia_smi is None:
-        log.warn("nvidia-smi not found; cannot inventory GPUs or query compute capability.")
+        log.warning("nvidia-smi not found; cannot inventory GPUs or query compute capability.")
         return []
 
     result = run(
@@ -415,7 +431,7 @@ def gpu_inventory(*, env: dict[str, str]) -> list[Gpu]:
         show_output=False,
     )
     if result.returncode != 0:
-        log.warn("nvidia-smi failed; GPU details unavailable.")
+        log.warning("nvidia-smi failed; GPU details unavailable.")
         return []
 
     gpus: list[Gpu] = []
@@ -434,7 +450,7 @@ def gpu_inventory(*, env: dict[str, str]) -> list[Gpu]:
                 )
             )
         except ValueError:
-            log.warn(f"Could not parse nvidia-smi row: {line!r}")
+            log.warning(f"Could not parse nvidia-smi row: {line!r}")
     return gpus
 
 
@@ -539,18 +555,9 @@ def version_text(version: tuple[int, ...]) -> str:
 
 
 def require_build_tool(
-    command: str, *, env: dict[str, str], prefer_newest: bool = False
+    command: str, *, env: dict[str, str]
 ) -> tuple[str, tuple[int, ...]]:
-    """Resolve a build tool, skipping conda/venv copies.
-
-    With prefer_newest, the highest-versioned candidate wins rather than the
-    first on PATH. That matters for cmake here: CUDA 13 relocated the cuda/,
-    cub/ and thrust/ headers into the CCCL 3.0 layout, and only a CMake new
-    enough to add the toolkit's include/cccl directory to FindCUDAToolkit hands
-    that path to host-compiled translation units. nvcc finds those headers on
-    its own, so an older CMake builds fine today while silently dropping an
-    include path any host-only translation unit would need.
-    """
+    """Resolve a build tool from SYSTEM_TOOL_DIRS, then PATH, skipping conda/venv copies."""
     candidates: list[str] = []
     for directory in SYSTEM_TOOL_DIRS:
         candidate = os.path.join(directory, command)
@@ -569,28 +576,12 @@ def require_build_tool(
     for item in skipped:
         log.info(f"ignoring environment-managed {command}: {item}")
 
-    if not usable:
-        log.warn(
-            f"Only environment-managed copies of {command} found; using {candidates[0]}."
-        )
-        chosen = candidates[0]
-        return chosen, tool_version(chosen, env=env)
-
-    if not prefer_newest or len(usable) == 1:
+    if usable:
         chosen = usable[0]
-        return chosen, tool_version(chosen, env=env)
-
-    versions = {item: tool_version(item, env=env) for item in usable}
-    log.info(
-        f"{command} candidates (newest wins): "
-        + ", ".join(
-            f"{item} ({version_text(version)})" for item, version in versions.items()
-        )
-    )
-    chosen = max(usable, key=lambda item: versions[item])
-    if versions[chosen] == ():
-        log.warn(f"Could not determine a version for any {command}; using {chosen}.")
-    return chosen, versions[chosen]
+    else:
+        chosen = candidates[0]
+        log.warning(f"Only environment-managed copies of {command} found; using {chosen}.")
+    return chosen, tool_version(chosen, env=env)
 
 
 def _gcc_major(executable: str, *, env: dict[str, str]) -> int:
@@ -612,10 +603,6 @@ def _make_toolchain(
     cc: str, cxx: str, *, expected_major: int | None, env: dict[str, str], label: str
 ) -> GccToolchain | None:
     """Validate a compiler pair and return a toolchain, or None with a reason."""
-    if _is_ccache_shim(cc) or _is_ccache_shim(cxx):
-        log.info(f"skipping {label}: resolves to a ccache shim")
-        return None
-
     try:
         cc_major = _gcc_major(cc, env=env)
         cxx_major = _gcc_major(cxx, env=env)
@@ -637,18 +624,15 @@ def _make_toolchain(
     )
 
 
-def _which_non_shim(name: str, search_path: str) -> str | None:
-    """First executable called name on search_path that is not a ccache shim.
+def _which_compiler(command: str, search_path: str) -> str | None:
+    """First executable named command on search_path that is not a ccache shim.
 
-    shutil.which stops at the first hit, and with /usr/lib/ccache ahead of
-    /usr/bin (Ubuntu's documented ccache setup) that hit is always the shim,
-    hiding the real compiler later on PATH. Empty components are skipped
-    because they mean the current directory.
+    shutil.which stops at the first hit, and Ubuntu's ccache setup puts
+    /usr/lib/ccache ahead of /usr/bin on PATH, so the real compiler behind a
+    shim has to be found by continuing down the path.
     """
-    for directory in search_path.split(os.pathsep):
-        if not directory:
-            continue
-        candidate = os.path.join(directory, name)
+    for directory_name in search_path.split(os.pathsep):
+        candidate = os.path.join(directory_name or os.curdir, command)
         if (
             os.path.isfile(candidate)
             and os.access(candidate, os.X_OK)
@@ -664,9 +648,8 @@ def installed_gcc_toolchains(*, env: dict[str, str]) -> list[GccToolchain]:
     version_pattern = re.compile(r"^gcc-(\d+)$")
     installed_majors: set[int] = set()
 
-    for directory in search_path.split(os.pathsep):
-        if not directory:
-            continue
+    for directory_name in search_path.split(os.pathsep):
+        directory = directory_name or os.curdir
         try:
             entries = os.scandir(directory)
         except OSError:
@@ -684,8 +667,8 @@ def installed_gcc_toolchains(*, env: dict[str, str]) -> list[GccToolchain]:
 
     toolchains: list[GccToolchain] = []
     for major in sorted(installed_majors, reverse=True):
-        cc = _which_non_shim(f"gcc-{major}", search_path)
-        cxx = _which_non_shim(f"g++-{major}", search_path)
+        cc = _which_compiler(f"gcc-{major}", search_path)
+        cxx = _which_compiler(f"g++-{major}", search_path)
         if cc is None or cxx is None:
             log.info(f"skipping gcc-{major}: no matching g++-{major}")
             continue
@@ -697,8 +680,8 @@ def installed_gcc_toolchains(*, env: dict[str, str]) -> list[GccToolchain]:
 
     # Some installs expose only unversioned executables, which is how a
     # hand-built GCC under /usr/local shows up.
-    cc = _which_non_shim("gcc", search_path)
-    cxx = _which_non_shim("g++", search_path)
+    cc = _which_compiler("gcc", search_path)
+    cxx = _which_compiler("g++", search_path)
     if cc is not None and cxx is not None:
         toolchain = _make_toolchain(
             cc, cxx, expected_major=None, env=env, label=f"unversioned gcc ({cc})"
@@ -711,18 +694,14 @@ def installed_gcc_toolchains(*, env: dict[str, str]) -> list[GccToolchain]:
     return sorted(toolchains, key=lambda item: item.major, reverse=True)
 
 
-def nvcc_accepts_host_compiler(
-    nvcc: str, toolchain: GccToolchain, *, env: dict[str, str]
-) -> tuple[bool, str]:
-    """Compile a minimal CUDA source to verify nvcc accepts a GCC toolchain."""
+def nvcc_probe(nvcc: str, flags: Sequence[str], *, env: dict[str, str]) -> tuple[bool, str]:
+    """Compile an empty kernel with extra nvcc flags; return (accepted, reason)."""
     with tempfile.TemporaryDirectory(prefix="llama-cpp-nvcc-probe-") as temp_dir:
-        source_path = os.path.join(temp_dir, "compiler_probe.cu")
-        object_path = os.path.join(temp_dir, "compiler_probe.o")
+        source_path = os.path.join(temp_dir, "probe.cu")
         with open(source_path, "w", encoding="utf-8") as source_file:
-            source_file.write('extern "C" __global__ void compiler_probe() {}\n')
-
+            source_file.write('extern "C" __global__ void probe() {}\n')
         result = run(
-            [nvcc, "-ccbin", toolchain.cxx, "-x", "cu", "-c", source_path, "-o", object_path],
+            [nvcc, *flags, "-c", source_path, "-o", os.path.join(temp_dir, "probe.o")],
             check=False,
             capture=True,
             env=env,
@@ -732,8 +711,7 @@ def nvcc_accepts_host_compiler(
     if result.returncode == 0:
         return True, ""
     output = ((result.stderr or "") + (result.stdout or "")).strip()
-    reason = output.splitlines()[-1] if output else "nvcc exited without diagnostics"
-    return False, reason
+    return False, output.splitlines()[-1] if output else "nvcc exited without diagnostics"
 
 
 def nvcc_rejects_architectures(
@@ -741,8 +719,8 @@ def nvcc_rejects_architectures(
 ) -> list[str]:
     """Return the architectures in the list that this nvcc will not compile for.
 
-    The host-compiler probe above uses nvcc's default architecture, so a toolkit
-    too old for the installed GPU passes it and only fails once the real compile
+    The host-compiler probe uses nvcc's default architecture, so a toolkit too
+    old for the installed GPU passes it and only fails once the real compile
     reaches a CUDA source. One probe per architecture catches that in about a
     second. Reported as a warning rather than a hard stop: the probe uses a
     plain sm_<n> name and newer parts also accept suffixed variants, so a
@@ -750,33 +728,11 @@ def nvcc_rejects_architectures(
     """
     if architectures == "native":
         return []
-
-    rejected: list[str] = []
-    with tempfile.TemporaryDirectory(prefix="llama-cpp-arch-probe-") as temp_dir:
-        source_path = os.path.join(temp_dir, "arch_probe.cu")
-        with open(source_path, "w", encoding="utf-8") as source_file:
-            source_file.write('extern "C" __global__ void arch_probe() {}\n')
-
-        for arch in architectures.split(";"):
-            if not arch:
-                continue
-            result = run(
-                [
-                    nvcc,
-                    f"-arch=sm_{arch}",
-                    "-c",
-                    source_path,
-                    "-o",
-                    os.path.join(temp_dir, f"arch_probe_{arch}.o"),
-                ],
-                check=False,
-                capture=True,
-                env=env,
-                quiet=True,
-            )
-            if result.returncode != 0:
-                rejected.append(arch)
-    return rejected
+    return [
+        arch
+        for arch in architectures.split(";")
+        if arch and not nvcc_probe(nvcc, [f"-arch=sm_{arch}"], env=env)[0]
+    ]
 
 
 def select_gcc_toolchain(nvcc: str, *, env: dict[str, str]) -> GccToolchain:
@@ -790,7 +746,7 @@ def select_gcc_toolchain(nvcc: str, *, env: dict[str, str]) -> GccToolchain:
     log.info(f"probing {plural(len(toolchains), 'toolchain')} against nvcc")
     rejected: list[str] = []
     for toolchain in toolchains:
-        accepted, reason = nvcc_accepts_host_compiler(nvcc, toolchain, env=env)
+        accepted, reason = nvcc_probe(nvcc, ["-ccbin", toolchain.cxx], env=env)
         if accepted:
             log.ok(f"selected {toolchain.version} ({toolchain.cc})")
             return toolchain
@@ -850,174 +806,15 @@ def report_ccache_delta(before: dict[str, int], after: dict[str, int]) -> list[t
     ]
 
 
-def cccl_include_dirs(cuda_home: str) -> list[str]:
-    """CCCL header directories shipped by the toolkit, if it has the new layout.
-
-    CUDA 13 moved cuda/, cub/ and thrust/ into a separate cccl include tree.
-    """
-    patterns = (
-        os.path.join(cuda_home, "include", "cccl"),
-        os.path.join(cuda_home, "targets", "*", "include", "cccl"),
-    )
-    found: list[str] = []
-    for pattern in patterns:
-        found.extend(path for path in glob.glob(pattern) if os.path.isdir(path))
-    return found
-
-
-def verify_cccl_visible(build_dir: str, cuda_home: str) -> None:
-    """Check that cmake handed the toolkit's CCCL headers to the build.
-
-    nvcc finds those headers itself, so a cmake that omits them still builds
-    today while leaving any host-compiled translation unit that includes cuda/,
-    cub/ or thrust/ without an include path. Rather than guess which cmake
-    version added the directory, read what this cmake actually detected.
-    """
-    expected = cccl_include_dirs(cuda_home)
-    if not expected:
-        return  # pre-CUDA 13 layout: nothing to check
-
-    detected = glob.glob(
-        os.path.join(build_dir, "CMakeFiles", "*", "CMakeCUDACompiler.cmake")
-    )
-    if not detected:
-        log.info("no CMakeCUDACompiler.cmake found; skipping the CCCL include check")
-        return
-
-    try:
-        with open(detected[0], encoding="utf-8", errors="replace") as handle:
-            text = handle.read()
-    except OSError as error:
-        log.info(f"could not read {detected[0]}: {error}")
-        return
-
-    if any(os.path.basename(path) in text or path in text for path in expected):
-        log.info("toolkit CCCL headers are present in cmake's CUDA include dirs")
+def remove_path(path: str) -> bool:
+    """Delete a file, symlink or directory tree; return whether anything was there."""
+    if not os.path.lexists(path):
+        return False
+    if os.path.islink(path) or not os.path.isdir(path):
+        os.remove(path)
     else:
-        log.warn(
-            f"The toolkit ships CCCL headers ({expected[0]}) but cmake did not add "
-            "them to the CUDA include directories. Host-compiled sources that "
-            "include cuda/, cub/ or thrust/ headers would not find them."
-        )
-
-
-def remote_default_branch(repo_url: str, *, env: dict[str, str]) -> str:
-    """Resolve the remote default branch name from HEAD."""
-    output = capture(
-        ["git", "ls-remote", "--symref", repo_url, "HEAD"], env=env, quiet=True
-    )
-    for line in output.splitlines():
-        if not line.startswith("ref: "):
-            continue
-        ref = line.split("\t", 1)[0].replace("ref: ", "", 1).strip()
-        if ref.startswith("refs/heads/"):
-            branch = ref.removeprefix("refs/heads/")
-            log.info(f"remote default branch: {branch}")
-            return branch
-    raise RuntimeError(f"Could not determine default branch for {repo_url}")
-
-
-def acquire_run_lock() -> int:
-    """Hold an exclusive lock on the working directory for the whole run.
-
-    Two runs from the same directory would delete and clone the same checkout
-    underneath each other. Locking the directory itself leaves no lock file
-    behind; the lock is released when the process exits.
-    """
-    fd = os.open(os.curdir, os.O_RDONLY)
-    try:
-        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    except BlockingIOError:
-        os.close(fd)
-        raise RuntimeError(
-            f"Another llama.cpp installer run is using {os.getcwd()}; "
-            "wait for it to finish."
-        ) from None
-    return fd
-
-
-def _git_output(repo_dir: str, args: Sequence[str], *, env: dict[str, str]) -> str:
-    """Run a read-only git query in repo_dir, raising RuntimeError on failure."""
-    result = run(
-        ["git", "-C", repo_dir, *args], check=False, capture=True, env=env, quiet=True
-    )
-    if result.returncode != 0:
-        stderr = (result.stderr or "").strip()
-        reason = stderr.splitlines()[-1] if stderr else f"exit status {result.returncode}"
-        raise RuntimeError(f"git {args[0]} failed: {reason}")
-    return str(result.stdout or "")
-
-
-def record_checkout(repo_dir: str, revisions: Sequence[str], *, env: dict[str, str]) -> None:
-    """Mark a checkout as created by this script and note the commits it fetched."""
-    shas = [
-        _git_output(repo_dir, ["rev-parse", "--verify", f"{rev}^{{commit}}"], env=env).strip()
-        for rev in revisions
-    ]
-    with open(os.path.join(repo_dir, ".git", CHECKOUT_MARKER), "a", encoding="utf-8") as marker:
-        marker.writelines(f"{sha}\n" for sha in shas)
-
-
-def checkout_removal_blockers(repo_dir: str, *, env: dict[str, str]) -> list[str]:
-    """Reasons an existing checkout must not be deleted; empty if it is disposable.
-
-    A marker alone only proves the directory started as this script's clone, not
-    that everything in it now is. Edits, untracked or ignored files outside the
-    build directory (models, notes), stashes and local commits all belong to
-    the user.
-    """
-    if os.path.islink(repo_dir) or not os.path.isdir(repo_dir):
-        return [f"{repo_dir} is not a plain directory"]
-    marker = os.path.join(repo_dir, ".git", CHECKOUT_MARKER)
-    if os.path.islink(marker) or not os.path.isfile(marker):
-        return [f"{repo_dir} was not created by this installer"]
-    try:
-        with open(marker, encoding="utf-8") as handle:
-            recorded = [line.strip() for line in handle if line.strip()]
-        status = _git_output(
-            repo_dir,
-            ["status", "--porcelain", "-z", "--untracked-files=normal", "--ignored=traditional"],
-            env=env,
-        )
-        # Every ref, stash included, minus what upstream and this script supplied.
-        own_commits = _git_output(
-            repo_dir, ["rev-list", "--all", "--not", "--remotes", *recorded], env=env
-        )
-    except (OSError, RuntimeError) as error:
-        return [f"could not inspect {repo_dir}: {error}"]
-
-    blockers: list[str] = []
-    changed: list[str] = []
-    for entry in status.split("\0"):
-        if not entry:
-            continue
-        code, path = entry[:2], entry[3:].rstrip("/")
-        installer_output = path == BUILD_SUBDIR or path.startswith(BUILD_SUBDIR + "/")
-        if code in ("??", "!!") and installer_output:
-            continue
-        changed.append(path or entry)
-    if changed:
-        shown = ", ".join(changed[:5]) + (" ..." if len(changed) > 5 else "")
-        blockers.append(f"{repo_dir} contains changes or files of your own: {shown}")
-    if own_commits.strip():
-        count = len(own_commits.split())
-        blockers.append(f"{repo_dir} has {plural(count, 'commit')} not on the upstream remote")
-    return blockers
-
-
-def remove_existing_repo(repo_dir: str, *, env: dict[str, str]) -> None:
-    """Delete a previous checkout of this script's, refusing anything else."""
-    if not os.path.lexists(repo_dir):
-        return
-    blockers = checkout_removal_blockers(repo_dir, env=env)
-    if blockers:
-        reasons = "\n".join(f"  - {reason}" for reason in blockers)
-        raise RuntimeError(
-            f"Refusing to delete {os.path.abspath(repo_dir)}:\n{reasons}\n"
-            "Move it aside or run the installer from another directory."
-        )
-    log.info(f"removing previous checkout {repo_dir}")
-    shutil.rmtree(repo_dir)
+        shutil.rmtree(path)
+    return True
 
 
 def describe_head(repo_dir: str, *, env: dict[str, str]) -> dict[str, str]:
@@ -1036,44 +833,47 @@ def describe_head(repo_dir: str, *, env: dict[str, str]) -> dict[str, str]:
         quiet=True,
     ).split(separator)
     keys = ("sha", "short_sha", "subject", "author", "authored")
-    head = dict(zip(keys, fields))
+    head = dict(zip(keys, fields, strict=False))
     for key in keys:
         head.setdefault(key, "unknown")
     return head
 
 
-def sync_repo_to_latest(repo_dir: str, repo_url: str, *, env: dict[str, str]) -> str:
-    """Clone a fresh shallow copy of the latest upstream default branch.
+def sync_repo(
+    repo_dir: str, repo_url: str, ref: str, local_branch: str, *, env: dict[str, str]
+) -> None:
+    """Check out the newest commit of ref, reusing repo_dir when it exists.
 
-    The remote is queried first so an offline run fails before the previous
-    checkout is deleted.
+    A shallow fetch into an existing checkout downloads only what changed and
+    keeps the build tree, so ninja and ccache rebuild only what changed too.
     """
-    branch = remote_default_branch(repo_url, env=env)
-    remove_existing_repo(repo_dir, env=env)
-    run(["git", "clone", "--depth", "1", "--branch", branch, repo_url, repo_dir], env=env)
-    record_checkout(repo_dir, ["HEAD"], env=env)
-    return branch
+    if not os.path.lexists(repo_dir):
+        run(["git", "init", "--quiet", repo_dir], env=env)
+    elif not os.path.isdir(os.path.join(repo_dir, ".git")):
+        raise RuntimeError(
+            f"{os.path.abspath(repo_dir)} exists but is not a git checkout; "
+            "remove it or run with --clean"
+        )
+    else:
+        log.info(f"reusing existing checkout at {os.path.abspath(repo_dir)}")
+        # Tracked edits only: checkout -B would carry them onto the new commit or
+        # refuse, and the ignored build/ tree must not count as a change.
+        dirty = capture(
+            ["git", "-C", repo_dir, "status", "--porcelain", "--untracked-files=no"],
+            env=env,
+            quiet=True,
+        )
+        if dirty:
+            raise RuntimeError(
+                f"{os.path.abspath(repo_dir)} has local changes to tracked files; "
+                "commit or discard them, or run with --clean"
+            )
 
-
-def sync_repo_to_pr(
-    repo_dir: str, repo_url: str, pr_number: int, *, env: dict[str, str]
-) -> str:
-    """Clone shallowly and check out a specific PR branch for beta testing."""
-    ref = f"refs/pull/{pr_number}/head"
-    local_branch = f"pr-{pr_number}"
-    # Confirm the PR exists (and the network works) before deleting anything.
-    if not capture(["git", "ls-remote", repo_url, ref], env=env, quiet=True):
-        raise RuntimeError(f"PR #{pr_number} was not found at {repo_url}")
-    remove_existing_repo(repo_dir, env=env)
-    run(["git", "clone", "--depth", "1", repo_url, repo_dir], env=env)
-    record_checkout(repo_dir, ["HEAD"], env=env)
+    run(["git", "-C", repo_dir, "fetch", "--depth", "1", repo_url, ref], env=env)
     run(
-        ["git", "-C", repo_dir, "fetch", "--depth", "1", "origin", f"{ref}:{local_branch}"],
+        ["git", "-C", repo_dir, "checkout", "--quiet", "-B", local_branch, "FETCH_HEAD"],
         env=env,
     )
-    record_checkout(repo_dir, [local_branch], env=env)
-    run(["git", "-C", repo_dir, "checkout", local_branch], env=env)
-    return local_branch
 
 
 def upstream_build_number(
@@ -1089,11 +889,10 @@ def upstream_build_number(
     """
     head = capture(["git", "-C", repo_dir, "rev-parse", "HEAD"], env=env, quiet=True)
 
-    # This lists every tag in the repository, which is thousands of refs, so it
-    # is summarised rather than echoed.
-    log.info("querying upstream tags for a build number (this lists all refs)")
+    # Thousands of refs, so the listing is summarised rather than echoed.
+    log.info("querying upstream b<NUM> tags for a build number")
     output = capture(
-        ["git", "ls-remote", "--tags", repo_url], env=env, quiet=True
+        ["git", "ls-remote", "--tags", repo_url, "refs/tags/b*"], env=env, quiet=True
     )
 
     matched: int | None = None
@@ -1154,56 +953,85 @@ def install_atomically(source: str, target: str) -> None:
         raise
 
 
-def join_search_path(*path_lists: str) -> str:
-    """Join colon-separated path lists, dropping empty and repeated components.
+def http_get(url: str) -> bytes:
+    request = urllib.request.Request(url, headers={"User-Agent": "llama-cpp-installer"})
+    try:
+        with urllib.request.urlopen(request, timeout=HTTP_TIMEOUT_SECONDS) as response:
+            return response.read()
+    except urllib.error.URLError as error:
+        raise RuntimeError(f"download failed: {url}: {error}") from error
 
-    An empty component, from an unset variable or a stray colon, means the
-    current directory to both the shell and the dynamic loader, so child
-    processes would pick up executables and libraries from wherever they run.
+
+def fetch_llama_swap(cache_dir: str) -> tuple[str, str]:
+    """Download and verify the latest llama-swap release; return (binary path, tag).
+
+    A tarball already in cache_dir that matches the release checksum is reused
+    instead of downloaded again.
     """
-    components: list[str] = []
-    for path_list in path_lists:
-        for component in path_list.split(os.pathsep):
-            if component and component not in components:
-                components.append(component)
-    return os.pathsep.join(components)
+    machine = platform.machine()
+    arch = LLAMA_SWAP_ARCHES.get(machine)
+    if arch is None:
+        raise RuntimeError(f"no llama-swap release build for this CPU: {machine}")
 
+    release_url = f"https://api.github.com/repos/{LLAMA_SWAP_REPO}/releases/latest"
+    log.command(f"GET {release_url}")
+    release = json.loads(http_get(release_url))
+    tag = str(release["tag_name"])
+    assets = {asset["name"]: asset["browser_download_url"] for asset in release["assets"]}
 
-def build_environment(cuda_home: str, base: dict[str, str]) -> dict[str, str]:
-    """The environment for build and smoke-test children, with CUDA first."""
-    env = dict(base)
-    env["CUDA_HOME"] = cuda_home
-    env["PATH"] = join_search_path(f"{cuda_home}/bin", base.get("PATH", ""))
-    env["LD_LIBRARY_PATH"] = join_search_path(
-        f"{cuda_home}/lib64", base.get("LD_LIBRARY_PATH", "")
-    )
-    return env
+    number = tag.removeprefix("v")
+    tarball_name = f"llama-swap_{number}_linux_{arch}.tar.gz"
+    checksums_name = f"llama-swap_{number}_checksums.txt"
+    for name in (tarball_name, checksums_name):
+        if name not in assets:
+            raise RuntimeError(f"llama-swap {tag} has no release asset named {name}")
 
+    expected: str | None = None
+    for line in http_get(assets[checksums_name]).decode().splitlines():
+        fields = line.split()
+        if len(fields) == 2 and fields[1] == tarball_name:
+            expected = fields[0].lower()
+    if expected is None:
+        raise RuntimeError(f"{checksums_name} lists no checksum for {tarball_name}")
 
-def verify_binaries(bin_dir: str, *, env: dict[str, str]) -> tuple[str, list[str]]:
-    """Run the binaries in bin_dir; return (version line, devices they report).
-
-    Raises if either smoke test exits non-zero. A device list without a CUDA
-    entry is reported by the caller as a warning, since the binary itself ran.
-    """
-    version_output = smoke_test([os.path.join(bin_dir, "llama-server"), "--version"], env=env)
-    version_line = "unknown"
-    if version_output:
-        log.output(version_output, limit=6)
-        version_line = re.sub(r"^version:\s*", "", version_output.splitlines()[0].strip())
+    os.makedirs(cache_dir, exist_ok=True)
+    tarball = os.path.join(cache_dir, tarball_name)
+    if os.path.isfile(tarball) and _sha256(tarball) == expected:
+        log.info(f"reusing verified {tarball}")
     else:
-        log.warn("llama-server --version succeeded but printed nothing.")
-    devices = parse_devices(
-        smoke_test([os.path.join(bin_dir, "llama-cli"), "--list-devices"], env=env)
-    )
-    return version_line, devices
+        log.command(f"GET {assets[tarball_name]}")
+        data = http_get(assets[tarball_name])
+        actual = hashlib.sha256(data).hexdigest()
+        if actual != expected:
+            raise RuntimeError(
+                f"{tarball_name} checksum mismatch: expected {expected}, got {actual}"
+            )
+        with open(tarball, "wb") as handle:
+            handle.write(data)
+        log.ok(f"downloaded {tarball_name} ({len(data) / (1024 ** 2):.1f} MiB), sha256 verified")
+
+    for name in os.listdir(cache_dir):
+        if name.startswith("llama-swap_") and name.endswith(".tar.gz") and name != tarball_name:
+            os.remove(os.path.join(cache_dir, name))
+
+    binary = os.path.join(cache_dir, LLAMA_SWAP_BINARY)
+    with tarfile.open(tarball, "r:gz") as archive:
+        member = archive.getmember(LLAMA_SWAP_BINARY)
+        source = archive.extractfile(member) if member.isfile() else None
+        if source is None:
+            raise RuntimeError(f"{tarball_name} has no regular file named {LLAMA_SWAP_BINARY}")
+        with source, open(binary, "wb") as handle:
+            shutil.copyfileobj(source, handle)
+    os.chmod(binary, 0o755)
+    return binary, tag
 
 
-def exit_status(returncode: int) -> int:
-    """Shell exit status for a failed child: 128+N when signal N killed it."""
-    if returncode < 0:
-        return 128 - returncode
-    return returncode or 1
+def _sha256(path: str) -> str:
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        for block in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(block)
+    return digest.hexdigest()
 
 
 def parse_devices(text: str) -> list[str]:
@@ -1223,48 +1051,218 @@ def parse_devices(text: str) -> list[str]:
     return devices
 
 
+# ─── Help screen ─────────────────────────────────────────────────────────────
+# The same block is pasted into each standalone script in this folder; keep the copies identical.
+
+_HELP_MAX_WIDTH = 100
+_HELP_FLAG_MAX_WIDTH = 28
+_HELP_DEFAULT_RE = re.compile(r'\s*(\(default: [^)]*\))$')
+_HELP_STYLES = {
+    'heading': '\033[1m\033[96m',
+    'flag': '\033[92m',
+    'value': '\033[93m',
+    'bold': '\033[1m',
+    'dim': '\033[2m',
+}
+
+
+def _metavar(action: argparse.Action) -> str:
+    """Display name for an action's value; argparse also allows a tuple metavar."""
+    if isinstance(action.metavar, tuple):
+        return ' '.join(action.metavar)
+    return action.metavar or action.dest.upper()
+
+
+def _help_color_enabled() -> bool:
+    """Color help on a terminal unless NO_COLOR, TERM=dumb or --no-color opts out; FORCE_COLOR opts in."""
+    if os.environ.get('NO_COLOR') or '--no-color' in sys.argv:
+        return False
+    if os.environ.get('FORCE_COLOR'):
+        return True
+    return sys.stdout.isatty() and os.environ.get('TERM') != 'dumb'
+
+
+class HelpParser(argparse.ArgumentParser):
+    """ArgumentParser with a short usage line and a grouped, colored help screen.
+
+    Sections are the parser's argument groups, in order. ``examples`` holds
+    ``(what it does, arguments after the program name)`` pairs. Automatic -h is
+    off, so add ``-h/--help`` with ``action='help'`` to the group it belongs in.
+    """
+
+    def __init__(self, *, title: str, version: str = '',
+                 examples: Sequence[tuple[str, str]] = (), **kwargs: Any) -> None:
+        super().__init__(add_help=False, **kwargs)
+        self.help_title = title
+        self.help_version = version
+        self.help_examples = examples
+
+    def _positional_usage(self) -> list[str]:
+        parts = []
+        for action in self._actions:
+            if action.option_strings or action.help == argparse.SUPPRESS:
+                continue
+            name = _metavar(action)
+            forms: dict[object, str] = {'?': f'[{name}]', '*': f'[{name} ...]', '+': f'{name} ...'}
+            parts.append(forms.get(action.nargs, name))
+        return parts
+
+    def format_usage(self) -> str:
+        return f"usage: {' '.join([self.prog, '[OPTIONS]', *self._positional_usage()])}\n"
+
+    def error(self, message: str):
+        self.print_usage(sys.stderr)
+        self.exit(2, f"{self.prog}: error: {message}\nRun '{self.prog} --help' to see all options.\n")
+
+    def format_help(self) -> str:
+        use_color = _help_color_enabled()
+
+        def paint(text: str, style: str) -> str:
+            return f"{_HELP_STYLES[style]}{text}\033[0m" if use_color and text else text
+
+        def help_text(action) -> str:
+            text = action.help or ''
+            return text % {**vars(action), 'prog': self.prog} if '%' in text else text
+
+        width = min(shutil.get_terminal_size((_HELP_MAX_WIDTH, 24)).columns, _HELP_MAX_WIDTH)
+        # Action groups are argparse's only record of section membership and order.
+        sections = [
+            (group.title or '', [a for a in group._group_actions
+                           if a.option_strings and a.help != argparse.SUPPRESS])
+            for group in self._action_groups
+        ]
+        sections = [(title, actions) for title, actions in sections if actions]
+        all_options = [a for _, actions in sections for a in actions]
+
+        def split_flags(action) -> tuple[str, str, str]:
+            shorts = [o for o in action.option_strings if not o.startswith('--')]
+            longs = [o for o in action.option_strings if o.startswith('--')]
+            short = ', '.join(shorts) + (', ' if shorts and longs else '')
+            metavar = ''
+            if action.nargs != 0:
+                metavar = _metavar(action)
+                if action.nargs in ('+', '*'):
+                    metavar += '...'
+                elif action.nargs == '?':
+                    metavar = f'[{metavar}]'
+            return short, ', '.join(longs), metavar
+
+        short_col = max((len(split_flags(a)[0]) for a in all_options), default=0)
+
+        def flag_cell(action) -> tuple[str, str]:
+            short, long, metavar = split_flags(action)
+            plain = short.rjust(short_col) + long + (f" {metavar}" if metavar else '')
+            colored = (' ' * (short_col - len(short)) + paint(short, 'flag')
+                       + paint(long, 'flag')
+                       + (f" {paint(metavar, 'value')}" if metavar else ''))
+            return plain, colored
+
+        flag_width = min(max((len(flag_cell(a)[0]) for a in all_options), default=0),
+                         _HELP_FLAG_MAX_WIDTH)
+        help_col = 2 + flag_width + 3
+        # Too narrow for two columns: put each description under its flags.
+        stacked = width - help_col < 24
+        text_col = short_col + 4 if stacked else help_col
+        text_width = max(width - text_col, 20)
+
+        def row(plain: str, colored: str, text: str) -> list[str]:
+            match = _HELP_DEFAULT_RE.search(text)
+            body = text[:match.start()] if match else text
+            lines = textwrap.wrap(body, text_width) or ['']
+            if match:
+                default = match.group(1)
+                if len(lines[-1]) + 1 + len(default) <= text_width:
+                    lines[-1] = f"{lines[-1]} {paint(default, 'dim')}".lstrip()
+                else:
+                    lines.append(paint(default, 'dim'))
+            indent = ' ' * text_col
+            if stacked or len(plain) > flag_width:
+                return [f"  {colored}"] + [indent + line for line in lines]
+            first = f"  {colored}{' ' * (help_col - 2 - len(plain))}{lines[0]}"
+            return [first] + [indent + line for line in lines[1:]]
+
+        def heading(title: str) -> list[str]:
+            return ['', paint(title.upper(), 'heading')]
+
+        out = [paint(self.help_title, 'heading')
+               + (paint(f" v{self.help_version}", 'dim') if self.help_version else '')]
+        if self.description:
+            out += textwrap.wrap(self.description, width)
+
+        out += heading("Usage")
+        out.append(' '.join([f"  {paint(self.prog, 'bold')}", paint('[OPTIONS]', 'flag'),
+                             *(paint(p, 'value') for p in self._positional_usage())]))
+        for action in self._actions:
+            if not action.option_strings and action.help != argparse.SUPPRESS:
+                name = _metavar(action)
+                out.append('')
+                out += row(name, paint(name, 'value'), help_text(action))
+
+        for title, actions in sections:
+            out += heading(title)
+            for action in actions:
+                out += row(*flag_cell(action), help_text(action))
+
+        if self.help_examples:
+            out += heading("Examples")
+            for what, cmd_args in self.help_examples:
+                out.append(f"  {paint('# ' + what, 'dim')}")
+                out.append(f"  {paint('$', 'dim')} {paint(self.prog, 'bold')} {cmd_args}".rstrip())
+        out.append('')
+        return '\n'.join(out)
+
+
+# (what it does, arguments after the program name)
+HELP_EXAMPLES = [
+    ("Build and install the latest llama.cpp", ""),
+    ("Delete the llama.cpp and llama-swap folders, then exit", "--clean"),
+    ("Use 8 compile jobs to keep the machine responsive", "-j 8"),
+    ("Build a pull request instead of the latest upstream code", "--beta 12345"),
+    ("Include llama-server's built-in web UI", "--web-ui"),
+]
+
+
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Build and install llama.cpp with CUDA support",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+    parser = HelpParser(
+        title="llama.cpp CUDA Installer",
+        description=(
+            f"Build llama.cpp with CUDA support and install it, plus the latest "
+            f"llama-swap release, to {INSTALL_DIR}. Source is kept and updated in "
+            "place on later runs. "
+            "Run as a normal user; it asks for sudo only when it needs it."
+        ),
+        examples=HELP_EXAMPLES,
     )
-    parser.add_argument(
-        "-k",
-        "--keep",
+    build = parser.add_argument_group("Build")
+    build.add_argument(
+        "--beta",
+        type=int,
+        metavar="PR",
+        help="Build GitHub pull request number PR instead of the latest upstream code",
+    )
+    build.add_argument(
+        "--web-ui",
         action="store_true",
-        help="Keep the llama.cpp source directory after install (default: delete it)",
+        help=(
+            "Embed llama-server's built-in web UI. Off by default: its files download "
+            "at build time, and a bad download fails the whole build"
+        ),
     )
-    parser.add_argument(
+    build.add_argument(
         "-j",
         "--jobs",
         type=int,
         default=os.cpu_count() or 4,
         metavar="N",
-        help="Parallel compile jobs (default: %(default)s, one per logical CPU)",
+        help="Parallel compile jobs, one per CPU thread (default: %(default)s)",
     )
-    parser.add_argument(
-        "--web-ui",
+    build.add_argument(
+        "--clean",
         action="store_true",
-        help=(
-            "Embed llama-server's built-in web UI (sets LLAMA_BUILD_UI and "
-            "LLAMA_USE_PREBUILT_UI). Off by default: the assets are fetched from "
-            "a Hugging Face bucket at build time, the commit-matched bucket is "
-            "often unpopulated so the build falls back to 'latest', and a bucket "
-            "archive missing a required asset fails the embed step and the whole "
-            "build."
-        ),
+        help=f"Delete the {REPO_DIR} and {LLAMA_SWAP_DIR} folders if they exist, then exit",
     )
-    parser.add_argument(
-        "--beta",
-        type=int,
-        metavar="PR",
-        nargs="?",
-        const=20075,
-        help=(
-            "Build from a GitHub PR branch instead of the latest upstream branch "
-            "(default PR: 20075, speculative decoding for hybrid models)"
-        ),
-    )
+    general = parser.add_argument_group("General")
+    general.add_argument("-h", "--help", action="help", help="Show this help and exit")
     return parser.parse_args()
 
 
@@ -1276,9 +1274,23 @@ def main() -> None:
     if args.jobs < 1:
         raise RuntimeError(f"--jobs must be at least 1, got {args.jobs}")
 
-    cuda_home = "/usr/local/cuda"
-    env = build_environment(cuda_home, dict(os.environ))
-    acquire_run_lock()
+    if args.clean:
+        removed = [path for path in (REPO_DIR, LLAMA_SWAP_DIR) if remove_path(path)]
+        for path in removed:
+            log.ok(f"removed {os.path.abspath(path)}")
+        log.result_banner(
+            True,
+            [f"removed {', '.join(removed)}" if removed else "nothing to remove"],
+            verdict="CLEAN SUCCEEDED",
+        )
+        return
+
+    # Build environment only. The installed binaries are verified under the
+    # caller's own environment, which is what they will run under.
+    env = os.environ.copy()
+    env["PATH"] = os.pathsep.join(
+        entry for entry in (f"{CUDA_HOME}/bin", env.get("PATH", "")) if entry
+    )
 
     # ---------------------------------------------------------------- step 1
     log.step("Preflight: host, CUDA toolkit and GPU inventory")
@@ -1286,31 +1298,13 @@ def main() -> None:
     free_gib = free_disk_gib(os.getcwd())
     log.table(list(host_inventory(free_gib=free_gib).items()))
 
-    # Refuse before apt and a long compile, not after, if the checkout path is
-    # occupied by something this script may not delete. It is checked again
-    # right before removal.
-    if os.path.lexists(REPO_DIR):
-        if shutil.which("git", path=env.get("PATH")) is None:
-            raise RuntimeError(
-                f"{os.path.abspath(REPO_DIR)} exists and git is not installed to "
-                "check whether it is safe to replace. Move it aside or install git."
-            )
-        blockers = checkout_removal_blockers(REPO_DIR, env=env)
-        if blockers:
-            reasons = "\n".join(f"  - {reason}" for reason in blockers)
-            raise RuntimeError(
-                f"Refusing to replace {os.path.abspath(REPO_DIR)}:\n{reasons}\n"
-                "Move it aside or run the installer from another directory."
-            )
-        log.info(f"previous checkout at {os.path.abspath(REPO_DIR)} will be replaced")
-
     if free_gib is not None and free_gib < LOW_DISK_WARN_GIB:
-        log.warn(
+        log.warning(
             f"Only {free_gib:.1f} GiB free here; a CUDA build plus ccache growth "
             "can need several GiB."
         )
 
-    nvcc = require_executable(f"{cuda_home}/bin/nvcc", env=env)
+    nvcc = require_executable(f"{CUDA_HOME}/bin/nvcc", env=env)
     cuda_version, nvcc_line = cuda_release(nvcc, env=env)
     gpus = gpu_inventory(env=env)
 
@@ -1321,14 +1315,16 @@ def main() -> None:
     hardware_rows += [
         (
             f"GPU {gpu.index}",
-            f"{gpu.name}, compute {gpu.compute_cap}, "
-            f"{gpu.memory_mib / 1024:.1f} GiB VRAM, driver {gpu.driver}",
+            (
+                f"{gpu.name}, compute {gpu.compute_cap}, "
+                f"{gpu.memory_mib / 1024:.1f} GiB VRAM, driver {gpu.driver}"
+            ),
         )
         for gpu in gpus
     ]
     log.table(hardware_rows)
     if not gpus:
-        log.warn("No GPU inventory available; the build will fall back to -arch=native.")
+        log.warning("No GPU inventory available; the build will fall back to -arch=native.")
 
     ensure_sudo(reason="apt and installing binaries later")
 
@@ -1346,9 +1342,9 @@ def main() -> None:
     try:
         update = run(["sudo", "apt", *apt_opts, "update"], check=False, timeout=600)
         if update.returncode != 0:
-            log.warn("apt update returned non-zero; using cached package indexes.")
+            log.warning("apt update returned non-zero; using cached package indexes.")
     except subprocess.TimeoutExpired:
-        log.warn("apt update exceeded its 10 minute timeout; using cached indexes.")
+        log.warning("apt update exceeded its 10 minute timeout; using cached indexes.")
 
     log.info(
         f"ensuring {plural(len(SYSTEM_PACKAGES), 'package')}: "
@@ -1359,12 +1355,11 @@ def main() -> None:
     # ---------------------------------------------------------------- step 3
     log.step("GCC toolchain selection for nvcc")
     toolchain = select_gcc_toolchain(nvcc, env=env)
-    env.update({"CC": toolchain.cc, "CXX": toolchain.cxx})
 
     # ---------------------------------------------------------------- step 4
     log.step("Build tools and target architecture")
 
-    cmake_bin, cmake_version = require_build_tool("cmake", env=env, prefer_newest=True)
+    cmake_bin, cmake_version = require_build_tool("cmake", env=env)
     ninja_bin, ninja_version = require_build_tool("ninja", env=env)
     tool_rows = [
         ("cmake", f"{cmake_bin} ({version_text(cmake_version)})"),
@@ -1374,7 +1369,7 @@ def main() -> None:
     cuda_archs, arch_source = cuda_architectures(gpus)
     rejected_archs = nvcc_rejects_architectures(nvcc, cuda_archs, env=env)
     if rejected_archs:
-        log.warn(
+        log.warning(
             f"nvcc {cuda_version[0]}.{cuda_version[1]} rejected "
             f"sm_{', sm_'.join(rejected_archs)} in a probe compile. The CUDA "
             "toolkit may be too old for this GPU, in which case the build will "
@@ -1388,7 +1383,6 @@ def main() -> None:
         + [
             ("CUDA architectures", f"{cuda_archs} ({arch_source})"),
             ("compile jobs", str(args.jobs)),
-            ("FlashAttention K/V", CUDA_FA_QUANTS),
             ("web UI", "embedded" if args.web_ui else "disabled"),
         ]
     )
@@ -1398,9 +1392,11 @@ def main() -> None:
 
     if args.beta is not None:
         log.info(f"beta mode: building from PR #{args.beta}")
-        branch = sync_repo_to_pr(REPO_DIR, REPO_URL, args.beta, env=env)
+        branch = f"pr-{args.beta}"
+        sync_repo(REPO_DIR, REPO_URL, f"refs/pull/{args.beta}/head", branch, env=env)
     else:
-        branch = sync_repo_to_latest(REPO_DIR, REPO_URL, env=env)
+        branch = "master"
+        sync_repo(REPO_DIR, REPO_URL, "HEAD", branch, env=env)
 
     head = describe_head(REPO_DIR, env=env)
     log.table(
@@ -1412,7 +1408,10 @@ def main() -> None:
         ]
     )
 
-    build_number, newest_tag = upstream_build_number(REPO_DIR, REPO_URL, env=env)
+    build_number: int | None = None
+    newest_tag: int | None = None
+    if args.beta is None:
+        build_number, newest_tag = upstream_build_number(REPO_DIR, REPO_URL, env=env)
     if build_number is not None:
         log.ok(f"upstream build number for this commit: b{build_number}")
     elif args.beta is not None:
@@ -1429,24 +1428,34 @@ def main() -> None:
         )
 
     # ---------------------------------------------------------------- step 6
+    log.step("llama-swap release")
+    swap_binary, swap_tag = fetch_llama_swap(LLAMA_SWAP_DIR)
+    log.ok(f"llama-swap {swap_tag} ready at {swap_binary}")
+
+    # ---------------------------------------------------------------- step 7
     log.step("CMake configure")
 
     # GGML_NATIVE=ON supplies -march=native for the CPU backend, which covers
-    # everything Zen 4 offers here (AVX-512 with VNNI and BF16). Setting
-    # GGML_NATIVE also forces ggml's individual ISA switches off by design, so
-    # listing them separately would be redundant.
+    # everything Zen 4 offers here (AVX-512 with VNNI and BF16). It is passed
+    # even though it is usually the default because upstream turns the default
+    # OFF whenever SOURCE_DATE_EPOCH is set in the environment.
+    #
+    # BUILD_SHARED_LIBS=OFF links libllama and libggml into each binary, so
+    # copying the binaries alone into INSTALL_DIR is a complete install.
     #
     # Both UI variables must be set together: scripts/ui-assets.cmake gates
     # provisioning on BUILD_UI and HF_ENABLED independently, and HF_ENABLED
     # comes from LLAMA_USE_PREBUILT_UI, which defaults ON. Passing only
     # LLAMA_BUILD_UI=OFF still runs the Hugging Face download.
     #
-    # Deliberately NOT set:
-    #   GGML_LTO ................. upstream default is OFF. It adds substantial
-    #       link time and nearly all compute runs in CUDA kernels.
-    #   GGML_CUDA_COMPRESSION_MODE  upstream already defaults to "size" and the
-    #       single-architecture binary here is small either way.
-    #   GGML_CUDA_FA_ALL_QUANTS .. deprecated. See CUDA_FA_QUANTS above.
+    # Left at upstream defaults on purpose, so they follow upstream changes:
+    #   GGML_CUDA_FA, GGML_CUDA_GRAPHS, GGML_OPENMP, GGML_CCACHE,
+    #   GGML_CPU_REPACK .......... all ON.
+    #   GGML_CUDA_FA_QUANTS ...... f16, bf16, q8_0 and q4_0 K/V pairs. "all"
+    #       compiles every combination and takes far longer.
+    #   GGML_LTO ................. OFF. It adds substantial link time and
+    #       nearly all compute runs in CUDA kernels.
+    #   GGML_CUDA_COMPRESSION_MODE "size".
     ui_enabled = "ON" if args.web_ui else "OFF"
     configure_args = [
         f"-DLLAMA_BUILD_UI={ui_enabled}",
@@ -1458,32 +1467,25 @@ def main() -> None:
         f"-DCMAKE_CUDA_COMPILER={nvcc}",
         f"-DCMAKE_CUDA_HOST_COMPILER={toolchain.cxx}",
         f"-DCMAKE_MAKE_PROGRAM={ninja_bin}",
-        f"-DCUDAToolkit_ROOT={cuda_home}",
+        f"-DCUDAToolkit_ROOT={CUDA_HOME}",
         f"-DCMAKE_CUDA_ARCHITECTURES={cuda_archs}",
         "-DGGML_CUDA=ON",
-        "-DGGML_CUDA_FA=ON",
-        f"-DGGML_CUDA_FA_QUANTS={CUDA_FA_QUANTS}",
-        "-DGGML_CUDA_GRAPHS=ON",
         # Single GPU here, so the NVIDIA collectives library is dead weight.
         "-DGGML_CUDA_NCCL=OFF",
         "-DGGML_NATIVE=ON",
-        "-DGGML_OPENMP=ON",
-        "-DGGML_CCACHE=ON",
-        "-DGGML_CPU_REPACK=ON",
     ]
     if build_number is not None:
         # llama.cpp only derives this itself when the caller has not set it.
         configure_args.append(f"-DLLAMA_BUILD_NUMBER={build_number}")
 
-    build_dir = os.path.join(REPO_DIR, BUILD_SUBDIR)
+    build_dir = f"{REPO_DIR}/build"
     run(
         [cmake_bin, REPO_DIR, "-B", build_dir, *configure_args, "-G", "Ninja"],
         env=env,
         report_duration=False,
     )
-    verify_cccl_visible(build_dir, cuda_home)
 
-    # ---------------------------------------------------------------- step 7
+    # ---------------------------------------------------------------- step 8
     log.step(f"Compile: {', '.join(BUILD_TARGETS)}")
 
     ccache_before = ccache_counters(env=env)
@@ -1502,11 +1504,11 @@ def main() -> None:
             "provisioning is off, so 0 assets were embedded"
         )
 
-    # ---------------------------------------------------------------- step 8
+    # ---------------------------------------------------------------- step 9
     log.step(f"Install to {INSTALL_DIR} and verify")
 
     bin_dir = os.path.join(build_dir, "bin")
-    built = {target: os.path.join(bin_dir, target) for target in BUILD_TARGETS}
+    built = {name: os.path.join(bin_dir, name) for name in BUILD_TARGETS.values()}
     missing = [path for path in built.values() if not os.path.isfile(path)]
     if missing:
         listing = "\n".join(f"  - {path}" for path in missing)
@@ -1515,64 +1517,58 @@ def main() -> None:
     log.info(f"build outputs in {bin_dir}")
     log.table(
         [
-            (target, f"{os.path.getsize(path) / (1024 ** 2):.1f} MiB")
-            for target, path in built.items()
+            (name, f"{os.path.getsize(path) / (1024 ** 2):.1f} MiB")
+            for name, path in built.items()
         ]
     )
 
-    # Run the fresh binaries before they replace the installed ones, so a build
-    # that cannot start never overwrites a working install.
-    version_line, devices = verify_binaries(bin_dir, env=env)
-    cuda_devices = [device for device in devices if device.startswith("CUDA")]
-    log.table([("device", device) for device in devices])
-    if cuda_devices:
-        log.ok(f"{plural(len(cuda_devices), 'CUDA device')} visible to the new build")
-    else:
-        log.warn("No CUDA device was enumerated; check the driver and CUDA runtime.")
-
     ensure_sudo(reason="installing binaries")
     installed: list[str] = []
-    for target, source_path in built.items():
-        destination = os.path.join(INSTALL_DIR, target)
+    for name, source_path in [*built.items(), (LLAMA_SWAP_BINARY, swap_binary)]:
+        destination = os.path.join(INSTALL_DIR, name)
         install_atomically(source_path, destination)
         installed.append(destination)
 
-    invalid = [
-        path
-        for path in installed
-        if not os.path.isfile(path) or not os.access(path, os.X_OK)
-    ]
-    if invalid:
-        listing = "\n".join(f"  - {path}" for path in invalid)
-        raise RuntimeError(f"Installed binaries could not be verified:\n{listing}")
+    # Run every installed binary under the caller's environment (env=None), not
+    # the build env, so a runtime library the loader cannot find fails here
+    # rather than on first use.
+    versions: dict[str, str] = {}
+    for path in installed:
+        returncode, output = capture_all([path, "--version"])
+        if returncode != 0:
+            last = output.splitlines()[-1] if output else "no output"
+            raise RuntimeError(f"{path} --version exited {returncode}: {last}")
+        name = os.path.basename(path)
+        versions[name] = re.sub(r"^version:\s*", "", output.splitlines()[0].strip())
+        log.ok(f"{name}: {versions[name]}")
     log.ok(f"installed {len(installed)} binaries")
 
     # Shadowing check: a copy earlier in the interactive PATH would win over the
     # one just installed, which is easy to miss and confusing to debug.
-    for target in BUILD_TARGETS:
-        resolved = shutil.which(target, path=os.environ.get("PATH"))
-        expected = os.path.join(INSTALL_DIR, target)
+    for name in [*BUILD_TARGETS.values(), LLAMA_SWAP_BINARY]:
+        resolved = shutil.which(name, path=os.environ.get("PATH"))
+        expected = os.path.join(INSTALL_DIR, name)
         if resolved is None:
-            log.warn(f"{target} is not on your interactive PATH ({expected} installed).")
+            log.warning(f"{name} is not on your interactive PATH ({expected} installed).")
         elif os.path.realpath(resolved) != os.path.realpath(expected):
-            log.warn(f"{target} resolves to {resolved}, shadowing {expected}.")
+            log.warning(f"{name} resolves to {resolved}, shadowing {expected}.")
 
-    for destination in installed:
-        smoke_test([destination, "--version"], env=env)
-    log.ok("installed binaries start")
+    devices = parse_devices(
+        capture_all([os.path.join(INSTALL_DIR, "llama-cli"), "--list-devices"])[1]
+    )
+    cuda_devices = [device for device in devices if device.startswith("CUDA")]
+    log.table([("device", device) for device in devices])
+    if cuda_devices:
+        log.ok(
+            f"{plural(len(cuda_devices), 'CUDA device')} visible to the installed binary"
+        )
+    else:
+        log.warning("No CUDA device was enumerated; check the driver and CUDA runtime.")
 
-    if os.path.isdir(REPO_DIR):
-        if args.keep:
-            log.info(f"source kept at {os.path.abspath(REPO_DIR)}")
-        else:
-            blockers = checkout_removal_blockers(REPO_DIR, env=env)
-            if blockers:
-                log.warn(
-                    f"source left at {os.path.abspath(REPO_DIR)}: {'; '.join(blockers)}"
-                )
-            else:
-                shutil.rmtree(REPO_DIR)
-                log.info("source directory removed")
+    log.info(
+        f"sources kept in {os.path.abspath(REPO_DIR)} and "
+        f"{os.path.abspath(LLAMA_SWAP_DIR)}; --clean removes them"
+    )
 
     log.finish_step()
 
@@ -1583,11 +1579,11 @@ def main() -> None:
         "build number": (
             f"b{build_number}" if build_number is not None else "1 (untagged commit)"
         ),
-        "version": version_line,
+        "version": versions[BUILD_TARGETS["llama-app"]],
+        "llama-swap": versions[LLAMA_SWAP_BINARY],
         "compiler": f"{toolchain.version} + CUDA {cuda_version[0]}.{cuda_version[1]}",
         "cmake / ninja": f"{version_text(cmake_version)} / {version_text(ninja_version)}",
         "CUDA arch": cuda_archs,
-        "FA K/V combos": CUDA_FA_QUANTS,
         "web UI": "embedded" if args.web_ui else "disabled",
         "installed": ", ".join(installed),
         "compile time": log.format_duration(compile_seconds),
@@ -1654,7 +1650,7 @@ if __name__ == "__main__":
             failure.cmd if isinstance(failure.cmd, str) else shlex.join(failure.cmd)
         )
         fail(f"exit code {failure.returncode} from: {command}")
-        sys.exit(exit_status(failure.returncode))
+        sys.exit(failure.returncode or 1)
     except (RuntimeError, OSError, subprocess.SubprocessError) as failure:
         fail(str(failure) or failure.__class__.__name__)
         sys.exit(1)
