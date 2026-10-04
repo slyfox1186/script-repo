@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Safely update pip- and uv-installed packages inside non-base conda environments.
+"""
+Safely update pip- and uv-installed packages inside non-base conda environments.
 
-The updater deliberately treats conda and pip as separate ownership domains.  It
+The updater deliberately treats conda and pip as separate ownership domains. It
 activates the selected environment through Conda's shell hook, and will not modify
 the base environment, conda-owned Python distributions, user-site packages,
 editable/direct-URL installs, or any wheel that would overwrite a file owned by
@@ -2290,7 +2291,7 @@ def ownership_problem(normalized, installed, ownership, prefix):
 def filter_outdated_packages(packages, inventory, conda_ownership, prefix):
     """Split pip's outdated list into eligible and excluded distributions."""
     inventory_by_name = index_inventory(inventory, prefix)
-    eligible = []
+    eligible = {}
     excluded = []
     for package in packages:
         if not isinstance(package, dict) or not package.get("name"):
@@ -2309,15 +2310,96 @@ def filter_outdated_packages(packages, inventory, conda_ownership, prefix):
             installed.get("version") or "", package.get("latest_version") or ""
         ):
             reason = swap
-        # Holds describe an earlier solve, not the next selection. Keeping a
-        # held package selectable lets it move together with its capping package.
 
         if reason:
             excluded.append((name, reason))
         else:
-            eligible.append(package_entry(name, package))
-    eligible.sort(key=lambda package: package["name"].lower())
-    return eligible, excluded
+            eligible[normalized] = package_entry(name, package)
+    settled = _settled_holds(eligible, get_cached_holds(prefix), inventory_by_name)
+    for normalized, cappers in settled.items():
+        excluded.append((eligible.pop(normalized)["name"], "held back by " + cappers))
+    offered = sorted(eligible.values(), key=lambda package: package["name"].lower())
+    return offered, excluded
+
+
+def _installed_version(inventory_by_name, name):
+    """Return the installed version of ``name`` as text, "" when absent."""
+    row = inventory_by_name.get(canonicalize_name(str(name))) or {}
+    return str(row.get("version") or "")
+
+
+def _hold_cappers(hold, package, inventory_by_name):
+    """Return the packages a recorded hold depends on, or None once it lapsed.
+
+    A hold is trusted only while nothing that produced it has moved: the held
+    package's newest release and installed version are unchanged, and every
+    capping package is still installed at the recorded version.  A cap that
+    could not be named depends on the whole environment, which must be exactly
+    as planned, so every installed package then counts as a capper.
+    """
+    installed = _installed_version(inventory_by_name, package["name"])
+    if (
+        not isinstance(hold, dict)
+        or hold.get("latest") != package["latest_version"]
+        or hold.get("installed") != installed
+    ):
+        return None
+    cappers = hold.get("cappers")
+    if isinstance(cappers, dict) and cappers:
+        named = {canonicalize_name(str(name)): str(v) for name, v in cappers.items()}
+        unchanged = all(
+            _installed_version(inventory_by_name, name) == version
+            for name, version in named.items()
+        )
+        return set(named) if unchanged else None
+    current = {
+        name: str(row.get("version") or "") for name, row in inventory_by_name.items()
+    }
+    fingerprint = hold.get("environment")
+    if fingerprint and fingerprint == inventory_fingerprint(current):
+        return set(current)
+    return None
+
+
+def _settled_holds(eligible, holds, inventory_by_name):
+    """Return ``{normalized: capper text}`` for offers a recorded hold settles.
+
+    A hold proves only that the selections tried together could not move the
+    package.  It stays hidden while every capper that could itself move was
+    part of that attempt and is hidden too; any other movable capper might
+    release it in a joint update, so the package is offered for a real retest.
+    """
+    pending = {}
+    for normalized, package in eligible.items():
+        hold = holds.get(normalized)
+        cappers = _hold_cappers(hold, package, inventory_by_name)
+        if cappers is None:
+            continue
+        tried = hold.get("tried")
+        tried = (
+            {canonicalize_name(str(name)) for name in tried}
+            if isinstance(tried, list)
+            else set()
+        )
+        pending[normalized] = (cappers - {normalized}, tried, hold.get("cappers"))
+    changed = True
+    while changed:
+        changed = False
+        for normalized, (cappers, tried, _named) in list(pending.items()):
+            if any(
+                capper not in pending or capper not in tried
+                for capper in cappers & eligible.keys()
+            ):
+                del pending[normalized]
+                changed = True
+    return {
+        normalized: (
+            ", ".join(sorted(named))
+            if isinstance(named, dict) and named
+            else "installed package requirements"
+        )
+        for normalized, (_cappers, _tried, named) in pending.items()
+    }
 
 
 def scan_outdated_packages(prefix, *, report_exclusions=False, progress=None):
@@ -2397,8 +2479,8 @@ def print_excluded_packages(excluded):
             None,
             "Version-capped:",
             (
-                " (an installed package pins each of these; they "
-                "will be offered again once the capping package updates)"
+                " (installed packages cap each of these; they are offered "
+                "again once a capping package changes or has its own update)"
             ),
         ),
     ):
@@ -4037,8 +4119,12 @@ def _limited_selections(targets, plan):
     return held, capped
 
 
-def _hold_records(limited, reasons, inventory, plan):
-    """Describe each limited selection so a later scan can trust the hold."""
+def _hold_records(limited, reasons, inventory, plan, tried):
+    """Describe each limited selection so a later scan can trust the hold.
+
+    ``tried`` names every selection of the solve, so a later scan knows which
+    cappers were already tried together with the held package.
+    """
     after_plan = {
         normalized: str(row.get("version") or "")
         for normalized, row in inventory.items()
@@ -4056,6 +4142,7 @@ def _hold_records(limited, reasons, inventory, plan):
             "name": name,
             "installed": after_plan.get(normalized, ""),
             "latest": latest,
+            "tried": sorted(tried),
         }
         if cappers:
             records[normalized]["cappers"] = cappers
@@ -4097,9 +4184,11 @@ def _report_holds(prefix, outcome, plan, installed, *, explain=True):
     held, capped = _limited_selections(outcome.targets, plan)
     limited = {**held, **capped}
     reasons = _limitation_reasons(limited, outcome, plan, installed) if limited else {}
-    records = _hold_records(limited, reasons, installed.inventory, plan)
+    records = _hold_records(
+        limited, reasons, installed.inventory, plan, outcome.targets
+    )
     cached_holds = get_cached_holds(prefix)
-    # Explain every result: holds remain selectable for a new joint solve.
+    # Explain every result, not only holds that are new since the last scan.
     if explain and held:
         print_held_back(held, installed.inventory, reasons)
     if explain and capped:
@@ -6006,7 +6095,14 @@ def _inventory_state(inventory):
 
 
 def _snapshot_files(transaction_dir, prefix, targets):
-    """Copy exact pre-install bytes; never substitute a same-version index wheel."""
+    """Keep exact pre-install bytes; never substitute a same-version index wheel.
+
+    A backup is a hard link to the installed inode, which pip never writes in
+    place: it unlinks a file before writing its replacement and renames old
+    files aside on uninstall.  Anything that did modify the inode would fail
+    the recorded SHA-256 before rollback restores a single file.  A copy is
+    the fallback when the cache and the environment cannot share an inode.
+    """
     backup_dir = transaction_dir / "backup"
     backup_dir.mkdir(mode=0o700)
     root = Path(prefix).resolve()
@@ -6030,9 +6126,12 @@ def _snapshot_files(transaction_dir, prefix, targets):
         if target.stat().st_uid != os.getuid():
             raise UpdaterError(f"Cannot preserve ownership of package file {target}.")
         backup = backup_dir / f"{number:08d}"
-        shutil.copy2(target, backup)
-        with backup.open("rb") as handle:
-            os.fsync(handle.fileno())
+        try:
+            os.link(target, backup)
+        except OSError:
+            shutil.copy2(target, backup)
+            with backup.open("rb") as handle:
+                os.fsync(handle.fileno())
         info = backup.stat()
         snapshot[relative] = {
             "file": backup.name,
@@ -6205,7 +6304,9 @@ def rollback_transaction(transaction_dir, manifest):
             elif directory.exists():
                 directory.chmod(mode)
         _verify_snapshot(prefix, snapshot)
-        _sync_transaction_files(prefix, manifest)
+        # Persist package writes before the journal records a terminal state;
+        # one sync(2) avoids serializing writeback of every file.
+        os.sync()
         inventory = index_inventory(get_environment_inventory(prefix), prefix)
         if _inventory_state(inventory) != manifest["inventory"]:
             raise UpdaterError(
@@ -6223,24 +6324,6 @@ def rollback_transaction(transaction_dir, manifest):
         )
         manifest["status"] = "rolled_back"
         _save_manifest(transaction_dir, manifest)
-
-
-def _sync_transaction_files(prefix, manifest):
-    """Persist package writes/deletions before persisting a terminal journal state."""
-    for relative in manifest["files"]:
-        target = Path(prefix) / relative
-        if target.is_file():
-            with target.open("rb") as handle:
-                os.fsync(handle.fileno())
-    directories = {
-        Path(prefix),
-        *(Path(prefix) / name for name in manifest["directories"]),
-    }
-    for directory in sorted(
-        directories, key=lambda path: len(path.parts), reverse=True
-    ):
-        if directory.is_dir():
-            _fsync_directory(directory)
 
 
 def recover_incomplete_transactions(prefix, *, dry_run=False):
@@ -6462,8 +6545,7 @@ def prepare_transaction(prefix, plan, baseline):
                 for item in plan
             ],
         }
-        _validate_snapshot(transaction_dir, manifest)
-        _verify_snapshot(prefix, snapshot)
+        # apply_transaction validates and verifies the snapshot before pip runs.
         _save_manifest(transaction_dir, manifest)
         return transaction_dir, manifest
     except BaseException:
@@ -6605,7 +6687,9 @@ def apply_transaction(transaction_dir, manifest):
             if name not in changed
         }:
             raise UpdaterError("An unplanned package changed during installation.")
-        _sync_transaction_files(prefix, manifest)
+        # Persist package writes before the journal records a terminal state;
+        # one sync(2) avoids serializing writeback of every file.
+        os.sync()
     except BaseException as exc:
         # BaseException, not Exception: KeyboardInterrupt and the SIGTERM/SIGHUP
         # exception must also unwind through rollback, because the environment
@@ -7276,8 +7360,8 @@ def print_update_success(env_name, plan, before_conflicts=(), after_conflicts=()
             f"packages allow: {', '.join(capped)}.",
         )
         print(
-            "       pip still lists newer releases for them; the updater shows them "
-            "as version-capped; a later joint selection will be resolved again."
+            "       pip still lists newer releases for them; the updater skips them "
+            "as version-capped until a package capping them changes."
         )
     if after:
         if before - after:
@@ -7534,6 +7618,17 @@ def _read_key():
         termios.tcsetattr(fd, termios.TCSAFLUSH, saved)
 
 
+def _clear_screen():
+    """Wipe the visible terminal screen; scrollback keeps the earlier output.
+
+    Curses draws the picker on the alternate screen and restores this one when
+    it closes, so without a wipe the next pass prints below the last one.
+    """
+    if sys.stdout.isatty():
+        sys.stdout.write("\x1b[H\x1b[2J")
+        sys.stdout.flush()
+
+
 def _another_environment_wanted(target):
     """After a result, wait for a key before the environment picker returns.
 
@@ -7724,6 +7819,7 @@ def main():
             up_to_date.add(env_name)
         else:
             up_to_date.discard(env_name)
+        _clear_screen()
 
 
 def report_fatal(label, *details, lead=""):
