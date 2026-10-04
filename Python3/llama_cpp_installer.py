@@ -810,6 +810,26 @@ def remove_path(path: str) -> bool:
     return True
 
 
+def remove_work_dirs(paths: Sequence[str]) -> list[str]:
+    """Delete working folders after a successful install; return those left behind.
+
+    Runs only once the binaries are installed and verified, so a folder that
+    cannot be deleted is a warning, not a failed install.
+    """
+    remaining: list[str] = []
+    for path in paths:
+        location = os.path.abspath(path)
+        try:
+            removed = remove_path(path)
+        except OSError as error:
+            log.warning(f"could not remove {location}: {error}; run with --clean to retry")
+            remaining.append(path)
+            continue
+        if removed:
+            log.ok(f"removed {location}")
+    return remaining
+
+
 def describe_head(repo_dir: str, *, env: dict[str, str]) -> dict[str, str]:
     """Return identifying details for the checked-out commit."""
     separator = "\x1f"
@@ -1208,6 +1228,7 @@ class HelpParser(argparse.ArgumentParser):
 # (what it does, arguments after the program name)
 HELP_EXAMPLES = [
     ("Build and install the latest llama.cpp", ""),
+    ("Keep the source and build tree for a faster rebuild next time", "--keep-source"),
     ("Delete the llama.cpp and llama-swap folders, then exit", "--clean"),
     ("Use 8 compile jobs to keep the machine responsive", "-j 8"),
     ("Build a pull request instead of the latest upstream code", "--beta 12345"),
@@ -1220,8 +1241,9 @@ def parse_args() -> argparse.Namespace:
         title="llama.cpp CUDA Installer",
         description=(
             f"Build llama.cpp with CUDA support and install it, plus the latest "
-            f"llama-swap release, to {INSTALL_DIR}. Source is kept and updated in "
-            "place on later runs. "
+            f"llama-swap release, to {INSTALL_DIR}. The {REPO_DIR} and "
+            f"{LLAMA_SWAP_DIR} folders are deleted after a successful install unless "
+            "--keep-source is given. "
             "Run as a normal user; it asks for sudo only when it needs it."
         ),
         examples=HELP_EXAMPLES,
@@ -1248,6 +1270,15 @@ def parse_args() -> argparse.Namespace:
         default=os.cpu_count() or 4,
         metavar="N",
         help="Parallel compile jobs, one per CPU thread (default: %(default)s)",
+    )
+    build.add_argument(
+        "--keep-source",
+        action="store_true",
+        help=(
+            f"Keep the {REPO_DIR} and {LLAMA_SWAP_DIR} folders after a successful "
+            "install, so the next run updates the checkout in place and rebuilds "
+            "only what changed"
+        ),
     )
     build.add_argument(
         "--clean",
@@ -1558,10 +1589,15 @@ def main() -> None:
     else:
         log.warning("No CUDA device was enumerated; check the driver and CUDA runtime.")
 
-    log.info(
-        f"sources kept in {os.path.abspath(REPO_DIR)} and "
-        f"{os.path.abspath(LLAMA_SWAP_DIR)}; --clean removes them"
-    )
+    if args.keep_source:
+        sources = f"kept in {REPO_DIR}, {LLAMA_SWAP_DIR}"
+        log.info(
+            f"sources kept in {os.path.abspath(REPO_DIR)} and "
+            f"{os.path.abspath(LLAMA_SWAP_DIR)}; --clean removes them"
+        )
+    else:
+        remaining = remove_work_dirs((REPO_DIR, LLAMA_SWAP_DIR))
+        sources = f"could not remove {', '.join(remaining)}" if remaining else "removed"
 
     log.finish_step()
 
@@ -1579,6 +1615,7 @@ def main() -> None:
         "CUDA arch": cuda_archs,
         "web UI": "embedded" if args.web_ui else "disabled",
         "installed": ", ".join(installed),
+        "sources": sources,
         "compile time": log.format_duration(compile_seconds),
         "total time": log.format_duration(log.elapsed),
     }
