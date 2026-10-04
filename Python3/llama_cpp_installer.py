@@ -1,17 +1,10 @@
 #!/usr/bin/env python3
 """
-Build and install these CUDA-enabled llama.cpp binaries:
+Build and install these CUDA-enabled llama.cpp binaries: llama, llama-cli,
+llama-server and install the latest llama-swap release binary alongside them.
 
-llama
-llama-cli
-llama-server
-
-and install the latest llama-swap release binary alongside them.
-
-Tuned for this host:
-
-AMD Ryzen 9 7900X (Zen 4), NVIDIA RTX 4090 (compute capability 8.9),
-Ubuntu 24.04, system CUDA under /usr/local/cuda.
+Tuned for this host: AMD Ryzen 9 7900X (Zen 4), NVIDIA RTX 4090
+(compute capability 8.9), Ubuntu 24.04, system CUDA under /usr/local/cuda.
 
 Run without sudo. The script escalates only for apt and for installing the
 finished binaries, and it primes the sudo timestamp up front so a long compile
