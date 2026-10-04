@@ -1,4 +1,4 @@
-#!usr/bin/env python
+#!/usr/bin/env python
 """Hands-off full system upgrade (official repos and AUR) with yay.
 
 Runs a single `yay -Syu` with every prompt answered in advance, plus the
