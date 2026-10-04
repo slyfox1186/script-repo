@@ -6,9 +6,9 @@ llama-server and install the latest llama-swap release binary alongside them.
 Tuned for this host: AMD Ryzen 9 7900X (Zen 4), NVIDIA RTX 4090
 (compute capability 8.9), Ubuntu 24.04, system CUDA under /usr/local/cuda.
 
-Run without sudo. The script escalates only for apt and for installing the
-finished binaries, and it primes the sudo timestamp up front so a long compile
-cannot strand the install behind a password prompt.
+Run without sudo. The script escalates only for apt and for installing into a
+folder the caller cannot write to, and it primes the sudo timestamp up front so
+a long compile cannot strand the install behind a password prompt.
 """
 
 from __future__ import annotations
@@ -37,8 +37,20 @@ from typing import Any, ClassVar
 REPO_URL = "https://github.com/ggml-org/llama.cpp"
 REPO_DIR = "llama.cpp"
 LLAMA_SWAP_DIR = "llama-swap"
-INSTALL_DIR = "/usr/local/bin"
+INSTALL_DIR = "/usr/local/bin"  # default for --install-dir
 CUDA_HOME = "/usr/local/cuda"
+
+# Relative to the install folder, so the default /usr/local/bin gets
+# /usr/local/lib/llama.cpp. Holds a private copy of the clang OpenMP runtime the
+# binaries were linked against, reached only through their RUNPATH. ld.so.conf
+# and the loader cache stay untouched, and removing or upgrading that LLVM
+# install cannot break the installed binaries.
+PRIVATE_LIB_SUBDIR = os.path.join(os.pardir, "lib", "llama.cpp")
+
+# Written into the build tree after each configure. The CMake cache keeps a
+# -D value after the flag that set it is dropped, so a kept tree would silently
+# reuse a previous run's --cmake-arg values without this record to compare.
+CMAKE_ARGS_RECORD = "llama-cpp-installer-cmake-args.json"
 
 SYSTEM_PACKAGES = (
     "build-essential",
@@ -68,6 +80,37 @@ LLAMA_SWAP_REPO = "mostlygeek/llama-swap"
 LLAMA_SWAP_BINARY = "llama-swap"
 LLAMA_SWAP_ARCHES = {"x86_64": "amd64", "aarch64": "arm64"}
 HTTP_TIMEOUT_SECONDS = 60
+
+# Host-compiler warnings turned off for CUDA sources only, per compiler family.
+# Clang enables -Wtautological-compare by default, and fattn.cu's
+# FATTN_VEC_CASE macro compares GGML_TYPE_F16 with itself by design. nvcc hands
+# clang preprocessed host code, so clang cannot tell the comparison came from a
+# macro and warns on every expansion.
+CUDA_HOST_WARNING_OPT_OUTS = {"Clang": ("-Wno-tautological-compare",)}
+
+# Runtime hardening per the OpenSSF Compiler Options Hardening Guide: the set
+# GCC's -fhardened enables, spelled out because clang has no -fhardened. The
+# self-built GCC and clang this script prefers lack Ubuntu's built-in defaults,
+# and llama-server parses network input. PIE is omitted: both compilers default
+# to it. _FORTIFY_SOURCE is undefined first because Ubuntu's GCC predefines it,
+# and redefining it warns in every file. _GLIBCXX_ASSERTIONS bounds-checks
+# libstdc++ containers in C++ code, at a small CPU-side cost.
+HARDENING_COMPILE_FLAGS = (
+    "-U_FORTIFY_SOURCE",
+    "-D_FORTIFY_SOURCE=3",
+    "-D_GLIBCXX_ASSERTIONS",
+    "-ftrivial-auto-var-init=zero",
+    "-fstack-protector-strong",
+    "-fstack-clash-protection",
+    "-fcf-protection=full",
+)
+HARDENING_LINK_FLAGS = ("-Wl,-z,relro", "-Wl,-z,now")
+
+# With both UI options off, scripts/ui-assets.cmake always ends in this
+# message(WARNING). It runs as a `cmake -P` build step whose command line is
+# fixed upstream, so it is filtered out of ninja's output instead.
+UI_NO_ASSETS_WARNING = "UI: no assets available"
+NINJA_STATUS_RE = re.compile(r"\[\d+/\d+\] ")
 
 # Directories checked, in order, for build tools before falling back to a PATH
 # search, so a local install under /usr/local wins over the distro package.
@@ -243,13 +286,38 @@ log = Log(total_steps=TOTAL_STEPS)
 
 
 @dataclass(frozen=True)
-class GccToolchain:
-    """A version-matched GCC compiler pair accepted for CUDA host compilation."""
+class CompilerFamily:
+    """How to find and version-check one compiler family's C/C++ pair."""
 
+    name: str
+    cc: str
+    cxx: str
+    # GCC 7+ needs -dumpfullversion for the full version; clang rejects that
+    # flag but answers -dumpversion with its real version.
+    version_flags: tuple[str, ...]
+
+
+GCC = CompilerFamily("GCC", "gcc", "g++", ("-dumpfullversion", "-dumpversion"))
+CLANG = CompilerFamily("Clang", "clang", "clang++", ("-dumpversion",))
+
+
+@dataclass(frozen=True)
+class Toolchain:
+    """A version-matched C/C++ compiler pair."""
+
+    family: str
     major: int
     cc: str
     cxx: str
     version: str
+
+
+@dataclass(frozen=True)
+class HostCompiler:
+    """The toolchain for C/C++ and nvcc's host side, plus nvcc flags it needs."""
+
+    toolchain: Toolchain
+    nvcc_flags: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -577,43 +645,56 @@ def require_build_tool(
     return chosen, tool_version(chosen, env=env)
 
 
-def _gcc_major(executable: str, *, env: dict[str, str]) -> int:
-    output = capture(
-        [executable, "-dumpfullversion", "-dumpversion"], env=env, quiet=True
-    )
+def _compiler_major(
+    executable: str, family: CompilerFamily, *, env: dict[str, str]
+) -> int:
+    output = capture([executable, *family.version_flags], env=env, quiet=True)
     match = re.match(r"(\d+)", output)
     if match is None:
-        raise RuntimeError(f"Could not determine the GCC version from {executable}")
+        raise RuntimeError(
+            f"Could not determine the {family.name} version from {executable}"
+        )
     return int(match.group(1))
 
 
-def _gcc_version_string(executable: str, *, env: dict[str, str]) -> str:
+def _compiler_version_string(executable: str, *, env: dict[str, str]) -> str:
     output = capture([executable, "--version"], env=env, quiet=True)
     return output.splitlines()[0].strip() if output else "unknown"
 
 
 def _make_toolchain(
-    cc: str, cxx: str, *, expected_major: int | None, env: dict[str, str], label: str
-) -> GccToolchain | None:
+    family: CompilerFamily,
+    cc: str,
+    cxx: str,
+    *,
+    expected_major: int | None,
+    env: dict[str, str],
+    label: str,
+) -> Toolchain | None:
     """Validate a compiler pair and return a toolchain, or None with a reason."""
     try:
-        cc_major = _gcc_major(cc, env=env)
-        cxx_major = _gcc_major(cxx, env=env)
+        cc_major = _compiler_major(cc, family, env=env)
+        cxx_major = _compiler_major(cxx, family, env=env)
     except (OSError, RuntimeError, subprocess.CalledProcessError) as error:
         log.info(f"skipping {label}: could not query version ({error})")
         return None
 
     if cc_major != cxx_major:
         log.info(
-            f"skipping {label}: gcc reports {cc_major} but g++ reports {cxx_major}"
+            f"skipping {label}: {family.cc} reports {cc_major} but "
+            f"{family.cxx} reports {cxx_major}"
         )
         return None
     if expected_major is not None and cc_major != expected_major:
         log.info(f"skipping {label}: mislabeled, reports {cc_major}")
         return None
 
-    return GccToolchain(
-        major=cc_major, cc=cc, cxx=cxx, version=_gcc_version_string(cc, env=env)
+    return Toolchain(
+        family=family.name,
+        major=cc_major,
+        cc=cc,
+        cxx=cxx,
+        version=_compiler_version_string(cc, env=env),
     )
 
 
@@ -635,10 +716,12 @@ def _which_compiler(command: str, search_path: str) -> str | None:
     return None
 
 
-def installed_gcc_toolchains(*, env: dict[str, str]) -> list[GccToolchain]:
-    """Find usable GCC toolchains, newest major version first."""
+def installed_toolchains(
+    family: CompilerFamily, *, env: dict[str, str]
+) -> list[Toolchain]:
+    """Find usable toolchains of one family, newest major version first."""
     search_path = env.get("PATH", os.defpath)
-    version_pattern = re.compile(r"^gcc-(\d+)$")
+    version_pattern = re.compile(rf"^{re.escape(family.cc)}-(\d+)$")
     installed_majors: set[int] = set()
 
     for directory_name in search_path.split(os.pathsep):
@@ -654,30 +737,47 @@ def installed_gcc_toolchains(*, env: dict[str, str]) -> list[GccToolchain]:
                     installed_majors.add(int(match.group(1)))
 
     log.info(
-        "versioned GCC candidates on PATH: "
-        + (", ".join(f"gcc-{major}" for major in sorted(installed_majors, reverse=True)) or "none")
+        f"versioned {family.name} candidates on PATH: "
+        + (
+            ", ".join(
+                f"{family.cc}-{major}"
+                for major in sorted(installed_majors, reverse=True)
+            )
+            or "none"
+        )
     )
 
-    toolchains: list[GccToolchain] = []
+    toolchains: list[Toolchain] = []
     for major in sorted(installed_majors, reverse=True):
-        cc = _which_compiler(f"gcc-{major}", search_path)
-        cxx = _which_compiler(f"g++-{major}", search_path)
+        cc = _which_compiler(f"{family.cc}-{major}", search_path)
+        cxx = _which_compiler(f"{family.cxx}-{major}", search_path)
         if cc is None or cxx is None:
-            log.info(f"skipping gcc-{major}: no matching g++-{major}")
+            log.info(f"skipping {family.cc}-{major}: no matching {family.cxx}-{major}")
             continue
         toolchain = _make_toolchain(
-            cc, cxx, expected_major=major, env=env, label=f"gcc-{major} ({cc})"
+            family,
+            cc,
+            cxx,
+            expected_major=major,
+            env=env,
+            label=f"{family.cc}-{major} ({cc})",
         )
         if toolchain is not None:
             toolchains.append(toolchain)
 
     # Some installs expose only unversioned executables, which is how a
-    # hand-built GCC under /usr/local shows up.
-    cc = _which_compiler("gcc", search_path)
-    cxx = _which_compiler("g++", search_path)
+    # hand-built GCC under /usr/local shows up. It is also the OS default
+    # (update-alternatives), which may be newer than any versioned name.
+    cc = _which_compiler(family.cc, search_path)
+    cxx = _which_compiler(family.cxx, search_path)
     if cc is not None and cxx is not None:
         toolchain = _make_toolchain(
-            cc, cxx, expected_major=None, env=env, label=f"unversioned gcc ({cc})"
+            family,
+            cc,
+            cxx,
+            expected_major=None,
+            env=env,
+            label=f"unversioned {family.cc} ({cc})",
         )
         if toolchain is not None and all(
             existing.major != toolchain.major for existing in toolchains
@@ -703,8 +803,12 @@ def nvcc_probe(nvcc: str, flags: Sequence[str], *, env: dict[str, str]) -> tuple
 
     if result.returncode == 0:
         return True, ""
-    output = ((result.stderr or "") + (result.stdout or "")).strip()
-    return False, output.splitlines()[-1] if output else "nvcc exited without diagnostics"
+    lines = ((result.stderr or "") + (result.stdout or "")).strip().splitlines()
+    if not lines:
+        return False, "nvcc exited without diagnostics"
+    # clang ends with a "1 error generated." summary, so the last line is not
+    # the reason.
+    return False, next((line for line in lines if "error" in line), lines[-1]).strip()
 
 
 def nvcc_rejects_architectures(
@@ -728,9 +832,9 @@ def nvcc_rejects_architectures(
     ]
 
 
-def select_gcc_toolchain(nvcc: str, *, env: dict[str, str]) -> GccToolchain:
+def select_gcc_toolchain(nvcc: str, *, env: dict[str, str]) -> HostCompiler:
     """Select the newest installed GCC toolchain accepted by nvcc."""
-    toolchains = installed_gcc_toolchains(env=env)
+    toolchains = installed_toolchains(GCC, env=env)
     if not toolchains:
         raise RuntimeError(
             "No usable GCC toolchain was found. Install matching gcc and g++ packages."
@@ -742,7 +846,7 @@ def select_gcc_toolchain(nvcc: str, *, env: dict[str, str]) -> GccToolchain:
         accepted, reason = nvcc_probe(nvcc, ["-ccbin", toolchain.cxx], env=env)
         if accepted:
             log.ok(f"selected {toolchain.version} ({toolchain.cc})")
-            return toolchain
+            return HostCompiler(toolchain)
         log.info(f"GCC {toolchain.major} rejected by nvcc: {reason}")
         rejected.append(f"GCC {toolchain.major}: {reason}")
 
@@ -751,6 +855,133 @@ def select_gcc_toolchain(nvcc: str, *, env: dict[str, str]) -> GccToolchain:
         f"nvcc rejected every installed GCC toolchain:\n{details}\n"
         "Install a host compiler supported by this CUDA toolkit."
     )
+
+
+def select_clang_toolchain(nvcc: str, *, env: dict[str, str]) -> HostCompiler:
+    """Select the newest clang on PATH for C/C++ and nvcc's host side.
+
+    The newest clang is used even when it is newer than this CUDA toolkit
+    supports. nvcc enforces its supported clang range only through a version
+    check in crt/host_config.h, which -allow-unsupported-compiler lifts.
+    That flag is added only when a probe compile shows nvcc rejects the
+    compiler without it and accepts it with it. NVIDIA does not support the
+    combination, so it is reported as a warning on every run.
+    """
+    toolchains = installed_toolchains(CLANG, env=env)
+    if not toolchains:
+        raise RuntimeError(
+            "No usable clang toolchain was found on PATH. Install matching clang "
+            "and clang++, or run without --clang to build with GCC."
+        )
+    toolchain = toolchains[0]
+
+    accepted, reason = nvcc_probe(nvcc, ["-ccbin", toolchain.cxx], env=env)
+    if accepted:
+        log.ok(f"selected {toolchain.version} ({toolchain.cc})")
+        return HostCompiler(toolchain)
+
+    override = ("-allow-unsupported-compiler",)
+    log.info(f"Clang {toolchain.major} rejected by nvcc: {reason}")
+    accepted, override_reason = nvcc_probe(
+        nvcc, [*override, "-ccbin", toolchain.cxx], env=env
+    )
+    if not accepted:
+        raise RuntimeError(
+            f"nvcc rejected {toolchain.version} ({toolchain.cxx}) as its host "
+            f"compiler, even with {override[0]}: {override_reason}"
+        )
+    log.ok(f"selected {toolchain.version} ({toolchain.cc})")
+    log.warning(
+        f"Clang {toolchain.major} is newer than this CUDA toolkit supports; nvcc's "
+        f"version check is overridden with {override[0]}. NVIDIA warns this may "
+        "cause compilation failure or incorrect run time execution."
+    )
+    return HostCompiler(toolchain, override)
+
+
+def clang_openmp_runtime(toolchain: Toolchain, *, env: dict[str, str]) -> str | None:
+    """Resolved path of the libomp clang links for -fopenmp, or None.
+
+    clang links libomp from its own library directory but does not record that
+    directory in the binary, so a clang built from source under /opt produces
+    binaries the loader cannot start ("libomp.so: cannot open shared object
+    file"). None means this clang ships no libomp, and ggml then builds without
+    OpenMP.
+    """
+    reported = capture(
+        [toolchain.cc, "-print-file-name=libomp.so"], env=env, quiet=True
+    )
+    if not os.path.isabs(reported) or not os.path.isfile(reported):
+        return None
+    return os.path.realpath(reported)
+
+
+def elf_dynamic(readelf: str, path: str, tag: str, *, env: dict[str, str]) -> list[str]:
+    """Values of one dynamic-section tag (NEEDED, SONAME, RUNPATH) of an ELF file.
+
+    Matched on the "(TAG)" column and the bracketed value, not on readelf's
+    descriptive text, which is translated under a non-English locale.
+    """
+    output = capture([readelf, "-d", path], env=env, quiet=True)
+    return re.findall(rf"\({re.escape(tag)}\)[^\[]*\[([^\]]*)\]", output)
+
+
+def reset_stale_cmake_cache(
+    build_dir: str, compilers: dict[str, str], extra_args: Sequence[str]
+) -> None:
+    """Drop the CMake cache when it was configured with other compilers or --cmake-arg values.
+
+    CMake identifies compilers, nvcc's host compiler included, only on a build
+    tree's first configure, so a tree kept with --keep-source would otherwise
+    switch between GCC and clang on stale detection results.
+    """
+    cache = os.path.join(build_dir, "CMakeCache.txt")
+    try:
+        with open(cache, encoding="utf-8", errors="replace") as handle:
+            lines = handle.read().splitlines()
+    except FileNotFoundError:
+        return
+
+    cached: dict[str, str] = {}
+    for line in lines:
+        match = re.match(r"([A-Za-z0-9_]+):[A-Z]+=(.*)$", line)
+        if match is not None and match.group(1) in compilers:
+            cached[match.group(1)] = match.group(2)
+    changed = [name for name, value in compilers.items() if cached.get(name) != value]
+    if list(extra_args) != recorded_cmake_args(build_dir):
+        changed.append("--cmake-arg values")
+    if not changed:
+        return
+    log.info(
+        f"{', '.join(changed)} changed since the last configure; "
+        "starting a fresh CMake cache"
+    )
+    remove_path(cache)
+    remove_path(os.path.join(build_dir, "CMakeFiles"))
+
+
+def recorded_cmake_args(build_dir: str) -> list[str] | None:
+    """--cmake-arg values of the build tree's last configure.
+
+    [] when no record exists, which is also how a tree configured before the
+    record existed reads. None when the record is unreadable, so the caller
+    treats it as changed rather than as empty.
+    """
+    try:
+        with open(os.path.join(build_dir, CMAKE_ARGS_RECORD), encoding="utf-8") as handle:
+            recorded = json.load(handle)
+    except FileNotFoundError:
+        return []
+    except (OSError, ValueError):
+        return None
+    if not isinstance(recorded, list) or not all(isinstance(arg, str) for arg in recorded):
+        return None
+    return recorded
+
+
+def record_cmake_args(build_dir: str, extra_args: Sequence[str]) -> None:
+    with open(os.path.join(build_dir, CMAKE_ARGS_RECORD), "w", encoding="utf-8") as handle:
+        json.dump(list(extra_args), handle)
 
 
 def ccache_counters(*, env: dict[str, str]) -> dict[str, int]:
@@ -935,6 +1166,62 @@ def upstream_build_number(
     return matched, newest
 
 
+def missing_packages(packages: Sequence[str]) -> list[str]:
+    """The packages dpkg does not record as installed, in the order given."""
+    # dpkg-query exits 1 when any name is unknown but still reports the rest.
+    result = run(
+        ["dpkg-query", "-W", "-f=${Package} ${db:Status-Abbrev}\n", *packages],
+        check=False,
+        capture=True,
+        quiet=True,
+    )
+    installed = {
+        fields[0]
+        for fields in (line.split() for line in str(result.stdout or "").splitlines())
+        if len(fields) >= 2 and fields[1] == "ii"
+    }
+    return [package for package in packages if package not in installed]
+
+
+def nearest_existing(path: str) -> str:
+    """The path itself if it exists, otherwise its closest existing ancestor."""
+    while not os.path.lexists(path):
+        parent = os.path.dirname(path)
+        if parent == path:
+            break
+        path = parent
+    return path
+
+
+def needs_sudo(directory: str) -> bool:
+    """Whether creating directory if missing and writing into it needs root."""
+    return not os.access(nearest_existing(directory), os.W_OK | os.X_OK)
+
+
+def check_install_dir(install_dir: str) -> None:
+    """Reject an install folder this run could not use, before anything is built."""
+    existing = nearest_existing(install_dir)
+    if not os.path.isdir(existing):
+        raise RuntimeError(
+            f"--install-dir {install_dir} cannot be used: {existing} exists and is not a folder"
+        )
+    resolved = os.path.realpath(install_dir)
+    for work_dir in (REPO_DIR, LLAMA_SWAP_DIR):
+        work = os.path.realpath(work_dir)
+        if os.path.commonpath([resolved, work]) == work:
+            raise RuntimeError(
+                f"--install-dir {install_dir} is inside the {work} working folder, "
+                "which is deleted after a successful install and by --clean"
+            )
+
+
+def ensure_dir(path: str, *, sudo: bool) -> None:
+    """Create a folder, with sudo if needed; an existing one is left as it is."""
+    if os.path.isdir(path):
+        return
+    run([*(["sudo"] if sudo else []), "install", "-d", "-m", "0755", path])
+
+
 def ensure_sudo(*, reason: str) -> None:
     """Prime the sudo timestamp so later escalation does not block on a prompt."""
     cached = subprocess.run(
@@ -947,7 +1234,7 @@ def ensure_sudo(*, reason: str) -> None:
     run(["sudo", "-v"])
 
 
-def install_atomically(source: str, target: str) -> None:
+def install_atomically(source: str, target: str, *, sudo: bool) -> None:
     """Install a binary via staged file plus rename.
 
     A plain `install` opens the destination for writing, which fails with
@@ -957,12 +1244,13 @@ def install_atomically(source: str, target: str) -> None:
     """
     directory, name = os.path.split(target)
     staged = os.path.join(directory, f".{name}.new")
-    run(["sudo", "install", "-m", "0755", source, staged])
+    prefix = ["sudo"] if sudo else []
+    run([*prefix, "install", "-m", "0755", source, staged])
     try:
-        run(["sudo", "mv", "-f", staged, target])
+        run([*prefix, "mv", "-f", staged, target])
     except subprocess.CalledProcessError:
         # Do not leave a half-installed dotfile sitting in the install dir.
-        run(["sudo", "rm", "-f", staged], check=False, quiet=True)
+        run([*prefix, "rm", "-f", staged], check=False, quiet=True)
         raise
 
 
@@ -1045,6 +1333,72 @@ def _sha256(path: str) -> str:
         for block in iter(lambda: handle.read(1 << 20), b""):
             digest.update(block)
     return digest.hexdigest()
+
+
+def run_ninja(cmd: Sequence[str], *, env: dict[str, str], hide_ui_warning: bool) -> None:
+    """Run ninja, dropping upstream's expected no-UI warning block from its output.
+
+    Piping ninja's output to filter it turns off ninja's own one-line progress
+    display, so on a terminal the progress line is redrawn here the same way.
+    """
+    log.command(shlex.join(cmd))
+    interactive = sys.stdout.isatty()
+    child_env = {**env, "NINJA_STATUS": "[%f/%t] "}
+    if interactive:
+        # ninja strips compiler colors when its stdout is not a terminal.
+        child_env["CLICOLOR_FORCE"] = "1"
+
+    progress_shown = False
+
+    def emit(line: str) -> None:
+        nonlocal progress_shown
+        if interactive and NINJA_STATUS_RE.match(line):
+            width = shutil.get_terminal_size().columns
+            if len(line) >= width:
+                line = line[: max(width - 4, 0)] + "..."
+            sys.stdout.write(f"\r{line}\x1b[K")
+            sys.stdout.flush()
+            progress_shown = True
+            return
+        if progress_shown:
+            sys.stdout.write("\n")
+            progress_shown = False
+        print(line, flush=True)
+
+    # Lines of a "CMake Warning at .../ui-assets.cmake" block, held until its
+    # closing blank line shows which warning it is.
+    block: list[str] | None = None
+    with subprocess.Popen(
+        cmd,
+        env=child_env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        errors="replace",
+    ) as process:
+        assert process.stdout is not None
+        try:
+            for raw in process.stdout:
+                line = raw.rstrip("\n")
+                if block is None and line.startswith("CMake Warning at ") and "ui-assets.cmake" in line:
+                    block = [line]
+                elif block is not None:
+                    block.append(line)
+                    if not line.strip():
+                        if not (hide_ui_warning and any(UI_NO_ASSETS_WARNING in item for item in block)):
+                            for item in block:
+                                emit(item)
+                        block = None
+                else:
+                    emit(line)
+            for item in block or []:
+                emit(item)
+        finally:
+            if progress_shown:
+                sys.stdout.write("\n")
+                sys.stdout.flush()
+    if process.returncode != 0:
+        raise subprocess.CalledProcessError(process.returncode, list(cmd))
 
 
 def parse_devices(text: str) -> list[str]:
@@ -1181,7 +1535,7 @@ class HelpParser(argparse.ArgumentParser):
         def row(plain: str, colored: str, text: str) -> list[str]:
             match = _HELP_DEFAULT_RE.search(text)
             body = text[:match.start()] if match else text
-            lines = textwrap.wrap(body, text_width) or ['']
+            lines = textwrap.wrap(body, text_width, break_on_hyphens=False) or ['']
             if match:
                 default = match.group(1)
                 if len(lines[-1]) + 1 + len(default) <= text_width:
@@ -1200,7 +1554,7 @@ class HelpParser(argparse.ArgumentParser):
         out = [paint(self.help_title, 'heading')
                + (paint(f" v{self.help_version}", 'dim') if self.help_version else '')]
         if self.description:
-            out += textwrap.wrap(self.description, width)
+            out += textwrap.wrap(self.description, width, break_on_hyphens=False)
 
         out += heading("Usage")
         out.append(' '.join([f"  {paint(self.prog, 'bold')}", paint('[OPTIONS]', 'flag'),
@@ -1225,35 +1579,128 @@ class HelpParser(argparse.ArgumentParser):
         return '\n'.join(out)
 
 
+def upstream_ref(value: str) -> str:
+    """argparse type for --ref-tag: a tag name or a full commit SHA."""
+    ref = value.strip().removeprefix("refs/tags/")
+    if re.fullmatch(r"[0-9a-fA-F]{40}", ref):
+        return ref.lower()
+    # Upstream tags are b<NUM>, at most six characters for years to come.
+    if re.fullmatch(r"[0-9a-fA-F]{7,39}", ref):
+        raise argparse.ArgumentTypeError(
+            f"{value!r} looks like an abbreviated commit SHA; GitHub only serves "
+            "full 40-character SHAs, which 'git rev-parse <sha>' prints"
+        )
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._/-]*", ref) or ".." in ref:
+        raise argparse.ArgumentTypeError(f"{value!r} is not a valid tag name")
+    return ref
+
+
+def cmake_arg(value: str) -> str:
+    """argparse type for --cmake-arg: KEY=VALUE becomes -DKEY=VALUE, '-...' passes as is."""
+    if value.startswith("-"):
+        return value
+    if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*(?::[A-Za-z]+)?=.*", value, flags=re.DOTALL):
+        return f"-D{value}"
+    raise argparse.ArgumentTypeError(
+        f"expected KEY=VALUE or a CMake flag starting with '-', got {value!r}"
+    )
+
+
+def install_dir_path(value: str) -> str:
+    """argparse type for --install-dir: an absolute path, taken from the current directory."""
+    if not value.strip():
+        raise argparse.ArgumentTypeError("the folder name is empty")
+    # expanduser covers --install-dir=~/x, which the shell leaves unexpanded.
+    return os.path.abspath(os.path.expanduser(value))
+
+
 # (what it does, arguments after the program name)
 HELP_EXAMPLES = [
-    ("Build and install the latest llama.cpp", ""),
-    ("Keep the source and build tree for a faster rebuild next time", "--keep-source"),
-    ("Delete the llama.cpp and llama-swap folders, then exit", "--clean"),
+    ("Build and install the newest llama.cpp", ""),
+    ("Keep the source and build tree for a faster rebuild next time", "-k"),
+    ("Rebuild from the kept tree, skipping apt", "-k --skip-apt"),
+    ("Roll back to a known-good upstream release", "-r b11399"),
+    ("Try a pull request without replacing the installed binaries", "--beta 12345 -i ~/llama-pr"),
+    (
+        "Compile every flash-attention K/V cache type pair (much slower build)",
+        "--cmake-arg GGML_CUDA_FA_QUANTS=all",
+    ),
     ("Use 8 compile jobs to keep the machine responsive", "-j 8"),
-    ("Build a pull request instead of the latest upstream code", "--beta 12345"),
     ("Include llama-server's built-in web UI", "--web-ui"),
+    ("Compile with the newest clang on PATH instead of GCC", "--clang"),
+    ("Delete the llama.cpp and llama-swap folders, then exit", "--clean"),
 ]
 
 
 def parse_args() -> argparse.Namespace:
+    names = list(BUILD_TARGETS.values())
     parser = HelpParser(
         title="llama.cpp CUDA Installer",
         description=(
-            f"Build llama.cpp with CUDA support and install it, plus the latest "
-            f"llama-swap release, to {INSTALL_DIR}. The {REPO_DIR} and "
-            f"{LLAMA_SWAP_DIR} folders are deleted after a successful install unless "
-            "--keep-source is given. "
-            "Run as a normal user; it asks for sudo only when it needs it."
+            f"Build llama.cpp with CUDA support and install {', '.join(names[:-1])} "
+            f"and {names[-1]}, plus the latest llama-swap release, to {INSTALL_DIR} "
+            "or the --install-dir folder. The newest upstream commit is built unless "
+            f"--ref-tag or --beta picks another. The {REPO_DIR} and {LLAMA_SWAP_DIR} "
+            "working folders are made in the current directory and deleted after a "
+            "successful install unless --keep-source is given. Run as a normal "
+            "user; sudo is asked for only when apt runs or you cannot write to the "
+            "install folder."
         ),
         examples=HELP_EXAMPLES,
     )
-    build = parser.add_argument_group("Build")
-    build.add_argument(
+
+    source = parser.add_argument_group("Source").add_mutually_exclusive_group()
+    source.add_argument(
+        "-r",
+        "--ref-tag",
+        type=upstream_ref,
+        metavar="REF",
+        help=(
+            "Build upstream release tag REF (such as b11399) or a full 40-character "
+            "commit SHA instead of the newest commit, to pin or roll back to a "
+            f"known-good build. Tags are listed at {REPO_URL}/tags. Cannot be "
+            "combined with --beta"
+        ),
+    )
+    source.add_argument(
         "--beta",
         type=int,
         metavar="PR",
-        help="Build GitHub pull request number PR instead of the latest upstream code",
+        help=(
+            "Build GitHub pull request number PR instead of the newest upstream "
+            "commit; its binaries report build number 1. Add --install-dir to try "
+            "it without replacing your installed binaries. Cannot be combined with "
+            "--ref-tag"
+        ),
+    )
+
+    build = parser.add_argument_group("Build")
+    build.add_argument(
+        "-j",
+        "--jobs",
+        type=int,
+        default=os.cpu_count() or 4,
+        metavar="N",
+        help=(
+            "Parallel compile jobs, one per CPU thread by default. Lower it to keep "
+            "the machine responsive or if the compile runs out of memory "
+            "(default: %(default)s)"
+        ),
+    )
+    build.add_argument(
+        "--clang",
+        action="store_true",
+        help=(
+            "Compile with the newest clang on PATH, versioned (clang-N) or the "
+            "OS default (clang), instead of the newest GCC nvcc accepts. It is "
+            "also nvcc's host compiler, with nvcc's version check overridden if "
+            "it is newer than the CUDA toolkit supports. If the binaries link "
+            "clang's own OpenMP runtime, a private copy goes to "
+            f"{PRIVATE_LIB_SUBDIR} next to the install folder "
+            f"({os.path.normpath(os.path.join(INSTALL_DIR, PRIVATE_LIB_SUBDIR))} "
+            "by default), found through their RUNPATH; the system loader "
+            "configuration is not changed"
+        ),
     )
     build.add_argument(
         "--web-ui",
@@ -1264,14 +1711,46 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     build.add_argument(
-        "-j",
-        "--jobs",
-        type=int,
-        default=os.cpu_count() or 4,
-        metavar="N",
-        help="Parallel compile jobs, one per CPU thread (default: %(default)s)",
+        "--cmake-arg",
+        type=cmake_arg,
+        action="append",
+        default=[],
+        metavar="KEY=VALUE",
+        help=(
+            "Add a CMake configure setting; repeat for more. KEY=VALUE is passed "
+            "as -DKEY=VALUE after this script's own settings, so it overrides "
+            "them. Other CMake flags pass through as given but must be joined "
+            "with '=', as in --cmake-arg=-Wno-dev. A kept build tree is "
+            "reconfigured from scratch when these change"
+        ),
     )
     build.add_argument(
+        "--skip-apt",
+        action="store_true",
+        help=(
+            f"Skip apt update and apt install of the build packages "
+            f"({', '.join(SYSTEM_PACKAGES)}). Saves time on rebuilds; stops before "
+            "building if any of them is not installed"
+        ),
+    )
+
+    install = parser.add_argument_group("Install and clean up")
+    install.add_argument(
+        "-i",
+        "--install-dir",
+        type=install_dir_path,
+        default=INSTALL_DIR,
+        metavar="DIR",
+        help=(
+            "Folder to install the llama.cpp binaries and llama-swap to, created "
+            "if missing; a relative path is taken from the current directory. sudo "
+            "is used only if you cannot write to it. A folder outside your PATH "
+            "suits a side-by-side test build: run its binaries by full path "
+            "(default: %(default)s)"
+        ),
+    )
+    install.add_argument(
+        "-k",
         "--keep-source",
         action="store_true",
         help=(
@@ -1280,11 +1759,15 @@ def parse_args() -> argparse.Namespace:
             "only what changed"
         ),
     )
-    build.add_argument(
+    install.add_argument(
         "--clean",
         action="store_true",
-        help=f"Delete the {REPO_DIR} and {LLAMA_SWAP_DIR} folders if they exist, then exit",
+        help=(
+            f"Delete the {REPO_DIR} and {LLAMA_SWAP_DIR} folders if they exist, "
+            "then exit. Installed binaries are left alone"
+        ),
     )
+
     general = parser.add_argument_group("General")
     general.add_argument("-h", "--help", action="help", help="Show this help and exit")
     return parser.parse_args()
@@ -1350,35 +1833,85 @@ def main() -> None:
     if not gpus:
         log.warning("No GPU inventory available; the build will fall back to -arch=native.")
 
-    ensure_sudo(reason="apt and installing binaries later")
+    install_dir = args.install_dir
+    check_install_dir(install_dir)
+    private_lib_dir = os.path.normpath(os.path.join(install_dir, PRIVATE_LIB_SUBDIR))
+    install_sudo = needs_sudo(install_dir)
+    # Only known to be needed after the link, so ask up front when it might be.
+    lib_sudo = args.clang and needs_sudo(private_lib_dir)
+    log.table(
+        [
+            ("install folder", f"{install_dir} ({'sudo' if install_sudo else 'writable'})"),
+            *(
+                [("OpenMP copy", f"{private_lib_dir}, if the binaries link clang's libomp")]
+                if args.clang
+                else []
+            ),
+        ]
+    )
+
+    sudo_uses = [] if args.skip_apt else ["apt"]
+    if install_sudo or lib_sudo:
+        sudo_uses.append(f"installing to {install_dir}")
+    if sudo_uses:
+        ensure_sudo(reason=" and ".join(sudo_uses))
+    else:
+        log.info("sudo is not needed for this run")
 
     # ---------------------------------------------------------------- step 2
     log.step("System packages")
 
-    # Retries and per-connection timeouts so a syncing mirror cannot hang the
-    # run. `update` is non-fatal because apt falls back to cached indexes; the
-    # `install` below is the real gate and errors if a package is missing.
-    apt_opts = [
-        "-o", "Acquire::Retries=3",
-        "-o", "Acquire::http::Timeout=30",
-        "-o", "Acquire::https::Timeout=30",
-    ]
-    try:
-        update = run(["sudo", "apt", *apt_opts, "update"], check=False, timeout=600)
-        if update.returncode != 0:
-            log.warning("apt update returned non-zero; using cached package indexes.")
-    except subprocess.TimeoutExpired:
-        log.warning("apt update exceeded its 10 minute timeout; using cached indexes.")
+    if args.skip_apt:
+        missing = missing_packages(SYSTEM_PACKAGES)
+        if missing:
+            raise RuntimeError(
+                f"--skip-apt was given but {plural(len(missing), 'build package')} "
+                f"{'is' if len(missing) == 1 else 'are'} not installed: "
+                f"{' '.join(missing)}. Run once without --skip-apt."
+            )
+        log.ok(
+            f"apt skipped; all {plural(len(SYSTEM_PACKAGES), 'package')} installed: "
+            f"{' '.join(SYSTEM_PACKAGES)}"
+        )
+    else:
+        # Retries and per-connection timeouts so a syncing mirror cannot hang the
+        # run. `update` is non-fatal because apt falls back to cached indexes; the
+        # `install` below is the real gate and errors if a package is missing.
+        apt_opts = [
+            "-o", "Acquire::Retries=3",
+            "-o", "Acquire::http::Timeout=30",
+            "-o", "Acquire::https::Timeout=30",
+        ]
+        try:
+            update = run(["sudo", "apt", *apt_opts, "update"], check=False, timeout=600)
+            if update.returncode != 0:
+                log.warning("apt update returned non-zero; using cached package indexes.")
+        except subprocess.TimeoutExpired:
+            log.warning("apt update exceeded its 10 minute timeout; using cached indexes.")
 
-    log.info(
-        f"ensuring {plural(len(SYSTEM_PACKAGES), 'package')}: "
-        f"{' '.join(SYSTEM_PACKAGES)}"
-    )
-    run(["sudo", "apt", *apt_opts, "install", "-y", *SYSTEM_PACKAGES])
+        log.info(
+            f"ensuring {plural(len(SYSTEM_PACKAGES), 'package')}: "
+            f"{' '.join(SYSTEM_PACKAGES)}"
+        )
+        run(["sudo", "apt", *apt_opts, "install", "-y", *SYSTEM_PACKAGES])
 
     # ---------------------------------------------------------------- step 3
-    log.step("GCC toolchain selection for nvcc")
-    toolchain = select_gcc_toolchain(nvcc, env=env)
+    omp_runtime: str | None = None
+    if args.clang:
+        log.step("Clang toolchain selection for C/C++ and nvcc")
+        host = select_clang_toolchain(nvcc, env=env)
+        omp_runtime = clang_openmp_runtime(host.toolchain, env=env)
+        if omp_runtime is None:
+            log.info("this clang ships no libomp; ggml will build without OpenMP")
+        else:
+            log.info(
+                f"OpenMP runtime {omp_runtime}; binaries get RUNPATH "
+                f"{private_lib_dir} for a private copy"
+            )
+    else:
+        log.step("GCC toolchain selection for nvcc")
+        host = select_gcc_toolchain(nvcc, env=env)
+    toolchain = host.toolchain
 
     # ---------------------------------------------------------------- step 4
     log.step("Build tools and target architecture")
@@ -1418,6 +1951,14 @@ def main() -> None:
         log.info(f"beta mode: building from PR #{args.beta}")
         branch = f"pr-{args.beta}"
         sync_repo(REPO_DIR, REPO_URL, f"refs/pull/{args.beta}/head", branch, env=env)
+    elif args.ref_tag is not None and re.fullmatch(r"[0-9a-f]{40}", args.ref_tag):
+        log.info(f"pinned mode: building commit {args.ref_tag}")
+        branch = f"commit-{args.ref_tag[:12]}"
+        sync_repo(REPO_DIR, REPO_URL, args.ref_tag, branch, env=env)
+    elif args.ref_tag is not None:
+        log.info(f"pinned mode: building tag {args.ref_tag}")
+        branch = f"tag-{args.ref_tag}"
+        sync_repo(REPO_DIR, REPO_URL, f"refs/tags/{args.ref_tag}", branch, env=env)
     else:
         branch = "master"
         sync_repo(REPO_DIR, REPO_URL, "HEAD", branch, env=env)
@@ -1465,7 +2006,7 @@ def main() -> None:
     # OFF whenever SOURCE_DATE_EPOCH is set in the environment.
     #
     # BUILD_SHARED_LIBS=OFF links libllama and libggml into each binary, so
-    # copying the binaries alone into INSTALL_DIR is a complete install.
+    # copying the binaries alone into the install folder is a complete install.
     #
     # Both UI variables must be set together: scripts/ui-assets.cmake gates
     # provisioning on BUILD_UI and HF_ENABLED independently, and HF_ENABLED
@@ -1480,16 +2021,54 @@ def main() -> None:
     #   GGML_LTO ................. OFF. It adds substantial link time and
     #       nearly all compute runs in CUDA kernels.
     #   GGML_CUDA_COMPRESSION_MODE "size".
+    #
+    # LLAMA_ALL_WARNINGS=OFF drops upstream's developer lint set (-Wall -Wextra
+    # -Wpedantic -Wmissing-noreturn ...; it also drives GGML_ALL_WARNINGS),
+    # which buries real diagnostics under thousands of style hints such as
+    # noreturn suggestions on nvcc's host stubs for device-only functions.
+    # Compiler-default warnings and every error still print.
+    #
+    # CMAKE_CUDA_FLAGS and CMAKE_BUILD_RPATH are cached, so they are passed on
+    # every run, empty when unused, or a kept build tree would carry a previous
+    # --clang run's nvcc override and RUNPATH into a GCC build.
+    #
+    # Hardening flags reach C and C++ through CMAKE_<LANG>_FLAGS, which ggml's
+    # own add_compile_options() flags add to rather than replace, and nvcc's
+    # host compiler through -Xcompiler. Linker flags go only to executables,
+    # since every library is static; nvcc splits -Xcompiler values on commas,
+    # so -Wl,... could not go through it anyway.
+    #
+    # --cmake-arg values go last: CMake keeps the last -D for a variable, so
+    # they override any setting above.
     ui_enabled = "ON" if args.web_ui else "OFF"
+    # nvcc flags beyond hardening, shown in the summary.
+    cuda_extra_flags = [
+        *host.nvcc_flags,
+        *(
+            f"-Xcompiler={flag}"
+            for flag in CUDA_HOST_WARNING_OPT_OUTS.get(toolchain.family, ())
+        ),
+    ]
+    cuda_flags = [
+        *cuda_extra_flags,
+        *(f"-Xcompiler={flag}" for flag in HARDENING_COMPILE_FLAGS),
+    ]
+    hardening = " ".join(HARDENING_COMPILE_FLAGS)
     configure_args = [
         f"-DLLAMA_BUILD_UI={ui_enabled}",
         f"-DLLAMA_USE_PREBUILT_UI={ui_enabled}",
         "-DBUILD_SHARED_LIBS=OFF",
         "-DCMAKE_BUILD_TYPE=Release",
+        "-DLLAMA_ALL_WARNINGS=OFF",
         f"-DCMAKE_C_COMPILER={toolchain.cc}",
         f"-DCMAKE_CXX_COMPILER={toolchain.cxx}",
         f"-DCMAKE_CUDA_COMPILER={nvcc}",
         f"-DCMAKE_CUDA_HOST_COMPILER={toolchain.cxx}",
+        f"-DCMAKE_C_FLAGS={hardening}",
+        f"-DCMAKE_CXX_FLAGS={hardening}",
+        f"-DCMAKE_CUDA_FLAGS={' '.join(cuda_flags)}",
+        f"-DCMAKE_EXE_LINKER_FLAGS={' '.join(HARDENING_LINK_FLAGS)}",
+        f"-DCMAKE_BUILD_RPATH={private_lib_dir if omp_runtime else ''}",
         f"-DCMAKE_MAKE_PROGRAM={ninja_bin}",
         f"-DCUDAToolkit_ROOT={CUDA_HOME}",
         f"-DCMAKE_CUDA_ARCHITECTURES={cuda_archs}",
@@ -1501,35 +2080,48 @@ def main() -> None:
     if build_number is not None:
         # llama.cpp only derives this itself when the caller has not set it.
         configure_args.append(f"-DLLAMA_BUILD_NUMBER={build_number}")
+    if args.cmake_arg:
+        log.table([("extra CMake args", shlex.join(args.cmake_arg))])
+    configure_args += args.cmake_arg
 
     build_dir = f"{REPO_DIR}/build"
+    reset_stale_cmake_cache(
+        build_dir,
+        {
+            "CMAKE_C_COMPILER": toolchain.cc,
+            "CMAKE_CXX_COMPILER": toolchain.cxx,
+            "CMAKE_CUDA_HOST_COMPILER": toolchain.cxx,
+        },
+        args.cmake_arg,
+    )
     run(
         [cmake_bin, REPO_DIR, "-B", build_dir, *configure_args, "-G", "Ninja"],
         env=env,
         report_duration=False,
     )
+    record_cmake_args(build_dir, args.cmake_arg)
 
     # ---------------------------------------------------------------- step 8
     log.step(f"Compile: {', '.join(BUILD_TARGETS)}")
 
     ccache_before = ccache_counters(env=env)
     compile_started = time.monotonic()
-    run(
+    run_ninja(
         [ninja_bin, "-C", build_dir, f"-j{args.jobs}", *BUILD_TARGETS],
         env=env,
-        report_duration=False,
+        hide_ui_warning=not args.web_ui,
     )
     compile_seconds = time.monotonic() - compile_started
 
     log.table(report_ccache_delta(ccache_before, ccache_counters(env=env)))
     if not args.web_ui:
         log.info(
-            "the 'UI: no assets available' warning above is expected: UI "
-            "provisioning is off, so 0 assets were embedded"
+            "web UI not embedded (--web-ui adds it); upstream's expected "
+            f"'{UI_NO_ASSETS_WARNING}' build warning was hidden"
         )
 
     # ---------------------------------------------------------------- step 9
-    log.step(f"Install to {INSTALL_DIR} and verify")
+    log.step(f"Install to {install_dir} and verify")
 
     bin_dir = os.path.join(build_dir, "bin")
     built = {name: os.path.join(bin_dir, name) for name in BUILD_TARGETS.values()}
@@ -1546,11 +2138,44 @@ def main() -> None:
         ]
     )
 
-    ensure_sudo(reason="installing binaries")
+    # Ship the OpenMP runtime only if the link actually used it: CMake builds
+    # without OpenMP when it cannot find a working one.
+    # (source, destination) of the private OpenMP runtime copy.
+    runtime_copy: tuple[str, str] | None = None
+    if omp_runtime is not None:
+        readelf = require_executable("readelf", env=env)
+        sonames = elf_dynamic(readelf, omp_runtime, "SONAME", env=env)
+        # The loader looks the runtime up by soname, so the copy is named by it.
+        soname = sonames[0] if sonames else os.path.basename(omp_runtime)
+        users = [
+            name
+            for name, path in built.items()
+            if soname in elf_dynamic(readelf, path, "NEEDED", env=env)
+        ]
+        if not users:
+            log.info(f"no binary links {soname}; OpenMP was not used")
+        else:
+            for name in users:
+                runpath = elf_dynamic(readelf, built[name], "RUNPATH", env=env)
+                if private_lib_dir not in ":".join(runpath).split(":"):
+                    raise RuntimeError(
+                        f"{name} links {soname} but its RUNPATH {runpath} lacks "
+                        f"{private_lib_dir}; it could not load the runtime"
+                    )
+            runtime_copy = (omp_runtime, os.path.join(private_lib_dir, soname))
+
+    if install_sudo or (runtime_copy is not None and lib_sudo):
+        ensure_sudo(reason="installing binaries")
     installed: list[str] = []
+    # Before the binaries, so none is ever installed without its runtime.
+    if runtime_copy is not None:
+        ensure_dir(private_lib_dir, sudo=lib_sudo)
+        install_atomically(*runtime_copy, sudo=lib_sudo)
+        log.ok(f"OpenMP runtime installed to {runtime_copy[1]}")
+    ensure_dir(install_dir, sudo=install_sudo)
     for name, source_path in [*built.items(), (LLAMA_SWAP_BINARY, swap_binary)]:
-        destination = os.path.join(INSTALL_DIR, name)
-        install_atomically(source_path, destination)
+        destination = os.path.join(install_dir, name)
+        install_atomically(source_path, destination, sudo=install_sudo)
         installed.append(destination)
 
     # Run every installed binary under the caller's environment (env=None), not
@@ -1568,17 +2193,27 @@ def main() -> None:
     log.ok(f"installed {len(installed)} binaries")
 
     # Shadowing check: a copy earlier in the interactive PATH would win over the
-    # one just installed, which is easy to miss and confusing to debug.
-    for name in [*BUILD_TARGETS.values(), LLAMA_SWAP_BINARY]:
-        resolved = shutil.which(name, path=os.environ.get("PATH"))
-        expected = os.path.join(INSTALL_DIR, name)
-        if resolved is None:
-            log.warning(f"{name} is not on your interactive PATH ({expected} installed).")
-        elif os.path.realpath(resolved) != os.path.realpath(expected):
-            log.warning(f"{name} resolves to {resolved}, shadowing {expected}.")
+    # one just installed, which is easy to miss and confusing to debug. A
+    # custom folder off PATH is the usual side-by-side test install, so that
+    # case is a note rather than a warning per binary.
+    interactive_path = os.environ.get("PATH", "")
+    path_dirs = {os.path.realpath(entry) for entry in interactive_path.split(os.pathsep) if entry}
+    if os.path.realpath(install_dir) in path_dirs:
+        for name in [*BUILD_TARGETS.values(), LLAMA_SWAP_BINARY]:
+            resolved = shutil.which(name, path=interactive_path)
+            expected = os.path.join(install_dir, name)
+            if resolved is not None and os.path.realpath(resolved) != os.path.realpath(expected):
+                log.warning(f"{name} resolves to {resolved}, shadowing {expected}.")
+    elif install_dir == INSTALL_DIR:
+        log.warning(f"{install_dir} is not on your interactive PATH.")
+    else:
+        log.info(
+            f"{install_dir} is not on your PATH; run the binaries by full path, "
+            f"such as {os.path.join(install_dir, 'llama')}"
+        )
 
     devices = parse_devices(
-        capture_all([os.path.join(INSTALL_DIR, "llama-cli"), "--list-devices"])[1]
+        capture_all([os.path.join(install_dir, "llama-cli"), "--list-devices"])[1]
     )
     cuda_devices = [device for device in devices if device.startswith("CUDA")]
     log.table([("device", device) for device in devices])
@@ -1611,9 +2246,18 @@ def main() -> None:
         "version": versions[BUILD_TARGETS["llama-app"]],
         "llama-swap": versions[LLAMA_SWAP_BINARY],
         "compiler": f"{toolchain.version} + CUDA {cuda_version[0]}.{cuda_version[1]}",
+        "nvcc flags": " ".join(cuda_extra_flags) or "none",
+        "hardening": " ".join((*HARDENING_COMPILE_FLAGS, *HARDENING_LINK_FLAGS)),
+        "OpenMP runtime": (
+            f"{runtime_copy[1]} (private copy of {runtime_copy[0]})"
+            if runtime_copy is not None
+            else "not linked" if args.clang
+            else "system"
+        ),
         "cmake / ninja": f"{version_text(cmake_version)} / {version_text(ninja_version)}",
         "CUDA arch": cuda_archs,
         "web UI": "embedded" if args.web_ui else "disabled",
+        "extra CMake args": shlex.join(args.cmake_arg) or "none",
         "installed": ", ".join(installed),
         "sources": sources,
         "compile time": log.format_duration(compile_seconds),
@@ -1629,7 +2273,7 @@ def main() -> None:
     log.result_banner(
         True,
         [
-            f"{plural(len(installed), 'binary', 'binaries')} in {INSTALL_DIR}",
+            f"{plural(len(installed), 'binary', 'binaries')} in {install_dir}",
             head["short_sha"],
             log.format_duration(log.elapsed),
             plural(len(log.warnings), "warning") if log.warnings else "no warnings",
