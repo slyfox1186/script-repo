@@ -685,6 +685,26 @@ install_ninja() {
     commit_manifest ninja
 }
 
+# Prints the -isystem flags that make the C compiler read the system headers
+# before /usr/local/include. Each directory is used only if it exists and a
+# test compile works with it. This is for C only: with C++ it breaks the
+# standard library's own header lookup.
+c_system_includes() {
+    local dir arch flags="" src
+    src="$(mktemp --suffix=.c)"
+    printf '#include <stdlib.h>\n#include <limits.h>\n#include <stdio.h>\nint main(void) { return 0; }\n' >"$src"
+    arch="$("$CC" -print-multiarch 2>/dev/null || true)"
+    for dir in ${arch:+"/usr/include/$arch"} /usr/include; do
+        [[ -d "$dir" ]] || continue
+        # shellcheck disable=SC2086  # the flags are meant to split into words
+        if "$CC" -Werror $flags -isystem "$dir" -fsyntax-only "$src" >/dev/null 2>&1; then
+            flags+=" -isystem $dir"
+        fi
+    done
+    rm -f -- "$src"
+    printf '%s' "$flags"
+}
+
 # CMake's release page provides cmake-VERSION-SHA-256.txt and a detached
 # signature for it. The tarball is always checked against the list. The
 # signature on the list is checked when Kitware's key can be fetched from the
@@ -715,11 +735,22 @@ verify_cmake() {
 }
 
 install_cmake() {
-    local ver="$1" src="$work_dir/cmake" stage="$work_dir/cmake-stage" flags="${cppflags:+$cppflags }$cxxflags"
+    local ver="$1" src="$work_dir/cmake" stage="$work_dir/cmake-stage" flags="${cppflags:+$cppflags }$cxxflags" cflags ignore
     local -a cmake_args=(-DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DCMAKE_USE_OPENSSL=ON)
     # Use CMake's own switch for LTO, and the system OpenSSL when it is there
     [[ -z "$lto_flags" ]] || cmake_args+=(-DCMake_BUILD_LTO=ON)
     [[ ! -f /usr/include/openssl/ssl.h ]] || cmake_args+=(-DOPENSSL_ROOT_DIR=/usr)
+    # Keep libraries that were built from source out of the build. CMake's
+    # bundled libarchive looks for iconv, and both CMake's search and the
+    # compiler look in /usr/local before /usr. A GNU libiconv installed there
+    # would be linked in, with its directory baked into the binary, although
+    # glibc already provides iconv. Two things are needed to prevent that:
+    # CMake must not search those prefixes, and the C compiler must read the
+    # system headers first.
+    ignore="/usr/local"
+    [[ "$install_dir" == /usr || "$install_dir" == /usr/local ]] || ignore+=";$install_dir"
+    cmake_args+=("-DCMAKE_IGNORE_PREFIX_PATH=$ignore")
+    cflags="$flags$(c_system_includes)"
 
     get_source "Kitware/CMake" "$ver" "$src" "cmake-$ver.tar.gz"
     if [[ "$verify" != true ]]; then
@@ -733,7 +764,7 @@ install_cmake() {
     cd "$src"
     # ./bootstrap, make, make install is the procedure in CMake's README.
     # Options after "--" are passed to CMake itself.
-    run_task "Bootstrap cmake" "$work_dir/cmake.log" env "CC=$CC" "CXX=$CXX" "CFLAGS=$flags" "CXXFLAGS=$flags" "LDFLAGS=$ldflags" \
+    run_task "Bootstrap cmake" "$work_dir/cmake.log" env "CC=$CC" "CXX=$CXX" "CFLAGS=$cflags" "CXXFLAGS=$flags" "LDFLAGS=$ldflags" \
         ./bootstrap --prefix="$install_dir" --parallel="$jobs" -- "${cmake_args[@]}"
     run_task "Compile cmake ($jobs jobs)" "$work_dir/cmake.log" make -j"$jobs"
     [[ "$(./bin/cmake --version | head -n1)" == "cmake version $ver" ]] || fail "The new cmake reports \"$(./bin/cmake --version | head -n1)\", expected version $ver."
