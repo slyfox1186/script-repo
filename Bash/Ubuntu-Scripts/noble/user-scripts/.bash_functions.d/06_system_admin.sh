@@ -84,7 +84,7 @@ kill_service() {
         case $opt in
             d) disable=true ;;
             *)
-                echo "❌ Error: Invalid option -$OPTARG" >&2
+                echo "Error: Invalid option -$OPTARG" >&2
                 echo "Usage: kill_service [-d] service1.service [service2.service ...]" >&2
                 return 1
                 ;;
@@ -93,7 +93,7 @@ kill_service() {
     shift $((OPTIND - 1))
 
     if [ $# -eq 0 ]; then
-        echo "❌ Error: No service names provided." >&2
+        echo "Error: No service names provided." >&2
         echo "Usage: kill_service [-d] service1.service [service2.service ...]" >&2
         return 1
     fi
@@ -109,52 +109,52 @@ kill_service() {
 
         # 1. Check if the service unit file exists
         if ! sudo systemctl list-unit-files | grep -q "^$service"; then
-            echo "⚠️ Warning: Service '$service' does not exist. Skipping."
+            echo "Warning: Service '$service' does not exist. Skipping."
             continue
         fi
 
         # 2. Stop the service if it's active
         if sudo systemctl is-active --quiet "$service"; then
-            echo "➡️ Stopping service..."
+            echo "Stopping service..."
             if sudo systemctl stop "$service"; then
-                echo "✅ Successfully stopped."
+                echo "Successfully stopped."
                 stopped_count=$((stopped_count + 1))
             else
-                echo "❌ Error: Failed to stop '$service'." >&2
+                echo "Error: Failed to stop '$service'." >&2
                 error_occurred=true
             fi
         else
-            echo "⚪ Service is already inactive."
+            echo "Service is already inactive."
         fi
 
         # 3. Disable the service if -d flag was passed
         if [ "$disable" = true ]; then
             if sudo systemctl is-enabled --quiet "$service"; then
-                echo "➡️ Disabling service..."
+                echo "Disabling service..."
                 if sudo systemctl disable "$service"; then
-                    echo "✅ Successfully disabled."
+                    echo "Successfully disabled."
                     disabled_count=$((disabled_count + 1))
                 else
-                    echo "❌ Error: Failed to disable '$service'." >&2
+                    echo "Error: Failed to disable '$service'." >&2
                     error_occurred=true
                 fi
             else
-                echo "⚪ Service is already disabled."
+                echo "Service is already disabled."
             fi
         fi
     done
 
     # --- Final Summary ---
     echo "========================================"
-    echo "📊 Task Complete. Processed $services_processed service(s)."
-    echo "👍 Confirmation: Successfully stopped $stopped_count service(s)."
+    echo "Task Complete. Processed $services_processed service(s)."
+    echo "Confirmation: Successfully stopped $stopped_count service(s)."
 
     if [ "$disable" = true ]; then
-        echo "👍 Confirmation: Successfully disabled $disabled_count service(s)."
+        echo "Confirmation: Successfully disabled $disabled_count service(s)."
     fi
 
     if [ "$error_occurred" = true ]; then
-        echo "⚠️ Warning: One or more errors occurred during the operation."
+        echo "Warning: One or more errors occurred during the operation."
         return 1
     fi
 }
@@ -162,16 +162,16 @@ kill_service() {
 # --- START SERVICE HELPER ---
 # Helper function to display usage and best practices for start_service.
 _start_service_usage() {
-    echo "🚀 The 'start_service' command helps you activate and enable systemd services."
+    echo "The 'start_service' command helps you activate and enable systemd services."
     echo ""
     echo "Usage: start_service [-s] [-e] [-h] service1.service [service2.service ...]"
     echo ""
     echo "Arguments:"
-    echo "  -s         ▶️  Start the service(s) for the current session."
-    echo "  -e         🔌  Enable the service(s) to start automatically on boot."
-    echo "  -h         ❓  Display this help menu."
+    echo "  -s         Start the service(s) for the current session."
+    echo "  -e         Enable the service(s) to start automatically on boot."
+    echo "  -h         Display this help menu."
     echo ""
-    echo "--- 💡 Best Practices ---"
+    echo "--- Best Practices ---"
     echo "1. Start vs. Enable: What's the difference?"
     echo "   - 'Starting' a service (-s) runs it right now, but it won't restart after a reboot."
     echo "   - 'Enabling' a service (-e) tells the system to run it on the next boot, but it doesn't start it now."
@@ -205,7 +205,7 @@ start_service() {
             s) start=true ;;
             e) enable=true ;;
             h) show_help=true ;;
-            \?) echo "❌ Error: Invalid option -$OPTARG" >&2
+            \?) echo "Error: Invalid option -$OPTARG" >&2
                 _start_service_usage
                 return 1
                 ;;
@@ -222,14 +222,14 @@ start_service() {
 
     # --- Argument Validation ---
     if [ $# -eq 0 ]; then
-        echo "❌ Error: No service names provided." >&2
+        echo "Error: No service names provided." >&2
         _start_service_usage
         return 1
     fi
 
     # Check if no action flags were provided.
     if [[ "$start" = false && "$enable" = false ]]; then
-        echo "🤔 No action flags (-s or -e) provided. Nothing to do." >&2
+        echo "No action flags (-s or -e) provided. Nothing to do." >&2
         _start_service_usage
         return 1
     fi
@@ -245,56 +245,56 @@ start_service() {
 
         # 1. Check if the service unit file exists
         if ! sudo systemctl list-unit-files | grep -q "^$service"; then
-            echo "⚠️ Warning: Service '$service' does not exist. Skipping."
+            echo "Warning: Service '$service' does not exist. Skipping."
             continue
         fi
 
         # 2. Start the service if -s was passed and it's not already active
         if [ "$start" = true ]; then
             if ! sudo systemctl is-active --quiet "$service"; then
-                echo "➡️ Starting service..."
+                echo "Starting service..."
                 if sudo systemctl start "$service"; then
-                    echo "✅ Successfully started."
+                    echo "Successfully started."
                     started_count=$((started_count + 1))
                 else
-                    echo "❌ Error: Failed to start '$service'." >&2
+                    echo "Error: Failed to start '$service'." >&2
                     error_occurred=true
                 fi
             else
-                echo "⚪ Service is already active."
+                echo "Service is already active."
             fi
         fi
 
         # 3. Enable the service if -e was passed and it's not already enabled
         if [ "$enable" = true ]; then
             if ! sudo systemctl is-enabled --quiet "$service"; then
-                echo "➡️ Enabling service..."
+                echo "Enabling service..."
                 if sudo systemctl enable "$service"; then
-                    echo "✅ Successfully enabled."
+                    echo "Successfully enabled."
                     enabled_count=$((enabled_count + 1))
                 else
-                    echo "❌ Error: Failed to enable '$service'." >&2
+                    echo "Error: Failed to enable '$service'." >&2
                     error_occurred=true
                 fi
             else
-                echo "⚪ Service is already enabled."
+                echo "Service is already enabled."
             fi
         fi
     done
 
     # --- Final Summary ---
     echo "========================================"
-    echo "📊 Task Complete. Processed $services_processed service(s)."
+    echo "Task Complete. Processed $services_processed service(s)."
 
     if [ "$start" = true ]; then
-        echo "👍 Started $started_count service(s)."
+        echo "Started $started_count service(s)."
     fi
     if [ "$enable" = true ]; then
-        echo "👍 Enabled $enabled_count service(s)."
+        echo "Enabled $enabled_count service(s)."
     fi
 
     if [ "$error_occurred" = true ]; then
-        echo "⚠️ Warning: One or more errors occurred during the operation."
+        echo "Warning: One or more errors occurred during the operation."
         return 1
     fi
     return 0

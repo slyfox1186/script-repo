@@ -71,8 +71,11 @@ mywget() {
 # Usage: aria2_download -o <output_path> <URL>
 #   -o <path>   Output file (relative or absolute). Required.
 #   <URL>       Source URL (http/https/ftp/sftp/magnet/metalink). Required.
+# Existing output files are overwritten from scratch, including partial downloads.
 aria2_download() {
-    local output_path="" url=""
+    local output_path="" url="" user_agent="" rc=""
+    
+    user_agent="Mozilla/5.0 (X11; Linux x86_64; rv:155.0) Gecko/20100101 Firefox/155.0"
 
     while (( $# > 0 )); do
         case "$1" in
@@ -93,6 +96,7 @@ aria2_download() {
                 printf 'Usage: aria2_download -o <output_path> <URL>\n'
                 printf '  -o <path>   Output file (relative or absolute). Required.\n'
                 printf '  <URL>       Source URL. Required.\n'
+                printf '  Existing output files are overwritten; partial downloads restart.\n'
                 return 0
                 ;;
             --)
@@ -127,9 +131,31 @@ aria2_download() {
     fi
 
     if [[ -z "$url" ]]; then
-        printf 'Error: missing required URL argument\n' >&2
-        printf 'Usage: aria2_download -o <output_path> <URL>\n' >&2
-        return 1
+        if [[ -t 0 ]]; then
+            # Paste-safe: input read here is never shell-parsed, so '&' in URLs is harmless
+            read -rep "Enter the URL: " url
+        fi
+        if [[ -z "$url" ]]; then
+            printf 'Error: missing required URL argument\n' >&2
+            printf 'Usage: aria2_download -o <output_path> <URL>\n' >&2
+            return 1
+        fi
+    fi
+
+    # Detect being launched as a background job: an unquoted URL containing '&'
+    # makes bash split the command there, backgrounding adl with a truncated URL.
+    local bg_job=0
+    if [[ -t 2 ]]; then
+        local self_pgid fg_pgid
+        self_pgid=$(ps -o pgid= -p "$BASHPID" 2>/dev/null | tr -d ' ')
+        fg_pgid=$(ps -o tpgid= -p "$BASHPID" 2>/dev/null | tr -d ' ')
+        if [[ -n "$self_pgid" && -n "$fg_pgid" && "$self_pgid" != "$fg_pgid" ]]; then
+            bg_job=1
+            printf '\nWARNING: adl is running as a BACKGROUND job.\n' >&2
+            printf 'Your URL likely contained an unquoted "&" and bash split the command there.\n' >&2
+            printf 'URL as received (possibly truncated): %s\n' "$url" >&2
+            printf 'Tip: wrap the URL in single quotes, or run plain "adl -o <file>" and paste the URL at the prompt.\n\n' >&2
+        fi
     fi
 
     if ! command -v aria2c >/dev/null 2>&1; then
@@ -153,33 +179,49 @@ aria2_download() {
         fi
     fi
 
+    local -a cookie_args=()
+    if [[ -f "$HOME/.aria2/cookies.txt" ]]; then
+        cookie_args=(--load-cookies="$HOME/.aria2/cookies.txt")
+    fi
+
+    clear
+
+    # Keep the original aggressive splitting settings for large single-file downloads.
+    # Removing the control file prevents aria2 from resuming despite allow-overwrite.
     aria2c \
         --no-conf=true \
+        "${cookie_args[@]}" \
         --dir="$out_dir" \
         --out="$out_file" \
         --max-connection-per-server=16 \
         --split=16 \
         --min-split-size=1M \
-        --max-concurrent-downloads=5 \
-        --optimize-concurrent-downloads=true \
         --file-allocation=falloc \
         --enable-mmap=true \
         --disk-cache=64M \
-        --continue=true \
-        --max-tries=5 \
+        --continue=false \
+        --max-tries=3 \
         --retry-wait=10 \
         --connect-timeout=30 \
         --timeout=60 \
         --max-file-not-found=3 \
         --auto-file-renaming=false \
-        --allow-overwrite=false \
+        --allow-overwrite=true \
+        --remove-control-file=true \
         --check-certificate=true \
         --remote-time=true \
         --summary-interval=0 \
         --show-console-readout=true \
         --console-log-level=warn \
-        --user-agent="Mozilla/5.0 (X11; Linux x86_64; rv:150.0) Gecko/20100101 Firefox/150.0" \
+        --user-agent="$user_agent" \
         -- "$url"
+
+    rc=$?
+
+    if (( bg_job )); then
+        printf '\n[adl] Background download finished (exit %d). Your prompt is free - press Enter.\n' "$rc" >&2
+    fi
+    return "$rc"
 }
 alias adl='aria2_download'
 
@@ -187,8 +229,18 @@ padl() {
     local clipboard output_file url
     local -a args
 
-    # Get the clipboard contents using PowerShell
-    clipboard=$(pwsh.exe -Command "Get-Clipboard")
+    # Get the clipboard contents (clipboard text is never shell-parsed, so URLs
+    # containing '&' or '?' are safe here - no quoting needed)
+    if [[ -n "$WAYLAND_DISPLAY" ]] && command -v wl-paste >/dev/null 2>&1; then
+        clipboard=$(wl-paste --no-newline 2>/dev/null)
+    elif command -v xclip >/dev/null 2>&1; then
+        clipboard=$(xclip -o -selection clipboard 2>/dev/null)
+    elif command -v pwsh.exe >/dev/null 2>&1; then
+        clipboard=$(pwsh.exe -Command "Get-Clipboard")
+    else
+        echo "Error: no clipboard tool found (need wl-paste, xclip, or pwsh.exe)"
+        return 1
+    fi
 
     # Split the clipboard contents into an array using whitespace as the delimiter
     IFS=' ' read -r -a args <<< "$clipboard"
@@ -196,6 +248,7 @@ padl() {
     # Check if the number of arguments is less than 2
     if [[ ${#args[@]} -lt 2 ]]; then
         echo "Error: Two arguments are required: output file and download URL"
+        echo "Clipboard should contain: <output_file> <url>"
         return 1
     fi
 
@@ -205,14 +258,14 @@ padl() {
     # Extract the remaining arguments as the download URL and remove trailing whitespace
     url=$(echo "${args[@]:1}" | tr -d '[:space:]')
 
-    # Call the 'adl' function with the output file and URL as separate arguments
-    adl -o "$output_file" "$url"
+    # Call aria2_download with the output file and URL as separate arguments
+    aria2_download -o "$output_file" "$url"
 }
 
 # Aria2c batch downloader
 adt() {
-    local json_script="add_video_to_json.py"
-    local run_script="batch_downloader.py"
+    local json_script="add-video-to-json.py"
+    local run_script="batch-downloader.py"
     local repo_base="https://raw.githubusercontent.com/slyfox1186/script-repo/main/Python3/aria2"
     local script filename extension path url output
 
@@ -297,7 +350,7 @@ rsrd() {
 
     echo "This rsync command will recursively copy the source folder to the chosen destination."
     echo "The original files will be DELETED after they have been copied to the destination."
-    echo "If you want to move the files (which deletes the originals then use the function 'rsrd'."
+    echo "If you want to KEEP the originals (copy only) then use the function 'rsr'."
     echo "Please enter the full paths of the source and destination directories."
     echo
 
@@ -312,8 +365,8 @@ rsrd() {
 
 # The master script download menu for github repository script-repo
 dlmaster() {
-    local script_path="/usr/local/bin/download_master.py"
-    local script_url="https://raw.githubusercontent.com/slyfox1186/script-repo/main/Python3/download_master.py"
+    local script_path="/usr/local/bin/download-master.py"
+    local script_url="https://raw.githubusercontent.com/slyfox1186/script-repo/main/Python3/download-master.py"
 
     # Check if the script exists
     if [[ ! -f "$script_path" ]]; then
@@ -358,4 +411,3 @@ kill_ports() {
         fi
     done
 }
-

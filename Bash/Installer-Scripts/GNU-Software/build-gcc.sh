@@ -1872,19 +1872,19 @@ main() {
         
         # Check build status indicators
         local build_status="UNKNOWN"
-        local status_indicator="❓"
+        local status_indicator="[UNKNOWN]"
         local status_color="$YELLOW"
         
         if [[ "$dry_run" -eq 1 ]]; then
             build_status="DRY_RUN_COMPLETED"
-            status_indicator="🔍"
+            status_indicator="[DRY RUN]"
             status_color="$CYAN"
             ((skipped_builds++))
         elif [[ -d "$install_prefix/bin" && -x "$install_prefix/bin/gcc" ]]; then
             # Check if GCC binary exists and is executable
             if "$install_prefix/bin/gcc" --version &>/dev/null; then
                 build_status="SUCCESS"
-                status_indicator="✅"
+                status_indicator="[OK]"
                 status_color="$GREEN"
                 ((successful_builds++))
                 
@@ -1896,18 +1896,18 @@ main() {
                 fi
             else
                 build_status="PARTIAL_FAILURE"
-                status_indicator="⚠️"
+                status_indicator="[PARTIAL]"
                 status_color="$YELLOW"
                 ((failed_builds++))
             fi
         elif [[ -d "$install_prefix" ]]; then
             build_status="INCOMPLETE"
-            status_indicator="🔄"
+            status_indicator="[INCOMPLETE]"
             status_color="$YELLOW"
             ((failed_builds++))
         else
             build_status="FAILED"
-            status_indicator="❌"
+            status_indicator="[FAILED]"
             status_color="$RED"
             ((failed_builds++))
         fi
@@ -1942,11 +1942,11 @@ main() {
     log "INFO" "│                            BUILD STATISTICS                                    │"
     log "INFO" "└─────────────────────────────────────────────────────────────────────────────────┘"
     log "INFO" ""
-    log "INFO" "📊 Total Versions Requested: $total_builds"
-    log "INFO" "${GREEN}✅ Successful Builds: $successful_builds${NC}"
-    log "INFO" "${RED}❌ Failed Builds: $failed_builds${NC}"
+    log "INFO" "Total Versions Requested: $total_builds"
+    log "INFO" "${GREEN}Successful Builds: $successful_builds${NC}"
+    log "INFO" "${RED}Failed Builds: $failed_builds${NC}"
     if [[ "$dry_run" -eq 1 ]]; then
-        log "INFO" "${CYAN}🔍 Dry Run Completed: $skipped_builds${NC}"
+        log "INFO" "${CYAN}Dry Run Completed: $skipped_builds${NC}"
     fi
     log "INFO" ""
     
@@ -1954,15 +1954,15 @@ main() {
     if [[ $total_builds -gt 0 ]]; then
         local success_rate
         if [[ "$dry_run" -eq 1 ]]; then
-            log "INFO" "📈 Success Rate: N/A (Dry Run Mode)"
+            log "INFO" "Success Rate: N/A (Dry Run Mode)"
         else
             success_rate=$(( (successful_builds * 100) / total_builds ))
             if [[ $success_rate -ge 90 ]]; then
-                log "INFO" "${GREEN}📈 Success Rate: ${success_rate}% (Excellent)${NC}"
+                log "INFO" "${GREEN}Success Rate: ${success_rate}% (Excellent)${NC}"
             elif [[ $success_rate -ge 70 ]]; then
-                log "INFO" "${YELLOW}📈 Success Rate: ${success_rate}% (Good)${NC}"
+                log "INFO" "${YELLOW}Success Rate: ${success_rate}% (Good)${NC}"
             else
-                log "INFO" "${RED}📈 Success Rate: ${success_rate}% (Needs Attention)${NC}"
+                log "INFO" "${RED}Success Rate: ${success_rate}% (Needs Attention)${NC}"
             fi
         fi
     fi
@@ -1978,22 +1978,22 @@ main() {
     log "INFO" ""
     
     # Execution Time
-    log "INFO" "⏱️  Total Execution Time: $overall_duration"
+    log "INFO" "Total Execution Time: $overall_duration"
     
     # Disk Space Usage
     if [[ -d "$build_dir" ]]; then
         local build_dir_size
         build_dir_size=$(du -sh "$build_dir" 2>/dev/null | cut -f1)
-        [[ -n "$build_dir_size" ]] && log "INFO" "💾 Build Directory Size: $build_dir_size"
-        log "INFO" "📁 Build Directory: $build_dir"
+        [[ -n "$build_dir_size" ]] && log "INFO" "Build Directory Size: $build_dir_size"
+        log "INFO" "Build Directory: $build_dir"
     fi
     
     # Log File Location
     if [[ -n "$log_file" ]]; then
         local log_size
         log_size=$(du -sh "$log_file" 2>/dev/null | cut -f1)
-        [[ -n "$log_size" ]] && log "INFO" "📝 Log File Size: $log_size"
-        log "INFO" "📋 Detailed Log: $log_file"
+        [[ -n "$log_size" ]] && log "INFO" "Log File Size: $log_size"
+        log "INFO" "Detailed Log: $log_file"
     fi
     
     # ═══════════════════════════════════════════════════════════════════════════════════
@@ -2007,22 +2007,22 @@ main() {
     log "INFO" ""
     
     if [[ $successful_builds -gt 0 ]]; then
-        log "INFO" "🎉 Successfully built GCC versions are ready for use!"
+        log "INFO" "Successfully built GCC versions are ready for use!"
         log "INFO" ""
         log "INFO" "To use your new GCC installations:"
         for i in "${!build_results[@]}"; do
-            if [[ "${build_results[i]}" =~ ✅ ]]; then
+            if [[ "${build_results[i]}" == *" - SUCCESS" ]]; then
                 local install_path="${installation_paths[i]}"
                 local version_num=$(echo "${build_results[i]}" | grep -oP 'GCC \K\d+\.\d+\.\d+')
                 log "INFO" "   • GCC $version_num: export PATH=\"$install_path/bin:\$PATH\""
             fi
         done
         log "INFO" ""
-        log "INFO" "💡 Consider adding your preferred version to ~/.bashrc or ~/.profile"
+        log "INFO" "Consider adding your preferred version to ~/.bashrc or ~/.profile"
     fi
     
     if [[ $failed_builds -gt 0 ]]; then
-        log "INFO" "🔧 For failed builds:"
+        log "INFO" "For failed builds:"
         log "INFO" "   • Check the detailed log above for error messages"
         log "INFO" "   • Verify system dependencies are installed"
         log "INFO" "   • Ensure sufficient disk space and memory"
@@ -2033,13 +2033,13 @@ main() {
     fi
     
     if [[ "$dry_run" -eq 1 ]]; then
-        log "INFO" "🔍 Dry run completed successfully!"
+        log "INFO" "Dry run completed successfully!"
         log "INFO" "   • Remove --dry-run flag to perform actual builds"
         log "INFO" "   • All prerequisites and configurations look good"
     fi
     
     log "INFO" ""
-    log "INFO" "🔗 For support and bug reports:"
+    log "INFO" "For support and bug reports:"
     log "INFO" "   ${CYAN}https://github.com/slyfox1186/script-repo/issues${NC}"
     log "INFO" ""
     log "INFO" "═══════════════════════════════════════════════════════════════════════════════════"

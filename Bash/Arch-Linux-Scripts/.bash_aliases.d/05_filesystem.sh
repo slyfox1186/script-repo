@@ -30,15 +30,15 @@ alias cdb1='pushd /usr/bin/; cl'
 alias cdb2='pushd /usr/local/bin/; cl'
 alias cdv='pushd ~/Videos/; cl'
 alias cdff='pushd ~/tmp/ffmpeg_test/; cl'
-alias cd.='cd ..; cl'
-alias cd..='cd ..; cl'
+alias cd.='cd ..'
+alias cd..='cd ..'
 
 # Directory and file creation
 alias md='mkdir -p'
 alias mkdir='mkdir -p'
 
 # Path display
-alias psp='clear; echo -e $PATH//:/\\n'
+alias psp='clear; echo -e "${PATH//:/\n}"'
 
 # Clipboard utilities
 alias v='xclip -o'

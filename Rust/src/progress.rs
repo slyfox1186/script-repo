@@ -62,13 +62,13 @@ impl BuildSummary {
         let mut content = Vec::new();
 
         for version in &self.successful {
-            content.push(format!("{} GCC {} - SUCCESS", style("✅").green(), version));
+            content.push(format!("{} GCC {} - SUCCESS", style("[OK]").green(), version));
         }
 
         for (version, error) in &self.failed {
             content.push(format!(
                 "{} GCC {} - FAILED: {}",
-                style("❌").red(),
+                style("[FAIL]").red(),
                 version,
                 error
             ));
@@ -77,7 +77,7 @@ impl BuildSummary {
         for (version, reason) in &self.skipped {
             content.push(format!(
                 "{} GCC {} - SKIPPED: {}",
-                style("⏭️").yellow(),
+                style("[SKIP]").yellow(),
                 version,
                 reason
             ));
@@ -87,26 +87,13 @@ impl BuildSummary {
 
         // Statistics
         eprintln!();
+        eprintln!("Total Versions: {}", self.total_builds());
+        eprintln!("Successful: {}", style(self.successful.len()).green());
+        eprintln!("Failed: {}", style(self.failed.len()).red());
+        eprintln!("Skipped: {}", style(self.skipped.len()).yellow());
+        eprintln!("Success Rate: {:.1}%", self.success_rate());
         eprintln!(
-            "{} Total Versions: {}",
-            style("📊").cyan(),
-            self.total_builds()
-        );
-        eprintln!(
-            "{} Successful: {}",
-            style("✅").green(),
-            self.successful.len()
-        );
-        eprintln!("{} Failed: {}", style("❌").red(), self.failed.len());
-        eprintln!("{} Skipped: {}", style("⏭️").yellow(), self.skipped.len());
-        eprintln!(
-            "{} Success Rate: {:.1}%",
-            style("📈").cyan(),
-            self.success_rate()
-        );
-        eprintln!(
-            "{} Total Time: {}",
-            style("⏱️").cyan(),
+            "Total Time: {}",
             format_duration(self.total_duration_secs)
         );
         eprintln!();

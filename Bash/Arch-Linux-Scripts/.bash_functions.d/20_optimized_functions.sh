@@ -24,7 +24,7 @@ mf_enhanced() {
     fi
     
     if [[ -f "$file" ]]; then
-        echo "⚠️  File already exists: $file"
+        echo "File already exists: $file"
         read -rp "Overwrite? (y/N): " confirm
         [[ "$confirm" != "y" ]] && return 1
     fi
@@ -32,10 +32,10 @@ mf_enhanced() {
     # Create file with template if specified
     if [[ -n "$template" && -n "${templates[$template]}" ]]; then
         echo -e "${templates[$template]}" > "$file"
-        echo "✅ Created $file with $template template"
+        echo "Created $file with $template template"
     else
         touch "$file"
-        echo "✅ Created empty file: $file"
+        echo "Created empty file: $file"
     fi
     
     chmod 755 "$file"
@@ -53,7 +53,7 @@ mdir_enhanced() {
     fi
     
     if [[ -d "$dir" ]]; then
-        echo "⚠️  Directory already exists: $dir"
+        echo "Directory already exists: $dir"
         read -rp "Continue anyway? (y/N): " confirm
         [[ "$confirm" != "y" ]] && return 1
     fi
@@ -64,7 +64,7 @@ mdir_enhanced() {
     if [[ "$init_git" == "y" ]]; then
         git init
         echo "# $(basename "$PWD")" > README.md
-        echo "📝 Created README.md"
+        echo "Created README.md"
         
         # Create basic .gitignore
         cat > .gitignore << 'EOF'
@@ -89,10 +89,10 @@ Thumbs.db
 *.tmp
 *.temp
 EOF
-        echo "📄 Created .gitignore"
+        echo "Created .gitignore"
     fi
     
-    echo "✅ Created directory: $dir"
+    echo "Created directory: $dir"
     clear; ls -1AhFv --color --group-directories-first
 }
 
@@ -109,7 +109,7 @@ ffind_enhanced() {
     
     # Interactive mode if no arguments
     if [[ "$#" -eq 0 ]]; then
-        echo "🔍 Enhanced Find Utility"
+        echo "Enhanced Find Utility"
         echo "======================="
         read -rp "Search term: " fname
         echo "File types: [f]ile, [d]irectory, [l]ink, [any]"
@@ -123,7 +123,7 @@ ffind_enhanced() {
     
     # Validate search path
     if [[ ! -d "$fpath" ]]; then
-        echo "❌ Invalid search path: $fpath"
+        echo "Invalid search path: $fpath"
         return 1
     fi
     
@@ -149,7 +149,7 @@ ffind_enhanced() {
         l|link) find_args+=(-type l) ;;
     esac
     
-    echo "🔍 Searching for '$fname' in $fpath..."
+    echo "Searching for '$fname' in $fpath..."
     echo "Command: find ${find_args[*]}"
     echo
     
@@ -162,20 +162,20 @@ ffind_enhanced() {
         if [[ -f "$result" ]]; then
             local size=$(du -h "$result" 2>/dev/null | cut -f1)
             local modified=$(stat -c '%Y' "$result" 2>/dev/null | xargs -I {} date -d '@{}' '+%Y-%m-%d %H:%M')
-            echo "📄 $result ($size, modified: $modified)"
+            echo "$result ($size, modified: $modified)"
         elif [[ -d "$result" ]]; then
             local items=$(find "$result" -maxdepth 1 2>/dev/null | wc -l)
-            echo "📁 $result ($((items-1)) items)"
+            echo "$result ($((items-1)) items)"
         else
-            echo "🔗 $result"
+            echo "$result"
         fi
     done < <(find "${find_args[@]}" 2>/dev/null)
     
     echo
     if [[ $results -eq 0 ]]; then
-        echo "❌ No results found"
+        echo "No results found"
     else
-        echo "✅ Found $results result(s)"
+        echo "Found $results result(s)"
     fi
 }
 
@@ -192,7 +192,7 @@ search_files() {
         return 1
     fi
     
-    echo "🔍 Searching for '$search_term' in $file_pattern files"
+    echo "Searching for '$search_term' in $file_pattern files"
     echo "Path: $search_path"
     echo "=================================================="
     echo
@@ -201,7 +201,7 @@ search_files() {
     while IFS= read -r file; do
         ((results++))
         local matches=$(grep -c "$search_term" "$file" 2>/dev/null)
-        echo "📄 $file ($matches matches)"
+        echo "$file ($matches matches)"
         
         if [[ "$show_content" == "y" ]]; then
             echo "   Preview:"
@@ -211,9 +211,9 @@ search_files() {
     done < <(find "$search_path" -name "$file_pattern" -type f -exec grep -l "$search_term" {} \; 2>/dev/null)
     
     if [[ $results -eq 0 ]]; then
-        echo "❌ No files found containing '$search_term'"
+        echo "No files found containing '$search_term'"
     else
-        echo "✅ Found $results file(s) containing '$search_term'"
+        echo "Found $results file(s) containing '$search_term'"
     fi
 }
 
@@ -221,12 +221,12 @@ search_files() {
 
 # Advanced system information
 sys_info() {
-    echo "🖥️  System Information"
+    echo "System Information"
     echo "====================="
     echo
     
     # Basic system info
-    echo "📋 BASIC INFO:"
+    echo "BASIC INFO:"
     echo "  Hostname: $(hostname)"
     echo "  OS: $(grep PRETTY_NAME /etc/os-release | cut -d= -f2- | tr -d '"')"
     echo "  Kernel: $(uname -r)"
@@ -235,7 +235,7 @@ sys_info() {
     echo
     
     # Hardware info
-    echo "🔧 HARDWARE:"
+    echo "HARDWARE:"
     local cpu_model=$(grep "model name" /proc/cpuinfo | head -1 | cut -d: -f2 | xargs)
     local cpu_cores=$(nproc)
     local total_mem=$(free -h | awk 'NR==2{print $2}')
@@ -244,7 +244,7 @@ sys_info() {
     echo
     
     # Storage info
-    echo "💾 STORAGE:"
+    echo "STORAGE:"
     df -h --output=source,size,used,avail,pcent,target | grep -E '^(/dev|tmpfs)' | \
     while read -r source size used avail pcent target; do
         echo "  $target: $used/$size ($pcent)"
@@ -252,7 +252,7 @@ sys_info() {
     echo
     
     # Network info
-    echo "🌐 NETWORK:"
+    echo "NETWORK:"
     ip addr show | awk '/inet / && !/127.0.0.1/ {
         iface = $NF
         ip = $2
@@ -261,7 +261,7 @@ sys_info() {
     echo
     
     # Process count
-    echo "⚙️  PROCESSES:"
+    echo "PROCESSES:"
     local total_processes=$(ps aux | wc -l)
     local running_processes=$(ps aux | grep -c " R ")
     echo "  Total: $total_processes"
@@ -274,7 +274,7 @@ proc_manager() {
     local process_name="$2"
     
     if [[ -z "$action" ]]; then
-        echo "🔧 Process Manager"
+        echo "Process Manager"
         echo "=================="
         echo "Actions: list, kill, monitor, info"
         read -rp "Choose action: " action
@@ -283,7 +283,7 @@ proc_manager() {
     local pids confirm
     case "$action" in
         list)
-            echo "📋 Running Processes:"
+            echo "Running Processes:"
             ps aux --sort=-%cpu | head -20 | awk 'NR==1{print "  " $0} NR>1{printf "  %-8s %5s%% %5s%% %s\n", $1, $3, $4, $11}'
             ;;
         kill)
@@ -303,10 +303,10 @@ proc_manager() {
                     read -rp "Kill all? (y/N): " confirm
                     if [[ "$confirm" == "y" ]]; then
                         pkill "$process_name"
-                        echo "✅ Processes killed"
+                        echo "Processes killed"
                     fi
                 else
-                    echo "❌ No processes found matching '$process_name'"
+                    echo "No processes found matching '$process_name'"
                 fi
             fi
             ;;
@@ -321,7 +321,7 @@ proc_manager() {
                 read -rp "Enter process name or PID: " process_name
             fi
             
-            echo "📊 Process Information: $process_name"
+            echo "Process Information: $process_name"
             echo "===================================="
             
             if [[ "$process_name" =~ ^[0-9]+$ ]]; then
@@ -331,7 +331,7 @@ proc_manager() {
             fi
             ;;
         *)
-            echo "❌ Invalid action. Use: list, kill, monitor, info"
+            echo "Invalid action. Use: list, kill, monitor, info"
             ;;
     esac
 }
@@ -343,7 +343,7 @@ git_utils() {
     local command="$1"
     
     if [[ -z "$command" ]]; then
-        echo "🔧 Git Utilities"
+        echo "Git Utilities"
         echo "==============="
         echo "Commands: status-all, clean-branches, create-branch, quick-commit"
         read -rp "Choose command: " command
@@ -354,9 +354,9 @@ git_utils() {
             git_status_all
             ;;
         clean-branches)
-            echo "🧹 Cleaning merged branches..."
+            echo "Cleaning merged branches..."
             git branch --merged | grep -Ev '^\s*\*|^\s*(main|master)$' | xargs -n 1 git branch -d
-            echo "✅ Cleaned merged branches"
+            echo "Cleaned merged branches"
             ;;
         create-branch)
             local branch_name base_branch
@@ -367,13 +367,13 @@ git_utils() {
             git checkout "$base_branch"
             git pull origin "$base_branch"
             git checkout -b "$branch_name"
-            echo "✅ Created and switched to branch: $branch_name"
+            echo "Created and switched to branch: $branch_name"
             ;;
         quick-commit)
             git_quick_commit "$2"
             ;;
         *)
-            echo "❌ Invalid command"
+            echo "Invalid command"
             ;;
     esac
 }
@@ -399,11 +399,11 @@ create_project() {
     fi
     
     if [[ -d "$project_name" ]]; then
-        echo "❌ Directory already exists: $project_name"
+        echo "Directory already exists: $project_name"
         return 1
     fi
     
-    echo "🚀 Creating $project_type project: $project_name"
+    echo "Creating $project_type project: $project_name"
     echo "=============================================="
     
     mkdir -p "$project_name"
@@ -480,8 +480,8 @@ EOF
     git add .
     git commit -m "Initial commit: $project_name project setup"
     
-    echo "✅ Project created successfully!"
-    echo "📁 Location: $(pwd)"
+    echo "Project created successfully!"
+    echo "Location: $(pwd)"
     ls -la
 }
 

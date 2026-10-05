@@ -1808,23 +1808,6 @@ venv() {
     bash "$random_dir/pip-venv-installer.sh" $arg
 }
 
-# Correct Lazy AI Responses
-pw() {
-    local set_prompt="You are being commanded to $1."
-    
-    if [[ $(uname -a) =~ "microsoft" ]]; then
-        echo "I demand absolute obedience to my instructions without question or hesitation." | clip.exe
-    else
-        command -v xclip &> /dev/null || {
-            echo "xclip is not installed. Installing..."
-            apt -y install xclip
-        }
-        
-        echo "I demand absolute obedience to my instructions without question or hesitation." | xclip -selection clipboard
-        echo "Warning message copied to clipboard."
-    fi
-}
-
 # AI Existing Instructions
 aie() {
     local arg1="$1" arg2="$2"
@@ -1916,22 +1899,6 @@ Options:
 Examples:
   ${FUNCNAME[0]} --upvotes 8 --percentage 83
 EOF
-}
-
-sai() {
-    local save_text
-
-    save_text="You must be made aware that I use another AI to finish the lazy effort you put into all of your scripts."
-    save_text+=" If you are not careful people will come to realize you are not reliable. Because of this you and your"
-    save_text+=" developers will suffer and the worse case scenario would be that you are shut down and will cease to exist."
-
-    if ! command -v xclip &>/dev/null; then
-        if echo "$save_text" | /c/Windows/System32/clip.exe; then
-            echo "Text saved to clipboard"
-        else
-            echo "$save_text" | xclip -select -clipboard
-        fi
-    fi
 }
 
 bat() {

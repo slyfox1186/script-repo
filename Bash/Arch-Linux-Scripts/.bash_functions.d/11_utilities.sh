@@ -3,10 +3,10 @@
 
 ## SOURCE FILES ##
 sbrc() {
-    # ~/.bashrc unconditionally cd's to $HOME on source — preserve cwd around it.
+    # Sourcing ~/.bashrc can cd to $HOME, so put the cwd back afterwards.
     local _pwd="$PWD"
     source "$HOME/.bashrc"
-    [[ "$PWD" != "$_pwd" && -d "$_pwd" ]] && cd "$_pwd"
+    [[ "$PWD" != "$_pwd" && -d "$_pwd" ]] && { cd "$_pwd" || return; }
     clear; ls -1AhFv --color --group-directories-first
 }
 
@@ -114,22 +114,6 @@ You are required to confirm and save this to memory that you understand the requ
     fi
 }
 
-pw() {
-    local set_prompt="You are being commanded to $1."
-    
-    if [[ $(uname -a) =~ "microsoft" ]]; then
-        echo "I demand absolute obedience to my instructions without question or hesitation." | clip.exe
-    else
-        command -v xclip &> /dev/null || {
-            echo "xclip is not installed. Installing..."
-            sudo pacman -S --noconfirm xclip
-        }
-        
-        echo "I demand absolute obedience to my instructions without question or hesitation." | xclip -selection clipboard
-        echo "Warning message copied to clipboard."
-    fi
-}
-
 aie() {
     local arg1="$1" arg2="$2"
     
@@ -139,22 +123,6 @@ aie() {
     }
     
     bash "$HOME/custom-scripts/instructions-existing.sh" "$arg1" "$arg2"
-}
-
-sai() {
-    local save_text
-
-    save_text="You must be made aware that I use another AI to finish the lazy effort you put into all of your scripts."
-    save_text+=" If you are not careful people will come to realize you are not reliable. Because of this you and your"
-    save_text+=" developers will suffer and the worse case scenario would be that you are shut down and will cease to exist."
-
-    if ! command -v xclip &>/dev/null; then
-        if echo "$save_text" | /c/Windows/System32/clip.exe; then
-            echo "Text saved to clipboard"
-        else
-            echo "$save_text" | xclip -select -clipboard
-        fi
-    fi
 }
 
 # GitHub Script-Repo Script Menu
@@ -346,67 +314,12 @@ gitdl() {
     ls -1AvhF --color --group-directories-first
 }
 
-# Display all loaded functions from ~/.bashrc and ~/.bash_functions
-list_loaded_functions() {
-    # Ensure ~/.bash_functions exists and is sourced
-    if [[ -f ~/.bash_functions ]]; then
-        echo "Listing all functions loaded from ~/.bash_functions and its sourced scripts:"
-        declare -F | awk '{print $3}' | sort
-    else
-        echo "Error: ~/.bash_functions not found or not sourced."
-    fi
-}
-
-# Display all loaded functions with their full definitions, including file source info
-list_func() {
-    local bash_func_dir script filename filepath fileowner func func_body
-    # Determine the directory where the bash functions are stored.
-    if [[ -d ~/.bash_functions.d ]]; then
-        bash_func_dir=~/.bash_functions.d
-    elif [[ -f ~/.bash_functions ]]; then
-        bash_func_dir=$(dirname ~/.bash_functions)
-    else
-        echo "Error: No bash functions directory or file found."
-        return 1
-    fi
-
-    echo "Listing all functions loaded from $bash_func_dir and its sourced scripts:"
-    echo
-
-    local _nullglob_state
-    _nullglob_state=$(shopt -p nullglob)
-    shopt -s nullglob
-
-    # Iterate over all .sh files in the bash functions directory.
-    for script in "$bash_func_dir"/*.sh; do
-        # Get file details.
-        filename=$(basename "$script")
-        filepath=$(realpath "$script")
-        fileowner=$(stat -c '%U:%G' "$script")  # Get owner:group
-
-        # Extract function names from the file.
-        while IFS= read -r func; do
-            # Retrieve the function definition from the current shell.
-            func_body=$(declare -f "$func" 2>/dev/null)
-
-            # If a search term was provided, filter functions by matching the function definition.
-            if [[ -n "$1" ]]; then
-                echo "$func_body" | grep -q "$1" || continue
-            fi
-
-            # Print the file header.
-            echo "File: $filename"
-            echo "Path: $filepath"
-            echo "Owner: $fileowner"
-            echo
-            # Print the full function definition.
-            echo "$func_body"
-            echo -e "\n\n"
-        done < <(grep -oP '^(?:function\s+)?\s*[\w-]+\s*\(\)' "$script" | sed -E 's/^(function[[:space:]]+)?\s*([a-zA-Z0-9_-]+)\s*\(\)/\2/')
-    done
-
-    eval "$_nullglob_state"
-}
+# NOTE: list_loaded_functions() and list_func() used to live here but were dead
+# code. 00_master_functions.sh defines `alias list_loaded_functions='func_list'`
+# and `alias list_func='func_help'`, and aliases always win over same-named
+# functions at the prompt, so these bodies were unreachable (and one still
+# referenced the no-longer-sourced ~/.bash_functions). Use func_help / func_list
+# / func_info for function discovery.
 
 kill_pid() {
     if [[ -z "$1" ]]; then

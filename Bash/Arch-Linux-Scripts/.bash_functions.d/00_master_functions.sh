@@ -13,124 +13,125 @@ func_help() {
     
     # Function categories and descriptions
     categories=(
-        ["01_gui_apps.sh"]="🖥️  GUI Applications"
-        ["02_filesystem.sh"]="📁 File System Operations"
-        ["03_text_processing.sh"]="📝 Text Processing"
-        ["04_compression.sh"]="🗜️  Archive & Compression"
-        ["06_process_management.sh"]="⚙️  Process Management"
-        ["07_dev_tools.sh"]="🔧 Development Tools"
-        ["08_file_analysis.sh"]="🔍 File Analysis"
-        ["09_security.sh"]="🔒 Security Functions"
-        ["10_networking.sh"]="🌐 Network Tools"
-        ["11_multimedia.sh"]="🎵 Multimedia"
-        ["12_utilities.sh"]="🛠️  System Utilities"
-        ["13_database.sh"]="🗃️  Database Functions"
-        ["14_docker.sh"]="🐳 Docker Utilities"
-        ["15_package_manager.sh"]="📦 Package Management"
-        ["16_redis_and_npm.sh"]="🔄 Redis & NPM"
-        ["17_other.sh"]="🔧 Miscellaneous"
-        ["18_sed.sh"]="✂️  Advanced Sed"
-        ["19_grep.sh"]="🔎 Enhanced Grep"
-        ["00_master_functions.sh"]="🎯 Master Functions"
-        ["20_enhanced_utilities.sh"]="⚡ Enhanced Utilities"
-        ["21_optimized_functions.sh"]="🚀 Optimized Functions"
+        ["01_gui_apps.sh"]="GUI Applications"
+        ["02_filesystem.sh"]="File System Operations"
+        ["03_text_processing.sh"]="Text Processing"
+        ["04_compression.sh"]="Archive & Compression"
+        ["05_process_management.sh"]="Process Management"
+        ["06_dev_tools.sh"]="Development Tools"
+        ["07_file_analysis.sh"]="File Analysis"
+        ["08_security.sh"]="Security Functions"
+        ["09_networking.sh"]="Network Tools"
+        ["10_multimedia.sh"]="Multimedia"
+        ["11_utilities.sh"]="System Utilities"
+        ["12_database.sh"]="Database Functions"
+        ["13_docker.sh"]="Docker Utilities"
+        ["14_package_manager.sh"]="Package Management"
+        ["15_redis_and_npm.sh"]="Redis & NPM"
+        ["16_other.sh"]="Miscellaneous"
+        ["17_sed.sh"]="Advanced Sed"
+        ["18_grep.sh"]="Enhanced Grep"
+        ["00_master_functions.sh"]="Master Functions"
+        ["19_enhanced_utilities.sh"]="Enhanced Utilities"
+        ["20_optimized_functions.sh"]="Optimized Functions"
+        ["21_claude_code.sh"]="Claude Code"
+        ["22_systemd.sh"]="Systemd Services"
+        ["23_ssh.sh"]="SSH & Remote Sync"
     )
     
     # Function descriptions (comprehensive list)
     func_descriptions=(
         # Master functions
-        ["func_help"]="🎯 Enhanced function discovery and help system"
-        ["func_search"]="🔍 Quick function search by term"
-        ["func_cat"]="📂 Show functions by category"
-        ["func_list"]="📋 List all available functions"
-        ["func_info"]="ℹ️  Detailed information about specific function"
-        ["func_stats"]="📊 Statistics about function library"
+        ["func_help"]="Enhanced function discovery and help system"
+        ["func_search"]="Quick function search by term"
+        ["func_cat"]="Show functions by category"
+        ["func_list"]="List all available functions"
+        ["func_info"]="Detailed information about specific function"
+        ["func_stats"]="Statistics about function library"
         
         # System monitoring & diagnostics
-        ["sys_monitor"]="📊 Real-time system monitoring dashboard"
-        ["find_large"]="🔍 Find large files consuming disk space"
-        ["file_size"]="📏 Line/word/byte counts for specific target files"
-        ["sys_cleanup"]="🧹 Comprehensive system cleanup"
-        ["sys_info"]="🖥️  Advanced system information display"
-        ["perf_snapshot"]="📸 System performance snapshot"
-        ["monitor_process"]="👁️  Monitor specific process in real-time"
+        ["sys_monitor"]="Real-time system monitoring dashboard"
+        ["find_large"]="Find large files consuming disk space"
+        ["file_size"]="Line/word/byte counts for specific target files"
+        ["sys_cleanup"]="Comprehensive system cleanup"
+        ["sys_info"]="Advanced system information display"
+        ["perf_snapshot"]="System performance snapshot"
+        ["monitor_process"]="Monitor specific process in real-time"
         
         # Backup & recovery
-        ["quick_backup"]="💾 Quick file/directory backup utility"
-        ["list_backups"]="📋 List all available backups"
+        ["quick_backup"]="Quick file/directory backup utility"
+        ["list_backups"]="List all available backups"
         
         # Network utilities
-        ["net_info"]="📡 Enhanced network information display"
-        ["port_scan"]="🌐 Quick port scanner with range support"
-        ["speed_test"]="⚡ Network speed and connectivity test"
+        ["net_info"]="Enhanced network information display"
+        ["port_scan"]="Quick port scanner with range support"
+        ["speed_test"]="Network speed and connectivity test"
         
         # Git utilities
-        ["git_status_all"]="📋 Git status for all repositories in directory"
-        ["git_quick_commit"]="⚡ Quick git commit with auto-generated messages"
-        ["git_utils"]="🔧 Comprehensive git utility functions"
+        ["git_status_all"]="Git status for all repositories in directory"
+        ["git_quick_commit"]="Quick git commit with auto-generated messages"
+        ["git_utils"]="Comprehensive git utility functions"
         
         # Docker utilities
-        ["docker_cleanup"]="🐳 Enhanced Docker cleanup (containers, images, volumes)"
-        ["docker_manager"]="🐳 Interactive Docker container manager"
+        ["docker_cleanup"]="Enhanced Docker cleanup (containers, images, volumes)"
+        ["docker_manager"]="Interactive Docker container manager"
         
         # Log analysis
-        ["analyze_logs"]="📜 Analyze system logs for errors and patterns"
-        ["watch_log"]="👁️  Watch log files in real-time with color coding"
+        ["analyze_logs"]="Analyze system logs for errors and patterns"
+        ["watch_log"]="Watch log files in real-time with color coding"
         
         # Enhanced file operations
-        ["mf_enhanced"]="📄 Enhanced file creation with templates"
-        ["mdir_enhanced"]="📁 Smart directory creation with git init option"
-        ["ffind_enhanced"]="🔍 Advanced find with better features and UI"
-        ["search_files"]="🔎 Smart file search with content preview"
+        ["mf_enhanced"]="Enhanced file creation with templates"
+        ["mdir_enhanced"]="Smart directory creation with git init option"
+        ["ffind_enhanced"]="Advanced find with better features and UI"
+        ["search_files"]="Smart file search with content preview"
         
         # Project management
-        ["create_project"]="🚀 Create new projects with templates (bash/python/node/html)"
-        ["proc_manager"]="⚙️  Enhanced process management utility"
+        ["create_project"]="Create new projects with templates (bash/python/node/html)"
+        ["proc_manager"]="Enhanced process management utility"
         
         # Existing system utilities
-        ["sbrc"]="🔄 Refresh bash configuration and display directory"
-        ["fs_info"]="💾 Display filesystem usage with color coding and options"
-        ["test_gcc"]="🔧 Test GCC compiler installation"
-        ["test_clang"]="🔧 Test Clang compiler installation"
-        ["sc"]="✅ Shellcheck validation with enhanced output"
-        ["ffind"]="🔍 Safe find command with interactive prompts"
-        ["mf"]="📄 Create file with proper permissions"
-        ["mdir"]="📁 Create directory and navigate to it"
-        ["town"]="👤 Take ownership of files/directories"
-        ["toa"]="👤 Take ownership of all files in current directory"
-        ["fix_up"]="🔧 Fix user folder permissions (SSH, GPG)"
-        ["count_dir"]="📊 Count files in directory (non-recursive)"
-        ["count_dirr"]="📊 Count files in directory (recursive)"
-        ["countf"]="📊 Count items in current folder"
-        ["rmd"]="🗑️  Remove directory with confirmation"
-        ["rmf"]="🗑️  Remove file with confirmation"
-        ["cpf"]="📋 Copy file to ~/tmp with proper ownership"
-        ["mvf"]="📦 Move file to ~/tmp with proper ownership"
-        ["ls_interactive"]="📂 Interactive directory listing with sort options"
+        ["sbrc"]="Refresh bash configuration and display directory"
+        ["fs_info"]="Display filesystem usage with color coding and options"
+        ["test_gcc"]="Test GCC compiler installation"
+        ["test_clang"]="Test Clang compiler installation"
+        ["sc"]="Shellcheck validation with enhanced output"
+        ["ffind"]="Safe find command with interactive prompts"
+        ["mf"]="Create file with proper permissions"
+        ["mdir"]="Create directory and navigate to it"
+        ["town"]="Take ownership of files/directories"
+        ["toa"]="Take ownership of all files in current directory"
+        ["fix_up"]="Fix user folder permissions (SSH, GPG)"
+        ["count_dir"]="Count files in directory (non-recursive)"
+        ["count_dirr"]="Count files in directory (recursive)"
+        ["countf"]="Count items in current folder"
+        ["rmd"]="Remove directory with confirmation"
+        ["rmf"]="Remove file with confirmation"
+        ["cpf"]="Copy file to ~/tmp with proper ownership"
+        ["mvf"]="Move file to ~/tmp with proper ownership"
+        ["ls_interactive"]="Interactive directory listing with sort options"
         
         # Development tools
-        ["gcc_native"]="🔧 Check GCC native compilation settings"
-        ["c_cmake"]="🏗️  CMake configuration with curses GUI"
-        ["pkg-config-path"]="📍 Show pkg-config search paths"
-        ["show_rpath"]="🔍 Show binary runpath information"
-        ["dl_clang"]="⬇️  Download Clang installer scripts"
-        ["pipu"]="🐍 Update all pip packages"
-        ["venv"]="🐍 Python virtual environment manager"
+        ["gcc_native"]="Check GCC native compilation settings"
+        ["c_cmake"]="CMake configuration with curses GUI"
+        ["pkg-config-path"]="Show pkg-config search paths"
+        ["show_rpath"]="Show binary runpath information"
+        ["dl_clang"]="Download Clang installer scripts"
+        ["pipu"]="Update all pip packages"
+        ["venv"]="Python virtual environment manager"
         
         # Utility functions
-        ["rdvc"]="🧮 Reddit downvote calculator"
-        ["airules"]="🤖 AI helper rules for bash scripting"
-        ["pw"]="📋 Copy warning message to clipboard"
-        ["sai"]="💬 Save AI improvement message"
-        ["script_repo"]="📚 GitHub script repository installer menu"
-        ["dlfs"]="⬇️  Download favorite scripts from GitHub"
-        ["gitdl"]="⬇️  Download common development scripts"
-        ["rftn"]="🖼️  Refresh thumbnail cache"
+        ["rdvc"]="Reddit downvote calculator"
+        ["airules"]="AI helper rules for bash scripting"
+        ["script_repo"]="GitHub script repository installer menu"
+        ["dlfs"]="Download favorite scripts from GitHub"
+        ["gitdl"]="Download common development scripts"
+        ["rftn"]="Refresh thumbnail cache"
     )
     
     # Display usage if no arguments
     if [[ $# -eq 0 ]]; then
-        echo "🎯 Function Help - Enhanced Bash Function Discovery"
+        echo "Function Help - Enhanced Bash Function Discovery"
         echo "=================================================="
         echo
         echo "Usage: func_help [search_term] [category]"
@@ -159,13 +160,13 @@ func_help() {
     esac
     
     # Header
-    echo "🎯 Bash Function Library"
+    echo "Bash Function Library"
     echo "========================"
     echo
     
     # If searching for specific term
     if [[ -n "$search_term" && "$search_term" != "''" ]]; then
-        echo "🔍 Search results for: '$search_term'"
+        echo "Search results for: '$search_term'"
         echo "-----------------------------------"
         _search_functions "$search_term"
         return 0
@@ -173,18 +174,18 @@ func_help() {
     
     # If showing specific category
     if [[ -n "$show_category" ]]; then
-        echo "📂 Category: $show_category"
+        echo "Category: $show_category"
         echo "------------------------"
         _show_category "$show_category"
         return 0
     fi
     
     # Show all functions by category
-    echo "📚 All Functions by Category"
+    echo "All Functions by Category"
     echo "----------------------------"
     
     local bash_func_dir="$HOME/.bash_functions.d"
-    [[ ! -d "$bash_func_dir" ]] && { echo "❌ Bash functions directory not found"; return 1; }
+    [[ ! -d "$bash_func_dir" ]] && { echo "Bash functions directory not found"; return 1; }
 
     local _nullglob_state
     _nullglob_state=$(shopt -p nullglob)
@@ -192,7 +193,7 @@ func_help() {
     for script in "$bash_func_dir"/*.sh; do
         local filename
         filename=$(basename "$script")
-        local category="${categories[$filename]:-📄 Unknown Category}"
+        local category="${categories[$filename]:-Unknown Category}"
 
         echo
         echo "$category ($filename)"
@@ -200,15 +201,15 @@ func_help() {
 
         # Extract function names and show with descriptions
         while IFS= read -r func_name; do
-            local desc="${func_descriptions[$func_name]:-📌 Function: $func_name}"
+            local desc="${func_descriptions[$func_name]:-Function: $func_name}"
             printf "  %-20s %s\n" "$func_name" "$desc"
         done < <(grep -oP '^(?:function\s+)?\s*[\w-]+\s*\(\)' "$script" | sed -E 's/^(function[[:space:]]+)?\s*([a-zA-Z0-9_-]+)\s*\(\)/\2/' | sort)
     done
     eval "$_nullglob_state"
 
     echo
-    echo "💡 Tip: Use 'func_help <search_term>' to find specific functions"
-    echo "💡 Tip: Use 'func_help '' <category>' to show specific category"
+    echo "Tip: Use 'func_help <search_term>' to find specific functions"
+    echo "Tip: Use 'func_help '' <category>' to show specific category"
 }
 
 # Quick function search
@@ -229,7 +230,7 @@ func_cat() {
 
 # Simple function list (replaces list_loaded_functions)
 func_list() {
-    echo "📋 All Available Functions"
+    echo "All Available Functions"
     echo "========================="
     declare -F | awk '{print $3}' | sort | nl -w3 -s'. '
     echo
@@ -252,7 +253,7 @@ _search_functions() {
         # Search function names
         while IFS= read -r func_name; do
             if [[ "$func_name" =~ $search_term ]]; then
-                local desc="${func_descriptions[$func_name]:-📌 Function in $filename}"
+                local desc="${func_descriptions[$func_name]:-Function in $filename}"
                 printf "  %-20s %s\n" "$func_name" "$desc"
                 ((found++))
             fi
@@ -265,7 +266,7 @@ _search_functions() {
                     local func_body
                     func_body=$(sed -n "/^$func_name()/,/^}/p" "$script" 2>/dev/null)
                     if [[ "$func_body" =~ $search_term ]]; then
-                        local desc="${func_descriptions[$func_name]:-📌 Contains '$search_term' in $filename}"
+                        local desc="${func_descriptions[$func_name]:-Contains '$search_term' in $filename}"
                         printf "  %-20s %s\n" "$func_name" "$desc"
                         ((found++))
                     fi
@@ -276,10 +277,10 @@ _search_functions() {
     eval "$_nullglob_state"
 
     if [[ $found -eq 0 ]]; then
-        echo "❌ No functions found matching '$search_term'"
+        echo "No functions found matching '$search_term'"
     else
         echo
-        echo "✅ Found $found function(s) matching '$search_term'"
+        echo "Found $found function(s) matching '$search_term'"
     fi
 }
 
@@ -296,11 +297,11 @@ _show_category() {
         local filename
         filename=$(basename "$script")
         if [[ "$filename" =~ $category ]] || [[ "${categories[$filename]}" =~ $category ]]; then
-            echo "📁 Functions in $filename:"
+            echo "Functions in $filename:"
             echo
 
             while IFS= read -r func_name; do
-                local desc="${func_descriptions[$func_name]:-📌 Function: $func_name}"
+                local desc="${func_descriptions[$func_name]:-Function: $func_name}"
                 printf "  %-20s %s\n" "$func_name" "$desc"
             done < <(grep -oP '^(?:function\s+)?\s*[\w-]+\s*\(\)' "$script" | sed -E 's/^(function[[:space:]]+)?\s*([a-zA-Z0-9_-]+)\s*\(\)/\2/' | sort)
 
@@ -310,7 +311,7 @@ _show_category() {
     done
     eval "$_nullglob_state"
 
-    echo "❌ Category '$category' not found"
+    echo "Category '$category' not found"
 }
 
 # Function to show detailed information about a specific function
@@ -320,11 +321,11 @@ func_info() {
     
     # Check if function exists
     if ! declare -F "$func_name" &>/dev/null; then
-        echo "❌ Function '$func_name' not found"
+        echo "Function '$func_name' not found"
         return 1
     fi
     
-    echo "🔍 Function Information: $func_name"
+    echo "Function Information: $func_name"
     echo "=================================="
     echo
     
@@ -344,12 +345,12 @@ func_info() {
     eval "$_nullglob_state"
     
     if [[ -n "$source_file" ]]; then
-        echo "📄 Source file: $(basename "$source_file")"
-        echo "📍 Full path: $source_file"
+        echo "Source file: $(basename "$source_file")"
+        echo "Full path: $source_file"
         echo
         
         # Show function definition
-        echo "📝 Function definition:"
+        echo "Function definition:"
         echo "----------------------"
         declare -f "$func_name"
         echo
@@ -357,11 +358,11 @@ func_info() {
         # Show description if available
         local desc="${func_descriptions[$func_name]}"
         if [[ -n "$desc" ]]; then
-            echo "📖 Description: $desc"
+            echo "Description: $desc"
         fi
     else
-        echo "⚠️  Source file not found in $bash_func_dir"
-        echo "📝 Function definition:"
+        echo "Source file not found in $bash_func_dir"
+        echo "Function definition:"
         echo "----------------------"
         declare -f "$func_name"
     fi
@@ -369,7 +370,7 @@ func_info() {
 
 # Quick stats about the function library
 func_stats() {
-    echo "📊 Bash Function Library Statistics"
+    echo "Bash Function Library Statistics"
     echo "==================================="
     echo
 
@@ -378,27 +379,30 @@ func_stats() {
     local total_functions=0
     # Declare local associative array so non-numeric filename keys work in this scope
     local -A stats_categories=(
-        ["00_master_functions.sh"]="🎯 Master Functions"
-        ["01_gui_apps.sh"]="🖥️  GUI Applications"
-        ["02_filesystem.sh"]="📁 File System Operations"
-        ["03_text_processing.sh"]="📝 Text Processing"
-        ["04_compression.sh"]="🗜️  Archive & Compression"
-        ["06_process_management.sh"]="⚙️  Process Management"
-        ["07_dev_tools.sh"]="🔧 Development Tools"
-        ["08_file_analysis.sh"]="🔍 File Analysis"
-        ["09_security.sh"]="🔒 Security Functions"
-        ["10_networking.sh"]="🌐 Network Tools"
-        ["11_multimedia.sh"]="🎵 Multimedia"
-        ["12_utilities.sh"]="🛠️  System Utilities"
-        ["13_database.sh"]="🗃️  Database Functions"
-        ["14_docker.sh"]="🐳 Docker Utilities"
-        ["15_package_manager.sh"]="📦 Package Management"
-        ["16_redis_and_npm.sh"]="🔄 Redis & NPM"
-        ["17_other.sh"]="🔧 Miscellaneous"
-        ["18_sed.sh"]="✂️  Advanced Sed"
-        ["19_grep.sh"]="🔎 Enhanced Grep"
-        ["20_enhanced_utilities.sh"]="⚡ Enhanced Utilities"
-        ["21_optimized_functions.sh"]="🚀 Optimized Functions"
+        ["00_master_functions.sh"]="Master Functions"
+        ["01_gui_apps.sh"]="GUI Applications"
+        ["02_filesystem.sh"]="File System Operations"
+        ["03_text_processing.sh"]="Text Processing"
+        ["04_compression.sh"]="Archive & Compression"
+        ["05_process_management.sh"]="Process Management"
+        ["06_dev_tools.sh"]="Development Tools"
+        ["07_file_analysis.sh"]="File Analysis"
+        ["08_security.sh"]="Security Functions"
+        ["09_networking.sh"]="Network Tools"
+        ["10_multimedia.sh"]="Multimedia"
+        ["11_utilities.sh"]="System Utilities"
+        ["12_database.sh"]="Database Functions"
+        ["13_docker.sh"]="Docker Utilities"
+        ["14_package_manager.sh"]="Package Management"
+        ["15_redis_and_npm.sh"]="Redis & NPM"
+        ["16_other.sh"]="Miscellaneous"
+        ["17_sed.sh"]="Advanced Sed"
+        ["18_grep.sh"]="Enhanced Grep"
+        ["19_enhanced_utilities.sh"]="Enhanced Utilities"
+        ["20_optimized_functions.sh"]="Optimized Functions"
+        ["21_claude_code.sh"]="Claude Code"
+        ["22_systemd.sh"]="Systemd Services"
+        ["23_ssh.sh"]="SSH & Remote Sync"
     )
 
     local _nullglob_state
@@ -412,18 +416,18 @@ func_stats() {
 
         local filename
         filename=$(basename "$script")
-        local category="${stats_categories[$filename]:-📄 Unknown}"
+        local category="${stats_categories[$filename]:-Unknown}"
         printf "  %-30s %2d functions\n" "$category" "$func_count"
     done
     eval "$_nullglob_state"
     
     echo
-    echo "📈 Summary:"
+    echo "Summary:"
     echo "  • Total files: $total_files"
     echo "  • Total functions: $total_functions"
     echo "  • Average functions per file: $((total_functions / total_files))"
     echo
-    echo "💡 Use 'func_help' to explore available functions"
+    echo "Use 'func_help' to explore available functions"
 }
 
 # Alias for backward compatibility

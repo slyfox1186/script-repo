@@ -1,26 +1,21 @@
 #!/usr/bin/env bash
 # Network-related aliases
 
-# SSH control
-alias nsshd='clear; nano /etc/ssh/sshd_config; cl'
+# SSH control (Arch uses systemd; the unit is sshd.service)
+alias nsshd='clear; sudo nano /etc/ssh/sshd_config; cl'
 alias nsshdk='clear; nano ~/.ssh/authorized_keys; cl'
-alias sshoff='clear; service ssh stop; service --status-all'
-alias sshon='clear; service ssh start; service --status-all'
-alias sshq='clear; systemctl status ssh.service && service --status-all'
-alias sshr='clear; service ssh restart && service sshd restart && service --status-all'
+alias sshoff='clear; sudo systemctl stop sshd; systemctl status sshd --no-pager'
+alias sshon='clear; sudo systemctl start sshd; systemctl status sshd --no-pager'
+alias sshq='clear; systemctl status sshd --no-pager'
+alias sshr='clear; sudo systemctl restart sshd; systemctl status sshd --no-pager'
 
 # Network status and monitoring
 alias ping='clear; ping -c 10 -s 3'
-alias ports='clear; netstat -tulanp'
-alias piports="clear; netstat -nltup | grep 'Proto\|:53 \|:67 \|:80 \|:100 \|:41'"
+alias ports='clear; sudo ss -tulanp'
+alias piports="clear; sudo ss -nltup | grep ':53 \|:67 \|:80 \|:100 \|:41'"
 alias pse='clear; ip -4 -c -d -h address'
-alias pse1="clear; ifconfig -s | egrep '^(e|l|w|i).*$'"
-alias pse2='clear; lshw -class network'
-alias pse3='clear; dnstop -4QRl 5 eth0'
-alias pse4='clear; tcpdump -c 50 -i eth0'
-alias top='clear; iftop -i eth0 -B -F net/mask -P'
-alias netplan_update='netplan apply; clear; ip -4 -c -d -h address'
-alias nss='clear; systemd-resolve --status'
+alias pse1='clear; ip -br address'
+alias nss='clear; resolvectl status'
 
 # DDNS client
 alias ddcu='ddclient -daemon=0 -debug -verbose -noquiet'
