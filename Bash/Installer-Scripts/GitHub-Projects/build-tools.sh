@@ -725,7 +725,6 @@ install_cmake() {
     if [[ "$verify" != true ]]; then
         item "Verification" "${YELLOW}skipped (--skip-verify)${NC}"
     elif [[ -f "$src.tar.gz" ]]; then
-        mv "$src.tar.gz" "$work_dir/cmake.tar.gz"
         verify_cmake "$work_dir" "$ver"
     else
         warn "The source came from git, so there is no tarball to check against Kitware's checksum list."
