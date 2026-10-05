@@ -11,9 +11,6 @@ Usage:
         from token_manager import lock
 
 If run directly, it will print a help message.
-
-References:
-  :contentReference[oaicite:0]{index=0} (Thread-safe singleton pattern inspiration)
 """
 
 import threading

@@ -1,67 +1,21 @@
 #!/usr/bin/env bash
 # File System Utilities
 
-## FIND COMMANDS ##
-# SAFER FIND COMMAND - no eval to prevent command injection
-ffind() {
-    local fname="$1" ftype="$2" fpath="$3"
-    local -a find_args
+# NOTE: ffind, mf, and mdir used to live here but were shadowed at the prompt by
+# aliases in 20_optimized_functions.sh (alias ffind='ffind_enhanced', etc.).
+# The enhanced versions are the ones that actually run, so the old duplicates
+# were removed to avoid alias/function name collisions.
 
-    # Check if any argument is passed
-    if [[ "$#" -eq 0 ]]; then
-        read -rp "Enter the name to search for: " fname
-        read -rp "Enter a type of FILE (d|f|blank for any): " ftype
-        read -rp "Enter the starting path (blank for current directory): " fpath
-    fi
+# Change directory, then refresh the terminal view on success.
+cd() {
+    builtin cd "$@" || return
 
-    # Default to the current directory if fpath is empty
-    fpath=${fpath:-.}
-
-    # Build find command arguments safely
-    find_args=("$fpath" -iname "$fname")
-    
-    if [[ -n $ftype ]]; then
-        if [[ "$ftype" == "d" || "$ftype" == "f" ]]; then
-            find_args+=(-type "$ftype")
-        else
-            echo "Invalid FILE type. Please use \"d\" for directories or \"f\" for files."
-            return 1
-        fi
-    fi
-
-    # Execute the command safely without eval
-    find "${find_args[@]}"
-}
-
-## CREATE FILES ##
-mf() {
-    local file
-
-    if [[ -z "$1" ]]; then
-        read -rp "Enter filename: " file
-        [[ ! -f "$file" ]] && touch "$file"
-        chmod 744 "$file"
+    if alias cl &>/dev/null; then
+        eval cl
     else
-        [[ ! -f "$1" ]] && touch "$1"
-        chmod 744 "$1"
+        clear
+        ls -1AhFSv --color=auto --group-directories-first
     fi
-
-    clear; ls -1AhFv --color --group-directories-first
-}
-
-mdir() {
-    local dir
-
-    if [[ -z "$1" ]]; then
-        read -rp "Enter directory name: " dir
-    else
-        dir="$1"
-    fi
-
-    mkdir -p -- "$dir"
-    cd -- "$dir" || return 1
-
-    clear; ls -1AhFv --color --group-directories-first
 }
 
 # Copy file

@@ -79,7 +79,7 @@ file_size() {
                 fi
                 IFS=',' read -r -a _split <<< "$2"
                 # Shell-expands the first ~ in $2 but not the ones after each
-                # comma — fix that so `-f ~/a,~/b` works as expected.
+                # comma. Expand those here so `-f ~/a,~/b` works as expected.
                 local _i
                 for ((_i=0; _i<${#_split[@]}; _i++)); do
                     case "${_split[_i]}" in
@@ -154,7 +154,7 @@ EOF
         return 1
     fi
 
-    # Validate input — skip non-existent / unreadable / directory entries.
+    # Validate input: skip non-existent / unreadable / directory entries.
     local -a valid=()
     local f
     for f in "${files[@]}"; do

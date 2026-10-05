@@ -2,7 +2,7 @@
 # Package management aliases (Arch Linux / pacman)
 
 # Pacman commands
-# `install` is now a function (see ~/.bash_functions.d/15_package_manager.sh)
+# `install` is now a function (see ~/.bash_functions.d/14_package_manager.sh)
 alias remove='clear; sudo pacman -Rns'
 alias search='clear; pacman -Ss'
 alias clean='clear; sudo pacman -Rns $(pacman -Qdtq) 2>/dev/null; sudo pacman -Scc --noconfirm'
@@ -26,8 +26,10 @@ alias runff='bash ~/tmp/test.sh --build --enable-gpl-and-non-free --latest'
 alias fft='clear; ./repo.sh'
 alias ffc='clear; ./configure --help'
 
-# Wine
-alias wine32='env WINEARCH=win32 WINEPREFIX=~/.wine32 wine'
+# Wine (a function, not an alias: aliases cannot forward "$@" arguments)
+wine32() {
+    WINEARCH=win32 WINEPREFIX="$HOME/.wine32" wine "$@"
+}
 
 # Update
 alias update='sudo pacman -Syu --noconfirm'

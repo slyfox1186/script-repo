@@ -76,7 +76,7 @@ mysed() {
     echo "with replacement using sed."
     echo ""
     echo "Example:"
-    echo "  mysed 'https://elber-live\\.netlify\\.app' 'https://elber-ai.netlify.app/' 'ts;tsx;js'"
+    echo "  mysed 'https://old-site\\.example\\.com' 'https://new-site.example.com/' 'ts;tsx;js'"
     return 0
   fi
 

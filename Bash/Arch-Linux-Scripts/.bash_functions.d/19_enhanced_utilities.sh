@@ -9,76 +9,60 @@ sys_monitor() {
     
     while true; do
         clear
-        echo "🖥️  SYSTEM MONITOR - Refresh: ${refresh_rate}s (Ctrl+C to exit)"
+        echo "SYSTEM MONITOR - Refresh: ${refresh_rate}s (Ctrl+C to exit)"
         echo "================================================================"
         echo
         
         # System info
-        echo "📊 SYSTEM INFO:"
+        echo "SYSTEM INFO:"
         echo "  Hostname: $(hostname)"
         echo "  Uptime: $(uptime -p)"
         echo "  Load: $(uptime | awk -F'load average:' '{print $2}')"
         echo
         
         # CPU info
-        echo "🔧 CPU USAGE:"
+        echo "CPU USAGE:"
         top -bn1 | grep "Cpu(s)" | awk '{printf "  CPU: %s\n", $2}'
         echo
         
         # Memory info
-        echo "🧠 MEMORY USAGE:"
+        echo "MEMORY USAGE:"
         free -h | awk 'NR==2{printf "  Memory: %s/%s (%.1f%%)\n", $3, $2, ($3/$2)*100}'
         free -h | awk 'NR==3{printf "  Swap: %s/%s\n", $3, $2}'
         echo
         
         # Disk usage
-        echo "💾 DISK USAGE:"
+        echo "DISK USAGE:"
         df -h / | awk 'NR==2{printf "  Root: %s/%s (%s)\n", $3, $2, $5}'
         echo
         
         # Top processes
-        echo "⚡ TOP PROCESSES (CPU):"
+        echo "TOP PROCESSES (CPU):"
         ps aux --sort=-%cpu | head -6 | tail -5 | awk '{printf "  %-12s %5s%% %s\n", $1, $3, $11}'
         echo
         
         # Network connections
-        echo "🌐 NETWORK CONNECTIONS:"
-        netstat -tun | grep ESTABLISHED | wc -l | awk '{printf "  Active connections: %s\n", $1}'
+        echo "NETWORK CONNECTIONS:"
+        ss -tunH state established 2>/dev/null | wc -l | awk '{printf "  Active connections: %s\n", $1}'
         
         sleep "$refresh_rate"
     done
 }
 
-# Find large files consuming disk space
-find_large() {
-    local size_threshold="${1:-100M}"
-    local search_path="${2:-.}"
-    
-    echo "🔍 Finding files larger than $size_threshold in $search_path"
-    echo "=============================================================="
-    echo
-    
-    find "$search_path" -type f -size +"$size_threshold" -exec ls -lh {} \; 2>/dev/null | \
-    awk '{
-        size = $5
-        path = $0
-        gsub(/.*[0-9] /, "", path)
-        printf "%-10s %s\n", size, path
-    }' | sort -hr
-    
-    echo
-    echo "💡 Tip: Use 'find_large 500M /home' to find files >500MB in /home"
-}
+# NOTE: find_large lives in 07_file_analysis.sh (the unified, flag-driven version
+# that replaces big_files/big_vids/etc. and is documented in func_help). A second,
+# simpler definition used to sit here and shadowed it because this file loads later;
+# it has been removed so the canonical version wins.
 
 # Quick system cleanup
 sys_cleanup() {
     local orphans
-    echo "🧹 System Cleanup Starting..."
+    echo "System Cleanup Starting..."
     echo "============================="
     echo
 
     # Clean orphaned packages
-    echo "📦 Removing orphaned packages..."
+    echo "Removing orphaned packages..."
     orphans=$(pacman -Qdtq 2>/dev/null)
     if [[ -n "$orphans" ]]; then
         # shellcheck disable=SC2086
@@ -89,25 +73,25 @@ sys_cleanup() {
     sudo pacman -Scc --noconfirm
 
     # Clean systemd journal logs
-    echo "📜 Cleaning old journal logs..."
+    echo "Cleaning old journal logs..."
     sudo journalctl --vacuum-time=7d
 
     # Clean temporary files
-    echo "🗂️  Cleaning temporary files..."
+    echo "Cleaning temporary files..."
     sudo find /tmp -type f -atime +7 -delete 2>/dev/null
 
     # Clean thumbnail cache
-    echo "🖼️  Cleaning thumbnail cache..."
+    echo "Cleaning thumbnail cache..."
     rm -rf "$HOME/.cache/thumbnails"/*
 
-    # Clean browser caches (if they exist) — globs must be outside quotes to expand
-    echo "🌐 Cleaning browser caches..."
+    # Clean browser caches if they exist. Globs must be outside quotes to expand.
+    echo "Cleaning browser caches..."
     [[ -d "$HOME/.cache/google-chrome" ]] && rm -rf "$HOME/.cache/google-chrome/Default/Cache"/*
     [[ -d "$HOME/.cache/mozilla" ]] && rm -rf "$HOME"/.cache/mozilla/firefox/*/cache2/*
 
     echo
-    echo "✅ System cleanup completed!"
-    echo "💾 Disk space freed:"
+    echo "System cleanup completed!"
+    echo "Disk space freed:"
     df -h / | awk 'NR==2{print "  Available: " $4}'
 }
 
@@ -124,27 +108,27 @@ quick_backup() {
     fi
     
     if [[ ! -e "$source_path" ]]; then
-        echo "❌ Source path does not exist: $source_path"
+        echo "Source path does not exist: $source_path"
         return 1
     fi
     
     # Create backup directory if it doesn't exist
     [[ ! -d "$backup_dir" ]] && mkdir -p "$backup_dir"
     
-    echo "💾 Creating backup: $backup_name"
+    echo "Creating backup: $backup_name"
     echo "================================="
-    echo "📁 Source: $source_path"
-    echo "📁 Destination: $backup_dir/$backup_name.tar.gz"
+    echo "Source: $source_path"
+    echo "Destination: $backup_dir/$backup_name.tar.gz"
     echo
     
     # Create compressed backup
     if tar -czf "$backup_dir/$backup_name.tar.gz" -C "$(dirname "$source_path")" "$(basename "$source_path")"; then
         local backup_size=$(du -h "$backup_dir/$backup_name.tar.gz" | cut -f1)
-        echo "✅ Backup created successfully!"
-        echo "📊 Size: $backup_size"
-        echo "📍 Location: $backup_dir/$backup_name.tar.gz"
+        echo "Backup created successfully!"
+        echo "Size: $backup_size"
+        echo "Location: $backup_dir/$backup_name.tar.gz"
     else
-        echo "❌ Backup failed!"
+        echo "Backup failed!"
         return 1
     fi
 }
@@ -154,15 +138,15 @@ list_backups() {
     local backup_dir="$HOME/backups"
     
     if [[ ! -d "$backup_dir" ]]; then
-        echo "❌ No backup directory found at $backup_dir"
+        echo "No backup directory found at $backup_dir"
         return 1
     fi
     
-    echo "💾 Available Backups"
+    echo "Available Backups"
     echo "==================="
     
     if [[ -z "$(ls -A "$backup_dir" 2>/dev/null)" ]]; then
-        echo "📂 No backups found"
+        echo "No backups found"
         return 0
     fi
     
@@ -178,12 +162,12 @@ list_backups() {
 
 # Enhanced network information
 net_info() {
-    echo "🌐 Network Information"
+    echo "Network Information"
     echo "====================="
     echo
     
     # IP addresses
-    echo "📍 IP ADDRESSES:"
+    echo "IP ADDRESSES:"
     ip addr show | awk '/inet / && !/127.0.0.1/ {
         iface = $NF
         ip = $2
@@ -192,26 +176,27 @@ net_info() {
     echo
     
     # Default gateway
-    echo "🚪 DEFAULT GATEWAY:"
+    echo "DEFAULT GATEWAY:"
     ip route | awk '/default/ {printf "  Gateway: %s via %s\n", $3, $5}'
     echo
     
     # DNS servers
-    echo "🔍 DNS SERVERS:"
+    echo "DNS SERVERS:"
     grep nameserver /etc/resolv.conf | awk '{printf "  DNS: %s\n", $2}'
     echo
     
     # Active connections
-    echo "🔗 ACTIVE CONNECTIONS:"
-    netstat -tun | grep ESTABLISHED | wc -l | awk '{printf "  TCP connections: %s\n", $1}'
-    
+    echo "ACTIVE CONNECTIONS:"
+    ss -tunH state established 2>/dev/null | wc -l | awk '{printf "  TCP connections: %s\n", $1}'
+
     # Listening ports
     echo
-    echo "👂 LISTENING PORTS:"
-    netstat -tlnp 2>/dev/null | awk 'NR>2 && /LISTEN/ {
-        split($4, addr, ":")
-        port = addr[length(addr)]
-        printf "  Port %s: %s\n", port, $1
+    echo "LISTENING PORTS:"
+    ss -tlnpH 2>/dev/null | awk '{
+        n = split($4, addr, ":"); port = addr[n]
+        proc = ""
+        for (i = 6; i <= NF; i++) proc = proc (i > 6 ? " " : "") $i
+        printf "  Port %s: %s\n", port, (proc == "" ? "-" : proc)
     }' | sort -n
 }
 
@@ -220,7 +205,7 @@ port_scan() {
     local target="${1:-localhost}"
     local port_range="${2:-1-1000}"
     
-    echo "🔍 Scanning ports on $target"
+    echo "Scanning ports on $target"
     echo "Port range: $port_range"
     echo "=========================="
     echo
@@ -229,27 +214,27 @@ port_scan() {
     
     for port in $(seq "$start_port" "$end_port"); do
         if timeout 1 bash -c "echo >/dev/tcp/$target/$port" 2>/dev/null; then
-            echo "✅ Port $port: OPEN"
+            echo "Port $port: OPEN"
         fi
     done 2>/dev/null
     
-    echo "🏁 Scan completed"
+    echo "Scan completed"
 }
 
 # Network speed test (using curl)
 speed_test() {
-    echo "⚡ Network Speed Test"
+    echo "Network Speed Test"
     echo "===================="
     echo
     
     # Test download speed
-    echo "📥 Testing download speed..."
+    echo "Testing download speed..."
     local download_url="http://speedtest.tele2.net/10MB.zip"
     curl -o /dev/null -s -w "Download: %{speed_download} bytes/sec (%.2f KB/s)\n" "$download_url" | \
     awk '{printf "Download: %.2f KB/s (%.2f Mbps)\n", $2/1024, ($2*8)/(1024*1024)}'
     
     echo
-    echo "🌐 Testing connectivity..."
+    echo "Testing connectivity..."
     
     # Test connectivity to common sites
     local sites=("google.com" "github.com" "stackoverflow.com")
@@ -267,7 +252,7 @@ speed_test() {
 
 # Git status for all repositories in current directory
 git_status_all() {
-    echo "📋 Git Status for All Repositories"
+    echo "Git Status for All Repositories"
     echo "=================================="
     echo
 
@@ -280,22 +265,22 @@ git_status_all() {
     for dir in */; do
         if [[ -d "$dir/.git" ]]; then
             ((found_repos++))
-            echo "📁 Repository: $dir"
+            echo "Repository: $dir"
             echo "$(printf '─%.0s' {1..40})"
 
             (
                 cd "$dir" || exit 1
 
                 if git diff-index --quiet HEAD --; then
-                    echo "✅ Clean working directory"
+                    echo "Clean working directory"
                 else
-                    echo "⚠️  Uncommitted changes:"
+                    echo "Uncommitted changes:"
                     git status --porcelain | head -5
                 fi
 
                 unpushed=$(git log --oneline @{u}.. 2>/dev/null | wc -l)
                 if [[ $unpushed -gt 0 ]]; then
-                    echo "📤 Unpushed commits: $unpushed"
+                    echo "Unpushed commits: $unpushed"
                 fi
             )
             echo
@@ -305,9 +290,9 @@ git_status_all() {
     eval "$_nullglob_state"
 
     if [[ $found_repos -eq 0 ]]; then
-        echo "❌ No Git repositories found in current directory"
+        echo "No Git repositories found in current directory"
     else
-        echo "✅ Checked $found_repos repositories"
+        echo "Checked $found_repos repositories"
     fi
 }
 
@@ -322,7 +307,7 @@ git_quick_commit() {
         message="Quick update: $added added, $modified modified files"
     fi
     
-    echo "📝 Quick Git Commit"
+    echo "Quick Git Commit"
     echo "==================="
     echo "Message: $message"
     echo
@@ -330,8 +315,8 @@ git_quick_commit() {
     git add -A
     git commit -m "$message"
     
-    echo "✅ Commit completed"
-    echo "📊 Repository status:"
+    echo "Commit completed"
+    echo "Repository status:"
     git status --short
 }
 
@@ -340,12 +325,12 @@ git_quick_commit() {
 # Enhanced Docker cleanup
 docker_cleanup() {
     local running
-    echo "🐳 Docker Cleanup"
+    echo "Docker Cleanup"
     echo "================"
     echo
 
     # Stop all running containers
-    echo "⏹️  Stopping all running containers..."
+    echo "Stopping all running containers..."
     running=$(docker ps -q)
     if [[ -n "$running" ]]; then
         # shellcheck disable=SC2086
@@ -355,38 +340,38 @@ docker_cleanup() {
     fi
 
     # Remove all stopped containers
-    echo "🗑️  Removing stopped containers..."
+    echo "Removing stopped containers..."
     docker container prune -f
 
     # Remove unused images
-    echo "🖼️  Removing unused images..."
+    echo "Removing unused images..."
     docker image prune -f
 
     # Remove unused volumes
-    echo "💾 Removing unused volumes..."
+    echo "Removing unused volumes..."
     docker volume prune -f
 
     # Remove unused networks
-    echo "🌐 Removing unused networks..."
+    echo "Removing unused networks..."
     docker network prune -f
 
     echo
-    echo "✅ Docker cleanup completed!"
-    echo "📊 Remaining Docker usage:"
+    echo "Docker cleanup completed!"
+    echo "Remaining Docker usage:"
     docker system df
 }
 
 # Docker container manager
 docker_manager() {
     local containers container_name action
-    echo "🐳 Docker Container Manager"
+    echo "Docker Container Manager"
     echo "============================"
     echo
 
     containers=$(docker ps -a --format "table {{.Names}}\t{{.Status}}\t{{.Image}}")
 
     if [[ $(echo "$containers" | wc -l) -eq 1 ]]; then
-        echo "❌ No Docker containers found"
+        echo "No Docker containers found"
         return 0
     fi
 
@@ -419,38 +404,38 @@ docker_manager() {
 
 # System performance snapshot
 perf_snapshot() {
-    echo "📊 System Performance Snapshot"
+    echo "System Performance Snapshot"
     echo "==============================="
     echo "Timestamp: $(date)"
     echo
     
     # CPU usage
-    echo "🔧 CPU Usage:"
+    echo "CPU Usage:"
     top -bn1 | grep "Cpu(s)" | awk '{printf "  %s\n", $2}'
     
     # Memory usage
     echo
-    echo "🧠 Memory Usage:"
+    echo "Memory Usage:"
     free -h | awk 'NR==2{printf "  Used: %s/%s (%.1f%%)\n", $3, $2, ($3/$2)*100}'
     
     # Load average
     echo
-    echo "⚖️  Load Average:"
+    echo "Load Average:"
     uptime | awk -F'load average:' '{printf "  %s\n", $2}'
     
     # Disk I/O
     echo
-    echo "💾 Disk Usage:"
+    echo "Disk Usage:"
     df -h / | awk 'NR==2{printf "  Root: %s/%s (%s)\n", $3, $2, $5}'
     
     # Top processes by CPU
     echo
-    echo "⚡ Top CPU Processes:"
+    echo "Top CPU Processes:"
     ps aux --sort=-%cpu | head -6 | tail -5 | awk '{printf "  %-12s %5s%% %s\n", $1, $3, $11}'
     
     # Top processes by memory
     echo
-    echo "🧠 Top Memory Processes:"
+    echo "Top Memory Processes:"
     ps aux --sort=-%mem | head -6 | tail -5 | awk '{printf "  %-12s %5s%% %s\n", $1, $4, $11}'
 }
 
@@ -466,7 +451,7 @@ monitor_process() {
     
     while true; do
         clear
-        echo "👁️  Monitoring Process: $process_name"
+        echo "Monitoring Process: $process_name"
         echo "======================================"
         echo "Refresh rate: ${refresh_rate}s (Ctrl+C to exit)"
         echo
@@ -474,19 +459,19 @@ monitor_process() {
         local pids=$(pgrep "$process_name")
         
         if [[ -z "$pids" ]]; then
-            echo "❌ Process '$process_name' not found"
+            echo "Process '$process_name' not found"
             sleep "$refresh_rate"
             continue
         fi
         
-        echo "📊 Process Statistics:"
+        echo "Process Statistics:"
         ps -p "$pids" -o pid,ppid,pcpu,pmem,etime,cmd --no-headers | \
         while read -r line; do
             echo "  $line"
         done
         
         echo
-        echo "📈 Resource Usage Over Time:"
+        echo "Resource Usage Over Time:"
         ps -p "$pids" -o pcpu,pmem --no-headers | \
         awk '{printf "  CPU: %s%%  Memory: %s%%\n", $1, $2}'
         
@@ -501,26 +486,26 @@ analyze_logs() {
     local log_file="${1:-/var/log/syslog}"
     local lines="${2:-100}"
     
-    echo "📜 Log Analysis: $log_file"
+    echo "Log Analysis: $log_file"
     echo "=========================="
     echo "Analyzing last $lines lines"
     echo
     
     if [[ ! -f "$log_file" ]]; then
-        echo "❌ Log file not found: $log_file"
+        echo "Log file not found: $log_file"
         return 1
     fi
     
     # Error summary
-    echo "❌ ERRORS:"
+    echo "ERRORS:"
     tail -n "$lines" "$log_file" | grep -i error | head -5
     
     echo
-    echo "⚠️  WARNINGS:"
+    echo "WARNINGS:"
     tail -n "$lines" "$log_file" | grep -i warning | head -5
     
     echo
-    echo "📊 LOG STATISTICS:"
+    echo "LOG STATISTICS:"
     tail -n "$lines" "$log_file" | awk '{
         errors += gsub(/[Ee]rror/, "")
         warnings += gsub(/[Ww]arning/, "")
@@ -538,11 +523,11 @@ watch_log() {
     local log_file="${1:-/var/log/syslog}"
     
     if [[ ! -f "$log_file" ]]; then
-        echo "❌ Log file not found: $log_file"
+        echo "Log file not found: $log_file"
         return 1
     fi
     
-    echo "👁️  Watching log file: $log_file"
+    echo "Watching log file: $log_file"
     echo "Press Ctrl+C to stop"
     echo "================================"
     

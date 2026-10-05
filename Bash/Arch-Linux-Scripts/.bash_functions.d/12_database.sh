@@ -2,8 +2,14 @@
 # Database Related Functions
 
 # POSTGRES DB
+# SQL_MEM_DB (and optionally SQL_MEM_USER) come from ~/.bash_private.sh.
 sql_mem() {
     local NUM
+    if [[ -z "${SQL_MEM_DB:-}" ]]; then
+        echo "Error: set SQL_MEM_DB in ~/.bash_private.sh" >&2
+        return 1
+    fi
+
     if [[ -z "$1" ]]; then
         read -rp "How many memories do you want to list (default 5): " NUM
     else
@@ -16,5 +22,5 @@ sql_mem() {
         return 1
     fi
 
-    psql -U jman -d phi4nix -c "SELECT * FROM messages ORDER BY created_at DESC LIMIT $NUM;"
+    psql -U "${SQL_MEM_USER:-$USER}" -d "$SQL_MEM_DB" -c "SELECT * FROM messages ORDER BY created_at DESC LIMIT $NUM;"
 }

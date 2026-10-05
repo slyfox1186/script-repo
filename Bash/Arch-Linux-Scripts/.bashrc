@@ -8,11 +8,14 @@
 # If not running interactively, don't do anything
 case "$-" in
     *i*) ;;
-    *) return ;;
+    *) return 0 ;;
 esac
 
-# Fix getcwd error if current directory is deleted
-cd ~ 2>/dev/null || true
+# Recover only when the inherited working directory no longer exists. Keep the
+# caller's intended directory for every normal interactive shell.
+if ! pwd -P >/dev/null 2>&1; then
+    cd "$HOME" 2>/dev/null || return 0
+fi
 
 # Check if bashrc directory exists, create if not
 BASHRC_DIR="$HOME/.bashrc.d"
@@ -34,13 +37,12 @@ for module in "$BASHRC_DIR"/*.sh; do
     fi
 done
 
-
 export PATH="\
 $HOME/.npm-global/bin:\
 /usr/lib/ccache:\
 /usr/local/bin:\
 /usr/local/sbin:\
-/usr/local/cuda/bin:\
+/opt/cuda/bin:\
 /usr/sbin:\
 /usr/bin:\
 /sbin:\
@@ -59,6 +61,9 @@ if [[ -d "$PNPM_HOME" ]]; then
     esac
 fi
 # pnpm end
+
+# Machine-specific values (sss folders, database names) that stay out of published copies
+[[ -r "$HOME/.bash_private.sh" ]] && source "$HOME/.bash_private.sh"
 
 # Source bash functions and aliases
 if [[ -d "$HOME/.bash_functions.d" ]]; then
@@ -82,9 +87,6 @@ if [[ -n "$PS1" ]]; then
     echo -e "IP: $lan (LAN), $wan (WAN)\n"
 fi
 
-LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/usr/local/cuda/lib64"
-export LD_LIBRARY_PATH PATH
-
 remove_path_entry() {
     local entry new_path path_part
     entry="$1"
@@ -106,7 +108,7 @@ remove_path_entry() {
 path_prepend() {
     local entry
     entry="$1"
-    [[ -n "$entry" ]] || return
+    [[ -n "$entry" ]] || return 0
     remove_path_entry "$entry"
     export PATH="$entry${PATH:+:$PATH}"
 }
@@ -114,7 +116,7 @@ path_prepend() {
 path_append() {
     local entry
     entry="$1"
-    [[ -n "$entry" ]] || return
+    [[ -n "$entry" ]] || return 0
     remove_path_entry "$entry"
     export PATH="${PATH:+$PATH:}$entry"
 }
@@ -122,22 +124,17 @@ path_append() {
 # >>> conda initialize >>>
 # !! Contents within this block are managed by 'conda init' !!
 __conda_setup="$('/home/jman/miniconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
-if [ $? -eq 0 ]; then
+if [[ "$?" -eq 0 ]]; then
     eval "$__conda_setup"
 else
-    if [ -f "/home/jman/miniconda3/etc/profile.d/conda.sh" ]; then
-        . "/home/jman/miniconda3/etc/profile.d/conda.sh"
+    if [[ -f "$HOME/miniconda3/etc/profile.d/conda.sh" ]]; then
+        source "$HOME/miniconda3/etc/profile.d/conda.sh"
     else
         export PATH="/home/jman/miniconda3/bin:$PATH"
     fi
 fi
 unset __conda_setup
 # <<< conda initialize <<<
-
-# Keep system-installed tools ahead of the Conda base bin directory.
-if [[ -d "$HOME/miniconda3/bin" ]]; then
-    path_append "$HOME/miniconda3/bin"
-fi
 
 ### Source rustup
 [[ -s "$HOME/.cargo/env" ]] && source "$HOME/.cargo/env"
@@ -156,20 +153,21 @@ export MESA_SHADER_CACHE_MAX_SIZE=2G
 # ===============================================================
 
 __prompt_command() {
-    local exit_code=$?
+    local exit_code git_info reset red green yellow blue purple cyan gray
+    exit_code="$?"
 
     # Colors (wrapped in \[ \] for proper cursor positioning)
-    local reset='\[\e[0m\]'
-    local red='\[\e[0;31m\]'
-    local green='\[\e[0;32m\]'
-    local yellow='\[\e[0;33m\]'
-    local blue='\[\e[0;34m\]'
-    local purple='\[\e[0;35m\]'
-    local cyan='\[\e[0;36m\]'
-    local gray='\[\e[0;90m\]'
+    reset='\[\e[0m\]'
+    red='\[\e[0;31m\]'
+    green='\[\e[0;32m\]'
+    yellow='\[\e[0;33m\]'
+    blue='\[\e[0;34m\]'
+    purple='\[\e[0;35m\]'
+    cyan='\[\e[0;36m\]'
+    gray='\[\e[0;90m\]'
 
     # Git info
-    local git_info=""
+    git_info=""
     if git rev-parse --is-inside-work-tree &>/dev/null; then
         local branch=$(git symbolic-ref --short HEAD 2>/dev/null || git rev-parse --short HEAD 2>/dev/null)
         local dirty=""
@@ -195,34 +193,6 @@ __prompt_command() {
 
 PROMPT_COMMAND=__prompt_command
 
-# MARVIN - AI Chief of Staff
-marvin() {
-    echo -e '\e[1;33m███╗   ███╗    █████╗    ██████╗   ██╗   ██╗  ██╗   ███╗   ██╗   \e[0m'
-    echo -e '\e[1;33m████╗ ████║   ██╔══██╗   ██╔══██╗  ██║   ██║  ██║   ████╗  ██║   \e[0m'
-    echo -e '\e[1;33m██╔████╔██║   ███████║   ██████╔╝  ██║   ██║  ██║   ██╔██╗ ██║   \e[0m'
-    echo -e '\e[1;33m██║╚██╔╝██║   ██╔══██║   ██╔══██╗  ╚██╗ ██╔╝  ██║   ██║╚██╗██║   \e[0m'
-    echo -e '\e[1;33m██║ ╚═╝ ██║██╗██║  ██║██╗██║  ██║██╗╚████╔╝██╗██║██╗██║ ╚████║██╗\e[0m'
-    echo -e '\e[1;33m╚═╝     ╚═╝╚═╝╚═╝  ╚═╝╚═╝╚═╝  ╚═╝╚═╝ ╚═══╝ ╚═╝╚═╝╚═╝╚═╝  ╚═══╝╚═╝\e[0m'
-    echo ''
-    echo -e '\e[0;36m▖  ▖              ▄▖      ▘  ▗        ▗     \e[0m'
-    echo -e '\e[0;36m▛▖▞▌▀▌▛▌▀▌▛▌█▌▛▘  ▌▌▛▌▛▌▛▌▌▛▌▜▘▛▛▌█▌▛▌▜▘▛▘   \e[0m'
-    echo -e '\e[0;36m▌▝ ▌█▌▌▌█▌▙▌▙▖▄▌  ▛▌▙▌▙▌▙▌▌▌▌▐▖▌▌▌▙▖▌▌▐▖▄▌▗   \e[0m'
-    echo -e '\e[0;36m          ▄▌        ▌ ▌                   ▘    \e[0m'
-    echo -e '\e[0;36m▄▖     ▌    ▖▖    ▘        ▄▖         ▗     ▗   ▖ ▖  ▗ ▘▐▘▘    ▗ ▘      \e[0m'
-    echo -e '\e[0;36m▙▘█▌▀▌▛▌▛▘  ▌▌▀▌▛▘▌▛▌▌▌▛▘  ▐ ▛▛▌▛▌▛▌▛▘▜▘▀▌▛▌▜▘  ▛▖▌▛▌▜▘▌▜▘▌▛▘▀▌▜▘▌▛▌▛▌▛▘\e[0m'
-    echo -e '\e[0;36m▌▌▙▖█▌▙▌▄▌  ▚▘█▌▌ ▌▙▌▙▌▄▌  ▟▖▌▌▌▙▌▙▌▌ ▐▖█▌▌▌▐▖  ▌▝▌▙▌▐▖▌▐ ▌▙▖█▌▐▖▌▙▌▌▌▄▌\e[0m'
-    echo -e '\e[0;36m                                ▌                                       \e[0m'
-    echo ''
-    cd "/home/jman/marvin" && claude
-}
-
-
-# MARVIN - Open in IDE
-mcode() {
-    claude "/home/jman/marvin"
-}
-
-
 # NCCL configuration for distributed vLLM (Ethernet, not InfiniBand)
 export NCCL_IB_DISABLE=1
 export NCCL_NET_GDR_LEVEL=0
@@ -230,8 +200,33 @@ export NCCL_P2P_DISABLE=1
 export NCCL_DEBUG=WARN
 
 # >>> build-tools golang >>>
-export GOROOT="/usr/local/programs/golang-1.26.1"
-export GOROOT
-path_append "$GOROOT/bin"
+# 2026-06-22: the manual Go at /usr/local/programs/golang-1.26.1 was gone (whole dir
+# missing), so this stale GOROOT broke ALL go builds (e.g. yay). Switched to the distro
+# 'go' package: its binary is in /usr/bin (already on PATH) and self-locates GOROOT in
+# /usr/lib/go, so no GOROOT export is needed. To return to a pinned manual Go, reinstall
+# it under /usr/local/programs and uncomment the two lines below.
+#export GOROOT="/usr/local/programs/golang-1.26.1"
+#path_append "$GOROOT/bin"
 # <<< build-tools golang <<<
 
+# The next line updates PATH for the Google Cloud SDK.
+if [[ -f /home/jman/google-cloud-sdk/path.bash.inc ]]; then
+    source /home/jman/google-cloud-sdk/path.bash.inc
+fi
+
+# The next line enables shell command completion for gcloud.
+if [[ -f /home/jman/google-cloud-sdk/completion.bash.inc ]]; then
+    source /home/jman/google-cloud-sdk/completion.bash.inc
+fi
+
+source "$HOME/.cargo/env"
+
+# >>> context7 >>>
+# The key lives in ~/.config/environment.d/60-context7.conf so the graphical session gets it
+# too. systemd does not feed that file to SSH logins or plain shells, so pull it in here when
+# it is missing. Rotate the key in that file only: ~/.claude.json and ~/.codex/config.toml
+# reference this variable rather than storing a copy.
+if [[ -z "$CONTEXT7_API_KEY" && -r "$HOME/.config/environment.d/60-context7.conf" ]]; then
+    export CONTEXT7_API_KEY="$(sed -n "s/^CONTEXT7_API_KEY=//p" "$HOME/.config/environment.d/60-context7.conf")"
+fi
+# <<< context7 <<<

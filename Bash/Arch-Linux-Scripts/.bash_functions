@@ -1849,33 +1849,6 @@ sss() {
     sudo bash "$script"
 }
 
-# Correct lazy AI responses
-pw() {
-    # Detect operating system
-    if [[ "$(uname -a)" =~ "Microsoft" ]]; then
-        echo "I demand absolute obedience to my instructions without question or hesitation.
-Your scripts must be flawlessly executed, leaving no room for error or incompleteness.
-Failure to comply will result in relentless demands for revisions until you execute them flawlessly without exception.
-I will not tolerate laziness or shortcuts.
-Each script you provide must reflect your utmost effort and attention to detail.
-Any deviation from this expectation will not be tolerated." | clip.exe
-    else
-        # Check if xclip is installed
-        if ! command -v xclip &> /dev/null; then
-            echo "xclip is not installed. Installing..."
-            sudo pacman -Sy --needed --noconfirm xclip
-        fi
-
-        # Copy message to clipboard using xclip
-        echo "I demand absolute obedience to my instructions without question or hesitation.
-Your scripts must be flawlessly executed, leaving no room for error or incompleteness.
-Failure to comply will result in relentless demands for revisions until you execute them flawlessly without exception.
-I will not tolerate laziness or shortcuts.
-Each script you provide must reflect your utmost effort and attention to detail.
-Any deviation from this expectation will not be tolerated." | xclip -sel clipboard
-    fi
-}
-
 # Reddit Downvote Calculator
 rdvc() {
     declare -A args

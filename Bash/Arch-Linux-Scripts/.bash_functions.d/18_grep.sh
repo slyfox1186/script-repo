@@ -14,17 +14,9 @@ find_any() {
     cpos = match(rest, /\/\//)
     apos = match(rest, /\bany\b/)
 
-    # Debug print to stderr (will not interfere with normal output)
-    # This will show you the values awk is working with for each line grep finds.
-    print "DEBUG: file=" file ", line=" line ", cpos=" cpos ", apos=" apos ", rest=" rest > "/dev/stderr"
-
-    # If any is inside a comment, skip it
+    # If "any" is inside a comment, skip it
     if (cpos && apos > cpos) {
-      print "DEBUG: Skipping line " line " (any in comment: cpos=" cpos ", apos=" apos ")" > "/dev/stderr"
       next
-    } else {
-      # This message helps identify lines that are NOT skipped and why the condition failed.
-      print "DEBUG: NOT skipping line " line " (cpos=" cpos ", apos=" apos ", filter_condition_false)" > "/dev/stderr"
     }
 
     # Highlight "any" in bold red

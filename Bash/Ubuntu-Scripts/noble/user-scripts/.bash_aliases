@@ -244,10 +244,8 @@ alias gus="bash <(curl -fsSL https://user-scripts.optimizethis.net)"
 alias gdl="bash <(curl -fsSL https://mirrors.optimizethis.net)"
 
 # Project shortcuts
-alias cdg='pushd ~/tmp/thatsgemma/; cl'
 alias cdgm='pushd ~/tmp/gemmabot-medical-compliant/; cl'
 alias cdh='pushd ~/.cache/huggingface/hub/; cl'
-alias cdk='pushd ~/tmp/github_projects/kortex/; cl'
 alias cdq='pushd ~/tmp/qwen3-30b-3a-instruct-2507/; cl'
 alias cdqi='pushd ~/tmp/qwen3-30b-a3b-instruct-2507/; cl'
 alias cdqt='pushd ~/tmp/qwen3-30b-a3b-thinking-2507/; cl'

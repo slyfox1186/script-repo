@@ -328,7 +328,7 @@ def create_file_context(file_paths: Optional[List[str]]) -> str:
     if included_files:
         print(f"✓ Included {len(included_files)} file(s): {', '.join(included_files)}")
     if skipped_files:
-        print(f"⚠️  Skipped {len(skipped_files)} file(s): {', '.join(skipped_files)}")
+        print(f"Skipped {len(skipped_files)} file(s): {', '.join(skipped_files)}")
 
     if not file_contents:
         return ""

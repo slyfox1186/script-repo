@@ -212,12 +212,12 @@ findtext() {
   # --color=always: highlight matches.
   local args=( "-rn" "--color=always" )
 
-  # By default, search is case-insensitive unless a case‑exact flag is given.
+  # By default, search is case-insensitive unless a case-exact flag is given.
   if [[ $case_exact -eq 0 ]]; then
     args+=( "-i" )
   fi
 
-  # If whole-word matching is enabled, add the ‑w flag.
+  # If whole-word matching is enabled, add the -w flag.
   if [[ $whole_word -eq 1 ]]; then
     args+=( "-w" )
   fi

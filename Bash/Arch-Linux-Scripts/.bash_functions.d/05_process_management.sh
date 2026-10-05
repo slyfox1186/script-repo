@@ -98,7 +98,7 @@ run_py() {
                 do_flush=true
                 ;;
             -h|--help)
-                echo "Usage: run_app [OPTIONS]"
+                echo "Usage: run_py [OPTIONS]"
                 echo "Options:"
                 echo "  -v, --verbose   Run without clearing the screen"
                 echo "  -f, --flush     Run 'redis-cli flushall' before execution"

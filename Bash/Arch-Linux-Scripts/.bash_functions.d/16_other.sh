@@ -15,7 +15,6 @@ run_linter() {
 # Add this to ~/.bashrc or ~/.bash_aliases, then run `source ~/.bashrc`
 gettime() {
   # Color setup
-  local RED=$(tput setaf 1) GREEN=$(tput setaf 2) YELLOW=$(tput setaf 3)
   local CYAN=$(tput setaf 6) RESET=$(tput sgr0)
 
   # Time & date
@@ -40,14 +39,14 @@ gettime() {
   local up=$(uptime -p | sed 's/up //')
 
   # Output
-  echo -e "${GREEN}🕒 ${CYAN}Local Time:${RESET}    ${local_time}"
-  echo -e "${GREEN}📅 ${CYAN}Date:${RESET}          ${date_full}"
-  echo -e "${GREEN}🌐 ${CYAN}Timezone:${RESET}      ${tz_name} (UTC${tz_offset})"
-  echo -e "${GREEN}⏱️  ${CYAN}UTC Time:${RESET}      ${utc_time}"
-  echo -e "${GREEN}� epoch:${RESET}        ${epoch}"
-  echo -e "${GREEN}🔢 ${CYAN}Day of Year:${RESET}   ${day_year}"
-  echo -e "${GREEN}📆 ${CYAN}ISO Week #:${RESET}    ${week_num}"
-  echo -e "${GREEN}⏳ ${CYAN}Uptime:${RESET}        ${up}"
+  echo -e "${CYAN}Local Time:${RESET}    ${local_time}"
+  echo -e "${CYAN}Date:${RESET}          ${date_full}"
+  echo -e "${CYAN}Timezone:${RESET}      ${tz_name} (UTC${tz_offset})"
+  echo -e "${CYAN}UTC Time:${RESET}      ${utc_time}"
+  echo -e "${CYAN}Epoch:${RESET}         ${epoch}"
+  echo -e "${CYAN}Day of Year:${RESET}   ${day_year}"
+  echo -e "${CYAN}ISO Week #:${RESET}    ${week_num}"
+  echo -e "${CYAN}Uptime:${RESET}        ${up}"
 }
 
 # Optional shortcut:
