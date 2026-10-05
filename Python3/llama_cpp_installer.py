@@ -8,7 +8,9 @@ Tuned for this host: AMD Ryzen 9 7900X (Zen 4), NVIDIA RTX 4090
 
 Run without sudo. The script escalates only for apt and for installing into a
 folder the caller cannot write to, and it primes the sudo timestamp up front so
-a long compile cannot strand the install behind a password prompt.
+a long compile cannot strand the install behind a password prompt. After the
+installed binaries pass their checks, obsolete APT-managed CUDA toolkits and
+replaced NVIDIA driver packages are purged, preserving the active versions.
 """
 
 from __future__ import annotations
@@ -1183,6 +1185,178 @@ def missing_packages(packages: Sequence[str]) -> list[str]:
     return [package for package in packages if package not in installed]
 
 
+def obsolete_cuda_packages(
+    inventory: str, cuda_version: tuple[int, int], driver_branch: int
+) -> list[str]:
+    """Select older toolkit packages and driver packages with installed replacements.
+
+    Keep architecture-qualified names for APT. Unversioned driver packages use
+    their Debian version to establish the replacement branch. CUDA packages
+    must be NVIDIA-maintained; Ubuntu's versioned driver packages also qualify.
+    """
+    records = [line.split("\t") for line in inventory.splitlines()]
+    if any(len(record) != 5 for record in records):
+        raise RuntimeError("Unexpected dpkg inventory; refusing CUDA cleanup")
+    installed = [record for record in records if record[3] == "installed"]
+    active_toolkit = f"cuda-toolkit-{cuda_version[0]}-{cuda_version[1]}"
+    if not any(record[0].split(":")[0] == active_toolkit for record in installed):
+        raise RuntimeError("Active CUDA toolkit is not APT-managed; refusing package cleanup")
+
+    def driver_family(package: str) -> tuple[str, str]:
+        name, _, arch = package.partition(":")
+        name = re.sub(r"-\d+(?:-server)?(?:-open)?$", "", name)
+        name = name.removesuffix("-open")
+        if name in {"nvidia", "cuda-drivers"}:
+            name = "nvidia-driver"
+        return name, arch
+
+    replacements = set()
+    for package, version, _, _, _ in installed:
+        if package.startswith(("nvidia-", "libnvidia-", "xserver-xorg-video-nvidia")):
+            branch = re.match(r"(?:\d+:)?(\d+)\.", version)
+            if branch and int(branch[1]) == driver_branch:
+                replacements.add(driver_family(package))
+
+    targets: set[str] = set()
+    nsight_needed: set[str] = set()
+    for package, _, maintainer, status, dependencies in records:
+        if status not in {"installed", "config-files"}:
+            continue
+        name = package.split(":")[0]
+        if re.fullmatch(r"cuda-nsight-(?:compute|systems)-\d+-\d+", name):
+            series = tuple(map(int, name.rsplit("-", 2)[1:]))
+            if series >= cuda_version and status == "installed":
+                nsight_needed.update(re.findall(r"nsight-(?:compute|systems)-[\d.]+", dependencies))
+        cuda_series = re.search(r"-(\d+)-(\d+)(?:-config-common|-local)?$", name)
+        if (
+            cuda_series
+            and tuple(map(int, cuda_series.groups())) < cuda_version
+            and re.search(r"@nvidia\.com>\s*$", maintainer)
+            and name.startswith(("cuda-", "cccl-", "libcu", "libnv", "libnpp-", "gds-tools-"))
+        ):
+            targets.add(package)
+        old_driver = re.search(r"-(\d+)(?:-server)?(?:-open)?$", name)
+        if (
+            name.startswith(("nvidia-", "libnvidia-", "xserver-xorg-video-nvidia"))
+            and old_driver
+            and int(old_driver[1]) < driver_branch
+            and driver_family(package) in replacements
+        ):
+            targets.add(package)
+
+    # Retire versioned Nsight tools only when the retained toolkit has a newer
+    # counterpart. APT's preview below protects any other installed consumer.
+    for package, _, _, status, _ in records:
+        name = package.split(":")[0]
+        tool = re.fullmatch(r"(nsight-(?:compute|systems))-([\d.]+)", name)
+        if tool and status in {"installed", "config-files"}:
+            nsight_version = tuple(map(int, tool[2].split(".")))
+            if any(
+                needed.startswith(tool[1] + "-")
+                and tuple(map(int, needed.removeprefix(tool[1] + "-").split("."))) > nsight_version
+                for needed in nsight_needed
+            ):
+                targets.add(package)
+    return sorted(targets)
+
+
+def cuda_cleanup_inventory() -> str:
+    """Read package ownership/state without stripping empty dependency fields."""
+    result = run(
+        [
+            "dpkg-query", "-W",
+            "-f=${binary:Package}\t${Version}\t${Maintainer}\t${db:Status-Status}\t${Depends}\n",
+        ],
+        capture=True, quiet=True,
+    )
+    return str(result.stdout or "")
+
+
+def remove_unused_cuda_keys() -> None:
+    """Retire only unowned local-installer keys no active APT source references."""
+    source_paths = ["/etc/apt/sources.list"]
+    source_dir = "/etc/apt/sources.list.d"
+    source_paths.extend(
+        os.path.join(source_dir, name)
+        for name in os.listdir(source_dir)
+        if name.endswith((".list", ".sources"))
+    )
+    source_text = ""
+    for path in source_paths:
+        if os.path.isfile(path):
+            with open(path, encoding="utf-8") as source:
+                source_text += source.read() + "\n"
+    for name in os.listdir("/usr/share/keyrings"):
+        if not re.fullmatch(r"cuda-[0-9A-Fa-f]{8}-keyring\.gpg", name) or name in source_text:
+            continue
+        path = os.path.join("/usr/share/keyrings", name)
+        owner = run(["dpkg-query", "-S", path], capture=True, check=False, quiet=True)
+        if owner.returncode == 1:
+            ensure_sudo(reason="removing an unused CUDA local-repository key")
+            run(["sudo", "rm", "--", path])
+        elif owner.returncode != 0:
+            raise RuntimeError(f"Could not verify package ownership of {path}; key retained")
+
+
+def cleanup_old_cuda(
+    cuda_version: tuple[int, int], nvcc: str, *, env: dict[str, str]
+) -> str:
+    """Purge obsolete system packages only after the installed GPU build works.
+
+    APT owns file removal and alternatives updates. Never autoremove, delete
+    arbitrary toolkit trees, or accept a preview affecting unrelated packages.
+    Package-manager failures remain fatal and leave the build tree for retry.
+    """
+    if cuda_release(nvcc, env=env)[0] != cuda_version:
+        raise RuntimeError("Active CUDA changed during the build; refusing cleanup")
+    driver_versions = capture(
+        ["nvidia-smi", "--query-gpu=driver_version", "--format=csv,noheader"], quiet=True
+    ).splitlines()
+    if not driver_versions or any(not re.fullmatch(r"\d+(?:\.\d+)+", value) for value in driver_versions):
+        raise RuntimeError("Could not verify the active NVIDIA driver; refusing cleanup")
+    driver_branches = {int(value.split(".")[0]) for value in driver_versions}
+    if len(driver_branches) != 1:
+        raise RuntimeError("GPU driver branches differ; refusing cleanup")
+    inventory = cuda_cleanup_inventory()
+    targets = obsolete_cuda_packages(inventory, cuda_version, driver_branches.pop())
+    if not targets:
+        remove_unused_cuda_keys()
+        log.ok("no obsolete CUDA or replaced NVIDIA driver packages")
+        return "nothing obsolete"
+
+    cleanup_env = {**os.environ, "LC_ALL": "C"}
+    native_arch = capture(["dpkg", "--print-architecture"], quiet=True)
+    preview = capture(["apt-get", "-s", "purge", *targets], env=cleanup_env, quiet=True)
+    planned = {
+        package.removesuffix(f":{native_arch}")
+        for package in re.findall(r"^(?:Purg|Remv) (\S+)", preview, re.MULTILINE)
+    }
+    if planned != {package.removesuffix(f":{native_arch}") for package in targets} or re.search(r"^Inst ", preview, re.MULTILINE):
+        raise RuntimeError("APT would change packages outside the cleanup list; nothing purged")
+    if cuda_cleanup_inventory() != inventory:
+        raise RuntimeError("Package inventory changed during cleanup planning; nothing purged")
+    log.info(f"purging obsolete CUDA/driver packages: {' '.join(targets)}")
+    ensure_sudo(reason="removing obsolete CUDA and NVIDIA driver packages")
+    # Retain driver meta packages that older CUDA releases installed as automatic
+    # dependencies, so a later user-initiated autoremove cannot retire the driver.
+    automatic = capture(["apt-mark", "showauto"], quiet=True).splitlines()
+    driver_roots = [name for name in automatic if name in {"nvidia-open", "cuda-drivers"}]
+    if driver_roots:
+        run(["sudo", "apt-mark", "manual", *driver_roots])
+    run(["sudo", "apt-get", "-y", "-o", "DPkg::Lock::Timeout=60", "purge", *targets])
+    run(["sudo", "apt-get", "check"])
+    if cuda_release(nvcc, env=env)[0] != cuda_version:
+        raise RuntimeError("CUDA toolkit verification failed after cleanup")
+    run(["nvidia-smi"], capture=True, output_limit=4)
+    remaining = cuda_cleanup_inventory()
+    leftovers = {line.split("\t")[0] for line in remaining.splitlines() if "\tinstalled\t" in line or "\tconfig-files\t" in line}
+    if leftovers.intersection(targets):
+        raise RuntimeError("Some obsolete CUDA/driver packages remain after cleanup")
+    remove_unused_cuda_keys()
+    log.ok(f"purged {plural(len(targets), 'obsolete CUDA/driver package')}")
+    return f"purged {len(targets)} obsolete packages"
+
+
 def nearest_existing(path: str) -> str:
     """The path itself if it exists, otherwise its closest existing ancestor."""
     while not os.path.lexists(path):
@@ -1644,7 +1818,8 @@ def parse_args() -> argparse.Namespace:
             "working folders are made in the current directory and deleted after a "
             "successful install unless --keep-source is given. Run as a normal "
             "user; sudo is asked for only when apt runs or you cannot write to the "
-            "install folder."
+            "install folder. After successful GPU verification, older APT-managed "
+            "CUDA toolkits and replaced NVIDIA driver packages are purged with sudo."
         ),
         examples=HELP_EXAMPLES,
     )
@@ -2212,17 +2387,30 @@ def main() -> None:
             f"such as {os.path.join(install_dir, 'llama')}"
         )
 
-    devices = parse_devices(
-        capture_all([os.path.join(install_dir, "llama-cli"), "--list-devices"])[1]
+    device_status, device_output = capture_all(
+        [os.path.join(install_dir, "llama-cli"), "--list-devices"]
     )
+    devices = parse_devices(device_output)
     cuda_devices = [device for device in devices if device.startswith("CUDA")]
     log.table([("device", device) for device in devices])
-    if cuda_devices:
+    if device_status == 0 and cuda_devices:
         log.ok(
             f"{plural(len(cuda_devices), 'CUDA device')} visible to the installed binary"
         )
     else:
-        log.warning("No CUDA device was enumerated; check the driver and CUDA runtime.")
+        raise RuntimeError(
+            "Installed llama-cli failed CUDA device verification; old CUDA/driver packages retained"
+        )
+
+    cuda_cleanup = cleanup_old_cuda(cuda_version, nvcc, env=env)
+    # Verify the installed applications again without build-only environment
+    # overrides, before discarding the source/build tree.
+    if cuda_cleanup != "nothing obsolete":
+        for path in installed:
+            run([path, "--version"], capture=True, output_limit=2)
+        status, output = capture_all([os.path.join(install_dir, "llama-cli"), "--list-devices"])
+        if status != 0 or not any(device.startswith("CUDA") for device in parse_devices(output)):
+            raise RuntimeError("Installed CUDA build failed verification after package cleanup")
 
     if args.keep_source:
         sources = f"kept in {REPO_DIR}, {LLAMA_SWAP_DIR}"
@@ -2260,6 +2448,7 @@ def main() -> None:
         "extra CMake args": shlex.join(args.cmake_arg) or "none",
         "installed": ", ".join(installed),
         "sources": sources,
+        "CUDA/driver cleanup": cuda_cleanup,
         "compile time": log.format_duration(compile_seconds),
         "total time": log.format_duration(log.elapsed),
     }
