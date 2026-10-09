@@ -2,12 +2,27 @@
 
 Updated: 2026-10-09
 
+Current task: publish Jeff's move of the five Arch installer files from
+`Bash/Installer-Scripts/Arch-Linux/` to
+`Bash/Arch-Linux-Scripts/install-arch-os/` on GitHub branch `main`.
+All five files are byte-for-byte unchanged. The four shell scripts passed
+`bash -n` and `shellcheck -S error`. No repository references to the moved
+files' old paths were found. The installation guide's three custom download
+domains could not be resolved from this machine; their redirect targets remain
+unverified. No installer was executed and no full local suite was run.
+
+No action is required from Jeff. To locate the moved files:
+`/home/jman/tmp/script-repo/Bash/Arch-Linux-Scripts/install-arch-os/`.
+The GitHub push runs the repository's configured Python and shell checks.
+
+Previous networking work:
+
 The review and improvements to `/home/jman/tmp/script-repo/Bash/Networking/`
 are complete locally. Both existing entry points now use the shared
 `networking-common.sh` helper. Keep all three files together.
 
-No action is required from Jeff. Jeff approved committing and pushing this release
-to GitHub `slyfox1186/script-repo`, branch `main`.
+The networking release was committed as `88bb4da9` on GitHub
+`slyfox1186/script-repo`, branch `main`.
 
 The networking tools now validate input, preview changes, retain fresh backups,
 check command failures, and recover files after failure or interruption. Netplan
