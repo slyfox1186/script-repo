@@ -274,6 +274,16 @@ private_workdirs() {
 }
 check private_workdirs
 
+libiconv_exports_compiler_flags() {
+    extract_function "$scripts/build-libiconv.sh" set_env_vars > "$sandbox/libiconv-env.sh"
+    bash -c '
+        source "$1"
+        set_env_vars
+        bash -c '\''[[ "$CXXFLAGS" == "$CFLAGS" && -n "$CXXFLAGS" ]]'\''
+    ' bash "$sandbox/libiconv-env.sh"
+}
+check libiconv_exports_compiler_flags
+
 gcc_summary() {
     : > "$TEST_LOG"
     extract_function "$scripts/build-gcc.sh" main > "$sandbox/gcc-main.sh"
