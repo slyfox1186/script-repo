@@ -36,7 +36,7 @@ Do not run multiple installers into the same prefix concurrently. Actual GNU
 compilation and real installed programs still need validation on a disposable
 machine. No installer, full test suite, or production build ran in this session.
 
-Focused validation: 205 GNU installer checks and 163 GitHub helper/caller checks
+Focused validation: 206 GNU installer checks and 163 GitHub helper/caller checks
 passed. Filesystem checks used real temporary links and copies; build and package
 commands were mocked. A real GNU Autoconf signature was accepted, and the same
 archive was rejected after modification. Live GitHub release and tag lookups
