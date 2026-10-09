@@ -3,50 +3,75 @@
 set -euo pipefail
 
 usage() {
-    cat <<'HELP'
-Usage: source-git-repo-version.sh [OPTION] <github-url>
+    local heading='' command='' note='' reset=''
+    if [[ -t 1 && ${TERM:-dumb} != dumb && -z ${NO_COLOR:-} ]]; then
+        heading=$'\033[1;36m'
+        command=$'\033[32m'
+        note=$'\033[33m'
+        reset=$'\033[0m'
+    fi
 
-Print the numeric version of a public GitHub repository's latest release.
+    cat <<HELP
+${heading}GitHub release version${reset}
+  Print the numeric version of a public repository's latest release.
 
-Arguments:
-  github-url      HTTPS repository URL: https://github.com/OWNER/REPO
-                  An optional .git suffix and trailing slash are accepted.
+${heading}Usage:${reset}
+  ${command}source-git-repo-version.sh${reset} [OPTION] <github-url>
 
-Options:
-  -h, --help      Show this help and exit without making network requests.
-  --              End options before the repository URL.
+${heading}Options${reset}
+  ${command}-h, --help${reset}    Show help without making network requests.
+  ${command}--${reset}            End options before the repository URL.
 
-Selection:
-  Follow GitHub's /releases/latest link, which selects its latest full release.
-  This respects the repository's latest-release designation. An unsupported
-  latest tag is an error; a higher tag never overrides a published latest release.
-  If there is no latest release, use the highest numeric tag on the first tags
-  page. This fallback does not search older pages or confirm release status.
-  Tags with preview suffixes (rc1, beta, a1, etc.) are rejected.
+${heading}Repository URL${reset}
+  https://github.com/OWNER/REPO
+  A .git suffix and trailing slash are accepted.
 
-Version format:
-  Accept numeric tags, optional v/V/n/N prefixes, letter-based project prefixes
-  separated by - or _, and tag namespaces. Examples: v1.2.3, curl-8_16_0,
-  releases/gcc-16.2.0. Print only the numeric part, preserving . _ - separators.
-  Use one separator style per version; mixed styles and build metadata fail.
+${heading}Examples${reset}
+  ${command}bash source-git-repo-version.sh https://github.com/rust-lang/rust.git${reset}
+  ${command}bash source-git-repo-version.sh https://github.com/curl/curl${reset}
 
-Network defaults:
-  HTTPS only; 10-second connect timeout; 30-second transfer timeout;
-  at most 5 redirects and 2 retries for transient errors. Retry time is limited
-  to 30 seconds, but an in-progress retry can finish after that limit.
-  No API token is used. Requires Bash 4+, curl, grep, sed, and GNU sort (-V).
+  Capture the version in a shell variable:
+  ${command}version=\$(bash source-git-repo-version.sh https://github.com/git/git) \\
+    || exit 1${reset}
 
-Output and status:
-  0  One version followed by a newline on stdout, or the requested help.
-  1  Lookup, dependency, or version-parsing failure; error on stderr.
-  2  Invalid arguments; error on stderr. Failures never print a version.
+${heading}How the version is selected${reset}
+  Follow GitHub's /releases/latest link to its designated latest full release.
+  A higher tag never overrides that release. An unsupported latest tag fails.
 
-Examples:
-  bash source-git-repo-version.sh https://github.com/rust-lang/rust.git
-  bash source-git-repo-version.sh https://github.com/curl/curl
-  version=$(bash source-git-repo-version.sh https://github.com/git/git) || exit 1
+  If no latest release exists, use the highest numeric tag on the first page.
+  ${note}Tag fallback checks the first page only and cannot confirm release status.${reset}
+  Preview tags such as rc1, beta, and a1 are rejected.
 
-Run this script as a command; do not source it into your shell.
+${heading}Supported version formats${reset}
+  Numeric tags may have v/V/n/N prefixes, letter-based project prefixes
+  separated by - or _, or tag namespaces:
+
+    v1.2.3                ->  1.2.3
+    curl-8_16_0           ->  8_16_0
+    releases/gcc-16.2.0   ->  16.2.0
+
+  Output preserves . _ - separators. Use one separator style per version;
+  mixed separators and build metadata are unsupported.
+
+${heading}Output and exit codes${reset}
+  ${command}0${reset}  One version line on stdout, or the requested help.
+  ${command}1${reset}  Lookup, dependency, or parsing failure; message on stderr.
+  ${command}2${reset}  Invalid arguments; message on stderr.
+
+  Failed lookups never print a version.
+
+${heading}Network and requirements${reset}
+  HTTPS only, with a 10-second connect timeout and 30-second transfer timeout.
+  At most 5 redirects and 2 retries for transient errors. Retry time is limited
+  to 30 seconds; an in-progress retry may finish after that limit.
+
+  Requires Bash 4+, curl, grep, sed, and GNU sort (-V). No API token is used.
+
+${heading}Display${reset}
+  Color is automatic on supported terminals. Set NO_COLOR=1 for plain help.
+  Redirected output and dumb terminals always receive plain text.
+
+  Run this script with bash as shown above; do not source it into your shell.
 HELP
 }
 

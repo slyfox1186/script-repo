@@ -75,7 +75,33 @@ for option in -h --help; do
     check "$option exits successfully" test "$status" -eq 0
     check "$option describes usage" test "${output#*Usage:}" != "$output"
     check "$option avoids network requests" test ! -s "$CURL_LOG"
+    check "$option keeps redirected help plain" test "${output//$'\033'/}" = "$output"
 done
+
+check 'plain help fits an 80-column terminal' awk 'length > 80 {exit 1}' "$scratch/out"
+
+if command -v script >/dev/null; then
+    export HELP_BASH="$bash_path" HELP_SCRIPT="$script"
+    tty_help() {
+        : > "$CURL_LOG"
+        # The PTY's child shell expands these exported paths.
+        # shellcheck disable=SC2016
+        env -u NO_COLOR "$@" script --quiet --return \
+            --command '"$HELP_BASH" "$HELP_SCRIPT" --help' /dev/null \
+            < /dev/null > "$scratch/tty.out" 2> "$scratch/tty.err"
+    }
+    tty_help TERM=xterm-256color
+    check 'terminal help uses colored headings' grep -Fq $'\033[1;36m' "$scratch/tty.out"
+    check 'terminal help highlights examples' grep -Fq $'\033[32m' "$scratch/tty.out"
+    check 'terminal help avoids network requests' test ! -s "$CURL_LOG"
+    LC_ALL=C sed $'s/\033\\[[0-9;]*m//g' "$scratch/tty.out" |
+        tr -d '\r' > "$scratch/tty.plain"
+    check 'colored and plain help have identical content' cmp -s "$scratch/out" "$scratch/tty.plain"
+    tty_help TERM=xterm-256color NO_COLOR=1
+    check 'NO_COLOR suppresses terminal colors' test "$(LC_ALL=C tr -d '\033' < "$scratch/tty.out")" = "$(cat "$scratch/tty.out")"
+    tty_help TERM=dumb
+    check 'dumb terminals receive plain help' test "$(LC_ALL=C tr -d '\033' < "$scratch/tty.out")" = "$(cat "$scratch/tty.out")"
+fi
 
 for input in '' --bogus http://github.com/owner/repo https://example.com/owner/repo \
     https://github.com.evil/owner/repo https://github.com/owner/repo/issues \
