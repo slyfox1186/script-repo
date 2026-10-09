@@ -4,7 +4,7 @@ clear
 
 # Script variables
 script_ver=1.1
-user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
+user_agent='Mozilla/5.0 (X11; Linux x86_64; rv:157.0) Gecko/20100101 Firefox/157.0'
 
 echo "Discord Update Script - version $script_ver"
 echo "======================================================"
