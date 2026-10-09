@@ -2,6 +2,11 @@
 
 Updated: 2026-10-09
 
+Latest change: removed `/home/jman/tmp/script-repo/Bash/QNAP/` and both scripts
+at Jeff's request. No references to either script or directory were found in
+the repository before deletion. Verified the directory is absent and the staged
+removal contains exactly the two tracked scripts. No action is required from Jeff.
+
 Published as `75e3285c`: Jeff's move of the five Arch installer files from
 `Bash/Installer-Scripts/Arch-Linux/` to
 `Bash/Arch-Linux-Scripts/install-arch-os/` on GitHub branch `main`.
