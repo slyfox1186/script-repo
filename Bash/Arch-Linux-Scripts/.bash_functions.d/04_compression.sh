@@ -21,7 +21,7 @@ untar() {
         mkdir -p "$dirname"
 
         case "$ext" in
-            7z) sudo 7z x -y "$archive" -o"$dirname" ;;
+            7z) sudo 7z x -y -spe "$archive" -o"$dirname" ;;
             zip) temp_dir=$(mktemp -d)
                  sudo unzip "$archive" -d "$temp_dir"
                  items=("$temp_dir"/*)
