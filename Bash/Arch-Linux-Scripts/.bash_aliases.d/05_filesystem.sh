@@ -32,6 +32,10 @@ alias cdv='pushd ~/Videos/; cl'
 alias cdff='pushd ~/tmp/ffmpeg_test/; cl'
 alias cd.='cd ..'
 alias cd..='cd ..'
+alias cd2='cd ../..'
+alias cd3='cd ../../..'
+alias cd4='cd ../../../..'
+alias cd5='cd ../../../../..'
 
 # Directory and file creation
 alias md='mkdir -p'
