@@ -148,15 +148,15 @@ get_latest_release_version() {
         return 1
     fi
     tag_path="${repo_url#https://github.com}/releases/tag/"
-    # Match this repository's links only, excluding tags mentioned in unrelated content.
+    # GitHub may capitalize repository names in links after a lowercase request.
     if ! versions=$(
         { grep -oE 'href="[^"]*/releases/tag/[^"]+"' <<< "$html" || [[ $? == 1 ]]; } |
             while IFS= read -r href; do
                 href=${href#href=\"}
                 href=${href%\"}
                 href=${href#https://github.com}
-                if [[ $href == "$tag_path"* ]]; then
-                    numeric_version "${href#"$tag_path"}" || :
+                if [[ ${href,,} == "${tag_path,,}"* ]]; then
+                    numeric_version "${href:${#tag_path}}" || :
                 fi
             done
     ); then

@@ -180,6 +180,20 @@ run https://github.com/owner/repo
 check 'no latest release falls back to numeric stable-looking tags' test "$output" = 1.10.0
 check 'fallback succeeds' test "$status" -eq 0
 check 'fallback makes two curl calls' test "$(wc -l < "$CURL_LOG")" -eq 2
+cat > "$TAGS_FILE" <<'HTML'
+<a href="/FFmpeg/FFmpeg/releases/tag/n8.1.3">maintenance</a>
+<a href="/FFmpeg/FFmpeg/releases/tag/n9.0.2">stable</a>
+<a href="https://github.com/FFmpeg/FFmpeg/releases/tag/n9.1-dev">preview</a>
+<a href="/other/FFmpeg/releases/tag/n99.0">unrelated</a>
+<a href="https://evil.example/FFmpeg/FFmpeg/releases/tag/n98.0">foreign</a>
+HTML
+run https://github.com/ffmpeg/ffmpeg
+check 'FFmpeg canonical casing returns the stable version' test "$output" = 9.0.2
+check 'FFmpeg canonical casing succeeds' test "$status" -eq 0
+check 'FFmpeg lookup makes only two requests' test "$(wc -l < "$CURL_LOG")" -eq 2
+printf '<a href="https://github.com/OWNER/Repo/releases/tag/V3.2.1">stable</a>\n' > "$TAGS_FILE"
+run https://github.com/owner/repo
+check 'absolute tag links accept canonical repository casing' test "$output" = 3.2.1
 export LATEST_URL=https://github.com/renamed/project/releases/latest
 printf '<a href="/renamed/project/releases/tag/v4.0">renamed</a>\n' > "$TAGS_FILE"
 run https://github.com/owner/repo

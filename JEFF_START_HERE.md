@@ -26,7 +26,10 @@ library links or the timezone. Existing pinned releases were retained.
 `/home/jman/tmp/script-repo/Bash/misc/source-git-repo-version.sh` has a new
 `-h`/`--help` menu with cyan headings, green commands, and clearer spacing.
 Help fits an 80-column terminal and honors `NO_COLOR`; redirected output stays
-plain. It follows GitHub's latest-release designation, uses tag
+plain. Tag links accept GitHub's canonical repository casing, including
+`FFmpeg/FFmpeg` when the requested URL uses `ffmpeg/ffmpeg`. The copy at
+`/home/jman/tmp/source-git-repo-version.sh` includes this fix and returned `9.0.2`
+for Jeff's exact FFmpeg command. It follows GitHub's latest-release designation, uses tag
 fallback only when a latest release is absent, validates input, rejects preview
 versions, and reports errors with nonzero status. Successful output is one
 numeric version line. The bulk caller uses the corrected lowercase URL and
@@ -38,7 +41,7 @@ Do not run multiple installers into the same prefix concurrently. Actual GNU
 compilation and real installed programs still need validation on a disposable
 machine. No installer, full test suite, or production build ran in this session.
 
-Focused validation: 206 GNU installer checks and 172 GitHub helper/caller checks
+Focused validation: 206 GNU installer checks and 176 GitHub helper/caller checks
 passed. Filesystem checks used real temporary links and copies; build and package
 commands were mocked. A real GNU Autoconf signature was accepted, and the same
 archive was rejected after modification. Live GitHub release and tag lookups
