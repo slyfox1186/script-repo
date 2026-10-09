@@ -2,93 +2,71 @@
 
 Updated: 2026-10-09
 
-Latest change: `/home/jman/tmp/script-repo/Bash/Misc/check-gcc-architecture.sh`
-now asks GCC to detect the host architecture with `-march=native`, replacing the
-hardcoded CPU list. It prints one architecture name, supports an optional GCC
-executable argument or `GCC` environment variable, and reports detection failures
-on stderr with a nonzero exit status. Native detection depends on compiler/host
-support; unsupported detection is an error rather than a guessed architecture.
-The returned name is GCC's selected architecture, not a complete set of native
-feature flags. Use `-march=native` directly when compiling for this machine if
-you want GCC's full native feature selection.
+Current work covers all 40 installers in
+`/home/jman/tmp/script-repo/Bash/installer-scripts/gnu-software/`, the GitHub
+version helper, and its bulk lookup caller. Jeff authorized committing and
+pushing all pending changes, including his manual directory moves and deletions.
+The release branch is `main`; use `git log -1` for the release commit.
 
-Verified locally: 20 focused shell regression checks, Bash syntax checks, full
-ShellCheck, and diff whitespace checks passed. The real GCC 16.2.1 query returned
-`znver4`; GCC accepted that result in a C syntax-only check. Other CPU families
-and compiler failures were covered with a fake compiler, not other physical
-machines. No full suite or production build was run. This change is not committed
-or pushed. No action is required from Jeff.
+No action is required from Jeff.
+
+The installers remain standalone. The legacy builders now use private temporary
+workspaces, checked downloads, bounded network waits and retries, validated
+options, configurable `JOBS`, and cleanup prompts that retain files at EOF.
+Version parsing, compiler selection, build paths, package checks, and publication
+of binaries, headers, and pkg-config files were corrected. Meson projects use
+Ninja, and release archives use their shipped configure scripts.
+
+GCC now rejects missing or invalid GNU signatures and failed prerequisite checks,
+retains dependency-check results, and reports versioned compiler installations
+correctly. Saved static binaries survive build cleanup. glibc remains isolated
+in its versioned prefix, requires passing tests, and no longer modifies global
+library links or the timezone. Existing pinned releases were retained.
+
+`/home/jman/tmp/script-repo/Bash/misc/source-git-repo-version.sh` has a new
+`-h`/`--help` menu. It follows GitHub's latest-release designation, uses tag
+fallback only when a latest release is absent, validates input, rejects preview
+versions, and reports errors with nonzero status. Successful output is one
+numeric version line. The bulk caller uses the corrected lowercase URL and
+downloads the helper once, completely, before execution.
+
+Read `/home/jman/tmp/script-repo/Bash/installer-scripts/gnu-software/README.md`
+for resource controls, cleanup behavior, install locations, and validation limits.
+Do not run multiple installers into the same prefix concurrently. Actual GNU
+compilation and real installed programs still need validation on a disposable
+machine. No installer, full test suite, or production build ran in this session.
+
+Focused validation: 205 GNU installer checks and 163 GitHub helper/caller checks
+passed. Filesystem checks used real temporary links and copies; build and package
+commands were mocked. A real GNU Autoconf signature was accepted, and the same
+archive was rejected after modification. Live GitHub release and tag lookups
+also passed. Bash syntax, the repository's ShellCheck error baseline, Ruff
+0.16.6 lint, Python compile checks, and diff integrity passed across tracked files.
 
 Repeat the focused checks:
 
 ```bash
-bash /home/jman/tmp/script-repo/tests/check_gcc_architecture_test.sh
+bash /home/jman/tmp/script-repo/tests/gnu_installers_test.sh
+bash /home/jman/tmp/script-repo/tests/source_git_repo_version_test.sh
 ```
 
-Previous change: removed `/home/jman/tmp/script-repo/Bash/QNAP/` and both scripts
-at Jeff's request. No references to either script or directory were found in
-the repository before deletion. Verified the directory is absent and the staged
-removal contains exactly the two tracked scripts. No action is required from Jeff.
-
-Published as `75e3285c`: Jeff's move of the five Arch installer files from
-`Bash/Installer-Scripts/Arch-Linux/` to
-`Bash/Arch-Linux-Scripts/install-arch-os/` on GitHub branch `main`.
-All five files are byte-for-byte unchanged. The four shell scripts passed
-`bash -n` and `shellcheck -S error`. No repository references to the moved
-files' old paths were found. The installation guide's three custom download
-domains could not be resolved from this machine; their redirect targets remain
-unverified. No installer was executed and no full local suite was run.
-
-No action is required from Jeff. To locate the moved files:
-`/home/jman/tmp/script-repo/Bash/Arch-Linux-Scripts/install-arch-os/`.
-GitHub reports the `Python package` workflow is manually disabled, so the
-configured Python and shell CI checks do not run on push. CodeQL runs separately.
-
-Previous networking work:
-
-The review and improvements to `/home/jman/tmp/script-repo/Bash/Networking/`
-are complete locally. Both existing entry points now use the shared
-`networking-common.sh` helper. Keep all three files together.
-
-The networking release was committed as `88bb4da9` on GitHub
-`slyfox1186/script-repo`, branch `main`.
-
-The networking tools now validate input, preview changes, retain fresh backups,
-check command failures, and recover files after failure or interruption. Netplan
-validates in a temporary root and uses timed confirmation. The ifupdown tool
-preserves unrelated interfaces, IPv6 stanzas, and retained options; it offers
-save-only operation and refuses immediate activation over SSH.
-
-Read `/home/jman/tmp/script-repo/Bash/Networking/README.md` for requirements,
-usage, supported configurations, and recovery instructions. Neither tool installs
-packages or switches the machine's network manager. Netplan requires modern
-`get`, `set`, `generate`, and `try` commands; complex configurations need manual
-editing.
-
-Validation: 56 focused sandbox tests passed using Python 3.13.15 and pytest 9.1.1.
-All three shell files passed Bash syntax checks and full ShellCheck. The new test
-file passed Ruff 0.16.6 lint and formatting checks and Python compilation. Diff
-whitespace checks passed. No full suite, production build, or live network changes
-were run. Neither Netplan nor ifupdown is installed on this development machine.
-Their real parsers, DHCP/DNS behavior, and activation remain unverified.
-
-The next validation step before production use is a disposable Debian/Ubuntu
-machine with the matching network backend and a local console. The focused check
-can be repeated without changing networking:
-
-```bash
-/home/jman/miniconda3/envs/agent-duet/bin/python -m pytest /home/jman/tmp/script-repo/tests/test_networking_scripts.py -q
-```
+Python validation uses the verified interpreter
+`/home/jman/miniconda3/envs/agent-duet/bin/python` (Python 3.13.15). Ruff 0.16.6
+was installed in that compatible environment for the repository's lint gate.
+GitHub's `Python package` workflow is manually disabled; CodeQL is active.
 
 Previous project facts retained for continuity:
 
-- `.bashrc` loads the single `.bash_aliases` file. `arch-scripts.sh` omits modular
-  alias files and backs up an installed alias directory. This work does not alter
-  that startup or installer behavior.
-- The mirror regression has a previously recorded `rr` assertion failure. The
-  Rust toolchain was previously found to lack rustfmt and Clippy. Neither area
-  was changed or re-tested in this task.
-- The prior permission cleanup retained ownership and removed group/other write
-  access, special permission bits, and extended ACLs. Its old-path snapshot is
-  `/home/jman/tmp/2026-10-09_script-repo_permissions_BqiFMM/before.acl`, predating
-  the pull to `cc654bf8`. It is not a rollback for this networking work.
+- Architecture detection is at
+  `/home/jman/tmp/script-repo/Bash/misc/check-gcc-architecture.sh`. It queries
+  GCC's native selection instead of maintaining a CPU list. It prints an
+  architecture name, accepts a compiler argument or `GCC`, and fails when native
+  detection is unsupported. That work was included in commit `8720da4b`.
+- Networking tools and their usage/recovery guide are at
+  `/home/jman/tmp/script-repo/Bash/networking/`. The prior networking release was
+  `88bb4da9`. Real Netplan/ifupdown activation remains unverified on this machine.
+- Personal dotfiles in `/home/jman/tmp/script-repo/Bash/arch-linux-scripts/`
+  target Ubuntu/APT. The retained `.bashrc` loads `.bash_aliases`; modular alias
+  files remain omitted by the installer.
+- QNAP scripts were removed at Jeff's request. Earlier permission snapshots
+  predate repository pulls and are not rollback records for this work.

@@ -1,6 +1,25 @@
 #!/usr/bin/env bash
 
-##  Github Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer-Scripts/GNU-Software/build-nettle
+# Keep these helpers local so a downloaded installer remains standalone.
+set -Ee -o pipefail
+trap 'printf "Build failed at line %s. Build files were retained for inspection.\n" "$LINENO" >&2; exit 1' ERR
+
+gnu_curl() {
+    command curl -q --fail --location --show-error --retry 3 --retry-delay 2 \
+        --connect-timeout 15 --max-time 600 --proto '=https' --proto-redir '=https' \
+        --user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36' "$@"
+}
+
+gnu_new_workdir() {
+    local base="${TMPDIR:-/tmp}"
+    [[ "$base" == /* && -d "$base" ]] || { printf 'TMPDIR must be an existing absolute directory.\n' >&2; return 1; }
+    mktemp -d -- "$base/${0##*/}.XXXXXX"
+}
+
+gnu_jobs="${JOBS:-$(nproc)}"
+[[ "$gnu_jobs" =~ ^[1-9][0-9]*$ ]] || { printf 'JOBS must be a positive integer.\n' >&2; exit 1; }
+
+##  Github Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/installer-scripts/gnu-software/build-nettle
 ##  Purpose: build gnu nettle
 ##  Updated: 08.01.23
 ##  Script version: 2.0
@@ -36,11 +55,7 @@ fail() {
 }
 
 cleanup() {
-    if sudo rm -fr "$cwd"; then
-        log "The build files were removed successfully."
-    else
-        warn "The build files failed to remove."
-    fi
+    rm -rf -- "$cwd"
 }
 
 install_dependencies() {
@@ -130,6 +145,7 @@ install_dependencies
 if [ "$verbose" = true ]; then
     log "Creating working directory..."
 fi
+cwd=$(gnu_new_workdir)
 mkdir -p "$cwd"
 
 # Download archive
@@ -137,7 +153,7 @@ if [ ! -f "$cwd/$archive_name" ]; then
     if [ "$verbose" = true ]; then
         log "Downloading $archive_url..."
     fi
-    curl -Lso "$cwd/$archive_name" "$archive_url"
+    gnu_curl -Lso "$cwd/$archive_name" "$archive_url"
 else
     if [ "$verbose" = true ]; then
         log "Archive already exists: $cwd/$archive_name"
@@ -153,16 +169,16 @@ tar -xf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1 || fail
 
 # Build and install
 cd "$cwd/$archive_dir" || fail "Failed to change directory to $cwd/$archive_dir"
-autoreconf -fi
+
 cd build || fail "Failed to change directory to build"
 
 ../configure --prefix="$install_dir" --disable-documentation --enable-gcov
 
 if [ "$verbose" = true ]; then
     log "Building and installing nettle..."
-    make "-j$(nproc --all)" || fail "Failed to build nettle"
+    make "-j$gnu_jobs" || fail "Failed to build nettle"
 else
-    make "-j$(nproc --all)" >/dev/null 2>&1 || fail "Failed to build nettle"
+    make "-j$gnu_jobs" >/dev/null 2>&1 || fail "Failed to build nettle"
 fi
 
 sudo make install >/dev/null 2>&1 || fail "Failed to install nettle"
@@ -172,8 +188,9 @@ if [ "$verbose" = true ]; then
     log "Creating symlinks..."
 fi
 for file in "$install_dir"/bin/*; do
+    [[ -e "$file" || -L "$file" ]] || continue
     filename=$(basename "$file")
-    linkname=${filename#*-}
+    linkname=$filename
     sudo ln -sf "$file" "/usr/local/bin/$linkname" || warn "Failed to create symlink for $filename"
 done
 

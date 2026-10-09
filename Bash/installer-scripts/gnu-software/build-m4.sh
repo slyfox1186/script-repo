@@ -1,6 +1,25 @@
 #!/usr/bin/env bash
 
-##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer-Scripts/GNU-Software/build-m4.sh
+# Keep these helpers local so a downloaded installer remains standalone.
+set -Ee -o pipefail
+trap 'printf "Build failed at line %s. Build files were retained for inspection.\n" "$LINENO" >&2; exit 1' ERR
+
+gnu_curl() {
+    command curl -q --fail --location --show-error --retry 3 --retry-delay 2 \
+        --connect-timeout 15 --max-time 600 --proto '=https' --proto-redir '=https' \
+        --user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36' "$@"
+}
+
+gnu_new_workdir() {
+    local base="${TMPDIR:-/tmp}"
+    [[ "$base" == /* && -d "$base" ]] || { printf 'TMPDIR must be an existing absolute directory.\n' >&2; return 1; }
+    mktemp -d -- "$base/${0##*/}.XXXXXX"
+}
+
+gnu_jobs="${JOBS:-$(nproc)}"
+[[ "$gnu_jobs" =~ ^[1-9][0-9]*$ ]] || { printf 'JOBS must be a positive integer.\n' >&2; exit 1; }
+
+##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/installer-scripts/gnu-software/build-m4.sh
 ##  Purpose: build gnu m4
 ##  Updated: 02.20.24
 ##  Script version: 2.0
@@ -37,16 +56,18 @@ fail() {
 }
 
 cleanup() {
-    local choice
-    echo
-    read -p "Remove temporary build directory '$cwd'? [y/N] " response
-    case "$response" in
-        [yY]*|"")
-        sudo rm -rf "$cwd"
-        log_msg "Build directory removed."
-        ;;
-        [nN]*) ;;
-    esac
+    local response
+    while true; do
+        if ! read -r -p "Remove build directory '$cwd'? [y/N] " response; then
+            printf '\nBuild files retained at %s\n' "$cwd"
+            return 0
+        fi
+        case "$response" in
+            1|y|Y|yes|YES) rm -rf -- "$cwd"; return 0 ;;
+            2|n|N|no|NO|"") printf 'Build files retained at %s\n' "$cwd"; return 0 ;;
+            *) printf 'Enter y or n.\n' >&2 ;;
+        esac
+    done
 }
 
 install_dependencies() {
@@ -66,7 +87,6 @@ install_dependencies() {
     if [ ${#missing_pkgs[@]} -gt 0 ]; then
         sudo apt update
         sudo apt install -y "${missing_pkgs[@]}"
-        sudo apt -y autoremove
     fi
 }
 
@@ -134,6 +154,7 @@ install_dependencies
 if [ "$verbose" = true ]; then
     log "Creating working directory..."
 fi
+cwd=$(gnu_new_workdir)
 mkdir -p "$cwd"
 
 # Download archive
@@ -141,7 +162,7 @@ if [ ! -f "$cwd/$archive_name" ]; then
     if [ "$verbose" = true ]; then
         log "Downloading $archive_url..."
     fi
-    curl -Lso "$cwd/$archive_name" "$archive_url"
+    gnu_curl -Lso "$cwd/$archive_name" "$archive_url"
 else
     if [ "$verbose" = true ]; then
         log "Archive already exists: $cwd/$archive_name"
@@ -165,7 +186,7 @@ if [ "$verbose" = true ]; then
                  --enable-c++ \
                  --enable-threads=posix \
                  --with-dmalloc
-    make "-j$(nproc --all)" || fail "Failed to build m4"
+    make "-j$gnu_jobs" || fail "Failed to build m4"
     log "Installing m4..."
     sudo make install || fail "Failed to install m4"
 else
@@ -175,7 +196,7 @@ else
                  --enable-c++ \
                  --enable-threads=posix \
                  --with-dmalloc
-    make "-j$(nproc --all)" || fail "Failed to build m4"
+    make "-j$gnu_jobs" || fail "Failed to build m4"
     sudo make install || fail "Failed to install m4"
 fi
 
@@ -184,9 +205,10 @@ if [ "$verbose" = true ]; then
     log "Creating symlinks..."
 fi
 for file in "$install_dir"/bin/*; do
+    [[ -e "$file" || -L "$file" ]] || continue
     filename=$(basename "$file")
-    linkname=${filename#*-}
-    ln -sf "$file" "/usr/local/bin/$linkname" || warn "Failed to create symlink for $filename"
+    linkname=$filename
+    sudo ln -sf "$file" "/usr/local/bin/$linkname" || warn "Failed to create symlink for $filename"
 done
 
 # Cleanup if requested

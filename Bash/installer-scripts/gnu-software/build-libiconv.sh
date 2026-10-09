@@ -1,5 +1,44 @@
 #!/usr/bin/env bash
 
+# Keep these helpers local so a downloaded installer remains standalone.
+set -Ee -o pipefail
+trap 'printf "Build failed at line %s. Build files were retained for inspection.\n" "$LINENO" >&2; exit 1' ERR
+
+gnu_curl() {
+    command curl -q --fail --location --show-error --retry 3 --retry-delay 2 \
+        --connect-timeout 15 --max-time 600 --proto '=https' --proto-redir '=https' \
+        --user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36' "$@"
+}
+
+gnu_wget() {
+    command wget --timeout=30 --tries=3 --https-only \
+        --user-agent='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36' "$@"
+}
+
+gnu_link_dir() {
+    local source_dir="$1" destination="$2" pattern="${3:-*}" file target
+    [[ -d "$source_dir" ]] || return 0
+    for file in "$source_dir"/*; do
+        [[ -e "$file" || -L "$file" ]] || continue
+        # The caller supplies a filename glob, for example *.pc.
+        # shellcheck disable=SC2053
+        [[ "${file##*/}" == $pattern ]] || continue
+        target="$destination/${file##*/}"
+        [[ ! -d "$target" || -L "$target" ]] || { printf 'Cannot replace directory %s with a symlink.\n' "$target" >&2; return 1; }
+        sudo mkdir -p -- "$destination"
+        sudo ln -sfn -- "$file" "$target"
+    done
+}
+
+gnu_new_workdir() {
+    local base="${TMPDIR:-/tmp}"
+    [[ "$base" == /* && -d "$base" ]] || { printf 'TMPDIR must be an existing absolute directory.\n' >&2; return 1; }
+    mktemp -d -- "$base/${0##*/}.XXXXXX"
+}
+
+gnu_jobs="${JOBS:-$(nproc)}"
+[[ "$gnu_jobs" =~ ^[1-9][0-9]*$ ]] || { printf 'JOBS must be a positive integer.\n' >&2; exit 1; }
+
 #  Purpose: Build libiconv
 #  Changed: Static build to libiconv
 #  Updated: 06.19.24
@@ -18,7 +57,7 @@ NC='\033[0m'
 
 script_ver="1.0"
 prog_name="libiconv"
-version=$(curl -fsS "https://ftp.gnu.org/gnu/libiconv/" | grep -oP 'libiconv-\K([\d.]){4}' | sort -ruV | head -n1)
+version=$(gnu_curl -fsS "https://ftp.gnu.org/gnu/libiconv/" | grep -oP 'libiconv-\K[0-9]+(\.[0-9]+)+(?=\.tar\.)' | sort -ruV | sed -n '1p')
 archive_name="$prog_name-$version"
 archive_url="https://ftp.gnu.org/gnu/libiconv/$archive_name.tar.gz"
 archive_ext="${archive_url##*.}"
@@ -51,7 +90,7 @@ exit_fn() {
 }
 
 cleanup() {
-    sudo rm -fr "$cwd"
+    rm -rf -- "$cwd"
 }
 
 # Define environment variables
@@ -89,29 +128,17 @@ required_packages() {
     fi
 }
 
-compiler_flags() {
-    CC="gcc"
-    CXX="g++"
-    CFLAGS="-O2 -fPIC -fPIE -mtune=native -DNDEBUG -fstack-protector-strong -Wno-unused-parameter"
-    CXXFLAGS="$CFLAGS"
-    CPPFLAGS="-D_FORTIFY_SOURCE=2"
-    LDFLAGS="-Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now,-rpath,$install_dir/lib"
-    PATH="/usr/lib/ccache:$HOME/perl5/bin:$HOME/.cargo/bin:$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin"
-    PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/lib/pkgconfig"
-    export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS PATH PKG_CONFIG_PATH
-}
 
 # Helper function to download and extract archives
 download_archive() {
-    local archive_ext archive_name archive_url tar_file
+    local archive_name archive_url tar_file
     archive_name="$1"
     archive_url="$2"
-    archive_ext="${archive_url##*.}"
     tar_file="$3"
 
     log "Downloading \"$archive_url\" saving as \"$tar_file\""
 
-    wget --show-progress -cqO "$cwd/$tar_file" "$archive_url" || fail "WGET failed to download \"$tar_file\". Line: $LINENO"
+    gnu_wget --show-progress -cqO "$cwd/$tar_file" "$archive_url" || fail "WGET failed to download \"$tar_file\". Line: $LINENO"
 }
 
 extract_archive() {
@@ -135,7 +162,7 @@ build_and_install() {
     ../configure --prefix="$install_dir/$archive_name" --enable-static --with-pic || fail "Failed to execute: configure $archive_name. Line: $LINENO"
 
     log "Building $archive_name..."
-    make "-j$(nproc --all)" || fail "Failed to execute: make -j$(nproc --all). Line: $LINENO"
+    make "-j$gnu_jobs" || fail "Failed to execute: make -j$gnu_jobs. Line: $LINENO"
 
     log "Installing $archive_name..."
     sudo make install || fail "Failed execute: sudo make install. Line: $LINENO"
@@ -145,19 +172,10 @@ build_and_install() {
 }
 
 create_soft_links() {
-    local archive_name filename install_dir softlink
-    archive_name="$1"
-    install_dir="$2"
-
-    log "Creating symlinks..."
-    for file in "$install_dir/$archive_name/bin/"*; do
-        filename=$(basename "$file")
-        softlink=${filename#*-}
-        sudo ln -sf "$file" "/usr/local/bin/$softlink" || warn "Failed to create soft link for $filename. Line: $LINENO"
-    done
-
-    sudo ln -sf "$install_dir/lib/pkgconfig/"*.pc "/usr/local/lib/pkgconfig/"
-    sudo ln -sf "$install_dir/include/"* "/usr/local/include/"
+    local archive_name="$1" install_dir="$2"
+    gnu_link_dir "$install_dir/$archive_name/bin" /usr/local/bin
+    gnu_link_dir "$install_dir/$archive_name/lib/pkgconfig" /usr/local/lib/pkgconfig '*.pc'
+    gnu_link_dir "$install_dir/$archive_name/include" /usr/local/include
 }
 
 ld_linker_path() {
@@ -171,27 +189,25 @@ ld_linker_path() {
 }
 
 main_menu() {
-    # Remove any leftover files from previous attempts
-    [[ -d "$cwd/$archive_name" ]] && sudo rm -fr "$cwd/$archive_name" 2>/dev/null
-
     # Create output directory
+    cwd=$(gnu_new_workdir)
     mkdir -p "$cwd/$archive_name/build"
 
     # Install the required apt packages
     required_packages
-    
+
     # Set the compilers and their flags
-    compiler_flags
-    
+    set_env_vars
+
     # Download the source code archives
     download_archive "$archive_name" "$archive_url" "$tar_file"
-    
+
     # Extract the source code from the archives
     extract_archive "$archive_name" "$tar_file"
-    
+
     # Install the program
     build_and_install "$archive_name" "$install_dir" "$LDFLAGS"
-    
+
     # Create the softlinks in /usr/local/bin so they will be found in most users default PATH
     create_soft_links "$archive_name" "$install_dir"
 

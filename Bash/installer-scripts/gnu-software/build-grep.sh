@@ -1,25 +1,66 @@
 #!/usr/bin/env bash
 
-# GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer-Scripts/GNU-Software/build-grep.sh
+# Keep these helpers local so a downloaded installer remains standalone.
+set -Ee -o pipefail
+trap 'printf "Build failed at line %s. Build files were retained for inspection.\n" "$LINENO" >&2; exit 1' ERR
+
+gnu_curl() {
+    command curl -q --fail --location --show-error --retry 3 --retry-delay 2 \
+        --connect-timeout 15 --max-time 600 --proto '=https' --proto-redir '=https' \
+        --user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36' "$@"
+}
+
+gnu_wget() {
+    command wget --timeout=30 --tries=3 --https-only \
+        --user-agent='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36' "$@"
+}
+
+gnu_link_dir() {
+    local source_dir="$1" destination="$2" pattern="${3:-*}" file target
+    [[ -d "$source_dir" ]] || return 0
+    for file in "$source_dir"/*; do
+        [[ -e "$file" || -L "$file" ]] || continue
+        # The caller supplies a filename glob, for example *.pc.
+        # shellcheck disable=SC2053
+        [[ "${file##*/}" == $pattern ]] || continue
+        target="$destination/${file##*/}"
+        [[ ! -d "$target" || -L "$target" ]] || { printf 'Cannot replace directory %s with a symlink.\n' "$target" >&2; return 1; }
+        sudo mkdir -p -- "$destination"
+        sudo ln -sfn -- "$file" "$target"
+    done
+}
+
+gnu_new_workdir() {
+    local base="${TMPDIR:-/tmp}"
+    [[ "$base" == /* && -d "$base" ]] || { printf 'TMPDIR must be an existing absolute directory.\n' >&2; return 1; }
+    mktemp -d -- "$base/${0##*/}.XXXXXX"
+}
+
+gnu_jobs="${JOBS:-$(nproc)}"
+[[ "$gnu_jobs" =~ ^[1-9][0-9]*$ ]] || { printf 'JOBS must be a positive integer.\n' >&2; exit 1; }
+
+# GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/installer-scripts/gnu-software/build-grep.sh
 # Purpose: Build GNU grep
 # Updated: 05.15.24
 # Script version: 2.4
 
 CYAN='\033[0;36m'
 GREEN='\033[0;32m'
-RED='\033[0;31m'  
+RED='\033[0;31m'
 YELLOW='\033[0;33m'
 NC='\033[0m' # No Color
 
 # Set the variables
 script_ver=2.4
 prog_name="grep"
-default_version=$(curl -fsS "https://ftp.gnu.org/gnu/$prog_name/" | grep -oP '\d\.[\d.]+(?=\.tar\.[a-z]+)' | sort -ruV | head -n1)
+default_version="latest"
+version=""
+uninstall=false
 install_dir="/usr/local/programs"
-cwd="$PWD/$prog_name-build-script" 
+cwd="$PWD/$prog_name-build-script"
 compiler="gcc"
 
-# Enhanced logging and error handling 
+# Enhanced logging and error handling
 log() {
     echo -e "${GREEN}[INFO]${NC} $1"
 }
@@ -52,7 +93,7 @@ exit_function() {
 }
 
 cleanup() {
-    sudo rm -fr "$cwd"  
+    rm -rf -- "$cwd"
 }
 
 required_packages() {
@@ -60,13 +101,13 @@ required_packages() {
     local pkg
     pkgs=(
           autoconf automake build-essential ccache libintl-perl
-          libltdl-dev libtool libsigsegv-dev libticonv-dev m4
+          libltdl-dev libtool libsigsegv-dev m4
       )
 
     missing_pkgs=()
     for pkg in "${pkgs[@]}"; do
         if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
-            missing_pkgs+=("$pkg")  
+            missing_pkgs+=("$pkg")
         fi
     done
 
@@ -78,10 +119,14 @@ required_packages() {
 
 set_compiler_flags() {
     CC="$compiler"
-    CXX="$compiler++"
-    CFLAGS="-O2 -pipe -march=native"   
+    case "$compiler" in
+        gcc) CXX="g++" ;;
+        clang) CXX="clang++" ;;
+        *) fail "Unsupported compiler: $compiler. Choose gcc or clang." ;;
+    esac
+    CFLAGS="-O2 -pipe -march=native"
     CXXFLAGS="$CFLAGS"
-    LDFLAGS="-Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now,-rpath,$install_dir/lib"
+    LDFLAGS="-Wl,-O1,--sort-common,--as-needed,-z,relro,-z,now,-rpath,$install_dir/$archive_name/lib"
     # Set PATH and PKG_CONFIG_PATH
     PATH="/usr/lib/ccache:$PATH"
     PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/lib64/pkgconfig:/usr/local/share/pkgconfig:/usr/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/share/pkgconfig"
@@ -91,7 +136,7 @@ set_compiler_flags() {
 }
 
 download_archive() {
-    wget --show-progress -cqO "$cwd/$tar_file" "$archive_url" || fail "Failed to download archive with WGET. Line: $LINENO"
+    gnu_wget --show-progress -cqO "$cwd/$tar_file" "$archive_url" || fail "Failed to download archive with WGET. Line: $LINENO"
 }
 
 extract_archive() {
@@ -101,7 +146,6 @@ extract_archive() {
 configure_build() {
     cd "$cwd/$archive_name" || fail "Failed to cd into $cwd/$archive_name. Line: $LINENO"
 
-    autoreconf -fi
     cd build || exit 1
     ../configure --prefix="$install_dir/$archive_name" --disable-nls --enable-threads=posix \
                  --with-libsigsegv --with-libsigsegv-prefix=/usr --with-libiconv-prefix=/usr \
@@ -109,7 +153,7 @@ configure_build() {
 }
 
 compile_build() {
-    make "-j$(nproc --all)" || fail "Failed to execute: make build. Line: $LINENO"
+    make "-j$gnu_jobs" || fail "Failed to execute: make build. Line: $LINENO"
 }
 
 install_build() {
@@ -117,7 +161,7 @@ install_build() {
 }
 
 create_soft_links() {
-    [[ -d "$install_dir/$archive_name/bin" ]] && sudo ln -sf "$install_dir/$archive_name/bin/"* "/usr/local/bin/"
+    gnu_link_dir "$install_dir/$archive_name/bin" /usr/local/bin
 }
 
 uninstall_grep() {
@@ -126,8 +170,8 @@ uninstall_grep() {
     if [[ -d "$grep_dir" ]]; then
         log "Uninstalling $prog_name from $grep_dir"
         sudo rm -rf "$grep_dir"
-        sudo rm "/etc/ld.so.conf.d/custom_$prog_name.conf"
-        sudo ldconfig  
+        sudo rm -f -- "/etc/ld.so.conf.d/custom_$prog_name.conf"
+        sudo ldconfig
         log "$prog_name has been uninstalled"
     else
         log "$prog_name is not installed"
@@ -137,51 +181,62 @@ uninstall_grep() {
 list_versions() {
     log "Available versions of $prog_name:"
     echo
-    curl -fsS "https://ftp.gnu.org/gnu/$prog_name/" | grep -oP '\d\.[\d.]+(?=\.tar\.[a-z]+)' | sort -ruV
+    gnu_curl -fsS "https://ftp.gnu.org/gnu/$prog_name/" | grep -oP '[0-9]+(\.[0-9]+)+(?=\.tar\.[a-z]+)' | sort -ruV
 }
 
 main_menu() {
     # Parse command-line arguments
     while [[ $# -gt 0 ]]; do
         case "$1" in
-            -v|--version)  
+            -v|--version)
+                [[ $# -ge 2 && -n "$2" && "$2" != -* ]] || { printf 'Option %s requires a value.\n' "$1" >&2; exit 1; }
                 version="$2"
                 shift 2
                 ;;
             -l|--list)
                 list_versions
                 exit 0
-                ;;  
+                ;;
             -u|--uninstall)
-                uninstall_grep
-                exit 0
+                uninstall=true
+                shift
                 ;;
             -c|--compiler)
-                compiler="$2" 
+                [[ $# -ge 2 && -n "$2" && "$2" != -* ]] || { printf 'Option %s requires a value.\n' "$1" >&2; exit 1; }
+                compiler="$2"
                 shift 2
                 ;;
             -h|--help)
                 print_usage
                 exit 0
-                ;; 
+                ;;
             *)
                 fail "Invalid option: $1"
                 ;;
         esac
     done
 
+    [[ "$compiler" == gcc || "$compiler" == clang ]] || fail "Unsupported compiler: $compiler. Choose gcc or clang."
+
     if [[ -z "$version" ]]; then
-        version="$default_version"
+        version=$(gnu_curl -fsS "https://ftp.gnu.org/gnu/$prog_name/" | grep -oP '[0-9]+(\.[0-9]+)+(?=\.tar\.[a-z]+)' | sort -ruV | sed -n '1p')
         log "No version specified, using default version: $version"
     fi
 
+    [[ "$version" =~ ^[0-9]+(\.[0-9]+)+$ ]] || fail "Invalid version: $version"
     archive_name="$prog_name-$version"
+    if [[ "$uninstall" == true ]]; then
+        uninstall_grep
+        exit 0
+    fi
     archive_url="https://ftp.gnu.org/gnu/$prog_name/$prog_name-$version.tar.xz"
-    archive_ext="${archive_url//*.}" 
+    archive_ext="${archive_url//*.}"
     tar_file="$archive_name.tar.$archive_ext"
 
     # Create output directory
-    [[ -d "$cwd/$archive_name" ]] && sudo rm -fr "$cwd/$archive_name"
+
+    cwd=$(gnu_new_workdir)
+
     mkdir -p "$cwd/$archive_name/build"
 
     required_packages
@@ -198,7 +253,7 @@ main_menu() {
 
 if [[ "$EUID" -eq 0 ]]; then
     echo "You must run this script without root or sudo."
-    exit 1  
+    exit 1
 fi
 
 main_menu "$@"

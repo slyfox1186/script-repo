@@ -1,8 +1,27 @@
 #!/usr/bin/env bash
 
+# Keep these helpers local so a downloaded installer remains standalone.
+set -Ee -o pipefail
+trap 'printf "Build failed at line %s. Build files were retained for inspection.\n" "$LINENO" >&2; exit 1' ERR
+
+gnu_curl() {
+    command curl -q --fail --location --show-error --retry 3 --retry-delay 2 \
+        --connect-timeout 15 --max-time 600 --proto '=https' --proto-redir '=https' \
+        --user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36' "$@"
+}
+
+gnu_new_workdir() {
+    local base="${TMPDIR:-/tmp}"
+    [[ "$base" == /* && -d "$base" ]] || { printf 'TMPDIR must be an existing absolute directory.\n' >&2; return 1; }
+    mktemp -d -- "$base/${0##*/}.XXXXXX"
+}
+
+gnu_jobs="${JOBS:-$(nproc)}"
+[[ "$gnu_jobs" =~ ^[1-9][0-9]*$ ]] || { printf 'JOBS must be a positive integer.\n' >&2; exit 1; }
+
 ###########################################################################################################
 ##
-##  Github Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer-Scripts/GNU-Software/build-imath
+##  Github Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/installer-scripts/gnu-software/build-imath
 ##
 ##  Purpose: build gnu imath
 ##
@@ -27,7 +46,7 @@ archive_ext="${archive_url##*.}"
 archive_name="${archive_dir}.tar.${archive_ext}"
 cwd="$PWD/imath-build-script"
 install_dir="/usr/local/programs/$archive_dir"
-user_agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
+user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36"
 
 # Functions
 log() {
@@ -51,25 +70,18 @@ fail() {
 }
 
 cleanup() {
-    if [ "$silent" != true ]; then
-        local choice
-        echo -e "${BLUE}============================================${NC}"
-        echo -e "${BLUE}  Do you want to clean up the build files?  ${NC}"
-        echo -e "${BLUE}============================================${NC}"
-        echo -e "[1] Yes"
-        echo -e "[2] No"
-        read -p "Your choice (1 or 2): " choice
-
-        case "$choice" in
-            1) rm -fr "$cwd";;
-            2) log "Skipping cleanup.";;
-            *)
-                warn "Invalid choice. Skipping cleanup."
-                ;;
+    local response
+    while true; do
+        if ! read -r -p "Remove build directory '$cwd'? [y/N] " response; then
+            printf '\nBuild files retained at %s\n' "$cwd"
+            return 0
+        fi
+        case "$response" in
+            1|y|Y|yes|YES) rm -rf -- "$cwd"; return 0 ;;
+            2|n|N|no|NO|"") printf 'Build files retained at %s\n' "$cwd"; return 0 ;;
+            *) printf 'Enter y or n.\n' >&2 ;;
         esac
-    else
-        rm -fr "$cwd"
-    fi
+    done
 }
 
 install_dependencies() {
@@ -85,8 +97,8 @@ install_dependencies() {
     done
 
     if [ ${#missing_pkgs[@]} -gt 0 ]; then
-        apt-get update
-        apt-get install -y "${missing_pkgs[@]}"
+        sudo apt-get update
+        sudo apt-get install -y "${missing_pkgs[@]}"
     fi
 }
 
@@ -154,12 +166,13 @@ install_dependencies
 
 # Create working directory
 log "Creating working directory..."
+cwd=$(gnu_new_workdir)
 mkdir -p "$cwd"
 
 # Download archive
 if [ ! -f "$cwd/$archive_name" ]; then
     log "Downloading $archive_url..."
-    curl -A "$user_agent" -Lso "$cwd/$archive_name" "$archive_url"
+    gnu_curl -A "$user_agent" -Lso "$cwd/$archive_name" "$archive_url"
 else
     log "Archive already exists: $cwd/$archive_name"
 fi
@@ -170,27 +183,29 @@ mkdir -p "$cwd/$archive_dir/build"
 tar -xf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1 || fail "Failed to extract archive"
 
 # Build and install
+cd "$cwd/$archive_dir" || fail "Failed to enter the Imath source directory."
 if [ "$verbose" = true ]; then
     log "Building and installing imath..."
     cmake -B build -DCMAKE_INSTALL_PREFIX="$install_dir" \
                    -DCMAKE_BUILD_TYPE=Release \
                    -G Ninja -Wno-dev
-    ninja "-j$(nproc --all)" -C build || fail "Failed to build imath"
-    ninja "-j$(nproc --all)" -C build install || fail "Failed to install imath"
+    ninja "-j$gnu_jobs" -C build || fail "Failed to build imath"
+    sudo ninja "-j$gnu_jobs" -C build install || fail "Failed to install imath"
 else
     cmake -B build -DCMAKE_INSTALL_PREFIX="$install_dir" \
                    -DCMAKE_BUILD_TYPE=Release \
                    -G Ninja -Wno-dev >/dev/null 2>&1
-    ninja "-j$(nproc --all)" -C build >/dev/null 2>&1 || fail "Failed to build imath"
-    ninja "-j$(nproc --all)" -C build install >/dev/null 2>&1 || fail "Failed to install imath"
+    ninja "-j$gnu_jobs" -C build >/dev/null 2>&1 || fail "Failed to build imath"
+    sudo ninja "-j$gnu_jobs" -C build install >/dev/null 2>&1 || fail "Failed to install imath"
 fi
 
 # Create symlinks
 log "Creating symlinks..."
 for file in "$install_dir"/bin/*; do
+    [[ -e "$file" || -L "$file" ]] || continue
     filename=$(basename "$file")
-    linkname=${filename#*-}
-    ln -sf "$file" "/usr/local/bin/$linkname" || warn "Failed to create symlink for $filename"
+    linkname=$filename
+    sudo ln -sf "$file" "/usr/local/bin/$linkname" || warn "Failed to create symlink for $filename"
 done
 
 # Cleanup if requested

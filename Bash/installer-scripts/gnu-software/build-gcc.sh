@@ -1,4 +1,15 @@
 #!/usr/bin/env bash
+
+gnu_curl() {
+    command curl -q --fail --location --show-error --retry 3 --retry-delay 2 \
+        --connect-timeout 15 --max-time 600 --proto '=https' --proto-redir '=https' \
+        --user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36' "$@"
+}
+
+gnu_wget() {
+    command wget --timeout=30 --tries=3 --https-only \
+        --user-agent='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36' "$@"
+}
 # shellcheck disable=SC2162 source=/dev/null
 
 # Strict error handling
@@ -7,7 +18,7 @@ set -euo pipefail
 # Set up file descriptors early for logging
 exec 3>&1 4>&2
 
-# GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer-Scripts/GNU-Software/build-gcc.sh
+# GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/installer-scripts/gnu-software/build-gcc.sh
 # Purpose: Build GNU GCC
 # GCC versions available: 10-15
 # Features: Automatically sources the latest release of each version.
@@ -15,9 +26,10 @@ exec 3>&1 4>&2
 # Script version: 1.9
 
 # Initialize secure temporary build directory
-build_dir="${TMPDIR:-/tmp}/build-gcc-$$"
-packages="$build_dir/packages"
-workspace="$build_dir/workspace"
+saved_binary_root="$PWD"
+build_dir=""
+packages=""
+workspace=""
 default_target_arch="x86_64-linux-gnu" # Default, can be overridden by detected pc_type
 target_arch="" # Will be set by pc_type
 debug_mode=0
@@ -96,12 +108,12 @@ log() {
 
 # Ensure pc_type and target_arch are set early
 # Try to determine the system's architecture triplet
-pc_type="$(gcc -dumpmachine 2>/dev/null)"
+pc_type="$(gcc -dumpmachine 2>/dev/null || true)"
 if [[ -z "$pc_type" ]]; then
     # Fallback if gcc is not available or fails to report
     log "WARNING" "Could not auto-detect machine type using 'gcc -dumpmachine'."
     # Attempt to get it from 'cc'
-    pc_type="$(cc -dumpmachine 2>/dev/null)"
+    pc_type="$(cc -dumpmachine 2>/dev/null || true)"
     if [[ -z "$pc_type" ]]; then
         log "WARNING" "Could not auto-detect machine type using 'cc -dumpmachine'. Using default: $default_target_arch"
         pc_type="$default_target_arch"
@@ -113,7 +125,6 @@ else
 fi
 target_arch="$pc_type" # Use detected pc_type as the target architecture
 
-echo "Initial dry_run value: $dry_run" >&2
 log "INFO" "Machine type (pc_type/target_arch) set to: $target_arch"
 
 setup_logging() {
@@ -414,108 +425,44 @@ set_environment() {
 }
 
 get_make_threads() {
-    # Calculate optimal thread count: total logical cores - 2, with minimum of 2
     local available_cores threads
-    available_cores="$(nproc --all 2>/dev/null || echo 4)"
+    if [[ -n ${JOBS:-} ]]; then
+        [[ "$JOBS" =~ ^[1-9][0-9]*$ ]] || { printf "JOBS must be a positive integer.\n" >&2; return 1; }
+        printf "%s\n" "$JOBS"
+        return 0
+    fi
+    available_cores="$(nproc 2>/dev/null || echo 1)"
     threads="$((available_cores - 2))"
 
-    # Ensure minimum of 2 threads
-    if [ "$threads" -lt 2 ]; then
-        threads="2"
+    # Leave two cores free when possible, allowing single-core hosts.
+    if [ "$threads" -lt 1 ]; then
+        threads="1"
     fi
 
     echo "$threads"
 }
 
 verify_checksum() {
-    local file version expected_checksum actual_checksum sig_url
-    file="$1"
-    version="$2" # Full version string e.g., 13.2.0
-    local major_version="${version%%.*}" # e.g. 13
+    local file="$1" version="$2" source_url verification_dir
+    source_url="${3:-https://ftp.gnu.org/gnu/gcc/gcc-$version/gcc-$version.tar.xz}"
+    [[ "$source_url" == https://ftp.gnu.org/gnu/* ]] || { log "ERROR" "Signature source must be the GNU HTTPS server."; return 1; }
+    verification_dir=$(mktemp -d "${TMPDIR:-/tmp}/gcc-verify.XXXXXX") || return 1
 
-    if [[ "$major_version" == "14" ]]; then
-        log "INFO" "Checksum verification for GCC $version (major version $major_version) uses a different signature format."
-        log "INFO" "Attempting to find a .sha512 file first."
-        local sha512_url="https://ftp.gnu.org/gnu/gcc/gcc-${version}/sha512.sum"
-        if expected_checksum="$(curl -fsSL "$sha512_url" | grep "gcc-${version}.tar.xz" | awk '{print $1}')"; then
-             if [[ -n "$expected_checksum" ]]; then
-                log "INFO" "Found SHA512 checksum for $file from $sha512_url"
-             else
-                log "WARNING" "Could not retrieve SHA512 checksum from $sha512_url for GCC $version."
-                log "WARNING" "Skipping checksum verification for GCC $version due to potentially new/different signature format."
-                return 0
-             fi
-        else
-            log "WARNING" "Could not retrieve SHA512 checksum from $sha512_url for GCC $version."
-            log "WARNING" "Skipping checksum verification for GCC $version due to potentially new/different signature format."
-            return 0
-        fi
-    else
-        # Traditional .sig files are GPG signatures
-        log "INFO" "GCC $version uses GPG signature files (.sig) for verification."
-
-        # Download signature file if not present
-        local sig_file="${file}.sig"
-        if [[ ! -f "$sig_file" ]]; then
-            log "INFO" "Downloading GPG signature file for GCC $version..."
-            sig_url="https://ftp.gnu.org/gnu/gcc/gcc-${version}/gcc-${version}.tar.xz.sig"
-            if ! curl -fsSL -o "$sig_file" "$sig_url"; then
-                log "WARNING" "Could not download signature file from $sig_url"
-                log "WARNING" "Skipping GPG verification for GCC $version."
-                return 0
-            fi
-        fi
-
-        # Fix GPG permissions if needed
-        if [[ -d "$HOME/.gnupg" ]]; then
-            chmod 700 "$HOME/.gnupg" 2>/dev/null || true
-            chmod 600 "$HOME/.gnupg"/* 2>/dev/null || true
-        fi
-
-        # Import GCC release signing keys if not already imported
-        log "INFO" "Importing GCC release signing keys..."
-        # Multiple known GCC signing keys - import all of them
-        local gcc_keys=(
-            "33C235A34C46AA3FFB293709A328C3A2C3C45C06"  # Jakub Jelinek
-            "7F74F97C103468EE5D750B583AB00996FC26A641"  # Recent GCC releases
-            "13975A70E63C361C73AE69EF6EEB81F8981C74C7"  # Richard Biener
-        )
-
-        for key in "${gcc_keys[@]}"; do
-            if ! gpg --list-keys "$key" >/dev/null 2>&1; then
-                gpg --keyserver keyserver.ubuntu.com --recv-keys "$key" 2>/dev/null || \
-                gpg --keyserver keys.openpgp.org --recv-keys "$key" 2>/dev/null || \
-                gpg --keyserver pgp.mit.edu --recv-keys "$key" 2>/dev/null || \
-                log "WARNING" "Could not import GCC signing key $key automatically."
-            fi
-        done
-
-        # Verify GPG signature
-        log "INFO" "Verifying GPG signature for $file..."
-        if gpg --verify "$sig_file" "$file" 2>&1 | tee /tmp/gpg_verify.log; then
-            log "INFO" "GPG signature verified successfully for $file."
-            rm -f /tmp/gpg_verify.log
-            return 0
-        else
-            log "WARNING" "GPG signature verification failed for $file."
-            cat /tmp/gpg_verify.log
-            rm -f /tmp/gpg_verify.log
-            log "WARNING" "This could indicate a compromised download or missing GPG keys."
-            log "WARNING" "Continuing anyway, but manual verification is recommended."
-            return 0
-        fi
+    # A private keyring avoids changing the user's keys and sharing logs in /tmp.
+    if ! gnu_curl -fsSL -o "$verification_dir/archive.sig" "$source_url.sig" ||
+       ! gnu_curl -fsSL -o "$verification_dir/gnu-keyring.gpg" "https://ftp.gnu.org/gnu/gnu-keyring.gpg"; then
+        log "ERROR" "Could not download verification files for $file."
+        rm -rf -- "$verification_dir"
+        return 1
     fi
-
-    log "INFO" "Calculating SHA512 checksum for local file: $file"
-    actual_checksum=$(sha512sum "$file" | awk '{print $1}')
-    log "INFO" "Actual SHA512 checksum: $actual_checksum"
-
-    if [[ "$expected_checksum" != "$actual_checksum" ]]; then
-        fail "Checksum mismatch for $file. Expected: $expected_checksum, Actual: $actual_checksum"
-    else
-        log "INFO" "Checksum verified successfully for $file."
+    if ! gpgv --homedir "$verification_dir" --keyring "$verification_dir/gnu-keyring.gpg" \
+        "$verification_dir/archive.sig" "$file"; then
+        log "ERROR" "Signature verification failed for $file. The source was not accepted."
+        rm -rf -- "$verification_dir"
+        return 1
     fi
-    return 0
+    rm -rf -- "$verification_dir"
+    log "INFO" "GNU signature verified for $file."
 }
 
 
@@ -644,7 +591,7 @@ save_static_binaries() {
         install_dir="${user_prefix%/}/gcc-$version"
     fi
 
-    save_dir="$PWD/gcc-${version}-static-binaries"
+    save_dir="$saved_binary_root/gcc-${version}-static-binaries"
 
     if [[ "$static_build" -eq 1 && "$save_binaries" -eq 1 ]]; then
         log "INFO" "Saving static binaries from $install_dir/bin to $save_dir"
@@ -674,13 +621,13 @@ save_static_binaries() {
             if [[ -f "$source_file" ]]; then
                 if verbose_logging_cmd sudo cp -f "$source_file" "$save_dir/"; then
                     log "INFO" "Copied $program_base_name to $save_dir"
-                    ((copied_count++))
+                    ((copied_count += 1))
                 else
                     log "WARNING" "Failed to copy $source_file to $save_dir"
                 fi
             else
                 log "WARNING" "Static binary not found (or not expected): $source_file"
-                ((not_found_count++))
+                ((not_found_count += 1))
             fi
         done
 
@@ -691,6 +638,7 @@ save_static_binaries() {
         fi
         [[ "$not_found_count" -gt 0 ]] && log "INFO" "$not_found_count expected binaries were not found (this may be normal depending on enabled languages)."
     fi
+    return 0
 }
 
 download_source_file() {
@@ -714,7 +662,7 @@ download_source_file() {
                 log "INFO" "Existing file $download_path seems valid. Skipping download."
                 # Optional: Add checksum verification here too for existing files
                 if [[ "$dry_run" -eq 0 ]]; then
-                    if ! verify_checksum "$download_path" "$version"; then
+                    if ! verify_checksum "$download_path" "$version" "$url"; then
                         log "WARNING" "Checksum verification failed for existing file $download_path. Will attempt re-download."
                         rm -f "$download_path" || { log "ERROR" "Failed to remove corrupted existing file: $download_path"; return 1; }
                     else
@@ -745,7 +693,7 @@ download_source_file() {
             fi
             # Use wget with progress, timeout, and continue options
             # -T for timeout, -c for continue
-            if ! wget --progress=bar:force:noscroll -T 60 -c -O "$download_path" "$url"; then
+            if ! gnu_wget --progress=bar:force:noscroll -T 60 -c -O "$download_path" "$url"; then
                 log "WARNING" "Download attempt $attempt for $file failed (wget exit code: $?)."
                 if [[ "$keep_build_dir" -eq 0 ]]; then
                     # Remove partial download if not keeping build dir
@@ -760,7 +708,7 @@ download_source_file() {
                 fi
                 log "INFO" "Retrying download in 5 seconds..."
                 sleep 5
-                ((attempt++))
+                ((attempt += 1))
                 continue # Retry download
             else
                 log "INFO" "Successfully downloaded $file."
@@ -778,12 +726,12 @@ download_source_file() {
                     fi
                     log "INFO" "Retrying download for corrupted file..."
                     sleep 2
-                    ((attempt++))
+                    ((attempt += 1))
                     continue # Retry download
                 else
                     log "INFO" "Downloaded file $download_path integrity verified (tar -tf)."
                     # Perform checksum verification
-                    if ! verify_checksum "$download_path" "$version"; then
+                    if ! verify_checksum "$download_path" "$version" "$url"; then
                          fail "Checksum verification failed for downloaded file $download_path" # fail will exit
                     fi
                     return 0 # Successful download and verification
@@ -867,24 +815,24 @@ create_symlinks() {
                 # Check if a conflicting file/symlink already exists
                 if [[ -e "$symlink_path" && ! -L "$symlink_path" ]]; then
                     log "WARNING" "A non-symlink file already exists at $symlink_path. Skipping symlink creation for $symlink_name."
-                    ((skipped_symlinks++))
+                    ((skipped_symlinks += 1))
                     continue
                 fi
                 # If it's a symlink, check if it already points to the correct executable
                 if [[ -L "$symlink_path" && "$(readlink -f "$symlink_path")" == "$(readlink -f "$executable_in_path")" ]]; then
                     log "INFO" "Symlink $symlink_path already exists and points to the correct executable. Skipping."
-                    ((skipped_symlinks++))
+                    ((skipped_symlinks += 1))
                     continue
                 fi
 
                 if [[ "$dry_run" -eq 1 ]]; then
                     log "INFO" "Dry run: would create/update symlink: sudo ln -sf $install_dir/bin/$executable_in_path $symlink_path"
-                    ((symlink_count++))
+                    ((symlink_count += 1))
                 else
                     log "INFO" "Creating symlink: $symlink_path -> $install_dir/bin/$executable_in_path"
                     if verbose_logging_cmd sudo ln -sf "$install_dir/bin/$executable_in_path" "$symlink_path"; then
                         created_symlinks+=("$symlink_path")
-                        ((symlink_count++))
+                        ((symlink_count += 1))
                     else
                         log "ERROR" "Failed to create symlink $symlink_path"
                     fi
@@ -901,6 +849,7 @@ create_symlinks() {
         log "INFO" "No new symlinks were created for GCC $version."
     fi
     [[ "$skipped_symlinks" -gt 0 ]] && log "INFO" "$skipped_symlinks symlinks were skipped (e.g. already exist or conflict)."
+    return 0
 }
 
 
@@ -914,7 +863,7 @@ install_dependencies() {
         binutils # For as, ld
         gawk m4 flex bison texinfo patch # GNU utilities for configure/build
         curl wget # For downloading sources
-        ca-certificates # For HTTPS downloads
+        ca-certificates gpgv # For HTTPS downloads and GNU signature checks
         ccache # To speed up recompilations
         libtool libtool-bin autoconf automake # Autotools
         zlib1g-dev # For zlib
@@ -934,9 +883,8 @@ install_dependencies() {
         if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
             log "INFO" "Package $pkg is not installed."
             pkgs_to_install+=("$pkg")
-        fi & # Run checks in parallel
+        fi
     done
-    wait # Wait for all background checks to complete
 
     if [[ "${#pkgs_to_install[@]}" -gt 0 ]]; then
         log "INFO" "Missing required packages: ${pkgs_to_install[*]}"
@@ -957,6 +905,43 @@ install_dependencies() {
     fi
 }
 
+download_gcc_prerequisites() {
+    local recipe="$1" tools_dir downloader downloader_path status user_agent
+    user_agent='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36'
+    [[ -x "$recipe" ]] || { log "ERROR" "Missing executable prerequisite recipe: $recipe"; return 1; }
+    tools_dir=$(mktemp -d "$build_dir/prerequisite-tools.XXXXXX") || return 1
+    for downloader in curl wget; do
+        downloader_path=$(type -P "$downloader") || continue
+        cat > "$tools_dir/$downloader" <<'WRAPPER'
+#!/usr/bin/env bash
+args=()
+for arg in "$@"; do
+    case "$arg" in
+        http://gcc.gnu.org/pub/gcc/infrastructure/*|ftp://gcc.gnu.org/pub/gcc/infrastructure/*)
+            arg="https://${arg#*://}" ;;
+    esac
+    args+=("$arg")
+done
+WRAPPER
+        if [[ "$downloader" == curl ]]; then
+            printf 'exec %q -q --fail --location --show-error --connect-timeout 15 --max-time 600 --retry 3 --proto "=https" --proto-redir "=https" --user-agent %q "${args[@]}"\n' \
+                "$downloader_path" "$user_agent" >> "$tools_dir/$downloader"
+        else
+            printf 'exec %q --no-config --timeout=30 --tries=3 --user-agent=%q "${args[@]}"\n' \
+                "$downloader_path" "$user_agent" >> "$tools_dir/$downloader"
+        fi
+        chmod 700 "$tools_dir/$downloader"
+    done
+    # Upstream still verifies its prerequisites against the signed source's checksums.
+    if PATH="$tools_dir:$PATH" verbose_logging_cmd "$recipe"; then
+        status=0
+    else
+        status=$?
+    fi
+    rm -rf -- "$tools_dir"
+    return "$status"
+}
+
 get_latest_gcc_release_version() {
     local major_version="$1" # e.g., 13
     local cache_file="$build_dir/.gcc_version_cache"
@@ -975,7 +960,7 @@ get_latest_gcc_release_version() {
         if [[ $age -lt $cache_age_seconds ]]; then
             # Use cached version if available for this major version
             local cached_release_version
-            cached_release_version=$(grep "^gcc-${major_version}:" "$cache_file" | cut -d: -f2)
+            cached_release_version=$(grep "^gcc-${major_version}:" "$cache_file" | cut -d: -f2 || true)
             if [[ -n "$cached_release_version" ]]; then
                 log "INFO" "Using cached latest release for GCC $major_version: $cached_release_version (cache age: $age seconds)"
                 echo "$cached_release_version"
@@ -988,22 +973,21 @@ get_latest_gcc_release_version() {
 
     log "INFO" "Fetching latest release version for GCC $major_version from ftp.gnu.org..."
     local ftp_url="https://ftp.gnu.org/gnu/gcc/"
-    local latest_release_version
+    local latest_release_version listing
     
     # Fetch directory listing, filter for gcc-MAJOR.MINOR.PATCH/, sort, and get the last one.
     # Regex matches gcc-MAJOR. (any digits for minor/patch) /
     # Example: gcc-13.2.0/
-    # For GCC 15, which is not yet released, this might return nothing or an early dev snapshot.
     # The sed commands strip "gcc-" and the trailing "/"
-    if ! listing=$(curl -fsSL "$ftp_url"); then
+    if ! listing=$(gnu_curl -fsSL "$ftp_url"); then
         log "ERROR" "Failed to fetch directory listing from $ftp_url"
         return 1
     fi
 
     latest_release_version=$(echo "$listing" |
-                            grep -oP "gcc-${major_version}[0-9.]+\/" |
+                            grep -oP "gcc-${major_version}\.[0-9]+\.[0-9]+/" |
                             sed -e 's/gcc-//' -e 's/\///' |
-                            sort -rV | head -n1
+                            sort -rV | sed -n '1p'
                         )
 
     if [[ -n "$latest_release_version" ]]; then
@@ -1017,10 +1001,6 @@ get_latest_gcc_release_version() {
         return 0
     else
         log "ERROR" "Failed to determine the latest release for GCC $major_version from $ftp_url."
-        # Specific warning for unreleased versions
-        if [[ "$major_version" -ge 15 ]]; then # Assuming 15+ might not be out
-            log "WARNING" "GCC $major_version may not be officially released yet, or the naming convention on the FTP site might have changed."
-        fi
         return 1
     fi
 }
@@ -1100,7 +1080,7 @@ post_build_cleanup_and_config() {
         if [[ -d "$lib_path" ]]; then
             if echo "$lib_path" | verbose_logging_cmd sudo tee -a "$ld_conf_file" >/dev/null; then
                 log "INFO" "Added $lib_path to $ld_conf_file"
-                ((ld_paths_added++))
+                ((ld_paths_added += 1))
             else
                 log "ERROR" "Failed to add $lib_path to $ld_conf_file"
             fi
@@ -1108,7 +1088,7 @@ post_build_cleanup_and_config() {
         if [[ -d "$lib64_path" ]]; then
              if echo "$lib64_path" | verbose_logging_cmd sudo tee -a "$ld_conf_file" >/dev/null; then
                 log "INFO" "Added $lib64_path to $ld_conf_file"
-                ((ld_paths_added++))
+                ((ld_paths_added += 1))
             else
                 log "ERROR" "Failed to add $lib64_path to $ld_conf_file"
             fi
@@ -1184,7 +1164,7 @@ create_additional_pkgconfig_links() {
 
         log "INFO" "Linking $pc_file to $target_link"
         if verbose_logging_cmd sudo ln -sf "$pc_file" "$target_link"; then
-            ((linked_count++))
+            ((linked_count += 1))
         else
             log "ERROR" "Failed to link $pc_file to $target_link."
         fi
@@ -1388,14 +1368,14 @@ select_gcc_versions_to_build() {
                         continue
                     fi
                     for ((v=start; v<=end; v++)); do
-                        if [[ " ${versions[*]} " =~ " $v " ]]; then # Check if version v is in available list
+                        if [[ " ${versions[*]} " == *" $v "* ]]; then # Check if version v is in available list
                             selected_versions+=("$v")
                         else
                             log "WARNING" "Major version $v from range $entry is not available and will be skipped."
                         fi
                     done
                 elif [[ $entry =~ ^[0-9]+$ ]]; then # Single number
-                    if [[ " ${versions[*]} " =~ " $entry " ]]; then
+                    if [[ " ${versions[*]} " == *" $entry "* ]]; then
                         selected_versions+=("$entry")
                     else
                         log "WARNING" "Major version $entry is not available and will be skipped."
@@ -1517,16 +1497,14 @@ build_gcc_version() {
         # Some older GCC versions might not have this script or might have issues with it.
         # Modify environment for the script if necessary (e.g., proxy)
         # HTTP_PROXY="$http_proxy" HTTPS_PROXY="$https_proxy" FTP_PROXY="$ftp_proxy" 
-        if ! verbose_logging_cmd ./contrib/download_prerequisites; then
-             # Allow continuing if prerequisites fail, as system libs might be used or some are optional.
-            log "WARNING" "Failed to download all prerequisites using ./contrib/download_prerequisites. Build might still succeed if system libraries are found or some prerequisites are optional."
-            build_status_log "GCC" "$full_version_string" "PREREQUISITES_DOWNLOAD_PARTIAL_FAILURE"
+        if ! download_gcc_prerequisites "$gcc_source_dir/contrib/download_prerequisites"; then
+            fail "GCC prerequisite downloads or checksum checks failed. Configuration was stopped."
         else
             log "INFO" "Successfully downloaded prerequisites."
             build_status_log "GCC" "$full_version_string" "PREREQUISITES_DOWNLOAD_SUCCESS"
         fi
     else
-        log "WARNING" "./contrib/download_prerequisites script not found in $gcc_source_dir. Assuming prerequisites will be met by system libraries or are not needed."
+        fail "The signed GCC source has no prerequisite download recipe."
     fi
     
     # --- Configure GCC ---
@@ -1768,13 +1746,10 @@ main() {
         fail "This script must NOT be run as root or with sudo directly. Sudo is used internally for specific commands like 'make install' or 'apt install'."
     fi
     
-    # Create base temporary build directory
-    # check_and_create_dir from original script
-    if [[ ! -d "$build_dir" ]]; then
-        log "INFO" "Creating base build directory: $build_dir"
-        mkdir -p "$build_dir" || fail "Failed to create base build directory: $build_dir"
-        # Permissions should be fine as it's in /tmp or user-owned if $build_dir is elsewhere
-    fi
+    [[ "${TMPDIR:-/tmp}" == /* && -d "${TMPDIR:-/tmp}" ]] || fail "TMPDIR must be an existing absolute directory."
+    build_dir=$(mktemp -d "${TMPDIR:-/tmp}/build-gcc.XXXXXX") || fail "Failed to create a private build directory."
+    packages="$build_dir/packages"
+    workspace="$build_dir/workspace"
     # Create subdirectories (packages, workspace)
     mkdir -p "$packages" "$workspace" || fail "Failed to create $packages or $workspace subdirectories."
     
@@ -1825,9 +1800,6 @@ main() {
     log "INFO" "All selected GCC versions have been processed."
     log "INFO" "Total script execution time: $overall_duration_human (Total $overall_duration seconds)."
 
-    # Final cleanup of temporary build directory (if not keeping)
-    cleanup_temporary_folders
-    
     log "INFO" "--- GCC Build Script Finished ---"
     
     # ═══════════════════════════════════════════════════════════════════════════════════
@@ -1879,18 +1851,18 @@ main() {
             build_status="DRY_RUN_COMPLETED"
             status_indicator="[DRY RUN]"
             status_color="$CYAN"
-            ((skipped_builds++))
-        elif [[ -d "$install_prefix/bin" && -x "$install_prefix/bin/gcc" ]]; then
+            ((skipped_builds += 1))
+        elif [[ -d "$install_prefix/bin" && -x "$install_prefix/bin/gcc-$major_ver" ]]; then
             # Check if GCC binary exists and is executable
-            if "$install_prefix/bin/gcc" --version &>/dev/null; then
+            if "$install_prefix/bin/gcc-$major_ver" --version &>/dev/null; then
                 build_status="SUCCESS"
                 status_indicator="[OK]"
                 status_color="$GREEN"
-                ((successful_builds++))
+                ((successful_builds += 1))
                 
                 # Get installed GCC version
                 local installed_version
-                installed_version=$("$install_prefix/bin/gcc" --version 2>/dev/null | head -n1 | grep -oP '\d+\.\d+\.\d+' | head -n1)
+                installed_version=$("$install_prefix/bin/gcc-$major_ver" --version 2>/dev/null | grep -oP '\d+\.\d+\.\d+' | sed -n '1p' || true)
                 if [[ -n "$installed_version" ]]; then
                     full_version_string="$installed_version"
                 fi
@@ -1898,18 +1870,18 @@ main() {
                 build_status="PARTIAL_FAILURE"
                 status_indicator="[PARTIAL]"
                 status_color="$YELLOW"
-                ((failed_builds++))
+                ((failed_builds += 1))
             fi
         elif [[ -d "$install_prefix" ]]; then
             build_status="INCOMPLETE"
             status_indicator="[INCOMPLETE]"
             status_color="$YELLOW"
-            ((failed_builds++))
+            ((failed_builds += 1))
         else
             build_status="FAILED"
             status_indicator="[FAILED]"
             status_color="$RED"
-            ((failed_builds++))
+            ((failed_builds += 1))
         fi
         
         # Store results for detailed display
@@ -1923,12 +1895,13 @@ main() {
         if [[ "$build_status" == "SUCCESS" ]]; then
             # Show compiler capabilities for successful builds
             local gcc_features
-            gcc_features=$("$install_prefix/bin/gcc" -v 2>&1 | tail -n1 | grep -oP '(?<=Configured with: ).*' | head -c 60)
+            gcc_features=$("$install_prefix/bin/gcc-$major_ver" -v 2>&1 | sed -n 's/^Configured with: //p' || true)
+            gcc_features="${gcc_features:0:60}"
             [[ -n "$gcc_features" ]] && log "INFO" "   Features: ${gcc_features}..."
             
             # Show target architecture
             local gcc_target
-            gcc_target=$("$install_prefix/bin/gcc" -dumpmachine 2>/dev/null)
+            gcc_target=$("$install_prefix/bin/gcc-$major_ver" -dumpmachine 2>/dev/null)
             [[ -n "$gcc_target" ]] && log "INFO" "   Target: $gcc_target"
         fi
         log "INFO" ""
@@ -2013,7 +1986,8 @@ main() {
         for i in "${!build_results[@]}"; do
             if [[ "${build_results[i]}" == *" - SUCCESS" ]]; then
                 local install_path="${installation_paths[i]}"
-                local version_num=$(echo "${build_results[i]}" | grep -oP 'GCC \K\d+\.\d+\.\d+')
+                local version_num
+                version_num=$(echo "${build_results[i]}" | grep -oP 'GCC \K\d+\.\d+\.\d+')
                 log "INFO" "   • GCC $version_num: export PATH=\"$install_path/bin:\$PATH\""
             fi
         done
@@ -2045,6 +2019,8 @@ main() {
     log "INFO" "═══════════════════════════════════════════════════════════════════════════════════"
 
 
+    cleanup_temporary_folders
+
     # Restore original stdout/stderr if they were redirected
     if [[ -n "$log_file" ]]; then
         exec 1>&3 2>&4
@@ -2053,6 +2029,7 @@ main() {
     fi
     
     trap - ERR DEBUG EXIT # Clear traps
+    [[ $failed_builds -eq 0 ]] || exit 1
     exit 0
 }
 
