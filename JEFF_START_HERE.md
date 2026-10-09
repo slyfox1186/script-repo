@@ -2,7 +2,30 @@
 
 Updated: 2026-10-09
 
-Latest change: removed `/home/jman/tmp/script-repo/Bash/QNAP/` and both scripts
+Latest change: `/home/jman/tmp/script-repo/Bash/Misc/check-gcc-architecture.sh`
+now asks GCC to detect the host architecture with `-march=native`, replacing the
+hardcoded CPU list. It prints one architecture name, supports an optional GCC
+executable argument or `GCC` environment variable, and reports detection failures
+on stderr with a nonzero exit status. Native detection depends on compiler/host
+support; unsupported detection is an error rather than a guessed architecture.
+The returned name is GCC's selected architecture, not a complete set of native
+feature flags. Use `-march=native` directly when compiling for this machine if
+you want GCC's full native feature selection.
+
+Verified locally: 20 focused shell regression checks, Bash syntax checks, full
+ShellCheck, and diff whitespace checks passed. The real GCC 16.2.1 query returned
+`znver4`; GCC accepted that result in a C syntax-only check. Other CPU families
+and compiler failures were covered with a fake compiler, not other physical
+machines. No full suite or production build was run. This change is not committed
+or pushed. No action is required from Jeff.
+
+Repeat the focused checks:
+
+```bash
+bash /home/jman/tmp/script-repo/tests/check_gcc_architecture_test.sh
+```
+
+Previous change: removed `/home/jman/tmp/script-repo/Bash/QNAP/` and both scripts
 at Jeff's request. No references to either script or directory were found in
 the repository before deletion. Verified the directory is absent and the staged
 removal contains exactly the two tracked scripts. No action is required from Jeff.
