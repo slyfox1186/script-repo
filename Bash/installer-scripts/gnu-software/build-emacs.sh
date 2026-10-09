@@ -1,6 +1,25 @@
 #!/usr/bin/env bash
 
-##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer-Scripts/GNU-Software/build-emacs
+# Keep these helpers local so a downloaded installer remains standalone.
+set -Ee -o pipefail
+trap 'printf "Build failed at line %s. Build files were retained for inspection.\n" "$LINENO" >&2; exit 1' ERR
+
+gnu_curl() {
+    command curl -q --fail --location --show-error --retry 3 --retry-delay 2 \
+        --connect-timeout 15 --max-time 600 --proto '=https' --proto-redir '=https' \
+        --user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36' "$@"
+}
+
+gnu_new_workdir() {
+    local base="${TMPDIR:-/tmp}"
+    [[ "$base" == /* && -d "$base" ]] || { printf 'TMPDIR must be an existing absolute directory.\n' >&2; return 1; }
+    mktemp -d -- "$base/${0##*/}.XXXXXX"
+}
+
+gnu_jobs="${JOBS:-$(nproc)}"
+[[ "$gnu_jobs" =~ ^[1-9][0-9]*$ ]] || { printf 'JOBS must be a positive integer.\n' >&2; exit 1; }
+
+##  GitHub Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/installer-scripts/gnu-software/build-emacs
 ##  Purpose: Build GNU Emacs from source
 ##  Updated: 03.18.2024 09:20:00 PM
 ##  Script version: 2.0
@@ -20,7 +39,9 @@ ARCHIVE_URL="https://ftp.gnu.org/gnu/${PROGRAM}/${ARCHIVE_DIR}.tar.xz"
 ARCHIVE_EXT="${ARCHIVE_URL##*.}"
 ARCHIVE_NAME="${ARCHIVE_DIR}.tar.${ARCHIVE_EXT}"
 CWD="${PWD}/${PROGRAM}-build-script"
-INSTALL_DIR="/usr/local/programs/${PROGRAM}-${VERSION}"
+INSTALL_DIR=""
+LOG_FILE=/dev/null
+VERBOSE=0
 
 fail() {
     echo -e "${RED}[FAIL] $1${NC}" | tee -a "$LOG_FILE"
@@ -44,7 +65,7 @@ debug() {
 usage() {
     echo -e "${GREEN}Usage:${NC} $0 [OPTIONS]"
     echo " -v    Specify ${PROGRAM} version (default: ${VERSION})"
-    echo " -p    Specify installation prefix (default: ${INSTALL_DIR})"
+    echo " -p    Specify installation prefix (default: ${INSTALL_DIR:-/usr/local/programs/$PROGRAM-$VERSION})"
     echo " -V    Enable verbose logging"
     echo " -h    Display this help message"
 }
@@ -74,7 +95,7 @@ set_env_vars() {
     PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/lib64/pkgconfig:/usr/local/share/pkgconfig:/usr/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/share/pkgconfig"
     PKG_CONFIG_PATH+=":/usr/local/cuda/lib64/pkgconfig:/usr/local/cuda/lib/pkgconfig:/opt/cuda/lib64/pkgconfig:/opt/cuda/lib/pkgconfig"
     PKG_CONFIG_PATH+=":/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/i386-linux-gnu/pkgconfig:/usr/lib/arm-linux-gnueabihf/pkgconfig:/usr/lib/aarch64-linux-gnu/pkgconfig"
-    export CC CXX CFLAGS CPPFLAGS CXXFLAGS PKG_CONFIG_PATH PATH
+    export CC CXX CFLAGS CPPFLAGS CXXFLAGS LDFLAGS PKG_CONFIG_PATH PATH
 }
 
 check_dependencies() {
@@ -83,10 +104,6 @@ check_dependencies() {
 
     if command -v apt-get &>/dev/null; then
         pkg_mgr="apt-get"
-    elif command -v dnf &>/dev/null; then
-        pkg_mgr="dnf"
-    elif command -v yum &>/dev/null; then
-        pkg_mgr="yum"
     else
         fail "Unsupported package manager. Please install the required dependencies manually."
     fi
@@ -99,7 +116,7 @@ check_dependencies() {
 
     local missing_pkgs=()
     for pkg in "${pkgs[@]}"; do
-        if ! command -v "$pkg" &>/dev/null; then
+        if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
             missing_pkgs+=("$pkg")
         fi
     done
@@ -112,22 +129,18 @@ check_dependencies() {
 }
 
 cleanup() {
-    local choice
-
-    echo
-    echo "============================================"
-    echo "  Do you want to clean up the build files?  "
-    echo "============================================"
-    echo "[1] Yes"
-    echo "[2] No"
-    echo
-    read -p 'Your choice (1 or 2): ' choice
-
-    case "$choice" in
-        1) sudo rm -rf "$CWD" ;;
-        2) ;;
-        *) unset choice; cleanup ;;
-    esac
+    local response
+    while true; do
+        if ! read -r -p "Remove build directory '$CWD'? [y/N] " response; then
+            printf '\nBuild files retained at %s\n' "$CWD"
+            return 0
+        fi
+        case "$response" in
+            1|y|Y|yes|YES) rm -rf -- "$CWD"; return 0 ;;
+            2|n|N|no|NO|"") printf 'Build files retained at %s\n' "$CWD"; return 0 ;;
+            *) printf 'Enter y or n.\n' >&2 ;;
+        esac
+    done
 }
 
 build_emacs() {
@@ -135,7 +148,8 @@ build_emacs() {
         fail "You must run this script without root or sudo."
     fi
 
-    [[ -d "$CWD" ]] && sudo rm -rf "$CWD"
+    CWD=$(gnu_new_workdir)
+
     mkdir -p "$CWD"
 
     set_env_vars
@@ -143,10 +157,9 @@ build_emacs() {
 
     if [[ ! -f "$CWD/$ARCHIVE_NAME" ]]; then
         log "Downloading $ARCHIVE_NAME..."
-        curl -Lso "$CWD/$ARCHIVE_NAME" "$ARCHIVE_URL"
+        gnu_curl -Lso "$CWD/$ARCHIVE_NAME" "$ARCHIVE_URL"
     fi
 
-    [[ -d "$CWD/$ARCHIVE_DIR" ]] && sudo rm -rf "$CWD/$ARCHIVE_DIR"
     mkdir -p "$CWD/$ARCHIVE_DIR/build"
 
     if ! tar -xf "$CWD/$ARCHIVE_NAME" -C "$CWD/$ARCHIVE_DIR" --strip-components 1; then
@@ -155,13 +168,12 @@ build_emacs() {
 
     cd "$CWD/$ARCHIVE_DIR" || exit 1
     sed -i 's/-DPROFILING=1 -pg/-DPROFILING=0 -pg/g' configure.ac
-    autoreconf -fi
 
     cd build || exit 1
     ../configure --prefix="$INSTALL_DIR"
 
-    if ! make "-j$(nproc --all)"; then
-        fail "Failed to execute: make -j$(nproc --all). Line: $LINENO"
+    if ! make "-j$gnu_jobs"; then
+        fail "Failed to execute: make -j$gnu_jobs. Line: $LINENO"
     fi
 
     if ! sudo make install; then
@@ -174,12 +186,19 @@ build_emacs() {
 link_binaries() {
     log "Linking $PROGRAM binaries to /usr/local/bin..."
     for file in "${INSTALL_DIR}/bin/"*; do
+        [[ -e "$file" || -L "$file" ]] || continue
         local binary="${file##*/}"
         sudo ln -sf "$file" "/usr/local/bin/$binary"
     done
 }
 
 parse_arguments "$@"
+[[ "$VERSION" =~ ^[0-9]+(\.[0-9]+)+$ ]] || fail "Invalid Emacs version: $VERSION"
+INSTALL_DIR="${INSTALL_DIR:-/usr/local/programs/$PROGRAM-$VERSION}"
+[[ "$INSTALL_DIR" == /* && "$INSTALL_DIR" != / ]] || fail "Prefix must be an absolute directory other than /."
+ARCHIVE_DIR="$PROGRAM-$VERSION"
+ARCHIVE_URL="https://ftp.gnu.org/gnu/$PROGRAM/$ARCHIVE_DIR.tar.xz"
+ARCHIVE_NAME="$ARCHIVE_DIR.tar.xz"
 build_emacs
 link_binaries
 

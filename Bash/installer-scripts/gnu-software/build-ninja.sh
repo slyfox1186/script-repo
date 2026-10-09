@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 
+gnu_curl() {
+    command curl -q --fail --location --show-error --retry 3 --retry-delay 2 \
+        --connect-timeout 15 --max-time 600 --proto '=https' --proto-redir '=https' \
+        --user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36' "$@"
+}
+
 # Purpose: build the latest stable release of the Ninja build system from source
 # Target:  Ubuntu 24.04 (works on other Debian/Ubuntu releases as well)
 # Source:  https://github.com/ninja-build/ninja
@@ -274,7 +280,7 @@ list_versions() {
         out="$(git ls-remote --tags --refs "$repo_url.git" 2>/dev/null | awk -F/ '{print $NF}')" || out=""
     fi
     if [[ -z "$out" ]] && command -v curl >/dev/null; then
-        out="$(curl -fsSL --connect-timeout 15 "https://api.github.com/repos/ninja-build/ninja/tags?per_page=100" 2>/dev/null \
+        out="$(gnu_curl -fsSL --connect-timeout 15 "https://api.github.com/repos/ninja-build/ninja/tags?per_page=100" 2>/dev/null \
             | grep -oP '"name":\s*"\K[^"]+')" || out=""
     fi
     [[ -n "$out" ]] || return 1
@@ -287,7 +293,7 @@ list_versions() {
 latest_version() {
     local url="" tag="" versions
     if command -v curl >/dev/null; then
-        url="$(curl -fsSLI --connect-timeout 15 -o /dev/null -w '%{url_effective}' "$repo_url/releases/latest" 2>/dev/null)" || url=""
+        url="$(gnu_curl -fsSLI --connect-timeout 15 -o /dev/null -w '%{url_effective}' "$repo_url/releases/latest" 2>/dev/null)" || url=""
         tag="${url##*/}"
         tag="${tag#v}"
         if [[ "$url" == */releases/tag/* && "$tag" =~ $version_regex ]]; then
@@ -359,7 +365,7 @@ download_and_extract() {
     local url="$repo_url/archive/refs/tags/v$version.tar.gz"
     log "Downloading $url"
     if command -v curl >/dev/null \
-        && curl -fsSL --connect-timeout 15 --retry 3 --retry-delay 2 -o "$tar_file" "$url"; then
+        && gnu_curl -fsSL --connect-timeout 15 --retry 3 --retry-delay 2 -o "$tar_file" "$url"; then
         mkdir -p "$work_dir"
         tar -xzf "$tar_file" -C "$work_dir" --strip-components 1 || fail "Failed to extract $tar_file"
     elif command -v git >/dev/null; then

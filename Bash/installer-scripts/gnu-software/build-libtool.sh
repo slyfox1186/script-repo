@@ -1,6 +1,45 @@
 #!/usr/bin/env bash
 
-# Github: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer-Scripts/GNU-Software/build-libtool.sh
+# Keep these helpers local so a downloaded installer remains standalone.
+set -Ee -o pipefail
+trap 'printf "Build failed at line %s. Build files were retained for inspection.\n" "$LINENO" >&2; exit 1' ERR
+
+gnu_curl() {
+    command curl -q --fail --location --show-error --retry 3 --retry-delay 2 \
+        --connect-timeout 15 --max-time 600 --proto '=https' --proto-redir '=https' \
+        --user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36' "$@"
+}
+
+gnu_wget() {
+    command wget --timeout=30 --tries=3 --https-only \
+        --user-agent='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36' "$@"
+}
+
+gnu_link_dir() {
+    local source_dir="$1" destination="$2" pattern="${3:-*}" file target
+    [[ -d "$source_dir" ]] || return 0
+    for file in "$source_dir"/*; do
+        [[ -e "$file" || -L "$file" ]] || continue
+        # The caller supplies a filename glob, for example *.pc.
+        # shellcheck disable=SC2053
+        [[ "${file##*/}" == $pattern ]] || continue
+        target="$destination/${file##*/}"
+        [[ ! -d "$target" || -L "$target" ]] || { printf 'Cannot replace directory %s with a symlink.\n' "$target" >&2; return 1; }
+        sudo mkdir -p -- "$destination"
+        sudo ln -sfn -- "$file" "$target"
+    done
+}
+
+gnu_new_workdir() {
+    local base="${TMPDIR:-/tmp}"
+    [[ "$base" == /* && -d "$base" ]] || { printf 'TMPDIR must be an existing absolute directory.\n' >&2; return 1; }
+    mktemp -d -- "$base/${0##*/}.XXXXXX"
+}
+
+gnu_jobs="${JOBS:-$(nproc)}"
+[[ "$gnu_jobs" =~ ^[1-9][0-9]*$ ]] || { printf 'JOBS must be a positive integer.\n' >&2; exit 1; }
+
+# Github: https://github.com/slyfox1186/script-repo/blob/main/Bash/installer-scripts/gnu-software/build-libtool.sh
 # Purpose: build gnu libtool from source.
 # Updated: 05.08.24
 # Script version: 1.4
@@ -19,7 +58,7 @@ NC='\033[0m' # No Color
 # Set the variables
 script_ver=1.4
 prog_name="libtool"
-version=$(curl -fsS "https://ftp.gnu.org/gnu/$prog_name/" | grep -oP 'href="[^"]*libtool-\K([0-9.]){5}' | sort -ruV | head -n1)
+version=$(gnu_curl -fsS "https://ftp.gnu.org/gnu/$prog_name/" | grep -oP 'libtool-\K[0-9]+(\.[0-9]+)+(?=\.tar\.)' | sort -ruV | sed -n '1p')
 archive_name="$prog_name-$version"
 archive_url="https://ftp.gnu.org/gnu/$prog_name/$prog_name-$version.tar.xz"
 archive_ext="${archive_url//*.}"
@@ -52,7 +91,7 @@ exit_fn() {
 }
 
 cleanup() {
-    sudo rm -fr "$cwd"
+    rm -rf -- "$cwd"
 }
 
 required_packages() {
@@ -88,7 +127,7 @@ set_compiler_flags() {
 }
 
 download_archive() {
-    wget --show-progress -cqO "$cwd/$tar_file" "$archive_url" || fail "Failed to download archive with WGET. Line: $LINENO"
+    gnu_wget --show-progress -cqO "$cwd/$tar_file" "$archive_url" || fail "Failed to download archive with WGET. Line: $LINENO"
 }
 
 extract_archive() {
@@ -101,7 +140,7 @@ configure_build() {
 }
 
 compile_build() {
-    make "-j$(nproc --all)" || fail "Failed to execute: make build. Line: $LINENO"
+    make "-j$gnu_jobs" || fail "Failed to execute: make build. Line: $LINENO"
 }
 
 install_build() {
@@ -114,15 +153,16 @@ ld_linker_path() {
 }
 
 create_soft_links() {
-    sudo ln -sf "$install_dir/bin/"* "/usr/local/bin/"
-    sudo ln -sf "$install_dir/lib/pkgconfig/"*.pc "/usr/local/lib/pkgconfig/"
-    sudo ln -sf "$install_dir/include/"* "/usr/local/include/"
-    sudo ln -sf "$install_dir/include/libltdl/"* "/usr/local/include/"
+    gnu_link_dir "$install_dir/bin" /usr/local/bin
+    gnu_link_dir "$install_dir/lib/pkgconfig" /usr/local/lib/pkgconfig '*.pc'
+    gnu_link_dir "$install_dir/include" /usr/local/include
 }
 
 main_menu() {
     # Create output directory
-    [[ -d "$cwd" ]] && sudo rm -fr "$cwd/$archive_name"
+
+    cwd=$(gnu_new_workdir)
+
     mkdir -p "$cwd/$archive_name/build"
 
     required_packages

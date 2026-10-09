@@ -1,5 +1,3 @@
-
-
 alt-svc
 c-ares
 ca-bundle
@@ -56,8 +54,6 @@ unix-sockets
 verbose
 versioned-symbols
 websockets
-
-
 c-ares
 metalink
 openssl (if found, otherwise gnutls)

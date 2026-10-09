@@ -1,6 +1,19 @@
 #!/usr/bin/env bash
 
-## Github Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer-Scripts/GNU-Software/build-isl
+# Keep these helpers local so a downloaded installer remains standalone.
+set -Ee -o pipefail
+trap 'printf "Build failed at line %s. Build files were retained for inspection.\n" "$LINENO" >&2; exit 1' ERR
+
+gnu_new_workdir() {
+    local base="${TMPDIR:-/tmp}"
+    [[ "$base" == /* && -d "$base" ]] || { printf 'TMPDIR must be an existing absolute directory.\n' >&2; return 1; }
+    mktemp -d -- "$base/${0##*/}.XXXXXX"
+}
+
+gnu_jobs="${JOBS:-$(nproc)}"
+[[ "$gnu_jobs" =~ ^[1-9][0-9]*$ ]] || { printf 'JOBS must be a positive integer.\n' >&2; exit 1; }
+
+## Github Script: https://github.com/slyfox1186/script-repo/edit/main/Bash/installer-scripts/gnu-software/build-isl
 ## Purpose: build gnu isl
 ## Updated: 08.03.23
 ## Script version: 2.0
@@ -41,25 +54,18 @@ fail() {
 }
 
 cleanup() {
-    if [ "$silent" != true ]; then
-        local choice
-        echo -e "${BLUE}============================================${NC}"
-        echo -e "${BLUE}  Do you want to clean up the build files?  ${NC}"
-        echo -e "${BLUE}============================================${NC}"
-        echo -e "[1] Yes"
-        echo -e "[2] No"
-        read -p "Your choice (1 or 2): " choice
-
-        case "$choice" in
-            1) rm -fr "$cwd";;
-            2) log "Skipping cleanup.";;
-            *)
-                warn "Invalid choice. Skipping cleanup."
-                ;;
+    local response
+    while true; do
+        if ! read -r -p "Remove build directory '$cwd'? [y/N] " response; then
+            printf '\nBuild files retained at %s\n' "$cwd"
+            return 0
+        fi
+        case "$response" in
+            1|y|Y|yes|YES) rm -rf -- "$cwd"; return 0 ;;
+            2|n|N|no|NO|"") printf 'Build files retained at %s\n' "$cwd"; return 0 ;;
+            *) printf 'Enter y or n.\n' >&2 ;;
         esac
-    else
-        rm -fr "$cwd"
-    fi
+    done
 }
 
 install_dependencies() {
@@ -75,9 +81,8 @@ install_dependencies() {
     done
 
     if [ ${#missing_pkgs[@]} -gt 0 ]; then
-        apt-get update
-        apt-get install -y "${missing_pkgs[@]}"
-        apt-get -y autoremove
+        sudo apt-get update
+        sudo apt-get install -y "${missing_pkgs[@]}"
     fi
 }
 
@@ -145,40 +150,38 @@ install_dependencies
 
 # Create working directory
 log "Creating working directory..."
+cwd=$(gnu_new_workdir)
 mkdir -p "$cwd"
 
 # Clone repository
-if [ -d "$cwd/$archive_dir" ]; then
-    rm -fr "$cwd/$archive_dir"
-fi
 log "Cloning repository..."
 git clone "$archive_url" "$cwd/$archive_dir"
 mkdir -p "$cwd/$archive_dir/build"
 
 # Build and install
+cd "$cwd/$archive_dir" || fail "Failed to enter the ISL source directory."
+./autogen.sh
+cd build || fail "Failed to enter the ISL build directory."
 if [ "$verbose" = true ]; then
     log "Building and installing isl..."
     ../configure --prefix="$install_dir" \
-                 --build=x86_64-linux-gnu \
-                 --host=x86_64-linux-gnu \
                  --with-pic
-    make "-j$(nproc --all)" || fail "Failed to build isl"
-    make install || fail "Failed to install isl"
+    make "-j$gnu_jobs" || fail "Failed to build isl"
+    sudo make install || fail "Failed to install isl"
 else
     ../configure --prefix="$install_dir" \
-                 --build=x86_64-linux-gnu \
-                 --host=x86_64-linux-gnu \
                  --with-pic >/dev/null 2>&1
-    make "-j$(nproc --all)" >/dev/null 2>&1 || fail "Failed to build isl"
-    make install >/dev/null 2>&1 || fail "Failed to install isl"
+    make "-j$gnu_jobs" >/dev/null 2>&1 || fail "Failed to build isl"
+    sudo make install >/dev/null 2>&1 || fail "Failed to install isl"
 fi
 
 # Create symlinks
 log "Creating symlinks..."
 for file in "$install_dir"/bin/*; do
+    [[ -e "$file" || -L "$file" ]] || continue
     filename=$(basename "$file")
-    linkname=${filename#*-}
-    ln -sf "$file" "/usr/local/bin/$linkname" || warn "Failed to create symlink for $filename"
+    linkname=$filename
+    sudo ln -sf "$file" "/usr/local/bin/$linkname" || warn "Failed to create symlink for $filename"
 done
 
 # Cleanup if requested

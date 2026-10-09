@@ -1,6 +1,25 @@
 #!/usr/bin/env bash
 
-# Github script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer-Scripts/GNU-Software/build-glibc.sh
+# Keep these helpers local so a downloaded installer remains standalone.
+set -Ee -o pipefail
+trap 'printf "Build failed at line %s. Build files were retained for inspection.\n" "$LINENO" >&2; exit 1' ERR
+
+gnu_curl() {
+    command curl -q --fail --location --show-error --retry 3 --retry-delay 2 \
+        --connect-timeout 15 --max-time 600 --proto '=https' --proto-redir '=https' \
+        --user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36' "$@"
+}
+
+gnu_new_workdir() {
+    local base="${TMPDIR:-/tmp}"
+    [[ "$base" == /* && -d "$base" ]] || { printf 'TMPDIR must be an existing absolute directory.\n' >&2; return 1; }
+    mktemp -d -- "$base/${0##*/}.XXXXXX"
+}
+
+gnu_jobs="${JOBS:-$(nproc)}"
+[[ "$gnu_jobs" =~ ^[1-9][0-9]*$ ]] || { printf 'JOBS must be a positive integer.\n' >&2; exit 1; }
+
+# Github script: https://github.com/slyfox1186/script-repo/blob/main/Bash/installer-scripts/gnu-software/build-glibc.sh
 # Purpose: Build GNU glibc
 # Updated: 03.16.24
 # Script version: 3.0
@@ -19,18 +38,19 @@ archive_ext="${archive_url##*.}"
 archive_name="$archive_dir.tar.$archive_ext"
 working="/tmp/glibc-build-script"
 install_dir="/usr/local/programs/$archive_dir"
-log_file="$working/build.log"
+log_file=/dev/null
+cleanup_files=false
+verbose=false
+silent=false
 
 # Optimization flags
-CPU_ARCH=$(lscpu | awk -F ': +' '/Architecture/ {print $NF}')
-CPU_CORES=$(nproc --all)
-CFLAGS="-O2 -march=$CPU_ARCH -mtune=native -pipe -fstack-protector-strong -fstack-clash-protection -fcf-protection"
+CPU_CORES=$gnu_jobs
+CFLAGS="-O2 -march=native -mtune=native -pipe -fstack-protector-strong -fstack-clash-protection"
 CXXFLAGS="$CFLAGS"
 LDFLAGS="-Wl,-O1 -Wl,--as-needed -Wl,--hash-style=gnu -Wl,-z,relro,-z,now"
 
 # Functions
 fail() {
-    mkdir -p "$(dirname "$log_file")"
     echo -e "${RED}[$(date +'%m.%d.%Y %T')] ERROR: $1${NC}" | tee -a "$log_file"
     echo -e "${RED}To report a bug create an issue at: https://github.com/slyfox1186/script-repo/issues${NC}" | tee -a "$log_file"
     exit 1
@@ -43,16 +63,22 @@ warn() {
 
 log() {
     mkdir -p "$(dirname "$log_file")"
-    echo -e "${GREEN}[$(date +'%m.%d.%Y %T')] $1${NC}" | tee -a "$log_file"
+    if [[ "$silent" == true ]]; then
+        printf "%s\n" "$1" >> "$log_file"
+    else
+        echo -e "${GREEN}[$(date +'%m.%d.%Y %T')] $1${NC}" | tee -a "$log_file"
+    fi
 }
 
 cleanup() {
-    log "Cleaning up build files..."
-    rm -rf "$working"
+    rm -rf -- "$working"
 }
 
 show_usage() {
     echo "Usage: $0 [options]"
+    echo "Install glibc 2.39 into its isolated prefix: $install_dir"
+    echo "The build must pass make check before installation."
+    echo "Use the installed loader explicitly for programs that need this glibc."
     echo "Options:"
     echo "  -h, --help       Show this help message and exit"
     echo "  -c, --cleanup    Clean up build files after the build"
@@ -60,32 +86,7 @@ show_usage() {
     echo "  -s, --silent     Run the script silently (no output)"
 }
 
-create_symlinks() {
-    log "Creating symbolic links..."
-    for file in "$install_dir"/bin/*; do
-        local filename
-        filename=$(basename "$file")
-        local linkname
-        linkname=${filename#*-}
-        ln -sf "$file" "/usr/local/bin/$linkname" || warn "Failed to create symlink for $filename"
-    done
-    
-    ln -sf "$install_dir/lib"/* "/usr/local/lib"
-    ln -sf "$install_dir/lib64"/* "/usr/local/lib64"
-    ln -sf "$install_dir/share"/* "/usr/local/share"
-}
 
-detect_timezone() {
-    local timezone_file="/etc/timezone"
-    if [[ -f "$timezone_file" ]]; then
-        local timezone
-        timezone=$(cat "$timezone_file")
-        echo "$timezone"
-    else
-        warn "Unable to detect the system's timezone. Defaulting to UTC."
-        echo "UTC"
-    fi
-}
 
 install_dependencies() {
     log "Checking dependencies..."
@@ -108,7 +109,7 @@ install_dependencies() {
 
 download_archive() {
     log "Downloading $archive_url..."
-    if ! curl -Lso "$working/$archive_name" "$archive_url"; then
+    if ! gnu_curl -Lso "$working/$archive_name" "$archive_url"; then
         fail "Failed to download $archive_url."
     fi
 }
@@ -124,8 +125,6 @@ build_glibc() {
     log "Building glibc..."
 
     cd "$working/$archive_dir" || fail "Failed to change directory to $working/$archive_dir."
-
-    autoreconf -fi
 
     mkdir -p build && cd build
 
@@ -149,7 +148,7 @@ build_glibc() {
     fi
 
     if ! make "-j$CPU_CORES" check; then
-        warn "Some tests failed during the glibc build process."
+        fail "glibc checks failed. Installation was stopped."
     fi
 }
 
@@ -164,15 +163,6 @@ install_glibc() {
     fi
 }
 
-update_system() {
-    log "Updating time info..."
-    local timezone
-    timezone=$(detect_timezone)
-    ln -sf "/usr/share/zoneinfo/$timezone" /etc/localtime
-
-    log "Updating dynamic linker cache..."
-    ldconfig
-}
 
 main() {
     # Parse command-line arguments
@@ -192,7 +182,7 @@ main() {
                 silent=true
                 ;;
             *)
-                warn "Invalid argument: $1. Use -h or --help for usage information."
+                fail "Invalid argument: $1. Use -h or --help for usage information."
                 ;;
         esac
         shift
@@ -204,8 +194,12 @@ main() {
     fi
 
     # Create output directory
+    working=$(gnu_new_workdir)
+    log_file="$working/build.log"
     log "Creating output directory..."
-    mkdir -p "$working"
+    if [[ "$verbose" == true ]]; then
+        log "Build directory: $working; jobs: $CPU_CORES; prefix: $install_dir"
+    fi
 
     # Download archive file
     if [[ ! -f "$working/$archive_name" ]]; then
@@ -226,15 +220,10 @@ main() {
     # Install glibc
     install_glibc
 
-    # Create symbolic links
-    create_symlinks
-
-    # Update system
-    update_system
-
     # Clean up if requested
     if [[ "$cleanup_files" == true ]]; then
         cleanup
+        log_file=/dev/null
     fi
 
     log "glibc build completed successfully."

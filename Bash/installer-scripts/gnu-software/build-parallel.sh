@@ -1,5 +1,23 @@
 #!/usr/bin/env bash
 
+# Keep these helpers local so a downloaded installer remains standalone.
+set -Ee -o pipefail
+trap 'printf "Build failed at line %s. Build files were retained for inspection.\n" "$LINENO" >&2; exit 1' ERR
+
+gnu_wget() {
+    command wget --timeout=30 --tries=3 --https-only \
+        --user-agent='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36' "$@"
+}
+
+gnu_new_workdir() {
+    local base="${TMPDIR:-/tmp}"
+    [[ "$base" == /* && -d "$base" ]] || { printf 'TMPDIR must be an existing absolute directory.\n' >&2; return 1; }
+    mktemp -d -- "$base/${0##*/}.XXXXXX"
+}
+
+gnu_jobs="${JOBS:-$(nproc)}"
+[[ "$gnu_jobs" =~ ^[1-9][0-9]*$ ]] || { printf 'JOBS must be a positive integer.\n' >&2; exit 1; }
+
 # Purpose: Build GNU Parallel from source code
 # Updated: 03.20.26
 # Script version: 2.8
@@ -51,6 +69,7 @@ parse_arguments() {
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
             -v|--version)
+                [[ $# -ge 2 && -n "$2" && "$2" != -* ]] || { printf 'Option %s requires a value.\n' "$1" >&2; exit 1; }
                 version="$2"
                 shift 2
                 ;;
@@ -114,17 +133,18 @@ check_dependencies() {
 }
 
 cleanup() {
-    local choice
-    echo
-    read -p "Remove temporary build directory '$cwd'? [y/N] " response
-    case "$response" in
-        [yY]*|"")
-            sudo rm -rf "$cwd"
-            log "Build directory removed."
-            ;;
-        [nN]*)
-            ;;
-    esac
+    local response
+    while true; do
+        if ! read -r -p "Remove build directory '$cwd'? [y/N] " response; then
+            printf '\nBuild files retained at %s\n' "$cwd"
+            return 0
+        fi
+        case "$response" in
+            1|y|Y|yes|YES) rm -rf -- "$cwd"; return 0 ;;
+            2|n|N|no|NO|"") printf 'Build files retained at %s\n' "$cwd"; return 0 ;;
+            *) printf 'Enter y or n.\n' >&2 ;;
+        esac
+    done
 }
 
 # Exit function
@@ -137,17 +157,13 @@ exit_fn() {
 # Download and extract source code
 download_and_extract() {
     # Create build directory
+    cwd=$(gnu_new_workdir)
     mkdir -p "$cwd"
     cd "$cwd" || exit 1
 
-    # Download the source code files
-    if [[ "$version" == "latest" ]]; then
-        archive_url="http://ftp.gnu.org/gnu/parallel/parallel-latest.tar.bz2"
-    fi
-
     # Extract source code
-    if wget --show-progress -cqO "parallel-latest.tar.bz2" "http://ftp.gnu.org/gnu/parallel/parallel-latest.tar.bz2"; then
-        tar -jxf "parallel-latest.tar.bz2" --strip-components 1
+    if gnu_wget --show-progress -cqO "$archive_name" "$archive_url"; then
+        tar -jxf "$archive_name" --strip-components 1
     else
         fail "Failed to download the parallel tar file 'parallel-latest.tar.bz2'."
     fi
@@ -157,7 +173,7 @@ download_and_extract() {
 build_and_install() {
     # Build process
     ./configure --prefix="$install_dir"
-    make "-j$(nproc --all)"
+    make "-j$gnu_jobs"
     sudo make install
 
     # Create symbolic links
@@ -167,8 +183,11 @@ build_and_install() {
 
 # Main script
 main() {
-    log "Building the latest parallel..."
     parse_arguments "$@"
+    [[ "$version" == latest || "$version" =~ ^[0-9]{8}$ ]] || fail "Version must be latest or an eight-digit release date."
+    archive_name="parallel-$version.tar.bz2"
+    archive_url="https://ftp.gnu.org/gnu/parallel/$archive_name"
+    install_dir="/usr/local/programs/parallel-$version"
     verify_not_root
     check_dependencies
     set_compiler_settings
@@ -181,12 +200,11 @@ main() {
 }
 
 # Variables
-prog_name="parallel"
+version=latest
+archive_name=""
 archive_url="https://ftp.gnu.org/gnu/parallel/parallel-latest.tar.bz2"
 cwd="$PWD/parallel-build-script"
 install_dir="/usr/local/programs/parallel-latest"
-CLEANUP="false"
 
-[[ -d "$install_dir" ]] && sudo rm -fr "$install_dir"
 
 main "$@"

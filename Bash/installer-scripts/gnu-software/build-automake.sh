@@ -1,10 +1,28 @@
 #!/usr/bin/env bash
 
-# Build GNU Automake - v1.1 - 03.08.24
-# GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer-Scripts/GNU-Software/build-automake.sh
+# Keep these helpers local so a downloaded installer remains standalone.
+set -Ee -o pipefail
+trap 'printf "Build failed at line %s. Build files were retained for inspection.\n" "$LINENO" >&2; exit 1' ERR
 
-set -eo pipefail
-trap 'fail "Error occurred on line: $LINENO"' ERR
+gnu_curl() {
+    command curl -q --fail --location --show-error --retry 3 --retry-delay 2 \
+        --connect-timeout 15 --max-time 600 --proto '=https' --proto-redir '=https' \
+        --user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36' "$@"
+}
+
+gnu_new_workdir() {
+    local base="${TMPDIR:-/tmp}"
+    [[ "$base" == /* && -d "$base" ]] || { printf 'TMPDIR must be an existing absolute directory.\n' >&2; return 1; }
+    mktemp -d -- "$base/${0##*/}.XXXXXX"
+}
+
+gnu_jobs="${JOBS:-$(nproc)}"
+[[ "$gnu_jobs" =~ ^[1-9][0-9]*$ ]] || { printf 'JOBS must be a positive integer.\n' >&2; exit 1; }
+
+# Build GNU Automake - v1.1 - 03.08.24
+# GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/installer-scripts/gnu-software/build-automake.sh
+
+set -Ee -o pipefail
 
 version="1.1"
 program_name=automake
@@ -27,6 +45,7 @@ parse_args() {
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
             -p|--prefix)
+                [[ $# -ge 2 && -n "$2" && "$2" != -* ]] || { printf 'Option %s requires a value.\n' "$1" >&2; exit 1; }
                 install_prefix="$2"
                 shift 2
                 ;;
@@ -59,12 +78,12 @@ fail() {
 install_deps() {
     log_msg "Installing dependencies..."
     if command -v apt-get >/dev/null 2>&1; then
-        apt-get update
-        apt-get install -y --no-install-recommends autoconf autoconf-archive autogen automake autopoint autotools-dev binutils bison build-essential bzip2 ccache curl libc6-dev libpth-dev libtool libtool-bin lzip lzma-dev m4 nasm texinfo zlib1g-dev yasm
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends autoconf autoconf-archive autogen automake autopoint autotools-dev binutils bison build-essential bzip2 ccache curl libc6-dev libpth-dev libtool libtool-bin lzip lzma-dev m4 nasm texinfo zlib1g-dev yasm
     elif command -v dnf >/dev/null 2>&1; then
         dnf install -y autoconf autoconf-archive autogen automake autopoint autotools-dev binutils bison bzip2 ccache curl gcc gcc-c++ kernel-devel libpth-devel libtool libtool-ltdl-devel lzip lzma-devel m4 make nasm perl-Thread-Queue tar texinfo xz yasm zlib-devel
     elif command -v pacman >/dev/null 2>&1; then
-        pacman -Sy --noconfirm --needed autoconf autoconf-archive autogen automake gettext binutils bison bzip2 ccache curl gcc libtool m4 make nasm texinfo xz yasm zlib
+        pacman -S --noconfirm --needed autoconf autoconf-archive autogen automake gettext binutils bison bzip2 ccache curl gcc libtool m4 make nasm texinfo xz yasm zlib
     else
         fail "Unsupported package manager. Please install the required dependencies manually."
     fi
@@ -89,7 +108,7 @@ download_archive() {
     log_msg "Downloading archive..."
     archive_name="$program_name-$program_version.tar.xz"
     if [[ ! -f "$build_dir/$archive_name" ]]; then
-        curl -fsSL "$archive_url" -o "$build_dir/$archive_name"
+        gnu_curl -fsSL "$archive_url" -o "$build_dir/$archive_name"
     fi
 }
 
@@ -101,7 +120,7 @@ extract_archive() {
 configure_build() {
     log_msg "Configuring build..."
     cd "$build_dir"
-    autoreconf -fi
+
     mkdir -p build && cd build
     ../configure --prefix="$install_prefix/$program_name" \
                  --build="$(gcc -dumpmachine)" \
@@ -111,7 +130,7 @@ configure_build() {
 
 compile_build() {
     log_msg "Compiling..."
-    make "-j$(nproc --all)"
+    make "-j$gnu_jobs"
 }
 
 install_build() {
@@ -121,8 +140,10 @@ install_build() {
 
 create_symlinks() {
     log_msg "Creating symlinks..."
+    mkdir -p "$install_prefix/bin"
     for file in "$install_prefix/$program_name/bin/"*; do
-        ln -sfn "$file" "$install_prefix/bin/$(basename "$file" | sed 's/^\w*-//')"
+        [[ -e "$file" || -L "$file" ]] || continue
+        ln -sfn "$file" "$install_prefix/bin/$(basename "$file" | cat)"
     done
 }
 
@@ -133,21 +154,30 @@ copy_m4_files() {
 }
 
 cleanup() {
-    log_msg "Cleaning up..."
-    read -rp "Remove temporary build directory '$build_dir'? [y/N] " response
-    if [[ "$response" =~ ^[Yy]$ ]]; then
-        rm -rf "$build_dir"
-    fi
+    local response
+    while true; do
+        if ! read -r -p "Remove build directory '$build_dir'? [y/N] " response; then
+            printf '\nBuild files retained at %s\n' "$build_dir"
+            return 0
+        fi
+        case "$response" in
+            1|y|Y|yes|YES) rm -rf -- "$build_dir"; return 0 ;;
+            2|n|N|no|NO|"") printf 'Build files retained at %s\n' "$build_dir"; return 0 ;;
+            *) printf 'Enter y or n.\n' >&2 ;;
+        esac
+    done
 }
 
 main() {
     parse_args "$@"
+    [[ "$install_prefix" == /* && "$install_prefix" != / ]] || fail "Prefix must be an absolute directory other than /."
 
     if [[ "$EUID" -ne 0 ]]; then
         fail "You must run this script with root or sudo."
     fi
 
-    [[ -d "$build_dir" ]] &&  rm -rf "$build_dir"
+    build_dir=$(gnu_new_workdir)
+
     mkdir -p "$build_dir"
 
     install_deps

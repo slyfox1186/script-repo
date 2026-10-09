@@ -1,6 +1,45 @@
 #!/usr/bin/env bash
 
-# GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer-Scripts/GNU-Software/build-all-gnu.sh
+# Keep these helpers local so a downloaded installer remains standalone.
+set -Ee -o pipefail
+trap 'printf "Build failed at line %s. Build files were retained for inspection.\n" "$LINENO" >&2; exit 1' ERR
+
+gnu_curl() {
+    command curl -q --fail --location --show-error --retry 3 --retry-delay 2 \
+        --connect-timeout 15 --max-time 600 --proto '=https' --proto-redir '=https' \
+        --user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36' "$@"
+}
+
+gnu_wget() {
+    command wget --timeout=30 --tries=3 --https-only \
+        --user-agent='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36' "$@"
+}
+
+gnu_link_dir() {
+    local source_dir="$1" destination="$2" pattern="${3:-*}" file target
+    [[ -d "$source_dir" ]] || return 0
+    for file in "$source_dir"/*; do
+        [[ -e "$file" || -L "$file" ]] || continue
+        # The caller supplies a filename glob, for example *.pc.
+        # shellcheck disable=SC2053
+        [[ "${file##*/}" == $pattern ]] || continue
+        target="$destination/${file##*/}"
+        [[ ! -d "$target" || -L "$target" ]] || { printf 'Cannot replace directory %s with a symlink.\n' "$target" >&2; return 1; }
+        sudo mkdir -p -- "$destination"
+        sudo ln -sfn -- "$file" "$target"
+    done
+}
+
+gnu_new_workdir() {
+    local base="${TMPDIR:-/tmp}"
+    [[ "$base" == /* && -d "$base" ]] || { printf 'TMPDIR must be an existing absolute directory.\n' >&2; return 1; }
+    mktemp -d -- "$base/${0##*/}.XXXXXX"
+}
+
+gnu_jobs="${JOBS:-$(nproc)}"
+[[ "$gnu_jobs" =~ ^[1-9][0-9]*$ ]] || { printf 'JOBS must be a positive integer.\n' >&2; exit 1; }
+
+# GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/installer-scripts/gnu-software/build-all-gnu.sh
 # Purpose: Build various GNU programs from source code
 # Updated: 06.22.24
 # Version: 1.4
@@ -18,7 +57,7 @@ available_programs=(
 )
 
 # Consolidated list of required packages for all programs
-MASTER_PKGS="autoconf autoconf-archive automake build-essential bzip2 ccache curl libc6-dev"
+MASTER_PKGS="ca-certificates wget pkg-config autoconf autoconf-archive automake build-essential bzip2 ccache curl libc6-dev"
 MASTER_PKGS+=" libintl-perl libtool lzip lzma lzma-dev m4 texinfo xz-utils zlib1g-dev"
 
 # Specific package lists for each program (excluding those already in MASTER_PKGS)
@@ -75,6 +114,7 @@ while [[ "$#" -gt 0 ]]; do
             exit 0
             ;;
         -p|--programs)
+            [[ $# -ge 2 && -n "$2" && "$2" != -* ]] || fail "Option $1 requires a program list."
             shift
             programs="$1"
             ;;
@@ -96,16 +136,18 @@ if [[ -z "$programs" ]]; then
     echo "Available Programs: ${available_programs[*]}"
     echo "You can also choose 'all' to install all available programs."
     echo
-    read -p "Enter the programs to build (comma-separated): " programs
+    read -rp "Enter the programs to build (comma-separated): " programs || exit 1
     clear
 fi
 
 # Function to check and install required packages
 required_packages() {
     local -a pkgs
-    local pkg
+    local pkg prog extra
+    local -a additions
+    local -A seen=()
 
-    pkgs=($MASTER_PKGS)
+    read -r -a pkgs <<< "$MASTER_PKGS"
 
     if [[ "$1" == "all" ]]; then
         pkgs+=("$BASH_PKGS" "$GAWK_PKGS" "$GREP_PKGS" "$GZIP_PKGS" "$MAKE_PKGS" "$NANO_PKGS" "$PKG_CONFIG_PKGS" "$SED_PKGS" "$TAR_PKGS" "$PARALLEL_PKGS" "$WGET_PKGS" "$WHICH_PKGS")
@@ -153,7 +195,14 @@ required_packages() {
     fi
 
     # Remove duplicate packages and sort alphabetically
-    pkgs=($(echo "${pkgs[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
+    extra="${pkgs[*]}"
+    read -r -a additions <<< "$extra"
+    pkgs=()
+    for pkg in "${additions[@]}"; do
+        [[ -z ${seen[$pkg]:-} ]] || continue
+        seen[$pkg]=1
+        pkgs+=("$pkg")
+    done
 
     local -a available_pkgs=()
     for pkg in "${pkgs[@]}"; do
@@ -185,9 +234,9 @@ get_latest_version_url() {
     local prog_name version
     prog_name=$1
     if [[ "$prog_name" == "pkg-config" ]]; then
-        version=$(curl -fsS "https://pkgconfig.freedesktop.org/releases/" | grep -oP 'pkg-config-\K[0-9]+\.[0-9\.]+(?=\.tar\.gz)' | sort -ruV | head -n1)
+        version=$(gnu_curl -fsS "https://pkgconfig.freedesktop.org/releases/" | grep -oP 'pkg-config-\K[0-9]+\.[0-9\.]+(?=\.tar\.gz)' | sort -ruV | sed -n '1p')
     else
-        version=$(curl -fsS "https://ftp.gnu.org/gnu/$prog_name/" | grep -oP "$prog_name-\K([0-9.]+)(?=\.tar\.)" | sort -ruV | head -n1)
+        version=$(gnu_curl -fsS "https://ftp.gnu.org/gnu/$prog_name/" | grep -oP "$prog_name-\K([0-9.]+)(?=\.tar\.)" | sort -ruV | sed -n '1p')
     fi
     if [[ -z "$version" ]]; then
         fail "Failed to find the latest version for $prog_name. Please check the program name or the respective server."
@@ -196,24 +245,29 @@ get_latest_version_url() {
 }
 
 download_and_extract() {
-    local archive_url
+    local archive_url found=false
 
     if [[ "$prog_name" == "pkg-config" ]]; then
         archive_url="https://pkgconfig.freedesktop.org/releases/pkg-config-$version.tar.gz"
     else
         archive_url="https://ftp.gnu.org/gnu/$prog_name/$prog_name-$version.tar"
-        for ext in lz xz bz2 gz; do
-            wget --spider "$archive_url.$ext" &>/dev/null && archive_url+=".$ext" && break
+        for ext in xz bz2 gz lz; do
+            if gnu_wget --spider "$archive_url.$ext" &>/dev/null; then
+                archive_url+=".$ext"
+                found=true
+                break
+            fi
         done
+        [[ "$found" == true ]] || fail "No supported archive was found for $prog_name $version."
     fi
 
-    wget --show-progress -cqO "$cwd/$archive_name.${archive_url##*.}" "$archive_url" || fail "Failed to download archive with WGET. Line: $LINENO"
+    gnu_wget --show-progress -cqO "$cwd/$archive_name.${archive_url##*.}" "$archive_url" || fail "Failed to download archive with WGET. Line: $LINENO"
     tar -xf "$cwd/$archive_name.${archive_url##*.}" -C "$cwd/$archive_name" --strip-components 1 || fail "Failed to extract: $cwd/$archive_name.${archive_url##*.}"
 }
 
 configure_build() {
     cd "$cwd/$archive_name" || fail "Failed to cd into $cwd/$archive_name. Line: $LINENO"
-    
+
     case "$prog_name" in
         autoconf)
             ./configure --prefix="$install_dir" || fail "Failed to execute: configure. Line: $LINENO"
@@ -254,7 +308,7 @@ configure_build() {
                         --with-zstd="$(command -v zstd)" --with-lzop="$(command -v lzop)" --with-gzip="$(command -v gzip)" || fail "Failed to execute: configure. Line: $LINENO"
             ;;
         wget)
-            autoreconf -fi -I /usr/share/aclocal || fail "Failed to execute: autoreconf. Line: $LINENO"
+
             ./configure --prefix="$install_dir" --with-ssl=openssl --with-libssl-prefix="$cwd" --with-metalink \
                         --with-libunistring-prefix=/usr --with-libcares --without-ipv6 --disable-nls || fail "Failed to execute: configure. Line: $LINENO"
             ;;
@@ -263,33 +317,21 @@ configure_build() {
             ./configure --prefix="$install_dir" || fail "Failed to execute: configure. Line: $LINENO"
             ;;
         *)
-            autoreconf -fi || fail "Failed to execute: autoreconf. Line: $LINENO"
+
             ./configure --prefix="$install_dir" --disable-nls || fail "Failed to execute: configure. Line: $LINENO"
             ;;
     esac
 }
 
 compile_and_install() {
-    local version=$1
-    make "-j$(nproc --all)" || fail "Failed to execute: make build. Line: $LINENO"
+    make "-j$gnu_jobs" || fail "Failed to execute: make build. Line: $LINENO"
     sudo make install || fail "Failed execute: make install. Line: $LINENO"
 }
 
 create_soft_links() {
-    # Check and link files in the bin directory
-    if [ -d "$install_dir/bin" ] && [ "$(find "$install_dir/bin" -type f | wc -l)" -gt 0 ]; then
-        sudo ln -sf "$install_dir/bin/"* "/usr/local/bin/"
-    fi
-
-    # Check and link .pc files in the lib/pkgconfig directory
-    if [ -d "$install_dir/lib/pkgconfig" ] && [ "$(find "$install_dir/lib/pkgconfig" -name '*.pc' | wc -l)" -gt 0 ]; then
-        sudo ln -sf "$install_dir/lib/pkgconfig/"*.pc "/usr/local/lib/pkgconfig/"
-    fi
-
-    # Check and link files in the include directory
-    if [ -d "$install_dir/include" ] && [ "$(find "$install_dir/include" -type f | wc -l)" -gt 0 ]; then
-        sudo ln -sf "$install_dir/include/"* "/usr/local/include/"
-    fi
+    gnu_link_dir "$install_dir/bin" /usr/local/bin
+    gnu_link_dir "$install_dir/lib/pkgconfig" /usr/local/lib/pkgconfig '*.pc'
+    gnu_link_dir "$install_dir/include" /usr/local/include
 }
 
 ld_linker_path() {
@@ -303,7 +345,7 @@ ld_linker_path() {
 }
 
 cleanup() {
-    sudo rm -fr "$cwd"
+    rm -rf -- "$cwd"
 }
 
 build_program() {
@@ -318,8 +360,7 @@ build_program() {
     fi
     archive_name="$prog_name-$version"
     install_dir="/usr/local/programs/$archive_name"
-    cwd="/tmp/$prog_name-build-script"
-    tar_file="$archive_name.$(date +%s)"
+    cwd=$(gnu_new_workdir)
     mkdir -p "$cwd/$archive_name/build"
     set_compiler_flags
     download_and_extract
@@ -335,6 +376,15 @@ IFS=',' read -ra progs <<< "$programs"
 if [[ "$programs" == "all" ]]; then
     progs=("${available_programs[@]}")
 fi
+
+[[ -n "$programs" && "$programs" != ,* && "$programs" != *, && "$programs" != *,,* ]] || fail "Enter a nonempty program list."
+for prog in "${progs[@]}"; do
+    valid=false
+    for available in "${available_programs[@]}"; do
+        if [[ "$prog" == "$available" ]]; then valid=true; break; fi
+    done
+    [[ "$valid" == true ]] || fail "Unknown program: $prog. Use --help to list supported programs."
+done
 
 required_packages "${progs[@]}"
 

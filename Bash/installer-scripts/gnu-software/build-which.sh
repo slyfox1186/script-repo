@@ -1,6 +1,25 @@
 #!/usr/bin/env bash
 
-##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer-Scripts/GNU-Software/build-which.sh
+# Keep these helpers local so a downloaded installer remains standalone.
+set -Ee -o pipefail
+trap 'printf "Build failed at line %s. Build files were retained for inspection.\n" "$LINENO" >&2; exit 1' ERR
+
+gnu_curl() {
+    command curl -q --fail --location --show-error --retry 3 --retry-delay 2 \
+        --connect-timeout 15 --max-time 600 --proto '=https' --proto-redir '=https' \
+        --user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36' "$@"
+}
+
+gnu_new_workdir() {
+    local base="${TMPDIR:-/tmp}"
+    [[ "$base" == /* && -d "$base" ]] || { printf 'TMPDIR must be an existing absolute directory.\n' >&2; return 1; }
+    mktemp -d -- "$base/${0##*/}.XXXXXX"
+}
+
+gnu_jobs="${JOBS:-$(nproc)}"
+[[ "$gnu_jobs" =~ ^[1-9][0-9]*$ ]] || { printf 'JOBS must be a positive integer.\n' >&2; exit 1; }
+
+##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/installer-scripts/gnu-software/build-which.sh
 ##  Purpose: build gnu which
 ##  Updated: 03.19.24
 ##  Script version: 1.1
@@ -18,7 +37,6 @@ archive_url="https://ftp.gnu.org/gnu/which/$archive_dir.tar.gz"
 archive_name="$archive_dir.tar.${archive_url##*.}"
 cwd="$PWD/which-build-script"
 install_dir="/usr/local/programs/$archive_dir"
-autoconf_url="https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer-Scripts/GNU-Software/build-autoconf-2.69.sh"
 
 # Create logging functions
 log() {
@@ -62,7 +80,7 @@ set_compiler_flags() {
 
 # Set the path variables
 set_path_variables() {
-    PATH="/usr/lib/ccache:$cwd/working/bin:$HOME/perl5/bin:$HOME/.cargo/bin:$HOME/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+    PATH="/usr/lib/ccache:$PATH"
     PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/lib64/pkgconfig:/usr/local/share/pkgconfig:/usr/lib/pkgconfig:/usr/lib64/pkgconfig:/usr/share/pkgconfig"
     PKG_CONFIG_PATH+=":/usr/local/cuda/lib64/pkgconfig:/usr/local/cuda/lib/pkgconfig:/opt/cuda/lib64/pkgconfig:/opt/cuda/lib/pkgconfig"
     PKG_CONFIG_PATH+=":/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/i386-linux-gnu/pkgconfig:/usr/lib/arm-linux-gnueabihf/pkgconfig:/usr/lib/aarch64-linux-gnu/pkgconfig"
@@ -79,61 +97,41 @@ exit_fn() {
 
 # Prompt user to clean up files
 cleanup_fn() {
-    local choice
-
-    echo
-    echo -e "${GREEN}============================================${NC}"
-    echo -e "  ${YELLOW}Do you want to clean up the build files?${NC}  "
-    echo -e "${GREEN}============================================${NC}"
-    echo
-    echo "[1] Yes"
-    echo "[2] No"
-    echo
-    read -p "Your choice (1 or 2): " choice
-
-    case "$choice" in
-        1) rm -fr "$cwd";;
-        2) ;;
-        *) unset choice
-           cleanup_fn
-           ;;
-    esac
+    local response
+    while true; do
+        if ! read -r -p "Remove build directory '$cwd'? [y/N] " response; then
+            printf '\nBuild files retained at %s\n' "$cwd"
+            return 0
+        fi
+        case "$response" in
+            1|y|Y|yes|YES) rm -rf -- "$cwd"; return 0 ;;
+            2|n|N|no|NO|"") printf 'Build files retained at %s\n' "$cwd"; return 0 ;;
+            *) printf 'Enter y or n.\n' >&2 ;;
+        esac
+    done
 }
 
 # Install required apt packages
 install_dependencies() {
     pkgs=(automake gcc make curl tar)
-    missing_pkgs=""
+    missing_pkgs=()
     for pkg in "${pkgs[@]}"; do
         if ! dpkg -s "$pkg" &> /dev/null; then
-            missing_pkgs+=" $pkg"
+            missing_pkgs+=("$pkg")
         fi
     done
-    if [[ -n "$missing_pkgs" ]]; then
+    if [[ ${#missing_pkgs[@]} -gt 0 ]]; then
         sudo apt-get update
-        sudo apt-get install $missing_pkgs
+        sudo apt-get install "${missing_pkgs[@]}"
     fi
 }
 
 # Download and install autoconf 2.69
-install_autoconf() {
-    log "Downloading autoconf 2.69 script..."
-    echo
-    mkdir -p "$cwd/autoconf-2.69/build" "$cwd/working"
-    curl -Lso "$cwd/autoconf-2.69.tar.xz" "https://ftp.gnu.org/gnu/autoconf/autoconf-2.69.tar.xz"
-    tar -xf "$cwd/autoconf-2.69.tar.xz" -C "$cwd/autoconf-2.69" --strip-components 1
-    cd "$cwd/autoconf-2.69" || exit 1
-    autoreconf -fi
-    cd build || exit 1
-    ../configure --prefix="$cwd/working"
-    make "-j$(nproc --all)"
-    make install
-}
 
 # Download the archive file
 download_archive() {
     if [[ ! -f "$cwd/$archive_name" ]]; then
-        curl -Lso "$cwd/$archive_name" "$archive_url"
+        gnu_curl -Lso "$cwd/$archive_name" "$archive_url"
     fi
 }
 
@@ -152,11 +150,10 @@ build_program() {
     echo
     log "Building which..."
     echo
-    autoupdate
-    autoreconf -fi
+
     cd build || exit 1
     ../configure --prefix="$install_dir" ${silent_rules:+"$silent_rules"}
-    make "-j$(nproc --all)" || fail "Failed to execute: make -j$(nproc --all). Line: ${LINENO}"
+    make "-j$gnu_jobs" || fail "Failed to execute: make -j$gnu_jobs. Line: ${LINENO}"
     if ! sudo make install; then
         fail "Failed to execute: sudo make install. Line: ${LINENO}"
     fi
@@ -164,7 +161,11 @@ build_program() {
 
 # Create soft links
 create_soft_links() {
-    sudo ln -sf "$install_dir"/bin/* /usr/local/bin/
+    for file in "$install_dir"/bin/*; do
+        [[ -e "$file" || -L "$file" ]] || continue
+        sudo mkdir -p /usr/local/bin/
+        sudo ln -sfn -- "$file" /usr/local/bin/
+    done
 }
 
 # Display help menu
@@ -207,7 +208,7 @@ parse_options() {
                 ;;
             *)
                 echo "Invalid option: $1"
-                display_help
+                exit 1
                 ;;
         esac
         shift
@@ -220,9 +221,9 @@ main() {
     check_root
     display_info
     install_dependencies
-    [[ -d "$cwd/$archive_dir" ]] && rm -fr "$cwd/$archive_dir"
+
+    cwd=$(gnu_new_workdir)
     mkdir -p "$cwd/$archive_dir/build"
-    install_autoconf
     download_archive
     extract_archive
     build_program

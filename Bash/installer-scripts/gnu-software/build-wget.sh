@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 
+gnu_curl() {
+    command curl -q --fail --location --show-error --retry 3 --retry-delay 2 \
+        --connect-timeout 15 --max-time 600 --proto '=https' --proto-redir '=https' \
+        --user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36' "$@"
+}
+
 # Purpose: build the latest stable release of GNU Wget from source
 # Target:  Ubuntu 24.04 (works on other Debian/Ubuntu releases as well)
 # Source:  https://ftp.gnu.org/gnu/wget/
@@ -308,7 +314,7 @@ check_prefix_access() {
     [[ "$dry_run" == true ]] || require_root "$1"
 }
 
-fetch()  { curl -fsSL --connect-timeout 15 --retry 3 --retry-delay 2 "$@"; }
+fetch()  { gnu_curl -fsSL --connect-timeout 15 --retry 3 --retry-delay 2 "$@"; }
 sha256() { sha256sum "$1" | cut -d' ' -f1; }
 
 # Everything under gnu/ on the GNU servers is a stable release. Test releases

@@ -1,6 +1,30 @@
 #!/usr/bin/env bash
 
-##  Github: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer-Scripts/GNU-Software/build-make.sh
+# Keep these helpers local so a downloaded installer remains standalone.
+set -Ee -o pipefail
+trap 'printf "Build failed at line %s. Build files were retained for inspection.\n" "$LINENO" >&2; exit 1' ERR
+
+gnu_curl() {
+    command curl -q --fail --location --show-error --retry 3 --retry-delay 2 \
+        --connect-timeout 15 --max-time 600 --proto '=https' --proto-redir '=https' \
+        --user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36' "$@"
+}
+
+gnu_wget() {
+    command wget --timeout=30 --tries=3 --https-only \
+        --user-agent='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36' "$@"
+}
+
+gnu_new_workdir() {
+    local base="${TMPDIR:-/tmp}"
+    [[ "$base" == /* && -d "$base" ]] || { printf 'TMPDIR must be an existing absolute directory.\n' >&2; return 1; }
+    mktemp -d -- "$base/${0##*/}.XXXXXX"
+}
+
+gnu_jobs="${JOBS:-$(nproc)}"
+[[ "$gnu_jobs" =~ ^[1-9][0-9]*$ ]] || { printf 'JOBS must be a positive integer.\n' >&2; exit 1; }
+
+##  Github: https://github.com/slyfox1186/script-repo/blob/main/Bash/installer-scripts/gnu-software/build-make.sh
 ##  Purpose: build gnu make
 ##  Updated: 05.11.24
 ##  Script version: 2.2
@@ -27,7 +51,7 @@ fail() {
     exit 1
 }
 
-echo "$prog_name build script - version $script_ver"
+echo "make build script - version 2.2"
 echo "================================================="
 echo
 
@@ -41,7 +65,7 @@ exit_function() {
 }
 
 cleanup() {
-    sudo rm -fr "$cwd"
+    rm -rf -- "$cwd"
 }
 
 required_packages() {
@@ -50,7 +74,7 @@ required_packages() {
     log "Installing dependencies..."
     pkgs=(
          autoconf automake build-essential gettext libdmalloc-dev
-         libintl-perl libsigsegv2 libticonv8 libtool lzip texinfo
+         libintl-perl libsigsegv2 libtool lzip texinfo
     )
 
     missing_pkgs=()
@@ -82,7 +106,7 @@ set_compiler_flags() {
 }
 
 download_archive() {
-    wget --show-progress -cqO "$cwd/$tar_file" "$archive_url" || fail "Failed to download archive with WGET. Line: $LINENO"
+    gnu_wget --show-progress -cqO "$cwd/$tar_file" "$archive_url" || fail "Failed to download archive with WGET. Line: $LINENO"
 }
 
 extract_archive() {
@@ -91,7 +115,7 @@ extract_archive() {
 
 configure_build() {
     cd "$cwd/$archive_name" || fail "Failed to cd into $cwd/$archive_name. Line: $LINENO"
-    autoreconf -fi -I /usr/share/aclocal
+
     cd build || fail "Failed to cd into the build directory. Line: $LINENO"
     ../configure --prefix="$install_dir" --disable-nls --enable-year2038 --with-dmalloc \
              --with-libsigsegv-prefix=/usr --with-libiconv-prefix=/usr --with-libintl-prefix=/usr || (
@@ -100,7 +124,7 @@ configure_build() {
 }
 
 compile_build() {
-    make "-j$(nproc --all)" || fail "Failed to execute: make build. Line: $LINENO"
+    make "-j$gnu_jobs" || fail "Failed to execute: make build. Line: $LINENO"
 }
 
 install_build() {
@@ -113,9 +137,21 @@ ld_linker_path() {
 }
 
 create_soft_links() {
-    sudo ln -sf "$install_dir/bin/"* "/usr/local/bin/"
-    sudo ln -sf "$install_dir/lib/pkgconfig/"*.pc "/usr/local/lib/pkgconfig/"
-    sudo ln -sf "$install_dir/include/"* "/usr/local/include/"
+    for file in "$install_dir/bin/"*; do
+        [[ -e "$file" || -L "$file" ]] || continue
+        sudo mkdir -p "/usr/local/bin/"
+        sudo ln -sfn -- "$file" "/usr/local/bin/"
+    done
+    for file in "$install_dir/lib/pkgconfig/"*.pc; do
+        [[ -e "$file" || -L "$file" ]] || continue
+        sudo mkdir -p "/usr/local/lib/pkgconfig/"
+        sudo ln -sfn -- "$file" "/usr/local/lib/pkgconfig/"
+    done
+    for file in "$install_dir/include/"*; do
+        [[ -e "$file" || -L "$file" ]] || continue
+        sudo mkdir -p "/usr/local/include/"
+        sudo ln -sfn -- "$file" "/usr/local/include/"
+    done
 }
 
 show_usage() {
@@ -127,7 +163,7 @@ show_usage() {
     echo "  -v, --version    Specify the version of make to build (default: 4.4.1)"
     echo
     echo "Example:"
-    echo "  $0 -v 4.3 -c"
+    echo "  $0 -v 4.3"
 }
 
 # Parse command-line options
@@ -138,11 +174,12 @@ while [[ "$#" -gt 0 ]]; do
             exit 0
             ;;
         -v|--version)
+            [[ $# -ge 2 && "$2" =~ ^[0-9]+(\.[0-9]+)+$ ]] || fail "Option $1 requires a numeric version."
             shift
             make_version="$1"
             ;;
         *)
-            warn "Unknown option: $1"
+            fail "Unknown option: $1"
             show_usage
             exit 1
             ;;
@@ -154,13 +191,18 @@ main_menu() {
 
     script_ver=2.2
     prog_name="make"
-    version=$(curl -fsS "https://ftp.gnu.org/gnu/$prog_name/" | grep -oP 'make-\K([0-9.])+(?=\.tar\..*)' | sort -ruV | head -n1)
+    version="${make_version:-}"
+    if [[ -z "$version" ]]; then
+        version=$(gnu_curl -fsS "https://ftp.gnu.org/gnu/$prog_name/" | grep -oP 'make-\K([0-9.])+(?=\.tar\..*)' | sort -ruV | sed -n '1p')
+    fi
     archive_name="$prog_name-$version"
     install_dir="/usr/local/programs/$archive_name"
     cwd="$PWD/$archive_name-build-script"
 
     # Create output directory
-    [[ -d "$cwd/$archive_name" ]] && sudo rm -fr "$cwd/$archive_name"
+
+    cwd=$(gnu_new_workdir)
+
     mkdir -p "$cwd/$archive_name/build"
 
     if [[ -n "$make_version" ]]; then

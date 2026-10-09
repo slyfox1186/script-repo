@@ -1,6 +1,25 @@
 #!/usr/bin/env bash
 
-##  Github script: https://github.com/slyfox1186/script-repo/edit/main/Bash/Installer-Scripts/GNU-Software/build-dbus
+# Keep these helpers local so a downloaded installer remains standalone.
+set -Ee -o pipefail
+trap 'printf "Build failed at line %s. Build files were retained for inspection.\n" "$LINENO" >&2; exit 1' ERR
+
+gnu_curl() {
+    command curl -q --fail --location --show-error --retry 3 --retry-delay 2 \
+        --connect-timeout 15 --max-time 600 --proto '=https' --proto-redir '=https' \
+        --user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36' "$@"
+}
+
+gnu_new_workdir() {
+    local base="${TMPDIR:-/tmp}"
+    [[ "$base" == /* && -d "$base" ]] || { printf 'TMPDIR must be an existing absolute directory.\n' >&2; return 1; }
+    mktemp -d -- "$base/${0##*/}.XXXXXX"
+}
+
+gnu_jobs="${JOBS:-$(nproc)}"
+[[ "$gnu_jobs" =~ ^[1-9][0-9]*$ ]] || { printf 'JOBS must be a positive integer.\n' >&2; exit 1; }
+
+##  Github script: https://github.com/slyfox1186/script-repo/edit/main/Bash/installer-scripts/gnu-software/build-dbus
 ##  Purpose: build gnu dbus
 ##  Updated: 11.06.23
 ##  Script version: 1.2
@@ -24,7 +43,9 @@ echo "==============================================="
 echo
 
 # Create output directory
-[[ -d "$cwd" ]] && sudo rm -fr "$cwd"
+
+cwd=$(gnu_new_workdir)
+
 mkdir -p "$cwd"
 
 # Set the c + cpp compilers
@@ -54,23 +75,18 @@ fail() {
 }
 
 cleanup() {
-    local choice
-
-    echo
-    echo "============================================"
-    echo "  Do you want to clean up the build files?  "
-    echo "============================================"
-    echo 
-    echo "[[1]] Yes"
-    echo "[[2]] No"
-    echo
-    read -p "Your choices are (1 or 2): " choice
-
-    case "$choice" in
-        1) sudo rm -fr "$cwd" ;;
-        2) ;;
-        *) unset choice; cleanup ;;
-    esac
+    local response
+    while true; do
+        if ! read -r -p "Remove build directory '$cwd'? [y/N] " response; then
+            printf '\nBuild files retained at %s\n' "$cwd"
+            return 0
+        fi
+        case "$response" in
+            1|y|Y|yes|YES) rm -rf -- "$cwd"; return 0 ;;
+            2|n|N|no|NO|"") printf 'Build files retained at %s\n' "$cwd"; return 0 ;;
+            *) printf 'Enter y or n.\n' >&2 ;;
+        esac
+    done
 }
 
 # Install required apt packages
@@ -79,22 +95,24 @@ pkgs=(apparmor apparmor-utils autoconf autoconf-archive autogen automake autopoi
       librust-polling-dev libsystemd-dev libtool libtool-bin libx11-dev lzip pkg-config valgrind
       zlib1g-dev)
 
+missing_pkgs=()
+
 for pkg in "${pkgs[@]}"
 do
-    missing_pkg="$(dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -o 'ok installed')"
+    missing_pkg="$(dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -o 'ok installed' || true)"
 
     if [[ -z "$missing_pkg" ]]; then
-        missing_pkgs+=" $pkg"
+        missing_pkgs+=("$pkg")
     fi
 done
 
-if [[ -n "$missing_pkgs" ]]; then
-    sudo apt install $missing_pkgs
+if [[ ${#missing_pkgs[@]} -gt 0 ]]; then
+    sudo apt install "${missing_pkgs[@]}"
 fi
 
 # Download the archive file
 if [[ ! -f "$cwd/$archive_name" ]]; then
-    curl -Lso "$cwd/$archive_name" "$archive_url"
+    gnu_curl -Lso "$cwd/$archive_name" "$archive_url"
 fi
 
 # Create output directory
@@ -125,8 +143,8 @@ cd build || exit 1
              --with-pic \
              --with-valgrind \
              PKG_CONFIG_PATH="$PKG_CONFIG_PATH"
-if ! make "-j$(nproc --all)"; then
-    fail "Failed to execute: make -j$(nproc --all). Line: $LINENO"
+if ! make "-j$gnu_jobs"; then
+    fail "Failed to execute: make -j$gnu_jobs. Line: $LINENO"
 fi
 
 if ! sudo make install; then
