@@ -3,20 +3,25 @@
 
 ## AWK COMMANDS ##
 
-# Removed all duplicate lines: outputs to terminal
-rmd_lines() {
+# Remove duplicate lines: output to the terminal.
+dedupe_lines() {
     awk '!seen[$0]++' "$1"
 }
 
-# Remove consecutive duplicate lines: outputs to terminal
-rmdc() {
+# Remove consecutive duplicate lines: output to the terminal.
+dedupe_consecutive_lines() {
     awk 'f!=$0{print;f=$0}' "$1"
 }
 
-# Remove all duplicate lines and removes trailing spaces before comparing: replaces the file
-rmdl() {
+# Remove trailing spaces and duplicate lines in place.
+dedupe_trimmed_file() {
     perl -i -lne "s/\s*$//; print if ! \$x{\$_}++" "$1"
     gnome-text-editor "$1"
+}
+
+# Install colordiff package
+cdiff() {
+    colordiff "$1" "$2"
 }
 
 ## SED COMMANDS ##
@@ -26,25 +31,27 @@ fsed() {
     echo
 
     if [[ -z "$1" ]]; then
-        read -rp "Enter the original text: " otext
-        read -rp "Enter the replacement text: " rtext
+        read -r -p "Enter the original text: " otext
+        read -r -p "Enter the replacement text: " rtext
         echo
     else
         otext=$1
         rtext=$2
     fi
 
-    # Use a delimiter unlikely in input; properly handles filenames with spaces
-    sudo find . -maxdepth 1 -type f -exec sed -i "s|${otext}|${rtext}|g" {} +
+     sudo sed -i "s/${otext}/${rtext}/g" "$(find . -maxdepth 1 -type f)"
 }
 
-# REGEX COMMANDS
+####################
+## REGEX COMMANDS ##
+####################
+
 bvar() {
     local choice fname fname_tmp
     clear
 
     if [[ -z "$1" ]]; then
-        read -rp "Please enter the file path: " fname
+        read -r -p "Please enter the file path: " fname
         fname_tmp="$fname"
     else
         fname="$1"
@@ -62,7 +69,7 @@ bvar() {
         "Do you want to permanently change this file?" \
         "[1] Yes" \
         "[2] Exit"
-    read -rp "Your choices are ( 1 or 2): " choice
+    read -r -p "Your choices are ( 1 or 2): " choice
     clear
     case "$choice" in
         1)
@@ -83,300 +90,149 @@ bvar() {
 }
 
 rm_curly() {
-    local content file transform_string
-    # FUNCTION TO TRANSFORM THE STRING
-    transform_string() {
-        content=$(cat "$1")
-        echo "${content//\$\{/\$}" | sed "s/\}//g"
-    }
+    local file target_dir temp_file
 
-    # LOOP OVER EACH ARGUMENT
     for file in "$@"; do
         if [[ -f "$file" ]]; then
-            # PERFORM THE TRANSFORMATION AND OVERWRITE THE FILE
-            transform_string "$file" > "$file.tmp"
-            mv "$file.tmp" "$file"
-            echo "Modified file: $file"
+            target_dir=$(dirname -- "$file") || return 1
+            temp_file=$(mktemp --tmpdir="$target_dir" ".${file##*/}.XXXXXX") || return 1
+            if sed -e 's/${/$/g' -e 's/}//g' -- "$file" > "$temp_file"; then
+                chmod --reference="$file" "$temp_file"
+                mv -- "$temp_file" "$file"
+                printf 'Modified file: %s\n' "$file"
+            else
+                rm -f -- "$temp_file"
+                return 1
+            fi
         else
-            echo "File not found: $file"
+            printf 'File not found: %s\n' "$file" >&2
         fi
     done
 }
 
-# Install colordiff package
-cdiff() {
-    colordiff "$1" "$2"
-}
-
-# COPY ANY TEXT. DOES NOT NEED TO BE IN QUOTES
-# EXAMPLE: ct This is so cool
-# OUTPUT WHEN PASTED: This is so cool
-# USAGE: cp <file name here>
-cc() {
-    local pipe
-    if [[ -z "$*" ]]; then
-        echo
-        echo "The command syntax is shown below"
-        echo "cc INPUT"
-        echo "Example: cc $PWD"
-        echo
-        return 1
-    else
-        pipe="$*"
-    fi
-    echo "$pipe" | xclip -i -rmlastnl -selection clipboard
-}
-
-# COPY A FILE"S FULL PATH
-# USAGE: cp <file name here>
-cfp() {
-    local pipe
-    if [[ -z "$*" ]]; then
-        clear
-        echo "The command syntax is shown below"
-        echo "cfp INPUT"
-        echo "Example: cfp $PWD"
-        echo
-        return 1
-    else
-        pipe="$*"
-    fi
-
-    readlink -fn "$pipe" | xclip -i -selection clipboard
-    clear
-}
-
-# COPY THE CONTENT OF A FILE
-# USAGE: cf <file name here>
-cfc() {
-    clear
-
-    if [[ -z "$1" ]]; then
-        clear
-        echo "The command syntax is shown below"
-        echo "cfc INPUT"
-        echo "Example: cfc $PWD"
-        echo
-        return 1
-    else
-        xclip -i -rmlastnl -select clipboard < "$1"
-    fi
-}
-
-# Search for string in files
-findtext() {
-  # Initialize flag variables and the search pattern
-  local whole_word=0
-  local case_exact=0
-  local pattern=""
-
-  # Iterate over all arguments
-  for arg in "$@"; do
-    case "$arg" in
-      -w|--word)
-        whole_word=1
-        ;;
-      -c|--case|-e|--exact)
-        case_exact=1
-        ;;
-      -*)
-        # If an unknown option is encountered, warn the user.
-        echo "Unknown option: $arg"
-        echo "Usage: findtext [options] \"<search string>\""
-        return 1
-        ;;
-      *)
-        # The first non-option argument is the search pattern
-        if [[ -z "$pattern" ]]; then
-          pattern="$arg"
-        else
-          echo "Unexpected argument: $arg"
-          echo "Usage: findtext [options] \"<search string>\""
-          return 1
-        fi
-        ;;
-    esac
-  done
-
-  # Make sure a pattern was provided
-  if [[ -z "$pattern" ]]; then
-    echo "Usage: findtext [options] \"<search string>\""
-    return 1
-  fi
-
-  # Clear the terminal screen
-  clear
-
-  # Set up the basic grep arguments.
-  # -rn: search recursively and show line numbers.
-  # --color=always: highlight matches.
-  local args=( "-rn" "--color=always" )
-
-  # By default, search is case-insensitive unless a case-exact flag is given.
-  if [[ $case_exact -eq 0 ]]; then
-    args+=( "-i" )
-  fi
-
-  # If whole-word matching is enabled, add the -w flag.
-  if [[ $whole_word -eq 1 ]]; then
-    args+=( "-w" )
-  fi
-
-  local ext exts
-  # Specify file extensions to search: ts, tsx, and js.
-  local ext_list="ts;tsx;js;py"
-  IFS=';' read -ra exts <<< "$ext_list"
-  for ext in "${exts[@]}"; do
-    args+=( "--include=*.$ext" )
-  done
-
-  # Append the search pattern and the current directory.
-  args+=( "$pattern" "." )
-
-  # Execute grep with the constructed arguments,
-  # then filter out unwanted directories (node_modules, dist, disabled).
-  grep "${args[@]}" | grep -Ev 'node_modules/|dist/|disabled/'
-}
-
 # BATCAT COMMANDS
-# `type -P` returns the on-disk binary path, ignoring this function shadow
+
 bat() {
-    if type -P bat &>/dev/null; then
-        command bat "$@"
+    local executable
+
+    if executable=$(type -P batcat); then
+        "$executable" "$@"
+    elif executable=$(type -P bat); then
+        "$executable" "$@"
     else
-        echo "Installing bat now."
-        sudo pacman -S --noconfirm bat
+        echo "Installing batcat now."
+        sudo apt update && sudo apt -y install bat
     fi
 }
 
 batn() {
-    if type -P bat &>/dev/null; then
-        command bat -n "$@"
-    else
-        echo "Installing bat now."
-        sudo pacman -S --noconfirm bat
+    bat -n "$@"
+}
+
+# ripgrep_search - A versatile ripgrep function for recursive pattern matching
+# Usage: ripgrep_search [options] pattern1 [pattern2 ...]
+# Examples:
+#   ripgrep_search "error" "warning"
+#   ripgrep_search -i "TODO" "FIXME"
+#   ripgrep_search --type py "import.*requests"
+#   ripgrep_search -A 3 -B 3 "function.*main"
+
+ripgrep_search() {
+    # Check for help flags
+    for arg in "$@"; do
+        if [[ "$arg" == "-h" ]] || [[ "$arg" == "--help" ]]; then
+            cat << 'EOF'
+ripgrep_search - A versatile ripgrep function for recursive pattern matching
+
+USAGE:
+    ripgrep_search [options] pattern1 [pattern2 ...]
+
+OPTIONS:
+    -h, --help              Show this help message
+    [rg-options]            Any ripgrep options (e.g., -i, -A, -B, --type)
+
+EXAMPLES:
+    ripgrep_search "error" "warning"
+        Search for both "error" and "warning" patterns
+
+    ripgrep_search -i "TODO" "FIXME"
+        Search case-insensitively for TODO and FIXME
+
+    ripgrep_search --type py "import.*requests"
+        Search for import patterns only in Python files
+
+    ripgrep_search -A 3 -B 3 "function.*main"
+        Show 3 lines before and after matching function main patterns
+
+    rgs "error" "warning"
+        Use the short alias (rgs)
+
+    rgf -i "TODO" "FIXME"
+        Use the short alias (rgf)
+
+NOTE:
+    All searches are recursive and show line numbers, filenames, and headings by default.
+    Searches include hidden files (--hidden) and ignore VCS ignore files (--no-ignore-vcs).
+    Results automatically exclude common directories: node_modules, dist, .next
+    Each pattern is searched separately with clear section headers.
+EOF
+            return 0
+        fi
+    done
+
+    if [ $# -eq 0 ]; then
+        echo "Usage: ripgrep_search [options] pattern1 [pattern2 ...]"
+        echo "Use -h or --help for detailed help"
+        return 1
     fi
+
+    # Extract options (starting with -) and patterns
+    local rg_options=()
+    local patterns=()
+
+    while [ $# -gt 0 ]; do
+        if [[ "$1" == -* ]]; then
+            # Skip help flags as they were already processed
+            if [[ "$1" != "-h" ]] && [[ "$1" != "--help" ]]; then
+                rg_options+=("$1")
+            fi
+            shift
+        else
+            patterns+=("$1")
+            shift
+        fi
+    done
+
+    # Check if we have any patterns
+    if [ ${#patterns[@]} -eq 0 ]; then
+        echo "Error: At least one pattern must be provided"
+        echo "Use -h or --help for usage information"
+        return 1
+    fi
+
+      # Search for each pattern
+    for pattern in "${patterns[@]}"; do
+        echo "=== Searching for: $pattern ==="
+
+        # Build the command for this specific pattern
+        local cmd="rg -n --with-filename --heading --hidden --no-ignore-vcs"
+
+        # Add global exclusions for common directories
+        cmd="$cmd --glob='!node_modules' --glob='!dist' --glob='!.next'"
+
+        # Add any additional options
+        for option in "${rg_options[@]}"; do
+            cmd="$cmd $option"
+        done
+
+        # Add the pattern and search current directory (.)
+        cmd="$cmd '$pattern' ."
+
+        # Execute the command
+        eval "$cmd"
+        echo ""
+    done
 }
 
-# Recursively search for a string, with optional extension filter and path exclusion
-sst() {
-  local usage="Usage: sst [--case] <search_pattern> \
-[avoid_patterns separated by ';'] \
-[extensions separated by ';'] \
-[exclude_patterns separated by ';']
-
-Quickly search files, excluding certain lines and paths.
-
-Options:
-  --case          Case-sensitive match (default is case-insensitive).
-  -h, --help      Show this help and exit.
-
-Arguments:
-  search_pattern      Text (or regex) to find.
-  avoid_patterns      (Optional) Semicolon list of strings; any result line containing these is dropped.
-  extensions          (Optional) Semicolon list of extensions to include, e.g. 'ts;js;py'.
-  exclude_patterns    (Optional) Semicolon list of path substrings to skip files/dirs."
-
-  # Help
-  if [[ "$1" == "-h" || "$1" == "--help" ]]; then
-    printf "%s\n" "$usage"; return 0
-  fi
-
-  # Case flag?
-  local case_sensitive=false
-  if [[ "$1" == "--case" ]]; then
-    case_sensitive=true
-    shift
-  fi
-
-  # Must have at least a pattern
-  if [[ $# -lt 1 ]]; then
-    printf "Error: missing <search_pattern>.\n\n%s\n" "$usage" >&2
-    return 1
-  fi
-
-  local pattern="$1"; shift
-  local avoid_str="$1"; shift || true
-  local extensions="$1"; shift || true
-  local exclude_str="$1"; shift || true
-
-  # Build grep args
-  local args=( -rn --color=always )
-  
-  # default to case-insensitive unless --case passed
-  if ! $case_sensitive; then
-    args+=( -i )
-  fi
-
-  # always whole-word match
-  args+=( -w )
-
-  # Include only specified extensions
-  if [[ -n "$extensions" ]]; then
-    IFS=';' read -ra exts <<< "$extensions"
-    for e in "${exts[@]}"; do
-      args+=( --include="*.$e" )
-    done
-  fi
-
-  # Exclude paths
-  if [[ -n "$exclude_str" ]]; then
-    IFS=';' read -ra excls <<< "$exclude_str"
-    for x in "${excls[@]}"; do
-      args+=( --exclude="*${x}*" --exclude-dir="*${x}*" )
-    done
-  fi
-
-  # Run grep, then drop any lines containing avoid_patterns
-  if [[ -n "$avoid_str" ]]; then
-    IFS=';' read -ra avoids <<< "$avoid_str"
-    local vopts=( -vF )
-    for a in "${avoids[@]}"; do
-      vopts+=( -e "$a" )
-    done
-    grep "${args[@]}" -- "$pattern" | grep "${vopts[@]}"
-  else
-    grep "${args[@]}" -- "$pattern"
-  fi
-}
-
-ripgrep() {
-  # --- 1. Pre-flight Checks ---
-  if ! command -v rg &> /dev/null; then
-    echo "Error: 'ripgrep' (rg) is not installed or not in your PATH." >&2
-    return 1
-  fi
-
-  if [[ -z "$1" ]]; then
-    echo "Usage: _rg \"<search_pattern>\" [\"<exclude_type1;exclude_type2>\"]" >&2
-    return 1
-  fi
-
-  # --- 2. Build Arguments ---
-  local search_term="$1"
-  local exclude_types_string="$2"
-  local rg_args=()
-  local type
-
-  # If an exclude string is provided, process it
-  if [[ -n "$exclude_types_string" ]]; then
-    local exclude_types
-    IFS=';' read -ra exclude_types <<< "$exclude_types_string"
-
-    for type in "${exclude_types[@]}"; do
-      if [[ -n "$type" ]]; then
-        # Use ripgrep's built-in type system to exclude file types
-        rg_args+=(--type-not "$type")
-      fi
-    done
-  fi
-
-  # --- 3. Execute Search ---
-  # The --fixed-strings flag has been removed to allow for regex/glob patterns.
-  # The search term is now treated as a regular expression by default.
-  rg "${rg_args[@]}" --line-number -- "$search_term"
-}
-
-# Alias to pass both arguments
-alias _rg='ripgrep'
-
+# Alias for quick access
+alias rgs='ripgrep_search'

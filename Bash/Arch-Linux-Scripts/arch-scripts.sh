@@ -1,110 +1,86 @@
 #!/usr/bin/env bash
+# Install the Ubuntu/APT dotfile snapshot stored at this historical repository path.
+set -Eeuo pipefail
+umask 077
 
-# GitHub raw base URL
 base_url="https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Arch-Linux-Scripts"
-
-# Files to install directly into $HOME
-home_files=(".bashrc" ".bash_aliases" ".bash_functions")
-
-# Modular function scripts (.bash_functions.d/)
+home_files=(.bashrc .bash_aliases .bash_functions)
 functions_d=(
-    "00_master_functions.sh"
-    "01_gui_apps.sh"
-    "02_filesystem.sh"
-    "03_text_processing.sh"
-    "04_compression.sh"
-    "05_process_management.sh"
-    "06_dev_tools.sh"
-    "07_file_analysis.sh"
-    "08_security.sh"
-    "09_networking.sh"
-    "10_multimedia.sh"
-    "11_utilities.sh"
-    "12_database.sh"
-    "13_docker.sh"
-    "14_package_manager.sh"
-    "15_redis_and_npm.sh"
-    "16_other.sh"
-    "17_sed.sh"
-    "18_grep.sh"
-    "19_enhanced_utilities.sh"
-    "20_optimized_functions.sh"
-    "21_claude_code.sh"
-    "22_systemd.sh"
-    "23_ssh.sh"
-)
-
-# Modular alias scripts (.bash_aliases.d/)
-aliases_d=(
-    "01_sudo_aliases.sh"
-    "02_system_control.sh"
-    "03_network.sh"
-    "04_docker.sh"
-    "05_filesystem.sh"
-    "06_package_management.sh"
-    "07_editors.sh"
-    "08_claude_code.sh"
-    "09_execute_scripts.sh"
+    01_gui_apps.sh 02_filesystem.sh 03_text_processing.sh 04_compression.sh
+    05_package_management.sh 06_system_admin.sh 07_process_management.sh
+    08_dev_tools.sh 09_file_analysis.sh 10_security.sh 11_networking.sh
+    12_multimedia.sh 13_ai_tools.sh 14_utilities.sh
+    startup/pyenv.sh startup/pip.sh README.md CLEANUP.md
 )
 
 fail() {
-    echo -e "\\n[ERROR] $1\\n"
-    read -p "Press enter to exit."
+    printf 'Error: %s\n' "$*" >&2
     exit 1
 }
 
-# Ensure wget is installed
-if ! pacman -Q wget &>/dev/null; then
-    sudo pacman -S --needed --noconfirm wget
-    clear
+command -v apt-get >/dev/null || fail 'This dotfile snapshot requires Ubuntu/Debian APT; it is not an Arch Linux configuration.'
+if ! command -v wget >/dev/null; then
+    sudo apt-get -y install wget || fail 'Could not install wget.'
 fi
 
 td=$(mktemp -d)
-cd "$td" || exit 1
-
-echo "Downloading dotfiles..."
-
-# Download home-level files
-for f in "${home_files[@]}"; do
-    wget -qN "${base_url}/${f}" -O "$f" || fail "Failed to download $f"
+trap 'rm -r -- "$td"' EXIT
+mkdir -p "$td/.bash_functions.d/startup"
+for file in "${home_files[@]}"; do
+    wget -q --output-document="$td/$file" -- "$base_url/$file" || fail "Download failed: $file"
+    bash -n "$td/$file" || fail "Invalid Bash syntax: $file"
+done
+for file in "${functions_d[@]}"; do
+    wget -q --output-document="$td/.bash_functions.d/$file" -- "$base_url/.bash_functions.d/$file" || fail "Download failed: $file"
+    if [[ "$file" == *.sh ]]; then
+        bash -n "$td/.bash_functions.d/$file" || fail "Invalid Bash syntax: $file"
+    fi
 done
 
-# Download .bash_functions.d/ scripts
-mkdir -p .bash_functions.d
-for f in "${functions_d[@]}"; do
-    wget -qN "${base_url}/.bash_functions.d/${f}" -O ".bash_functions.d/$f" || fail "Failed to download .bash_functions.d/$f"
+# Keep previous files available and prevent leftover modules overriding this set.
+backup_dir="$HOME/.local/state/bash-dotfiles-backups/$(date -u +%Y%m%dT%H%M%SZ)-$$"
+mkdir -p "$backup_dir"
+for file in "${home_files[@]}" .bash_functions.d .bash_aliases.d; do
+    if [[ -e "$HOME/$file" || -L "$HOME/$file" ]]; then
+        cp -a -- "$HOME/$file" "$backup_dir/$file" || fail "Backup failed: $file"
+    fi
 done
 
-# Download .bash_aliases.d/ scripts
-mkdir -p .bash_aliases.d
-for f in "${aliases_d[@]}"; do
-    wget -qN "${base_url}/.bash_aliases.d/${f}" -O ".bash_aliases.d/$f" || fail "Failed to download .bash_aliases.d/$f"
+restore_on_error() {
+    local file
+    trap - ERR
+    set +e
+    for file in "${home_files[@]}"; do
+        if [[ -e "$backup_dir/$file" || -L "$backup_dir/$file" ]]; then
+            cp -a --remove-destination -- "$backup_dir/$file" "$HOME/$file"
+        elif [[ -e "$HOME/$file" || -L "$HOME/$file" ]]; then
+            mv -- "$HOME/$file" "$backup_dir/failed-$file"
+        fi
+    done
+    for file in .bash_functions.d .bash_aliases.d; do
+        if [[ -e "$HOME/$file" || -L "$HOME/$file" ]]; then
+            mv -- "$HOME/$file" "$backup_dir/failed-$file"
+        fi
+        if [[ -e "$backup_dir/replaced-${file#.bash_}" || -L "$backup_dir/replaced-${file#.bash_}" ]]; then
+            mv -- "$backup_dir/replaced-${file#.bash_}" "$HOME/$file"
+        elif [[ -e "$backup_dir/$file" || -L "$backup_dir/$file" ]]; then
+            cp -a -- "$backup_dir/$file" "$HOME/$file"
+        fi
+    done
+    printf 'Installation failed; restoration attempted. Backup: %s\n' "$backup_dir" >&2
+    exit 1
+}
+trap restore_on_error ERR
+if [[ -e "$HOME/.bash_functions.d" || -L "$HOME/.bash_functions.d" ]]; then
+    mv -- "$HOME/.bash_functions.d" "$backup_dir/replaced-functions.d"
+fi
+if [[ -e "$HOME/.bash_aliases.d" || -L "$HOME/.bash_aliases.d" ]]; then
+    mv -- "$HOME/.bash_aliases.d" "$backup_dir/replaced-aliases.d"
+fi
+cp -a -- "$td/.bash_functions.d" "$HOME/.bash_functions.d"
+for file in "${home_files[@]}"; do
+    cp --remove-destination -- "$td/$file" "$HOME/$file"
+    chmod 600 "$HOME/$file"
 done
-
-echo "Installing files..."
-
-# Create target directories
-mkdir -p "$HOME/.bashrc.d" "$HOME/.bash_functions.d" "$HOME/.bash_aliases.d"
-
-# Install home-level files
-for f in "${home_files[@]}"; do
-    cp -f "$f" "$HOME/" || fail "Failed to copy $f to $HOME"
-    chown "$USER":"$USER" "$HOME/$f"
-done
-
-# Install .bash_functions.d/ scripts
-for f in "${functions_d[@]}"; do
-    cp -f ".bash_functions.d/$f" "$HOME/.bash_functions.d/" || fail "Failed to copy .bash_functions.d/$f"
-    chown "$USER":"$USER" "$HOME/.bash_functions.d/$f"
-done
-
-# Install .bash_aliases.d/ scripts
-for f in "${aliases_d[@]}"; do
-    cp -f ".bash_aliases.d/$f" "$HOME/.bash_aliases.d/" || fail "Failed to copy .bash_aliases.d/$f"
-    chown "$USER":"$USER" "$HOME/.bash_aliases.d/$f"
-done
-
-rm -rf "$td"
-
-echo -e "\\nAll dotfiles installed successfully!"
-echo "Run 'source ~/.bashrc' or open a new terminal to apply changes."
+trap - ERR
+printf 'Dotfiles installed. Backup: %s\nOpen a new terminal to load them.\n' "$backup_dir"

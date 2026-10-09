@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Crypto and Security Functions
+# SSH Key and Permission Functions
 
 ## SSH-KEYGEN ##
 
@@ -10,7 +10,7 @@ new_key() {
 
     echo "Encryption type: [[ rsa | dsa | ecdsa ]]"
     echo
-    read -rp "Your choice: " type
+    read -r -p "Your choice: " type
     clear
 
     echo "[i] Choose the key bit size"
@@ -28,32 +28,31 @@ new_key() {
         echo
     fi
 
-    read -rp "Your choice: " bits
+    read -r -p "Your choice: " bits
     clear
 
     echo "[i] Choose a password"
     echo "[i] For no password just press enter"
     echo
-    read -rsp "Your choice: " pass
-    echo
+    read -r -p "Your choice: " pass
     clear
 
     echo "[i] For no comment just press enter"
-    read -rp "Your choice: " comment
+    read -r -p "Your choice: " comment
     clear
 
     echo "[i] Enter the ssh key name"
-    read -rp "Your choice: " name
+    read -r -p "Your choice: " name
     clear
 
     echo "[i] Your choices"
     echo "[i] Type: $type"
     echo "[i] bits: $bits"
-    echo "[i] Password: <hidden>"
+    echo "[i] Password: $pass"
     echo "[i] comment: $comment"
     echo "[i] Key name: $name"
     echo
-    read -rp "Press enter to continue or ^c to exit"
+    read -r -p "Press enter to continue or ^c to exit"
     clear
 
     ssh-keygen -q -b "$bits" -t "$type" -N "$pass" -C "$comment" -f "$name"
@@ -78,27 +77,27 @@ keytopub() {
 
     echo "Enter the full paths for each file"
     echo
-    read -rp "Private key: " okey
-    read -rp "Public key: " opub
+    read -r -p "Private key: " okey
+    read -r -p "Public key: " opub
     echo
     if [[ -f "$okey" ]]; then
         chmod 600 "$okey"
     else
         echo "Warning: FILE missing = $okey"
-        read -rp "Press Enter to exit."
+        read -r -p "Press Enter to return."
         return 1
     fi
     ssh-keygen -b "4096" -y -f "$okey" > "$opub"
     chmod 644 "$opub"
     cp -f "$opub" "$HOME/.ssh/authorized_keys"
     chmod 600 "$HOME/.ssh/authorized_keys"
-    unset okey opub
 }
 
-# Clear Bash History
-clearh() {
-    local green='\033[0;32m' reset='\033[0m'
-    history -c
-    clear; ls -1AhFv
-    echo -e "\n${green}Bash History Cleared${reset}"
+## FIX USER FOLDER PERMISSIONS up = user permissions
+fix_up() {
+    sudo find "$HOME/.gnupg" -type f -exec chmod 600 {} \;
+    sudo find "$HOME/.gnupg" -type d -exec chmod 700 {} \;
+    sudo find "$HOME/.ssh" -type d -exec chmod 700 {} \;
+    sudo find "$HOME/.ssh/id_rsa.pub" -type f -exec chmod 644 {} \;
+    sudo find "$HOME/.ssh/id_rsa" -type f -exec chmod 600 {} \;
 }
