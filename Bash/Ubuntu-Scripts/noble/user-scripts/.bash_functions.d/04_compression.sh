@@ -18,7 +18,7 @@ untar() (
         mkdir -p "$dirname"
 
         case "$ext" in
-            7z) 7z x -y "$archive" -o"$dirname" ;;
+            7z) 7z x -y -spe "$archive" -o"$dirname" ;;
             zip) temp_dir=$(mktemp -d) || return 1
                  item_dirname=""
                  if ! unzip -o "$archive" -d "$temp_dir"; then
