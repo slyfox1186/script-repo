@@ -2,7 +2,7 @@
 
 Updated: 2026-10-09
 
-Current task: publish Jeff's move of the five Arch installer files from
+Published as `75e3285c`: Jeff's move of the five Arch installer files from
 `Bash/Installer-Scripts/Arch-Linux/` to
 `Bash/Arch-Linux-Scripts/install-arch-os/` on GitHub branch `main`.
 All five files are byte-for-byte unchanged. The four shell scripts passed
@@ -13,7 +13,8 @@ unverified. No installer was executed and no full local suite was run.
 
 No action is required from Jeff. To locate the moved files:
 `/home/jman/tmp/script-repo/Bash/Arch-Linux-Scripts/install-arch-os/`.
-The GitHub push runs the repository's configured Python and shell checks.
+GitHub reports the `Python package` workflow is manually disabled, so the
+configured Python and shell CI checks do not run on push. CodeQL runs separately.
 
 Previous networking work:
 
