@@ -1,232 +1,260 @@
-#!/usr/bin/env bash
-
-# ===============================================================
-# Enhanced .bashrc for Arch Linux - Modular Version
-# Author: slyfox1186 (https://github.com/slyfox1186/script-repo)
-# ===============================================================
+# $HOME/.bashrc: executed by bash(1) for non-login shells.
+# see /usr/share/doc/bash/examples/startup-files (in the package bash-doc) for examples
 
 # If not running interactively, don't do anything
 case "$-" in
     *i*) ;;
-    *) return 0 ;;
+      *) return ;;
 esac
 
-# Recover only when the inherited working directory no longer exists. Keep the
-# caller's intended directory for every normal interactive shell.
-if ! pwd -P >/dev/null 2>&1; then
-    cd "$HOME" 2>/dev/null || return 0
+# Don't put duplicate lines or lines starting with space in the history.
+HISTCONTROL=ignoreboth
+
+# Append to the history file, don't overwrite it
+shopt -s histappend
+
+# For setting history length see HISTSIZE and HISTFILESIZE in bash(1)
+HISTSIZE=10000
+HISTFILESIZE=20000
+
+# Check the window size after each command and, if
+# necessary, update the values of LINES and COLUMNS.
+shopt -s checkwinsize
+
+# If set, the pattern "**" used in a pathname expansion context will
+# match all files and zero or more directories and subdirectories.
+shopt -s globstar
+
+# Make less more friendly for non-text input files, see lesspipe(1)
+[[ -x /usr/bin/lesspipe ]] && eval "$(SHELL=/bin/sh lesspipe)"
+
+# Set variable identifying the chroot you work in (used in the prompt below)
+if [[ -z "${debian_chroot:-}" ]] && [[ -r "/etc/debian_chroot" ]]; then
+    debian_chroot=$(cat /etc/debian_chroot)
 fi
 
-# Check if bashrc directory exists, create if not
-BASHRC_DIR="$HOME/.bashrc.d"
-[[ ! -d "$BASHRC_DIR" ]] && mkdir -p "$BASHRC_DIR"
+# Set a fancy prompt (non-color, unless we know we "want" color)
+case "${TERM-}" in
+    xterm-color|*-256color) color_prompt=yes ;;
+esac
 
-# System info variables (used in modules and welcome message)
-threads=$(nproc --all 2>/dev/null || echo "unknown")
-cpus=$((threads / 2))
-lan=$(ip route get 1.2.3.4 2>/dev/null | awk '{print $7}' || echo "unknown")
-wan=$(curl --connect-timeout 1 -fsS "https://checkip.amazonaws.com" 2>/dev/null || echo "unknown")
+# Uncomment for a colored prompt, if the terminal has the capability; turned
+# off by default to not distract the user: the focus in a terminal window
+# should be on the output of commands, not on the prompt
+force_color_prompt=yes
 
-# Export common variables for modules to use
-export threads cpus lan wan
-
-# Source all bashrc modules
-for module in "$BASHRC_DIR"/*.sh; do
-    if [[ -f "$module" ]]; then
-        source "$module"
+if [[ -n "$force_color_prompt" ]]; then
+    if [[ -x /usr/bin/tput ]] && tput setaf 1 >&/dev/null; then
+        # We have color support; assume it's compliant with Ecma-48 (ISO/IEC-6429)
+        # Lack of such support is extremely rare, and such a case would tend to support setf rather than setaf.
+        color_prompt=yes
+    else
+        color_prompt=""
     fi
-done
+fi
 
-export PATH="\
+if [[ "${color_prompt-}" == "yes" ]]; then
+    PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
+else
+    PS1='${debian_chroot:+($debian_chroot)}\u@\h:\w\$ '
+fi
+unset color_prompt force_color_prompt
+
+# If this is an xterm set the title to user@host:dir
+case "${TERM-}" in
+    xterm*|rxvt*) PS1="\[\e]0;${debian_chroot:+($debian_chroot)}\u@\h: \w\a\]$PS1" ;;
+               *) ;;
+esac
+
+# Enable color support of ls and also add handy aliases
+if [[ -x "/usr/bin/dircolors" ]]; then
+    if [[ -r "$HOME/.dircolors" ]]; then
+        eval "$(dircolors -b "$HOME/.dircolors")"
+    else
+        eval "$(dircolors -b)"
+    fi
+fi
+
+# Colored GCC warnings and errors
+GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01'
+export GCC_COLORS
+
+# Alias definitions.
+# You may want to put all your additions into a separate file like
+# $HOME/.bash_aliases, instead of adding them here directly.
+# See /usr/share/doc/bash-doc/examples in the bash-doc package.
+
+if [[ -f "$HOME/.bash_aliases" ]]; then
+    # shellcheck source=/home/jman/.bash_aliases
+    source "$HOME/.bash_aliases"
+fi
+
+# You don't need to enable this, if it's already enabled in
+# /etc/bash.bashrc and /etc/profile sources /etc/bash.bashrc
+if ! shopt -oq posix; then
+    if [[ -f "/usr/share/bash-completion/bash_completion" ]]; then
+        source "/usr/share/bash-completion/bash_completion"
+    elif [[ -f "/etc/bash_completion" ]]; then
+        source "/etc/bash_completion"
+  fi
+fi
+
+####################
+## CUSTOM SECTION ##
+####################
+
+if [[ -f "$HOME/.bash_functions" ]]; then
+    # shellcheck source=/home/jman/.bash_functions
+    source "$HOME/.bash_functions"
+fi
+
+[[ -f "$HOME/.cargo/env" ]] && source "$HOME/.cargo/env"
+
+PS1='\n\[\e[38;5;227m\]\w\n\[\e[38;5;215m\]\u\[\e[38;5;183;1m\]@\[\e[0;38;5;117m\]\h\[\e[97;1m\]\\$\[\e[0m\]'
+export PS1
+
+# Set the script's path variable
+# Prioritize conda environments over ~/.local/bin
+PATH="\
 $HOME/.npm-global/bin:\
 /usr/lib/ccache:\
 /usr/local/bin:\
+$HOME/miniconda3/condabin:\
+$HOME/.local/bin:\
+$HOME/.cargo/bin:\
 /usr/local/sbin:\
-/opt/cuda/bin:\
+/usr/local/cuda/bin:\
+/usr/local/x86_64-linux-gnu/bin:\
 /usr/sbin:\
 /usr/bin:\
 /sbin:\
 /bin\
 "
+export PATH
 
-[[ -s "$HOME/.nvm/nvm.sh" ]] && source "$HOME/.nvm/nvm.sh"
-[[ -s "$HOME/.nvm/bash_completion" ]] && source "$HOME/.nvm/bash_completion"
+GOROOT=$(for d in /usr/local/programs/golang-*/bin/go; do [[ -x "$d" ]] && dirname "$(dirname "$d")"; done | sort -rV | head -n1)
+[[ -n "$GOROOT" ]] && PATH="$PATH:$GOROOT/bin"
+export GOROOT PATH
 
-# pnpm
-export PNPM_HOME="$HOME/.local/share/pnpm"
-if [[ -d "$PNPM_HOME" ]]; then
-    case ":$PATH:" in
-      *":$PNPM_HOME:"*) ;;
-      *) export PATH="$PNPM_HOME:$PATH" ;;
-    esac
+# pyenv setup - only use shims when NOT in a conda environment
+PYENV_ROOT="$HOME/.pyenv"
+export PYENV_ROOT
+[[ -d "$PYENV_ROOT/bin" ]] && export PATH="$PYENV_ROOT/bin:$PATH"
+# Use --path only to avoid shim conflicts with conda
+# Shims are added dynamically only when no conda env is active
+if command -v pyenv &>/dev/null; then
+    eval "$(command pyenv init --path)"
 fi
-# pnpm end
-
-# Machine-specific values (sss folders, database names) that stay out of published copies
-[[ -r "$HOME/.bash_private.sh" ]] && source "$HOME/.bash_private.sh"
-
-# Source bash functions and aliases
-if [[ -d "$HOME/.bash_functions.d" ]]; then
-    for f in "$HOME/.bash_functions.d"/*.sh; do
-        [[ -r "$f" ]] && source "$f"
-    done
+if [[ -r "$HOME/.bash_functions.d/startup/pyenv.sh" ]]; then
+    # shellcheck source=/home/jman/.bash_functions.d/startup/pyenv.sh
+    source "$HOME/.bash_functions.d/startup/pyenv.sh"
 fi
 
-if [[ -d "$HOME/.bash_aliases.d" ]]; then
-    for f in "$HOME/.bash_aliases.d"/*.sh; do
-        [[ -r "$f" ]] && source "$f"
-    done
-fi
-
-
-if [[ -n "$PS1" ]]; then
-    echo "Welcome, $(whoami)! Terminal ready at $(date '+%H:%M:%S')"
-    echo "System: $(grep PRETTY_NAME /etc/os-release | cut -d= -f2- | tr -d '"')"
-    echo "Kernel: $(uname -sr)"
-    echo "CPU cores: $threads (Physical: $cpus)"
-    echo -e "IP: $lan (LAN), $wan (WAN)\n"
-fi
-
-remove_path_entry() {
-    local entry new_path path_part
-    entry="$1"
-    new_path=""
-
-    while IFS=: read -r -d ':' path_part; do
-        [[ -n "$path_part" ]] || continue
-        [[ "$path_part" == "$entry" ]] && continue
-        if [[ -n "$new_path" ]]; then
-            new_path+=":$path_part"
-        else
-            new_path="$path_part"
-        fi
-    done < <(printf '%s:' "$PATH")
-
-    PATH="$new_path"
-}
-
-path_prepend() {
-    local entry
-    entry="$1"
-    [[ -n "$entry" ]] || return 0
-    remove_path_entry "$entry"
-    export PATH="$entry${PATH:+:$PATH}"
-}
-
-path_append() {
-    local entry
-    entry="$1"
-    [[ -n "$entry" ]] || return 0
-    remove_path_entry "$entry"
-    export PATH="${PATH:+$PATH:}$entry"
-}
+# Set nano as default editor
+EDITOR=nano
+VISUAL=nano
+export EDITOR VISUAL
 
 # >>> conda initialize >>>
-# !! Contents within this block are managed by 'conda init' !!
-__conda_setup="$('/home/jman/miniconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
-if [[ "$?" -eq 0 ]]; then
+if __conda_setup="$(/home/jman/miniconda3/bin/conda shell.bash hook 2>/dev/null)"; then
     eval "$__conda_setup"
 else
     if [[ -f "$HOME/miniconda3/etc/profile.d/conda.sh" ]]; then
         source "$HOME/miniconda3/etc/profile.d/conda.sh"
     else
-        export PATH="/home/jman/miniconda3/bin:$PATH"
+        PATH="$PATH:$HOME/miniconda3/bin"
+        export PATH
     fi
 fi
 unset __conda_setup
+if command -v conda &>/dev/null; then
+    conda activate base
+fi
 # <<< conda initialize <<<
 
-### Source rustup
-[[ -s "$HOME/.cargo/env" ]] && source "$HOME/.cargo/env"
-[[ -f "$HOME/.deno/env" ]] && . "$HOME/.deno/env"
-[[ -f "$HOME/.local/share/bash-completion/completions/deno.bash" ]] && source "$HOME/.local/share/bash-completion/completions/deno.bash"
-path_prepend "$HOME/.local/bin"
+# nvm (load after conda so Node version stays consistent in interactive shells)
+NVM_DIR="$HOME/.nvm"
+export NVM_DIR
+if [[ -s "$NVM_DIR/nvm.sh" ]]; then
+    # Prevent nvm incompatibility warning in shells that export npm prefix variables.
+    unset npm_config_prefix NPM_CONFIG_PREFIX PREFIX
+    source "$NVM_DIR/nvm.sh"
+    nvm use --silent default >/dev/null 2>&1 || true
+fi
+[[ -s "$NVM_DIR/bash_completion" ]] && source "$NVM_DIR/bash_completion"
 
-# ===============================================================
-# Steam/Mesa Shader Cache Configuration
-# ===============================================================
-# Limit Mesa shader cache to 2GB to prevent excessive disk usage
-export MESA_SHADER_CACHE_MAX_SIZE=2G
-
-# ===============================================================
-# Custom PS1 Prompt
-# ===============================================================
-
-__prompt_command() {
-    local exit_code git_info reset red green yellow blue purple cyan gray
-    exit_code="$?"
-
-    # Colors (wrapped in \[ \] for proper cursor positioning)
-    reset='\[\e[0m\]'
-    red='\[\e[0;31m\]'
-    green='\[\e[0;32m\]'
-    yellow='\[\e[0;33m\]'
-    blue='\[\e[0;34m\]'
-    purple='\[\e[0;35m\]'
-    cyan='\[\e[0;36m\]'
-    gray='\[\e[0;90m\]'
-
-    # Git info
-    git_info=""
-    if git rev-parse --is-inside-work-tree &>/dev/null; then
-        local branch=$(git symbolic-ref --short HEAD 2>/dev/null || git rev-parse --short HEAD 2>/dev/null)
-        local dirty=""
-        git diff --quiet 2>/dev/null && git diff --cached --quiet 2>/dev/null || dirty="*"
-        git_info=" ${purple}(${branch}${dirty})${reset}"
-    fi
-
-    # Exit code (only show if non-zero)
-    local exit_info=""
-    [[ $exit_code -ne 0 ]] && exit_info=" ${red}[${exit_code}]${reset}"
-
-    # Virtual env
-    local venv=""
-    if [[ -n "$CONDA_DEFAULT_ENV" ]]; then
-        venv="${yellow}(${CONDA_DEFAULT_ENV})${reset} "
-    elif [[ -n "$VIRTUAL_ENV" ]]; then
-        venv="${yellow}($(basename "$VIRTUAL_ENV"))${reset} "
-    fi
-
-    # Build prompt
-    PS1="${venv}${blue}\w${reset}${git_info}${exit_info}\n${green}\u${reset}@${cyan}\h${reset} \$ "
-}
-
-PROMPT_COMMAND=__prompt_command
+# VTE configuration for Tilix terminal (directory tracking, notifications)
+# Required on Debian since profile.d scripts only run for login shells
+if [[ -n "${TILIX_ID-}" || -n "${VTE_VERSION-}" ]]; then
+    for vte_script in /etc/profile.d/vte-*.sh; do
+        [[ -r "$vte_script" ]] || continue
+        # shellcheck source=/dev/null
+        source "$vte_script"
+        break
+    done
+    unset vte_script
+fi
 
 # NCCL configuration for distributed vLLM (Ethernet, not InfiniBand)
-export NCCL_IB_DISABLE=1
-export NCCL_NET_GDR_LEVEL=0
-export NCCL_P2P_DISABLE=1
-export NCCL_DEBUG=WARN
+NCCL_DEBUG=WARN
+NCCL_IB_DISABLE=1
+NCCL_NET_GDR_LEVEL=0
+NCCL_P2P_DISABLE=1
+export NCCL_DEBUG NCCL_IB_DISABLE NCCL_NET_GDR_LEVEL NCCL_P2P_DISABLE
 
-# >>> build-tools golang >>>
-# 2026-06-22: the manual Go at /usr/local/programs/golang-1.26.1 was gone (whole dir
-# missing), so this stale GOROOT broke ALL go builds (e.g. yay). Switched to the distro
-# 'go' package: its binary is in /usr/bin (already on PATH) and self-locates GOROOT in
-# /usr/lib/go, so no GOROOT export is needed. To return to a pinned manual Go, reinstall
-# it under /usr/local/programs and uncomment the two lines below.
-#export GOROOT="/usr/local/programs/golang-1.26.1"
-#path_append "$GOROOT/bin"
-# <<< build-tools golang <<<
+# codex-orchestrator
+PATH="/home/jman/.codex-orchestrator/bin:$PATH"
+export PATH
 
-# The next line updates PATH for the Google Cloud SDK.
-if [[ -f /home/jman/google-cloud-sdk/path.bash.inc ]]; then
-    source /home/jman/google-cloud-sdk/path.bash.inc
+# CUDA / nvcc
+CUDA_HOME=/usr/local/cuda
+CUDACXX="$CUDA_HOME/bin/nvcc"
+export CUDA_HOME CUDACXX
+
+# Claude Code MCP secrets (chmod 600)
+if [[ -f "$HOME/.claude/secrets.env" ]]; then
+    # shellcheck source=/dev/null
+    source "$HOME/.claude/secrets.env"
 fi
 
-# The next line enables shell command completion for gcloud.
-if [[ -f /home/jman/google-cloud-sdk/completion.bash.inc ]]; then
-    source /home/jman/google-cloud-sdk/completion.bash.inc
-fi
+COLORTERM=truecolor
+# opencode
+PATH="$HOME/.opencode/bin:$PATH"
+export COLORTERM PATH
 
+# --- pip-aria2 wrapper (managed) ---
+# shellcheck source=/dev/null
+source "$HOME/.bash_functions.d/startup/pip.sh"
+# --- end pip-aria2 wrapper ---
 source "$HOME/.cargo/env"
 
-# >>> context7 >>>
-# The key lives in ~/.config/environment.d/60-context7.conf so the graphical session gets it
-# too. systemd does not feed that file to SSH logins or plain shells, so pull it in here when
-# it is missing. Rotate the key in that file only: ~/.claude.json and ~/.codex/config.toml
-# reference this variable rather than storing a copy.
-if [[ -z "$CONTEXT7_API_KEY" && -r "$HOME/.config/environment.d/60-context7.conf" ]]; then
-    export CONTEXT7_API_KEY="$(sed -n "s/^CONTEXT7_API_KEY=//p" "$HOME/.config/environment.d/60-context7.conf")"
+CUDA_HOME=/usr/local/cuda
+export CUDA_HOME
+case ":${PATH:-}:" in
+    *":$CUDA_HOME/bin:"*) ;;
+    *) PATH="$CUDA_HOME/bin${PATH:+:$PATH}"
+       export PATH
+       ;;
+esac
+
+# /usr/local/bin/{gcc,g++,cc,c++,cpp,gfortran,...} are the local-gcc alternatives
+# that install_gcc.py's switcher manages, so the switcher alone picks the default
+# compiler; nothing is prepended to PATH here. /usr/lib/ccache (earlier in PATH)
+# wraps it. Runtime libs are found via the RUNPATH in the compiler's specs file.
+# The trailing ':' keeps man's default search path after the compiler's pages.
+if _gcc_real=$(readlink -f /usr/local/bin/gcc 2>/dev/null) && [[ -d "${_gcc_real%/bin/gcc}/share/man" ]]; then
+    MANPATH="${_gcc_real%/bin/gcc}/share/man:${MANPATH:-}"
+    export MANPATH
 fi
-# <<< context7 <<<
+unset _gcc_real
+
+# OpenRouter API key for the orask / openrouter-mcp bridge.
+# The secret lives in ~/.config/openrouter/env (chmod 600), not in this file.
+if [[ -r "$HOME/.config/openrouter/env" ]]; then
+    OPENROUTER_API_KEY=$(sed -n 's/^[[:space:]]*OPENROUTER_API_KEY[[:space:]]*=[[:space:]]*//p' "$HOME/.config/openrouter/env" | head -n 1 | tr -d "\"'")
+    if [[ -n "$OPENROUTER_API_KEY" ]]; then
+        export OPENROUTER_API_KEY
+    else
+        unset OPENROUTER_API_KEY
+    fi
+fi

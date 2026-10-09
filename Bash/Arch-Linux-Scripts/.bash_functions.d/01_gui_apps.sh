@@ -7,23 +7,46 @@ gedit() {
 }
 
 geds() {
-    sudo -Hu root "$(command -v gedit)" "$@" &>/dev/null
+    sudo -H -u root -- gedit "$@" &>/dev/null
 }
 
 gted() {
-    [[ ! -e /usr/bin/gted ]] && sudo ln -s /usr/bin/gnome-text-editor /usr/bin/gted
     command gnome-text-editor "$@" &>/dev/null
 }
 
 gteds() {
-    [[ ! -e /usr/bin/gted ]] && sudo ln -s /usr/bin/gnome-text-editor /usr/bin/gted
-    sudo -Hu root "$(command -v gnome-text-editor)" "$@" &>/dev/null
+    sudo -H -u root -- gnome-text-editor "$@" &>/dev/null
+}
+
+gc() {
+    local url
+    if [[ -n "$1" ]]; then
+        nohup google-chrome "$1"
+    else
+        read -r -p "Enter a URL: " url
+        nohup google-chrome "$url" 2>&1
+    fi
+}
+
+## NAUTILUS COMMANDS
+nopen() {
+    nohup nautilus -w "$1" &>/dev/null &
+    return 0
+}
+
+tkan() {
+    local parent_dir=$PWD
+    sudo killall -9 nautilus
+    sleep 1
+    nohup nautilus -w "$parent_dir" &>/dev/null &
+    return 0
 }
 
 # Open a browser and search the string passed to the function
+
 www() {
     local browser input keyword url urlRegex
-    if [[ "$#" -eq 0 ]]; then
+    if [ "$#" -eq 0 ]; then
         echo "Usage: www <url or keywords>"
         return 1
     fi
@@ -35,7 +58,7 @@ www() {
     input="${*}"
 
     # Check if the system is WSL and set the appropriate browser executable
-    if [[ $(grep -i "microsoft" /proc/version) ]]; then
+    if grep -qi microsoft /proc/version; then
         browser="/c/Program Files/Google/Chrome Beta/Application/chrome.exe"
         if [[ ! -f "$browser" ]]; then
             echo "No supported WSL browsers found."
@@ -70,29 +93,10 @@ www() {
     fi
 }
 
-# Google Chrome function
-gc() {
-    local url
-    if [[ -n "$1" ]]; then
-        nohup google-chrome "$1"
-    else
-        read -rp "Enter a URL: " url
-        nohup google-chrome "$url" 2>&1
-    fi
-}
-
-## NAUTILUS COMMANDS
-nopen() {
-    nohup nautilus -w "$1" &>/dev/null &
-    return
-}
-
-tkan() {
-    local parent_dir=$PWD
-    sudo killall -9 nautilus
-    sleep 1
-    nohup nautilus -w "$parent_dir" &>/dev/null &
-    return
+## Refresh thumbnail cache
+rftn() {
+    sudo rm -fr "$HOME/.cache/thumbnails"*
+    sudo file "$HOME/.cache/thumbnails"
 }
 
 ## UPDATE ICON CACHE ##
@@ -100,8 +104,8 @@ update_icons() {
     local pkg pkgs
     pkgs=(gtk-update-icon-cache hicolor-icon-theme)
     for pkg in "${pkgs[@]}"; do
-        if ! pacman -Qi "$pkg" &>/dev/null; then
-            sudo pacman -S --noconfirm "$pkg"
+        if ! sudo dpkg -l | grep -q "$pkg"; then
+            sudo apt -y install "$pkg"
             echo
         fi
     done

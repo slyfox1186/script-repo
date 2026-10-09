@@ -76,7 +76,7 @@ Compile the latest FFmpeg updates and optionally include the CUDA SDK Toolkit fo
 ```bash
 git clone https://github.com/slyfox1186/ffmpeg-build-script.git
 cd ffmpeg-build-script || exit 1
-sudo bash build-ffmpeg.sh --build --enable-gpl-and-non-free --latest
+python3 build-ffmpeg.py --build --enable-gpl-and-non-free --latest
 ```
 
 ### Install [OpenSSL](https://www.openssl.org/source/) Latest Version

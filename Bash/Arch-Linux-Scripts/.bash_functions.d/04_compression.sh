@@ -2,50 +2,57 @@
 # Compression and Archive Functions
 
 ## UNCOMPRESS FILES ##
-untar() {
-    local archive dirname ext temp_dir item_dirname
+untar() (
+    local archive dirname ext item_dirname source_dir temp_dir
     local -a items
-    local user_owner="${USER:-$(whoami)}"
-    local supported_ext="7z bz2 gz lz tgz xz zip"
-
-    local _nullglob_state
-    _nullglob_state=$(shopt -p nullglob)
-    shopt -s nullglob
 
     for archive in *; do
         ext="${archive##*.}"
-        [[ ! " $supported_ext " =~ \ $ext\  ]] && continue
+        case "$ext" in
+            7z|bz2|gz|lz|tgz|xz|zip) ;;
+            *) continue ;;
+        esac
 
         dirname="${archive%.*}"
         [[ "$archive" =~ \.tar\.(gz|bz2|lz|xz)$ ]] && dirname="${dirname%.*}"
         mkdir -p "$dirname"
 
         case "$ext" in
-            7z) sudo 7z x -y -spe "$archive" -o"$dirname" ;;
-            zip) temp_dir=$(mktemp -d)
-                 sudo unzip "$archive" -d "$temp_dir"
-                 items=("$temp_dir"/*)
-                 item_dirname="${items[0]##*/}"
-                 if [[ "${#items[@]}" -eq 1 && -d "${items[0]}" && "$item_dirname" == "$dirname" ]]; then
-                     sudo mv "${items[0]}"/* "$dirname"
-                 else
-                     sudo mv "$temp_dir"/* "$dirname"
+            7z) 7z x -y -spe "$archive" -o"$dirname" ;;
+            zip) temp_dir=$(mktemp -d) || return 1
+                 item_dirname=""
+                 if ! unzip -o "$archive" -d "$temp_dir"; then
+                     rm -rf -- "$temp_dir"
+                     return 1
                  fi
-                 sudo rm -fr "$temp_dir"
+                 shopt -s nullglob dotglob
+                 items=("$temp_dir"/*)
+                 shopt -u nullglob dotglob
+                 source_dir="$temp_dir"
+                 if [[ "${#items[@]}" -eq 1 && -d "${items[0]}" ]]; then
+                     item_dirname="${items[0]##*/}"
+                 fi
+                 if [[ "${#items[@]}" -eq 1 && "$item_dirname" == "$dirname" ]]; then
+                     source_dir="${items[0]}"
+                 fi
+                 if ((${#items[@]} > 0)); then
+                     if ! cp -a -- "$source_dir/." "$dirname/"; then
+                         rm -rf -- "$temp_dir"
+                         return 1
+                     fi
+                 fi
+                 rm -rf -- "$temp_dir"
                  ;;
             gz|tgz|bz2|xz|lz)
-                sudo tar -xf "$archive" -C "$dirname" --strip-components 1 ;;
+                tar -xf "$archive" -C "$dirname" --strip-components 1 ;;
         esac
-
-        if [[ -d "$dirname" ]]; then
-            sudo chown -R "$user_owner":"$user_owner" "$dirname"
-            sudo chmod -R 755 "$dirname"
-        fi
     done
+)
 
-    eval "$_nullglob_state"
+# Gzip
+gzip() {
+    command gzip -d "$@"
 }
-
 
 # Create a tar.gz file with max compression settings
 7z_gz() {
@@ -56,8 +63,8 @@ untar() {
         fi
         7z a -ttar -so -an "$1" | 7z a -tgzip -mx9 -mpass1 -si "$1.tar.gz"
     else
-        read -rp "Please enter the source folder path: " source
-        read -rp "Please enter the destination archive path (w/o extension): " output
+        read -r -p "Please enter the source folder path: " source
+        read -r -p "Please enter the destination archive path (w/o extension): " output
         echo
         if [[ -f "$output.tar.gz" ]]; then
             sudo rm "$output.tar.gz"
@@ -75,8 +82,8 @@ untar() {
         fi
         7z a -ttar -so -an "$1" | 7z a -txz -mx9 -si "$1.tar.xz"
     else
-        read -rp "Please enter the source folder path: " source
-        read -rp "Please enter the destination archive path (w/o extension): " output
+        read -r -p "Please enter the source folder path: " source
+        read -r -p "Please enter the destination archive path (w/o extension): " output
         echo
         if [[ -f "$output.tar.xz" ]]; then
             sudo rm "$output.tar.xz"
@@ -85,221 +92,96 @@ untar() {
     fi
 }
 
-# Print a listing that changes whenever an entry under the directory is added,
-# removed, resized, or modified.
-_7z_dir_snapshot() {
-    (set -o pipefail; find "$1" -printf '%P\t%y\t%s\t%T@\n' | LC_ALL=C sort)
-}
+# Shared implementation; the public names remain compression-level presets.
+_7z_dir_snapshot() (
+    set -o pipefail
+    find "$1" -printf '%P\t%y\t%s\t%T@\t%C@\t%l\0' | LC_ALL=C sort -z | sha256sum
+)
 
-# Archive the contents of a directory, hidden entries included, into
-# ./<directory name><extension>, then offer to delete the directory. Deletion is
-# offered only when 7-Zip reports complete success, the new archive passes
-# `7z t`, the archive lies outside the directory, and the directory has not
-# changed since it was read.
-# Usage: _7z_archive_then_offer_delete <source_dir> <extension> <7z switches...>
-_7z_archive_then_offer_delete() {
-    local source_dir="$1" extension="$2" archive_name archive_parent source_real snapshot status choice
-    shift 2
+_7z_archive() (
+    local level="$1" source_dir="${2-}" archive_name choice snapshot current_snapshot staging_dir
 
-    while [[ "$source_dir" == */ && "$source_dir" != "/" ]]; do
-        source_dir="${source_dir%/}"
+    if (($# > 2)); then
+        printf 'Usage: 7z_1|7z_5|7z_9 [DIRECTORY]\n' >&2
+        return 1
+    fi
+    case "$level" in
+        1|5|9) ;;
+        *) return 1 ;;
+    esac
+    if [[ -z "$source_dir" ]]; then
+        read -r -p 'Source directory: ' source_dir || return 1
+    fi
+    while [[ "$source_dir" != / && "$source_dir" == */ ]]; do
+        source_dir=${source_dir%/}
     done
-
+    if [[ -L "$source_dir" ]]; then
+        printf 'Use the real directory path instead of a symbolic link.\n' >&2
+        return 1
+    fi
     if [[ ! -d "$source_dir" ]]; then
-        echo "Invalid directory path: $source_dir"
+        printf 'Invalid directory: %s\n' "$source_dir" >&2
         return 1
     fi
-
-    source_real=$(realpath -- "$source_dir") || return 1
-    if [[ -z "$(find "$source_real" -mindepth 1 -print -quit)" ]]; then
-        echo "Source directory is empty: $source_dir"
-        return 1
-    fi
-
-    archive_name="${source_dir##*/}$extension"
-    archive_parent=$(pwd -P)
-    if [[ "$archive_parent/" == "${source_real%/}/"* ]]; then
-        echo "Refusing to write $archive_name inside the directory being archived; run this from outside $source_dir." >&2
-        return 1
-    fi
+    source_dir=$(realpath -e -- "$source_dir") || return
+    case "$source_dir" in
+        /|"$HOME")
+            printf 'Refusing to archive and offer deletion of %s.\n' "$source_dir" >&2
+            return 1 ;;
+    esac
+    archive_name="$(pwd -P)/${source_dir##*/}.7z"
+    case "$archive_name" in
+        "$source_dir"/*)
+            printf 'Run this command outside the source directory.\n' >&2
+            return 1 ;;
+    esac
     if [[ -e "$archive_name" || -L "$archive_name" ]]; then
-        echo "$archive_parent/$archive_name already exists and 7-Zip would merge into it; move or delete it first." >&2
+        printf 'Archive already exists; refusing to overwrite: %s\n' "$archive_name" >&2
         return 1
     fi
+    snapshot=$(_7z_dir_snapshot "$source_dir") || return
+    staging_dir=$(mktemp -d -- "${archive_name%/*}/.7z-archive.XXXXXX") || return
+    trap 'rm -r -- "$staging_dir"' EXIT
 
-    if ! snapshot=$(_7z_dir_snapshot "$source_real"); then
-        echo "Could not read every entry in $source_dir; nothing was archived." >&2
+    # Archive from inside the folder to include hidden files without a shell glob.
+    builtin cd -- "$source_dir" || return
+    if ! 7z a -t7z -m0=lzma2 "-mx$level" -- "$staging_dir/archive.7z" .; then
+        printf 'Compression failed. Source directory retained.\n' >&2
         return 1
     fi
-
-    7z a -y "$@" -- "$archive_name" "$source_dir/."
-    status=$?
-    if (( status != 0 )); then
-        rm -f -- "$archive_name"
-        echo "7-Zip failed (exit $status); the original directory was kept: $source_dir" >&2
+    if ! 7z t -- "$staging_dir/archive.7z"; then
+        printf 'Archive verification failed. Source directory retained.\n' >&2
         return 1
     fi
-
-    if ! 7z t -- "$archive_name" >/dev/null; then
-        rm -f -- "$archive_name"
-        echo "The new archive failed its integrity test and was removed; the original directory was kept: $source_dir" >&2
+    current_snapshot=$(_7z_dir_snapshot "$source_dir") || return
+    if [[ "$current_snapshot" != "$snapshot" ]]; then
+        printf 'Source changed during compression. Source directory retained.\n' >&2
         return 1
     fi
-
-    if [[ "$(_7z_dir_snapshot "$source_real")" != "$snapshot" ]]; then
-        echo "$source_dir changed while it was being archived, so $archive_name may not match it; the original directory was kept." >&2
-        return 1
-    fi
-
-    echo
-    echo "Do you want to delete the original directory?"
-    echo "[1] Yes"
-    echo "[2] No"
-    echo
-    read -rp "Your choice is (1 or 2): " choice
-    echo
-
-    case $choice in
+    # A hard link publishes on the same filesystem without replacing an existing file.
+    ln -- "$staging_dir/archive.7z" "$archive_name" || return
+    printf '\nArchive verified: %s\n' "$archive_name"
+    read -r -p "Delete $source_dir? [1] Yes [2] No (default): " choice || choice=2
+    case "$choice" in
         1)
-            if [[ "$(_7z_dir_snapshot "$source_real")" != "$snapshot" ]]; then
-                echo "$source_dir changed after it was archived; original directory not deleted." >&2
+            current_snapshot=$(_7z_dir_snapshot "$source_dir") || return
+            if [[ "$current_snapshot" != "$snapshot" ]]; then
+                printf 'Source changed after compression. Source directory retained.\n' >&2
                 return 1
             fi
-            rm -fr -- "$source_dir" && echo "Original directory deleted."
-            ;;
-        2|"") echo "Original directory not deleted." ;;
-        *) echo "Bad user input. Original directory not deleted." ;;
+            builtin cd -- / || return
+            rm -rf -- "$source_dir" || return
+            printf 'Original directory deleted.\n' ;;
+        *) printf 'Original directory retained.\n' ;;
     esac
-}
+)
 
-# Create a .7z file with configurable compression level
-7z_compress() {
-    local source_dir compression_level="$1"
-
-    # Default to level 9 if not specified
-    [[ -z "$compression_level" ]] && compression_level=9
-
-    # Validate compression level
-    if [[ ! "$compression_level" =~ ^[1-9]$ ]]; then
-        echo "Invalid compression level. Using default level 9."
-        compression_level=9
-    fi
-
-    clear
-
-    if [[ -d "$2" ]]; then
-        source_dir="$2"
-    else
-        read -rp "Please enter the source folder path: " source_dir
-    fi
-
-    _7z_archive_then_offer_delete "$source_dir" .7z -t7z -m0=lzma2 -mx"$compression_level"
-}
-
-# Maintain backward compatibility
-7z_1() {
-    7z_compress 1 "$1"
-}
-
-7z_2() {
-    7z_compress 2 "$1"
-}
-
-7z_3() {
-    7z_compress 3 "$1"
-}
-
-7z_4() {
-    7z_compress 4 "$1"
-}
-
-7z_5() {
-    7z_compress 5 "$1"
-}
-
-7z_6() {
-    7z_compress 6 "$1"
-}
-
-7z_7() {
-    7z_compress 7 "$1"
-}
-
-7z_8() {
-    7z_compress 8 "$1"
-}
-
-7z_9() {
-    7z_compress 9 "$1"
-}
-
-
-# Create a .zip file with configurable compression level using 7-Zip
-zip_compress() {
-    local source_dir compression_level="$1"
-
-    # Default to level 9 if not specified
-    [[ -z "$compression_level" ]] && compression_level=9
-
-    # Validate compression level
-    if [[ ! "$compression_level" =~ ^[1-9]$ ]]; then
-        echo "Invalid compression level. Using default level 9."
-        compression_level=9
-    fi
-
-    clear
-
-    if [[ -d "$2" ]]; then
-        source_dir="$2"
-    else
-        read -rp "Please enter the source folder path: " source_dir
-    fi
-
-    _7z_archive_then_offer_delete "$source_dir" .zip -tzip -mm=Deflate -mx"$compression_level"
-}
-
-# ZIP compression-level shortcuts
-zip_1() {
-    zip_compress 1 "$1"
-}
-
-zip_2() {
-    zip_compress 2 "$1"
-}
-
-zip_3() {
-    zip_compress 3 "$1"
-}
-
-zip_4() {
-    zip_compress 4 "$1"
-}
-
-zip_5() {
-    zip_compress 5 "$1"
-}
-
-zip_6() {
-    zip_compress 6 "$1"
-}
-
-zip_7() {
-    zip_compress 7 "$1"
-}
-
-zip_8() {
-    zip_compress 8 "$1"
-}
-
-zip_9() {
-    zip_compress 9 "$1"
-}
-
+7z_1() { _7z_archive 1 "$@"; }
+7z_5() { _7z_archive 5 "$@"; }
+7z_9() { _7z_archive 9 "$@"; }
 
 ## RECURSIVELY UNZIP ZIP FILES AND NAME THE OUTPUT FOLDER THE SAME NAME AS THE ZIP FILE
 zipr() {
     clear
-    sudo find . -type f -iname "*.zip" \
-        -exec sh -c 'unzip -o -d "${1%.*}" "$1"' _ {} \;
-    sudo find . -type f -iname "*.zip" -exec trash-put {} +
+    find . -type f -iname '*.zip' -exec sh -c 'for archive do unzip -o -d "${archive%.*}" "$archive" && trash-put "$archive"; done' sh {} +
 }
