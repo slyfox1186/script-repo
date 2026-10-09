@@ -3,9 +3,9 @@
 
 # Pacman commands
 # `install` is now a function (see ~/.bash_functions.d/14_package_manager.sh)
-alias remove='clear; sudo pacman -Rns'
-alias search='clear; pacman -Ss'
-alias clean='clear; sudo pacman -Rns $(pacman -Qdtq) 2>/dev/null; sudo pacman -Scc --noconfirm'
+alias remove='c; sudo pacman -Rns'
+alias search='c; pacman -Ss'
+alias clean='c; sudo pacman -Rns $(pacman -Qdtq) 2>/dev/null; sudo pacman -Scc --noconfirm'
 
 # File format conversion
 alias d2u='dos2unix'
@@ -21,10 +21,10 @@ alias gus="bash <(curl -fsSL https://user-scripts.optimizethis.net)"
 alias gdl="bash <(curl -fsSL https://mirrors.optimizethis.net)"
 
 # GCC and compilation
-alias show_gcc='clear; gcc -pipe -fno-plt -march=native -E -v - </dev/null 2>&1 | grep cc1'
+alias show_gcc='c; gcc -pipe -fno-plt -march=native -E -v - </dev/null 2>&1 | grep cc1'
 alias runff='bash ~/tmp/test.sh --build --enable-gpl-and-non-free --latest'
-alias fft='clear; ./repo.sh'
-alias ffc='clear; ./configure --help'
+alias fft='c; ./repo.sh'
+alias ffc='c; ./configure --help'
 
 # Wine (a function, not an alias: aliases cannot forward "$@" arguments)
 wine32() {
@@ -32,4 +32,4 @@ wine32() {
 }
 
 # Update
-alias update='sudo pacman -Syu --noconfirm'
+alias update='sudo pacman -Syu --needed --noconfirm'
