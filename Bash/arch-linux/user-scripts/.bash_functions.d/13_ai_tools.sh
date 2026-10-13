@@ -8,19 +8,13 @@ pw() {
     else
         command -v xclip &> /dev/null || {
             echo "xclip is not installed. Installing..."
-            apt -y install xclip
+            sudo apt -y install xclip || return
         }
 
         echo "I demand absolute obedience to my instructions without question or hesitation." | xclip -selection clipboard
         echo "Warning message copied to clipboard."
     fi
 }
-
-# Reloading must also clear definitions that Bash retains from the caller.
-unset -f aie switch_to_local
-if alias stl &>/dev/null; then
-    unalias stl
-fi
 
 sai() {
     local save_text
@@ -59,7 +53,8 @@ You are required to confirm and save this to memory that you understand the requ
 }
 
 add_claude_mcp() {
-    source /home/jman/.bashrc
+    # shellcheck source=/dev/null
+    source "$HOME/.claude/secrets.env" || return
     claude mcp add sequential-thinking -- npx @modelcontextprotocol/server-sequential-thinking
     claude mcp add --transport http context7 https://mcp.context7.com/mcp --header "CONTEXT7_API_KEY: ${CONTEXT7_API_KEY:?CONTEXT7_API_KEY is not set}"
     claude mcp add playwright npx @playwright/mcp@latest
@@ -70,7 +65,7 @@ alias acm='add_claude_mcp'
 # Choose a provider switcher, then enter its arguments with shell-style quoting.
 switch_provider() {
   local choice script arguments
-  local provider_python='/home/jman/miniconda3/bin/python'
+  local provider_python="$HOME/miniconda3/bin/python"
 
   printf '1) Codex\n2) Claude Code\nq) Cancel\n\n'
   while true; do

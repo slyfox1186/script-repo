@@ -85,7 +85,7 @@ export GCC_COLORS
 # See /usr/share/doc/bash-doc/examples in the bash-doc package.
 
 if [[ -f "$HOME/.bash_aliases" ]]; then
-    # shellcheck source=/home/jman/.bash_aliases
+    # shellcheck source=/dev/null
     source "$HOME/.bash_aliases"
 fi
 
@@ -104,7 +104,7 @@ fi
 ####################
 
 if [[ -f "$HOME/.bash_functions" ]]; then
-    # shellcheck source=/home/jman/.bash_functions
+    # shellcheck source=/dev/null
     source "$HOME/.bash_functions"
 fi
 
@@ -146,7 +146,7 @@ if command -v pyenv &>/dev/null; then
     eval "$(command pyenv init --path)"
 fi
 if [[ -r "$HOME/.bash_functions.d/startup/pyenv.sh" ]]; then
-    # shellcheck source=/home/jman/.bash_functions.d/startup/pyenv.sh
+    # shellcheck source=/dev/null
     source "$HOME/.bash_functions.d/startup/pyenv.sh"
 fi
 
@@ -156,7 +156,7 @@ VISUAL=nano
 export EDITOR VISUAL
 
 # >>> conda initialize >>>
-if __conda_setup="$(/home/jman/miniconda3/bin/conda shell.bash hook 2>/dev/null)"; then
+if __conda_setup="$("$HOME/miniconda3/bin/conda" shell.bash hook 2>/dev/null)"; then
     eval "$__conda_setup"
 else
     if [[ -f "$HOME/miniconda3/etc/profile.d/conda.sh" ]]; then
@@ -203,7 +203,7 @@ NCCL_P2P_DISABLE=1
 export NCCL_DEBUG NCCL_IB_DISABLE NCCL_NET_GDR_LEVEL NCCL_P2P_DISABLE
 
 # codex-orchestrator
-PATH="/home/jman/.codex-orchestrator/bin:$PATH"
+PATH="$HOME/.codex-orchestrator/bin:$PATH"
 export PATH
 
 # CUDA / nvcc

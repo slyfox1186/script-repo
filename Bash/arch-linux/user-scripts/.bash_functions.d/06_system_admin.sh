@@ -3,14 +3,14 @@
 
 ## GET THE OS AND ARCH OF THE ACTIVE COMPUTER ##
 this_pc() {
-    local os version
-    # shellcheck source=/etc/os-release
-    source /etc/os-release
-    os="${NAME:-Unknown}"
-    version="${VERSION_ID:-Unknown}"
-
-    printf 'Operating System: %s\n' "$os"
-    printf 'Specific Version: %s\n' "$version"
+    # A subshell keeps os-release variables such as NAME and ID out of the calling shell.
+    (
+        # shellcheck source=/etc/os-release
+        source /etc/os-release
+        printf 'Operating System: %s\n' "${NAME:-Unknown}"
+        printf 'Specific Version: %s\n' "${VERSION_ID:-Unknown}"
+    )
+    printf 'Architecture:     %s\n' "$(uname -m)"
     echo
 }
 
@@ -32,14 +32,20 @@ nvme_temp() {
 }
 
 ## Write caching ##
+# Disables the drive's volatile write cache until the next power cycle.
 wcache() {
-    local choice
+    local answer choice
 
-    lsblk
+    lsblk -d -o NAME,MODEL,SIZE,TRAN
     echo
-    read -r -p "Enter the drive id to turn off write caching (/dev/sdX w/o /dev/): " choice
-
-    sudo hdparm -W 0 /dev/"$choice"
+    read -r -p "Enter the drive id to turn off write caching (sdX w/o /dev/): " choice || return 1
+    if [[ ! "$choice" =~ ^[A-Za-z0-9]+$ || ! -b "/dev/$choice" ]]; then
+        printf 'Not a block device: /dev/%s\n' "$choice" >&2
+        return 1
+    fi
+    read -r -p "Disable write caching on /dev/$choice? [y/N] " answer || return 1
+    [[ $answer == [yY] || $answer == [yY][eE][sS] ]] || return 1
+    sudo hdparm -W 0 "/dev/$choice"
 }
 
 ###########################
@@ -50,13 +56,17 @@ chostname() {
     local name
     clear
 
-    if [[ -z "$1" ]]; then
-        read -r -p "Please enter the new hostname: " name
+    if [[ -z "${1-}" ]]; then
+        read -r -p "Please enter the new hostname: " name || return 1
     else
         name="$1"
     fi
+    if [[ -z "$name" ]]; then
+        printf 'The hostname cannot be empty.\n' >&2
+        return 1
+    fi
 
-    sudo nmcli g hostname "$name"
+    sudo nmcli g hostname "$name" || return
     clear
     printf "%s\n\n" "The new hostname is listed below."
     hostname
@@ -75,14 +85,21 @@ find_service() {
     fi
     # Use '|' as an OR operator for grep to find any of the keywords
     local IFS='|'
-    sudo systemctl list-units --type=service --all | grep -E --color=always "$*"
+    systemctl list-units --type=service --all | grep -E --color=always "$*"
+}
+
+# Succeeds when UNIT names an installed unit file; a bare name means NAME.service.
+_unit_exists() {
+    local unit="$1"
+    [[ "$unit" == *.* ]] || unit+=".service"
+    [[ -n $(systemctl list-unit-files --no-legend -- "$unit" 2>/dev/null) ]]
 }
 
 # --- KILL SERVICE ---
 # Stops and optionally disables one or more systemd services.
 # Usage: kill_service [-d] service1.service [service2.service ...]
 kill_service() {
-    local disable=false opt
+    local disable=false opt service
     local error_occurred=false
     local OPTIND=1
 
@@ -115,7 +132,7 @@ kill_service() {
         echo "--- Processing '$service' ---"
 
         # 1. Check if the service unit file exists
-        if ! sudo systemctl list-unit-files | grep -q "^$service"; then
+        if ! _unit_exists "$service"; then
             echo "⚠️ Warning: Service '$service' does not exist. Skipping."
             continue
         fi
@@ -200,7 +217,7 @@ _start_service_usage() {
 # Starts and optionally enables one or more systemd services.
 # Usage: start_service [-s] [-e] [-h] service1.service [service2.service ...]
 start_service() {
-    local start=false opt
+    local start=false opt service
     local enable=false
     local show_help=false
     local error_occurred=false
@@ -251,7 +268,7 @@ start_service() {
         echo "--- Processing '$service' ---"
 
         # 1. Check if the service unit file exists
-        if ! sudo systemctl list-unit-files | grep -q "^$service"; then
+        if ! _unit_exists "$service"; then
             echo "⚠️ Warning: Service '$service' does not exist. Skipping."
             continue
         fi

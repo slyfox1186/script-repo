@@ -10,7 +10,7 @@
 To reload the functions in the current terminal:
 
 ```bash
-source /home/jman/.bash_functions
+source ~/.bash_functions
 ```
 
 The provider menu is `switch_provider`; its definition is in `13_ai_tools.sh`. `add_claude_mcp` reads `CONTEXT7_API_KEY` from the environment, which `~/.claude/secrets.env` sets.
@@ -18,9 +18,24 @@ The provider menu is `switch_provider`; its definition is in `13_ai_tools.sh`. `
 The function files keep private permissions because the originals were private.
 
 The cleanup decisions and verification are recorded in [CLEANUP.md](CLEANUP.md).
-Open a new terminal to pick up the complete cleanup, including the `pyenv` startup
-wrapper. Reloading only `~/.bash_functions` updates the category functions and
-clears the retired `aie`, `switch_to_local`/`stl`, and standalone `display_help`.
+
+Changes on 2026-10-13:
+
+- Removed functions whose download sources are gone (404 GitHub paths or the parked
+  optimizethis.net domain): `dl_clang`, `gitdl`, `dlfs`, `venv`, `dlmaster`, `script_repo`,
+  `adt`, `ffdl`, `ffstaticdl`, `imow`, plus the WSL-only `mnd`. Also removed the `gzip`
+  override, the redundant `cdiff` wrapper and the `clean` function, which the `clean` alias
+  already replaced.
+- Renamed the clipboard copier `cc` to `ct`, so `cc` is the C compiler again. Renamed the
+  Chrome launcher `gc` to `gch`; `gc<TAB>` still expands to `git clone`.
+- Every kill path (`kill_process`, `taskkill_pid`/`tkpid`, `check_port`, `port_manager close`,
+  `tkapt`) goes through `_terminate_pids` in `07_process_management.sh`: it lists the targets,
+  sends SIGTERM only after a yes, and offers SIGKILL only for survivors. Enter means no.
+  Port lookups use `_port_listeners`, which only matches listening sockets. `tkapt` never
+  signals dpkg.
+- `pipu`/`pipua` refuse the conda base environment; use `conda update --all` there.
+- Backup and regression suite for this round:
+  `~/.local/state/bash-functions-cleanup/20261013T140623Z/` (57 cases).
 
 Useful changes:
 
@@ -35,9 +50,17 @@ Useful changes:
   file listing. `big_img [MiB]` defaults to 10 MiB. `jpgsize [MiB]` prompts when
   omitted. Both JPG commands print absolute paths, including uppercase extensions,
   without opening an editor or leaving temporary files.
+- `dsize [-r] [-min SIZE] [-max SIZE] [PATH...]` (`09_file_analysis.sh`) prints each
+  path's total size with its absolute path, defaulting to the current directory. `-r`
+  lists every file beneath it, largest first, also with absolute paths. `-min`/`-max`
+  (inclusive, implying `-r`) restrict the list and add a `Matching:` subtotal; SIZE takes
+  B/K/KB/KiB/M/G/T/P/E in any case, all 1024-based like the output. Sizes are disk usage,
+  each hard-linked file counted once in totals. On a terminal, a progress bar on stderr
+  shows percent, elapsed time and time left, preceded by a quick counting pass. Requires
+  `gawk`. Symlinks are not followed; unreadable paths are skipped and counted on stderr.
 - `pipu` calls `pipua`: all outdated non-editable packages are upgraded in one
   resolver invocation, followed by `pip check`. Neither bypasses externally
-  managed environment protection.
+  managed environment protection, and both refuse the conda base environment.
 - `drp [CONTAINER...]` prompts for containers when omitted, then prompts for a
   restart policy. `padl` reads `FILENAME URL` from the Linux or Windows clipboard;
   the filename cannot contain spaces.

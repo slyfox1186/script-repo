@@ -40,16 +40,17 @@ sbrc() {
 spro() {
     # shellcheck source=/dev/null
     if source "$HOME/.profile"; then
+        clear; ls -1AhFv --color --group-directories-first
         echo "The command was a success!"
     else
         echo "The command failed!"
+        return 1
     fi
-    clear; ls -1AhFv --color --group-directories-first
 }
 
-# Clear Bash History
+# Clear Bash History, in memory and in the history file.
 clearh() {
-    history -c
+    history -c && history -w
     clear; ls -1AhFv
     echo -e "\n${GREEN}Bash History Cleared${NC}"
 }
@@ -61,15 +62,14 @@ clearh() {
 # COPY ANY TEXT. DOES NOT NEED TO BE IN QUOTES
 # EXAMPLE: ct This is so cool
 # OUTPUT WHEN PASTED: This is so cool
-# USAGE: cp <file name here>
 
-cc() {
+ct() {
     local pipe
     if [[ -z "$*" ]]; then
         echo
         echo "The command syntax is shown below"
-        echo "cc INPUT"
-        echo "Example: cc $PWD"
+        echo "ct INPUT"
+        echo "Example: ct $PWD"
         echo
         return 1
     else
@@ -78,8 +78,8 @@ cc() {
     echo "$pipe" | xclip -i -rmlastnl -selection clipboard
 }
 
-# COPY A FILE"S FULL PATH
-# USAGE: cp <file name here>
+# COPY A FILE'S FULL PATH
+# USAGE: cfp <file name here>
 
 cfp() {
     local pipe
@@ -99,7 +99,7 @@ cfp() {
 }
 
 # COPY THE CONTENT OF A FILE
-# USAGE: cf <file name here>
+# USAGE: cfc <file name here>
 
 cfc() {
     clear
@@ -112,7 +112,7 @@ cfc() {
         echo
         return 1
     else
-        xclip -i -rmlastnl -select clipboard < "$1"
+        xclip -i -rmlastnl -selection clipboard < "$1"
     fi
 }
 
@@ -150,8 +150,10 @@ rdvc() {
 
     local total_upvotes="${args["total_upvotes"]}"
     local upvote_percentage="${args["upvote_percentage"]}"
+    local downvotes i lower_limit next_lower_limit next_lower_limit_adjusted
+    local total_votes total_votes_rounded upvote_percentage_decimal
 
-    upvote_percentage_decimal=$(bc <<< "scale=2; $upvote_percentage / 100")
+    upvote_percentage_decimal=$(bc <<< "scale=4; $upvote_percentage / 100")
     total_votes=$(bc <<< "scale=2; $total_upvotes / $upvote_percentage_decimal")
     total_votes_rounded=$(bc <<< "($total_votes + 0.5) / 1")
     downvotes=$(bc <<< "$total_votes_rounded - $total_upvotes")
@@ -173,9 +175,6 @@ rdvc() {
     echo "Upvote percentage: $upvote_percentage%"
     echo "Calculated downvotes: $downvotes"
 }
-
-# Sourcing does not otherwise clear functions already defined in the caller.
-unset -f display_help
 
 # Expand common Conda, Git, and Pip shortcuts at the start of a command line.
 _command_shortcut_completion() {

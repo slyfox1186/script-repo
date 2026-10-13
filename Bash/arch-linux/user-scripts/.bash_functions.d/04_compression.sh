@@ -2,95 +2,96 @@
 # Compression and Archive Functions
 
 ## UNCOMPRESS FILES ##
+
+# Extracts every supported archive in the current folder. Multi-file archives go into a folder
+# named after the archive; when an archive holds a single top-level folder, its contents are
+# placed there directly. Single-file .gz, .bz2, .xz and .lz files are decompressed beside the
+# original, which is kept. Returns 1 if any archive failed.
 untar() (
-    local archive dirname ext item_dirname source_dir temp_dir
+    local archive dirname lower source_dir staging status=0
     local -a items
 
+    shopt -s nullglob dotglob
     for archive in *; do
-        ext="${archive##*.}"
-        case "$ext" in
-            7z|bz2|gz|lz|tgz|xz|zip) ;;
+        [[ -f "$archive" ]] || continue
+        lower=${archive,,}
+        case "$lower" in
+            *.tar.gz|*.tar.bz2|*.tar.xz|*.tar.lz|*.tar.zst) dirname=${archive%.*}; dirname=${dirname%.*} ;;
+            *.tgz|*.tbz2|*.txz|*.tar|*.zip|*.7z) dirname=${archive%.*} ;;
+            *.gz) gzip -dk -- "$archive" || status=1; continue ;;
+            *.bz2) bzip2 -dk -- "$archive" || status=1; continue ;;
+            *.xz) xz -dk -- "$archive" || status=1; continue ;;
+            *.lz) lzip -dk -- "$archive" || status=1; continue ;;
             *) continue ;;
         esac
 
-        dirname="${archive%.*}"
-        [[ "$archive" =~ \.tar\.(gz|bz2|lz|xz)$ ]] && dirname="${dirname%.*}"
-        mkdir -p "$dirname"
+        staging=$(mktemp -d "./.untar.XXXXXX") || return 1
+        case "$lower" in
+            *.zip) unzip -q -o -- "$archive" -d "$staging" ;;
+            *.7z) 7z x -y -bd -o"$staging" -- "$archive" > /dev/null ;;
+            *) tar -xf "$archive" -C "$staging" ;;
+        esac || {
+            printf 'Extraction failed: %s\n' "$archive" >&2
+            rm -rf -- "$staging"
+            status=1
+            continue
+        }
 
-        case "$ext" in
-            7z) 7z x -y -spe "$archive" -o"$dirname" ;;
-            zip) temp_dir=$(mktemp -d) || return 1
-                 item_dirname=""
-                 if ! unzip -o "$archive" -d "$temp_dir"; then
-                     rm -rf -- "$temp_dir"
-                     return 1
-                 fi
-                 shopt -s nullglob dotglob
-                 items=("$temp_dir"/*)
-                 shopt -u nullglob dotglob
-                 source_dir="$temp_dir"
-                 if [[ "${#items[@]}" -eq 1 && -d "${items[0]}" ]]; then
-                     item_dirname="${items[0]##*/}"
-                 fi
-                 if [[ "${#items[@]}" -eq 1 && "$item_dirname" == "$dirname" ]]; then
-                     source_dir="${items[0]}"
-                 fi
-                 if ((${#items[@]} > 0)); then
-                     if ! cp -a -- "$source_dir/." "$dirname/"; then
-                         rm -rf -- "$temp_dir"
-                         return 1
-                     fi
-                 fi
-                 rm -rf -- "$temp_dir"
-                 ;;
-            gz|tgz|bz2|xz|lz)
-                tar -xf "$archive" -C "$dirname" --strip-components 1 ;;
-        esac
+        items=("$staging"/*)
+        source_dir=$staging
+        if ((${#items[@]} == 1)) && [[ -d "${items[0]}" && ! -L "${items[0]}" ]]; then
+            source_dir=${items[0]}
+        fi
+        if mkdir -p -- "$dirname" && cp -a -- "$source_dir/." "$dirname/"; then
+            printf 'Extracted: %s -> %s/\n' "$archive" "$dirname"
+        else
+            status=1
+        fi
+        rm -rf -- "$staging"
     done
+    return "$status"
 )
 
-# Gzip
-gzip() {
-    command gzip -d "$@"
-}
+# Usage: _7z_tarball FORMAT EXTENSION [SOURCE]
+# Streams SOURCE through 7-Zip's tar writer into SOURCE.tar.EXTENSION at maximum compression.
+_7z_tarball() (
+    local format="$1" extension="$2" source="${3-}" output=""
 
-# Create a tar.gz file with max compression settings
-7z_gz() {
-    local source output
-    if [[ -n "$1" ]]; then
-        if [[ -f "$1.tar.gz" ]]; then
-            sudo rm "$1.tar.gz"
-        fi
-        7z a -ttar -so -an "$1" | 7z a -tgzip -mx9 -mpass1 -si "$1.tar.gz"
-    else
-        read -r -p "Please enter the source folder path: " source
-        read -r -p "Please enter the destination archive path (w/o extension): " output
+    set -o pipefail
+    if [[ -z "$source" ]]; then
+        read -r -p "Please enter the source folder path: " source || return 1
+        read -r -p "Please enter the destination archive path (w/o extension, blank to use the source path): " output || return 1
         echo
-        if [[ -f "$output.tar.gz" ]]; then
-            sudo rm "$output.tar.gz"
-        fi
-        7z a -ttar -so -an "$source" | 7z a -tgzip -mx9 -mpass1 -si "$output.tar.gz"
     fi
-}
+    while [[ "$source" != / && "$source" == */ ]]; do
+        source=${source%/}
+    done
+    if [[ "$source" == / || ! -e "$source" ]]; then
+        printf 'Invalid source: %s\n' "$source" >&2
+        return 1
+    fi
+    while [[ "$output" == */ ]]; do
+        output=${output%/}
+    done
+    output="${output:-$source}.tar.$extension"
+    if [[ -e "$output" || -L "$output" ]]; then
+        printf 'Archive already exists; refusing to overwrite: %s\n' "$output" >&2
+        return 1
+    fi
+
+    if ! 7z a -ttar -so -an -- "$source" | 7z a "-t$format" -mx9 -si -- "$output" > /dev/null; then
+        rm -f -- "$output"
+        printf 'Compression failed: %s\n' "$source" >&2
+        return 1
+    fi
+    printf 'Created: %s\n' "$output"
+)
+
+# Create a tar.gz file with max compression settings using 7zip
+7z_gz() { _7z_tarball gzip gz "$@"; }
 
 # Create a tar.xz file with max compression settings using 7zip
-7z_xz() {
-    local source output
-    if [[ -n "$1" ]]; then
-        if [[ -f "$1.tar.xz" ]]; then
-            sudo rm "$1.tar.xz"
-        fi
-        7z a -ttar -so -an "$1" | 7z a -txz -mx9 -si "$1.tar.xz"
-    else
-        read -r -p "Please enter the source folder path: " source
-        read -r -p "Please enter the destination archive path (w/o extension): " output
-        echo
-        if [[ -f "$output.tar.xz" ]]; then
-            sudo rm "$output.tar.xz"
-        fi
-        7z a -ttar -so -an "$source" | 7z a -txz -mx9 -si "$output.tar.xz"
-    fi
-}
+7z_xz() { _7z_tarball xz xz "$@"; }
 
 # Shared implementation; the public names remain compression-level presets.
 _7z_dir_snapshot() (

@@ -8,14 +8,13 @@ if shopt -q expand_aliases; then
     shopt -u expand_aliases
 fi
 
-# EXPORT ANSI COLORS
+# ANSI colors used by the functions
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 GREEN='\033[0;32m'
 RED='\033[0;31m'
 YELLOW='\033[0;33m'
 NC='\033[0m' # No Color
-export BLUE CYAN GREEN RED YELLOW NC
 
 if [[ -d "$HOME/.bash_functions.d" ]]; then
     for script in "$HOME/.bash_functions.d"/*.sh; do
