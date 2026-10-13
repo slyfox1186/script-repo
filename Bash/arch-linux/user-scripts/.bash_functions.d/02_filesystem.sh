@@ -111,7 +111,7 @@ town() {
             echo "File does not exist: $file"
             return 1
         fi
-        if ! sudo chown -- "$USER:$USER" "$file" || ! sudo chmod u+rwX,go+rX -- "$file"; then
+        if ! sudo chown -- "$USER:$USER" "$file" || ! sudo chmod 755 -- "$file"; then
             echo "Failed to change ownership and permissions of: $file"
             return 1
         fi
