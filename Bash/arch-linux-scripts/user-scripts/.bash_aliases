@@ -1,25 +1,14 @@
-if [[ -x /usr/bin/dircolors ]]; then
-    if [[ -r "$HOME/.dircolors" ]]; then
-        eval "$(dircolors -b "$HOME/.dircolors")"
-    else
-        eval "$(dircolors -b)"
-    fi
-fi
+alias grep='grep --color=auto'
+alias egrep='grep --color=auto -E'
+alias fgrep='grep --color=auto -F'
 
-GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01'
-export GCC_COLORS
-
-alias grep='grep --color=always'
-alias egrep='grep --color=always -E'
-alias fgrep='grep --color=always -F'
-
-alias ls='ls -1AFShv --color=always --group-directories-first'
+alias ls='ls -1AFShv --color=auto --group-directories-first'
 alias cl='clear; ls'
-alias cls='clear'
-alias dir='dir --color=always'
-alias vdir='vdir --color=always'
+alias dir='dir --color=auto'
+alias vdir='vdir --color=auto'
 
-alias install='apt -y install'
+alias clean='sudo apt -y autoremove; sudo apt autoclean'
+alias install='sudo apt -y install'
 
 alias nba='nano ~/.bash_aliases; cl'
 alias nbf='nano ~/.bash_functions; cl'
@@ -40,7 +29,7 @@ alias cdd='pushd ~/Downloads; cl'
 alias cde='pushd ~/Desktop; cl'
 alias cdg='pushd ~/tmp/thatsgemma/; cl'
 alias cdf='pushd ~/tmp/local_llm_projects/qwen3.8-flash-next-gguf-strata/; cl'
-alias cdq='pushd ~/tmp/local_llm_projects/qwen3.8-gguf-strata/; cl'
+alias cdq='pushd ~/tmp/local_llm_projects/qwen3.8-gguf/; cl'
 alias cdt='pushd ~/tmp; cl'
 
 alias cba='cat ~/.bash_aliases'
@@ -52,12 +41,10 @@ alias wgpu='watch -n0.5 nvidia-smi'
 alias wmem='watch -n0.5 free -m'
 alias wtemp='watch -n0.5 sensors'
 
-alias sgc='sudo grub-customizer'
-
 alias killall='sudo killall -9'
 alias kill='sudo kill -9'
 
 alias logout='gnome-session-quit --no-prompt'
 alias reboot='sudo systemctl reboot'
-alias shutdown='sudo shutdown -h now'
 alias rebootu='sudo systemctl reboot --firmware-setup'
+alias shutdown='sudo systemctl poweroff'
