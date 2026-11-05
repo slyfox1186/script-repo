@@ -38,8 +38,10 @@ import threading
 import time
 import tty
 import zipfile
+from collections.abc import Sequence
 from email.parser import Parser
 from pathlib import Path, PurePosixPath
+from typing import Any
 from urllib.parse import unquote, urlsplit
 
 CACHE_ROOT = (
@@ -57,7 +59,7 @@ UPDATABLE_INSTALLERS = frozenset({"pip", "uv"})
 SAFE_PROJECT_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 SAFE_VERSION = re.compile(r"^[A-Za-z0-9_.!+-]+$")
 PROCESS_START_ENVIRONMENT = os.environ.copy()
-_CHILDREN = set()
+_CHILDREN: set[subprocess.Popen] = set()
 _CHILDREN_LOCK = threading.RLock()
 _SHUTTING_DOWN = threading.Event()
 _TERMINATION_DEFERRALS = 0
@@ -3196,7 +3198,9 @@ def conda_consistency_issues(prefix):
     }
 
 
-CONDA_DIST_PATTERN = re.compile(r"[A-Za-z0-9_][A-Za-z0-9_.+!]*(?:-[A-Za-z0-9_.+!]+){2}")
+CONDA_DIST_PATTERN = re.compile(
+    r"[A-Za-z0-9_][A-Za-z0-9_.+!]*(?:-[A-Za-z0-9_.+!]+){2,}"
+)
 
 
 def damaged_conda_dists(lines):
@@ -3232,25 +3236,222 @@ def _conda_record(prefix, dist):
     if not all(isinstance(value, str) and value for value in fields):
         raise UpdaterError(f"Conda's record {path} lacks a name, version or build.")
     name, version, build = fields
-    return {"dist": dist, "name": name, "version": version, "build": build}
+    # `dist` already matched CONDA_DIST_PATTERN, so an identity that rebuilds it
+    # exactly cannot smuggle spec syntax or options into a printed command.
+    if f"{name}-{version}-{build}" != dist:
+        raise UpdaterError(f"Conda's record {path} does not describe {dist}.")
+    # load_conda_ownership validates every record's files strictly before any
+    # command is printed; this only collects the names.
+    files = record.get("files")
+    distributions = {
+        canonicalize_name(_metadata_directory_name(PurePosixPath(raw_path)))
+        for raw_path in (files if isinstance(files, list) else [])
+        if isinstance(raw_path, str)
+        and is_distribution_metadata(PurePosixPath(raw_path))
+    }
+    return {
+        "dist": dist,
+        "name": name,
+        "version": version,
+        "build": build,
+        "distributions": distributions,
+        "channel": record.get("channel"),
+    }
 
 
 def damaged_conda_records(prefix, sections):
     """Return the Conda records of every package the doctor report names.
 
-    A report that names nothing is completed from `conda doctor --verbose`.
+    Every failing check must identify its packages before a repair is suggested.
     """
-    dists = damaged_conda_dists(
-        line for section in sections for line in section["detail"]
-    )
-    if not dists:
+    by_check = {
+        section["kind"]: damaged_conda_dists(section["detail"]) for section in sections
+    }
+    # Every summary line is "name-version-build: count"; one that is not means
+    # the format changed and the names read so far may be incomplete.
+    unresolved = [
+        section["kind"]
+        for section in sections
+        if not by_check[section["kind"]]
+        or len(by_check[section["kind"]]) != len(section["detail"])
+    ]
+    if unresolved:
         report = conda_doctor(
             prefix,
-            ["altered-files", "missing-files", "--verbose"],
+            [*unresolved, "--verbose"],
             f"Running conda doctor --verbose for {prefix}",
         )
-        dists = damaged_conda_dists(report.splitlines())
+        for section in doctor_sections(report):
+            if section["kind"] in unresolved:
+                by_check[section["kind"]] = damaged_conda_dists(section["detail"])
+    if any(not dists for dists in by_check.values()):
+        raise UpdaterError("Conda did not identify every package with file damage.")
+    dists = dict.fromkeys(dist for found in by_check.values() for dist in found)
     return [_conda_record(prefix, dist) for dist in dists]
+
+
+def foreign_distribution_metadata(prefix, records, inventory):
+    """Return inventory rows of damaged distributions that Conda does not own.
+
+    The installer label is not trusted here: any metadata outside Conda's
+    recorded paths is a copy that a Conda reinstall would leave beside its own.
+    """
+    damaged = set().union(*(record["distributions"] for record in records))
+    owned_metadata_dirs = {
+        PurePosixPath(path).parent.as_posix()
+        for path in load_conda_ownership(prefix)["paths"]
+        if is_distribution_metadata(PurePosixPath(path))
+    }
+    prefix_path = Path(prefix).resolve(strict=False)
+    copies = []
+    for row in inventory:
+        if canonicalize_name(row["name"]) not in damaged:
+            continue
+        try:
+            relative = (
+                Path(row["metadata_path"])
+                .resolve(strict=False)
+                .relative_to(prefix_path)
+            )
+        except (OSError, ValueError, RuntimeError):
+            copies.append(row)
+            continue
+        if relative.as_posix() not in owned_metadata_dirs:
+            copies.append(row)
+    return copies
+
+
+def _uninstallable_by_name(row, inventory, prefix):
+    """Whether the isolated `pip uninstall <name>` can only remove this copy.
+
+    The inventory is read with the same isolated interpreter, so a name it
+    lists once is the copy pip will pick; with two copies pip may pick either.
+    """
+    name = canonicalize_name(row["name"])
+    return (
+        row["installer"] in UPDATABLE_INSTALLERS
+        and SAFE_PROJECT_NAME.fullmatch(row["name"]) is not None
+        and _is_within(row["metadata_path"], prefix)
+        and sum(canonicalize_name(other["name"]) == name for other in inventory) == 1
+    )
+
+
+# Conda stores a record's channel as str(Channel), which drops tokens and
+# user:password, so a plain URL is safe to print.  Anything else, such as
+# "<unknown>" or a hand-edited value, falls back to the configured channels.
+CONDA_CHANNEL_URL = re.compile(r"(?:https?|file)://[A-Za-z0-9._~/+-]+")
+
+
+def _conda_spec(record):
+    """Return the record's exact build, pinned to its channel when that is a plain URL."""
+    spec = f"{record['name']}={record['version']}={record['build']}"
+    channel = record["channel"]
+    if (
+        isinstance(channel, str)
+        and CONDA_CHANNEL_URL.fullmatch(channel)
+        and "/t/" not in channel
+    ):
+        return f"{channel}::{spec}"
+    return spec
+
+
+def conda_repair_steps(prefix, records):
+    """Return the commands that restore the damaged records' exact builds.
+
+    Copies installed over Conda's packages must go first, or the reinstall
+    leaves two copies of each.  Their uninstall also deletes files the two
+    share, so the builds are downloaded before anything is removed, and
+    reinstalled offline after it.  No command passes -y: Conda shows its plan
+    and pip lists the files it will remove before either changes anything.
+    """
+    inventory = get_environment_inventory(prefix)
+    copies = foreign_distribution_metadata(prefix, records, inventory)
+    removable = [
+        row for row in copies if _uninstallable_by_name(row, inventory, prefix)
+    ]
+    manual = [row for row in copies if row not in removable]
+    conda = conda_executable()
+    specs = [_conda_spec(record) for record in records]
+    # Exact builds, because `conda doctor --fix` cannot reinstall them on
+    # Conda < 26.9 (conda/conda#16591).  --no-deps keeps Conda's
+    # aggressive_update_packages (openssl, certificates) out of the repair.
+    reinstall = [conda, "install", "-p", str(prefix), "--force-reinstall", "--no-deps"]
+    lines = []
+    if copies:
+        lines.append(
+            "Installed over Conda's packages: "
+            + ", ".join(
+                f"{row['name']} {row['version']} ({row['installer'] or 'unknown installer'})"
+                for row in copies
+            )
+            + "."
+        )
+    if manual:
+        lines.append(
+            "Remove these copies by hand before reinstalling; no uninstall by name "
+            "is certain to reach them:"
+        )
+        lines += [f"  {row['metadata_path'] or row['name']}" for row in manual]
+    steps = []
+    if copies:
+        steps.append(
+            (
+                "Download the recorded builds and review the plan; nothing changes yet:",
+                [*reinstall, "--download-only", *specs],
+            )
+        )
+    if removable:
+        steps.append(
+            (
+                "Uninstall the copies installed over them:",
+                [environment_python(prefix), "-I", "-m", "pip", "uninstall"]
+                + [row["name"] for row in removable],
+            )
+        )
+    steps.append(
+        (
+            "Reinstall the recorded builds"
+            + (" from the downloaded packages:" if copies else ":"),
+            [*reinstall, *(["--offline"] if copies else []), *specs],
+        )
+    )
+    steps.append(
+        (
+            "Check that Conda's files are intact, then rerun the updater:",
+            [conda, "doctor", "-p", str(prefix)]
+            + ["altered-files", "missing-files", "consistency"],
+        )
+    )
+    lines += ["", "To restore Conda's recorded builds, run these commands in order:"]
+    for number, (what, command) in enumerate(steps, 1):
+        lines += [f"  {number}. {what}", f"     {shlex.join(command)}"]
+    lines.append(
+        "--no-deps restores only these packages' files; it neither changes nor "
+        "checks their dependencies."
+    )
+    return lines
+
+
+def explain_conda_damage(prefix, sections, snapshot):
+    """Explain file damage, printing repair commands only once each is verified."""
+    try:
+        records = damaged_conda_records(prefix, sections)
+        steps = conda_repair_steps(prefix, records)
+    except (UpdaterError, OSError) as exc:
+        lines = [
+            "Conda reports damaged files. No automatic repair was attempted.",
+            (
+                "No repair commands are shown because the damage could not be "
+                f"fully inspected: {exc}"
+            ),
+        ]
+    else:
+        names = ", ".join(record["name"] for record in records)
+        lines = [
+            f"Conda reports damaged files in {names}. No automatic repair was attempted.",
+            *steps,
+        ]
+    return "\n".join(lines) + "\n\nConda's full report:\n" + snapshot
 
 
 def explain_unknown_doctor_report(snapshot):
@@ -3268,7 +3469,11 @@ def _checked_doctor_sections(snapshot):
     """Split a doctor report, failing closed on one this updater cannot read."""
     sections = doctor_sections(snapshot)
     reported_checks = {section["kind"] for section in sections}
-    if reported_checks != {"altered-files", "missing-files", "consistency"}:
+    if len(sections) != 3 or reported_checks != {
+        "altered-files",
+        "missing-files",
+        "consistency",
+    }:
         raise UpdaterError(explain_unknown_doctor_report(snapshot))
     return sections
 
@@ -3292,13 +3497,7 @@ def preflight_health(prefix, *, dry_run=False):
     sections = _checked_doctor_sections(snapshot)
     blocking = _file_damage(sections)
     if blocking:
-        records = damaged_conda_records(prefix, blocking)
-        names = ", ".join(record["name"] for record in records) or "unknown packages"
-        raise UpdaterError(
-            f"Conda reports damaged files in {names}. No automatic repair was attempted.\n"
-            "Repair these packages with Conda, verify the environment, then rerun the updater.\n\n"
-            "Conda's full report:\n" + snapshot
-        )
+        raise UpdaterError(explain_conda_damage(prefix, blocking, snapshot))
     ownership = load_conda_ownership(prefix)
     inconsistent = any(
         section["failed"] and section["kind"] == "consistency" for section in sections
@@ -6762,6 +6961,13 @@ _HELP_STYLES = {
 }
 
 
+def _metavar(action: argparse.Action) -> str:
+    """Display name for an action's value; argparse also allows a tuple metavar."""
+    if isinstance(action.metavar, tuple):
+        return " ".join(action.metavar)
+    return action.metavar or action.dest.upper()
+
+
 def _help_color_enabled() -> bool:
     """Color help on a terminal unless NO_COLOR, TERM=dumb or --no-color opts out; FORCE_COLOR opts in."""
     if os.environ.get("NO_COLOR") or "--no-color" in sys.argv:
@@ -6779,8 +6985,15 @@ class HelpParser(argparse.ArgumentParser):
     off, so add ``-h/--help`` with ``action='help'`` to the group it belongs in.
     """
 
-    def __init__(self, *args, title: str, version: str = "", examples=(), **kwargs):
-        super().__init__(*args, add_help=False, **kwargs)
+    def __init__(
+        self,
+        *,
+        title: str,
+        version: str = "",
+        examples: Sequence[tuple[str, str]] = (),
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(add_help=False, **kwargs)
         self.help_title = title
         self.help_version = version
         self.help_examples = examples
@@ -6790,12 +7003,13 @@ class HelpParser(argparse.ArgumentParser):
         for action in self._actions:
             if action.option_strings or action.help == argparse.SUPPRESS:
                 continue
-            name = action.metavar or action.dest.upper()
-            parts.append(
-                {"?": f"[{name}]", "*": f"[{name} ...]", "+": f"{name} ..."}.get(
-                    action.nargs, name
-                )
-            )
+            name = _metavar(action)
+            forms: dict[object, str] = {
+                "?": f"[{name}]",
+                "*": f"[{name} ...]",
+                "+": f"{name} ...",
+            }
+            parts.append(forms.get(action.nargs, name))
         return parts
 
     def format_usage(self) -> str:
@@ -6826,7 +7040,7 @@ class HelpParser(argparse.ArgumentParser):
         # Action groups are argparse's only record of section membership and order.
         sections = [
             (
-                group.title,
+                group.title or "",
                 [
                     a
                     for a in group._group_actions
@@ -6844,7 +7058,7 @@ class HelpParser(argparse.ArgumentParser):
             short = ", ".join(shorts) + (", " if shorts and longs else "")
             metavar = ""
             if action.nargs != 0:
-                metavar = action.metavar or action.dest.upper()
+                metavar = _metavar(action)
                 if action.nargs in ("+", "*"):
                     metavar += "..."
                 elif action.nargs == "?":
@@ -6912,7 +7126,7 @@ class HelpParser(argparse.ArgumentParser):
         )
         for action in self._actions:
             if not action.option_strings and action.help != argparse.SUPPRESS:
-                name = action.metavar or action.dest.upper()
+                name = _metavar(action)
                 out.append("")
                 out += row(name, paint(name, "value"), help_text(action))
 
