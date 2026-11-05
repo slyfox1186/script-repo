@@ -50,6 +50,7 @@ CACHE_ROOT = (
 CACHE_FILE = str(CACHE_ROOT / "cache-v2.json")
 CACHE_VERSION = 2
 BACK_TO_ENV = "__BACK_TO_ENV__"
+QUIT = "__QUIT__"
 STALE_METADATA_SUFFIX = ".pip-updater-stale"
 PROTECTED_BOOTSTRAP_PACKAGES = {"pip", "setuptools", "wheel"}
 # Installers whose installs pip can replace exactly: both write standard
@@ -81,12 +82,17 @@ class WheelRefusal(UpdaterError):
     """A downloaded wheel must not be installed over the files on disk.
 
     ``hold`` names the planned packages to leave as installed so that the
-    rest of the plan can be resolved and applied without them.
+    rest of the plan can be resolved and applied without them.  ``cappers``
+    are the staying packages whose files the refused wheel would disturb and
+    ``versions`` the installed versions of them and of the held packages, so
+    the hold can be remembered until one of them moves (_file_hold_records).
     """
 
-    def __init__(self, message, hold):
+    def __init__(self, message, hold, cappers=(), versions=None):
         super().__init__(message)
         self.hold = frozenset(hold)
+        self.cappers = frozenset(cappers)
+        self.versions = dict(versions or {})
 
 
 class UpdateInterrupted(BaseException):
@@ -359,7 +365,6 @@ def stream_command(
     )
 
 
-# ANSI SGR codes for each style role.
 STYLE_CODES = {
     "ok": "1;32",
     "info": "1;36",
@@ -679,7 +684,6 @@ class Pacer:
         self._logged_interval = -1
 
     def elapsed(self):
-        """Seconds since the tracked work started."""
         return time.monotonic() - self.started
 
     def paint_due(self, *, force=False):
@@ -770,7 +774,52 @@ RESOLVER_PHASE_ACTIVITY = {
 }
 
 
-class ResolverProgress:
+class _Dashboard:
+    """Rows repainted in place on a terminal, or throttled log lines on a pipe.
+
+    Subclasses supply ``terminal_lines(max_width)``; ``sampler`` follows the
+    child process so its CPU and RAM stay visible.
+    """
+
+    LOG_INTERVAL = 30
+    REFRESH_INTERVAL = 0.2
+
+    def __init__(self, stream=None):
+        self.display = LiveDisplay(stream)
+        self.pacer = Pacer(self.LOG_INTERVAL, self.REFRESH_INTERVAL)
+        self.sampler = ProcessSampler()
+
+    def watch(self, pid):
+        self.sampler.watch(pid)
+
+    def terminal_lines(self, max_width):
+        """Return the dashboard rows, each cut to ``max_width``."""
+        raise NotImplementedError
+
+    def _log_line(self):
+        """Return the dashboard as one line, for output that is not a terminal."""
+        return "  " + " | ".join(row.strip() for row in self.terminal_lines(10_000))
+
+    def _paint(self):
+        self.display.draw(self.terminal_lines(self.display.width()))
+
+    def paint(self, *, force=False):
+        """Redraw in place on a terminal; otherwise log at LOG_INTERVAL.
+
+        The sampler runs on every piped call so the closing line reports the
+        child's last real CPU/RAM, not the figure from the moment it spawned.
+        """
+        if self.display.interactive:
+            if self.pacer.paint_due(force=force):
+                self.sampler.sample()
+                self._paint()
+            return
+        self.sampler.sample()
+        if self.pacer.log_due(force=force):
+            self.display.log(self._log_line())
+
+
+class ResolverProgress(_Dashboard):
     """Explain pip's observable work while it searches a dependency graph.
 
     pip does not expose an overall completion percentage. It does, however,
@@ -781,16 +830,12 @@ class ResolverProgress:
     """
 
     WIDTH = 16
-    LOG_INTERVAL = 30
-    REFRESH_INTERVAL = 0.2
     SILENCE_SHOWN = 10
 
     def __init__(self, selected, stream=None):
+        super().__init__(stream)
         self.graph = ResolverGraph({canonicalize_name(name) for name in selected})
         self.phase = "Loading metadata"
-        self.sampler = ProcessSampler()
-        self.display = LiveDisplay(stream)
-        self.pacer = Pacer(self.LOG_INTERVAL, self.REFRESH_INTERVAL)
         self._finished = False
         self._step = ("", time.monotonic())
 
@@ -818,10 +863,6 @@ class ResolverProgress:
         """Number of selected packages whose metadata the bar tracks."""
         return len(self.graph.selected)
 
-    def watch(self, pid):
-        """Remember the resolver process so silent CPU work stays visible."""
-        self.sampler.watch(pid)
-
     def note(self, line):
         """Turn pip's human-readable resolver events into stable counters."""
         phase = self.graph.observe(line.strip())
@@ -834,8 +875,7 @@ class ResolverProgress:
         return "#" * filled + "-" * (self.WIDTH - filled)
 
     def _log_line(self):
-        """Return the dashboard as one line, for output that is not a terminal."""
-        rows = [row.strip() for row in self._terminal_lines(10_000)]
+        rows = [row.strip() for row in self.terminal_lines(10_000)]
         if self.graph.backtracking and self.phase in RESOLVER_PHASE_ACTIVITY:
             # These phases' activity text hides the count the log must keep.
             count = count_label(len(self.graph.backtracking), "package")
@@ -855,7 +895,7 @@ class ResolverProgress:
             return "loading selected package metadata"
         return "searching compatible versions"
 
-    def _terminal_lines(self, max_width):
+    def terminal_lines(self, max_width):
         """Build a compact dashboard whose three rows fit the terminal."""
         graph = self.graph
         loaded = len(graph.loaded)
@@ -893,23 +933,10 @@ class ResolverProgress:
 
         return [line[:max_width] for line in (line1, line2, line3)]
 
-    def _paint(self):
-        self.display.draw(self._terminal_lines(self.display.width()))
-
     def tick(self):
         """Refresh real telemetry or emit a bounded log heartbeat."""
-        if self._finished:
-            return
-        if self.display.interactive:
-            if self.pacer.paint_due():
-                self.sampler.sample()
-                self._paint()
-            return
-        # Sample every tick so the closing line reports the resolver's last
-        # real CPU/RAM, not the figure from the moment it was spawned.
-        self.sampler.sample()
-        if self.pacer.log_due():
-            self.display.log(self._log_line())
+        if not self._finished:
+            self.paint()
 
     def finish(self, success):
         """Settle the telemetry without claiming success on failure."""
@@ -1262,7 +1289,7 @@ class InstallProgress(CountedProgress):
         )
 
 
-class PackageScanProgress:
+class PackageScanProgress(_Dashboard):
     """Truthful liveness telemetry for pip's non-linear outdated scan.
 
     ``pip list --outdated`` emits one JSON document only after checking every
@@ -1272,15 +1299,12 @@ class PackageScanProgress:
     """
 
     WIDTH = 20
-    REFRESH_INTERVAL = 0.2
     LOG_INTERVAL = 15
 
     def __init__(self, *, cached_count=None, render=True, stream=None):
+        super().__init__(stream)
         self.cached_count = cached_count
         self.render = render
-        self.display = LiveDisplay(stream)
-        self.pacer = Pacer(self.LOG_INTERVAL, self.REFRESH_INTERVAL)
-        self.sampler = ProcessSampler()
         self._lock = threading.Lock()
         self._state = {
             "phase": "Reading installed package metadata",
@@ -1297,10 +1321,6 @@ class PackageScanProgress:
         """
         with self._lock:
             self._state.update(changes)
-
-    def watch(self, pid):
-        """Attach the running scan process for CPU and RAM sampling."""
-        self.sampler.watch(pid)
 
     def redirect(self, stream):
         """Draw on ``stream`` from now on (a background scan gets a screen)."""
@@ -1356,18 +1376,6 @@ class PackageScanProgress:
             f"{snap['phase']} | {format_elapsed(elapsed)}"
         )
         return truncate_label(text, max_width)
-
-    def paint(self, *, force=False):
-        """Redraw in place on a terminal; otherwise log at LOG_INTERVAL."""
-        if self.display.interactive:
-            if self.pacer.paint_due(force=force):
-                self.sampler.sample()
-                self.display.draw(self.terminal_lines(self.display.width()))
-            return
-        self.sampler.sample()
-        if self.pacer.log_due(force=force):
-            fields = [line.strip() for line in self.terminal_lines(10_000)]
-            self.display.log("  " + " | ".join(fields))
 
     def tick(self):
         """Repaint when rendering (paint throttles); otherwise just sample."""
@@ -1633,6 +1641,11 @@ def save_cache(cache):
         )
 
 
+def _by_name(items):
+    """Return ``items`` ordered by package name, case-insensitively."""
+    return sorted(items, key=lambda item: item["name"].lower())
+
+
 def package_entry(name, package):
     """Return the stored form of one outdated package from pip's list."""
     return {
@@ -1651,22 +1664,16 @@ def get_cached_packages(env_name):
     packages = entry.get("packages")
     if not isinstance(packages, list):
         return None
-    normalized = [
+    return _by_name(
         package_entry(pkg["name"], pkg)
         for pkg in packages
         if isinstance(pkg, dict) and pkg.get("name")
-    ]
-    normalized.sort(key=lambda p: p["name"].lower())
-    return normalized
+    )
 
 
 def set_cached_packages(env_name, packages):
-    """Store latest package scan for one env."""
     cache = load_cache()
-    cache["envs"][env_name] = {
-        "timestamp": int(time.time()),
-        "packages": packages,
-    }
+    cache["envs"][env_name] = {"packages": packages}
     save_cache(cache)
 
 
@@ -1689,7 +1696,6 @@ def remove_cached_packages(env_name, names):
         if pkg_name not in selected:
             remaining.append(pkg)
 
-    entry["timestamp"] = int(time.time())
     entry["packages"] = remaining
     cache["envs"][env_name] = entry
     save_cache(cache)
@@ -1708,7 +1714,6 @@ def get_cached_holds(prefix):
 
 
 def set_cached_holds(prefix, holds):
-    """Store the resolver's held-back package records for one prefix."""
     cache = load_cache()
     cache["holds"][str(prefix)] = holds
     save_cache(cache)
@@ -1764,31 +1769,43 @@ def _is_within(path, parent):
         return False
 
 
-def get_environment_inventory(prefix):
-    """Read installed distribution metadata using the target interpreter."""
-    helper = r"""
+# Run by the target interpreter: the row each inventory reader emits per
+# installed distribution.
+_INVENTORY_ROWS_HELPER = r"""
 import json
 from importlib import metadata
 
-rows = []
-for dist in metadata.distributions():
-    name = dist.metadata.get("Name") or ""
-    if not name:
-        continue
-    metadata_path = getattr(dist, "_path", None)
-    rows.append({
-        "name": name,
-        "version": dist.version,
-        "installer": (dist.read_text("INSTALLER") or "").strip().lower(),
-        "requires": dist.requires or [],
-        "direct_url": (dist.read_text("direct_url.json") or "").strip(),
-        "metadata_path": str(metadata_path) if metadata_path is not None else "",
-        "location": str(dist.locate_file("")),
-    })
-print(json.dumps(rows, separators=(",", ":")))
+def inventory_rows(distributions):
+    rows = []
+    for dist in distributions:
+        name = dist.metadata.get("Name") or ""
+        if not name:
+            continue
+        metadata_path = getattr(dist, "_path", None)
+        rows.append({
+            "name": name,
+            "version": dist.version,
+            "installer": (dist.read_text("INSTALLER") or "").strip().lower(),
+            "requires": dist.requires or [],
+            "direct_url": (dist.read_text("direct_url.json") or "").strip(),
+            "metadata_path": str(metadata_path) if metadata_path is not None else "",
+            "location": str(dist.locate_file("")),
+        })
+    return rows
 """
+
+_ENVIRONMENT_HELPER = (
+    _INVENTORY_ROWS_HELPER
+    + r"""
+print(json.dumps(inventory_rows(metadata.distributions()), separators=(",", ":")))
+"""
+)
+
+
+def get_environment_inventory(prefix):
+    """Read installed distribution metadata using the target interpreter."""
     rows = json_command(
-        [environment_python(prefix), "-I", "-c", helper],
+        [environment_python(prefix), "-I", "-c", _ENVIRONMENT_HELPER],
         f"Reading installed packages in {prefix}",
     )
     if not isinstance(rows, list):
@@ -1814,27 +1831,13 @@ print(json.dumps(rows, separators=(",", ":")))
     return rows
 
 
-_USER_SITE_HELPER = r"""
-import json, os, site
-from importlib import metadata
+_USER_SITE_HELPER = (
+    _INVENTORY_ROWS_HELPER
+    + r"""
+import os, site
 
 path = site.getusersitepackages()
-rows = []
-if os.path.isdir(path):
-    for dist in metadata.distributions(path=[path]):
-        name = dist.metadata.get("Name") or ""
-        if not name:
-            continue
-        metadata_path = getattr(dist, "_path", None)
-        rows.append({
-            "name": name,
-            "version": dist.version,
-            "installer": (dist.read_text("INSTALLER") or "").strip().lower(),
-            "requires": dist.requires or [],
-            "direct_url": (dist.read_text("direct_url.json") or "").strip(),
-            "metadata_path": str(metadata_path) if metadata_path is not None else "",
-            "location": str(dist.locate_file("")),
-        })
+rows = inventory_rows(metadata.distributions(path=[path])) if os.path.isdir(path) else []
 # site.check_enableusersite() answers False under -I; its remaining rule is
 # that a process whose effective ids differ from its real ids has no user site.
 enabled = not (
@@ -1843,6 +1846,7 @@ enabled = not (
 )
 print(json.dumps({"enabled": enabled, "path": path, "rows": rows}))
 """
+)
 
 
 def get_user_site_inventory(prefix):
@@ -2458,14 +2462,16 @@ def filter_outdated_packages(packages, inventory, conda_ownership, prefix):
         else:
             eligible[normalized] = package_entry(name, package)
     foreign, _shadowed = user_site_holders(prefix, inventory_by_name)
+    holds = get_cached_holds(prefix)
     settled = _settled_holds(
-        eligible,
-        get_cached_holds(prefix),
-        imported_versions(inventory_by_name, foreign),
+        eligible, holds, imported_versions(inventory_by_name, foreign)
     )
     for normalized, cappers in settled.items():
-        excluded.append((eligible.pop(normalized)["name"], "held back by " + cappers))
-    offered = sorted(eligible.values(), key=lambda package: package["name"].lower())
+        how = (
+            "shares files with " if holds[normalized].get("files") else "held back by "
+        )
+        excluded.append((eligible.pop(normalized)["name"], how + cappers))
+    offered = _by_name(eligible.values())
     return offered, excluded
 
 
@@ -2616,18 +2622,7 @@ def scan_outdated_packages(prefix, *, report_exclusions=False, progress=None):
 
 def print_excluded_packages(excluded):
     """Explain intentionally skipped packages without treating them as errors."""
-    groups = {"owned by conda": [], "bootstrap tooling is protected": [], None: []}
-    other = []
-    for name, reason in excluded:
-        key = None if reason.startswith("held back by") else reason
-        if key in groups:
-            groups[key].append(name)
-        else:
-            other.append((name, reason))
-    groups = {key: sorted(names) for key, names in groups.items()}
-    other.sort(key=lambda item: item[0].lower())
-    print_section(f"Skipped automatically ({len(excluded)}) — no action is needed:")
-    for key, label, explanation in (
+    labels = (
         ("owned by conda", "Conda-managed:", " (pip must not replace these)"),
         (
             "bootstrap tooling is protected",
@@ -2635,16 +2630,35 @@ def print_excluded_packages(excluded):
             " (protected so the updater cannot break itself)",
         ),
         (
-            None,
+            "held back by",
             "Version-capped:",
             (
                 " (installed packages cap each of these; they are offered "
                 "again once a capping package changes or has its own update)"
             ),
         ),
-    ):
+        (
+            "shares files with",
+            "Shared files:",
+            (
+                " (a package staying installed provides a file their new wheels "
+                "would replace; they are offered again once either package changes)"
+            ),
+        ),
+    )
+    groups = {key: [] for key, _, _ in labels}
+    other = []
+    for name, reason in excluded:
+        key = next((key for key in groups if reason.startswith(key)), None)
+        if key is None:
+            other.append((name, reason))
+        else:
+            groups[key].append(name)
+    other.sort(key=lambda item: item[0].lower())
+    print_section(f"Skipped automatically ({len(excluded)}) — no action is needed:")
+    for key, label, explanation in labels:
         if groups[key]:
-            print_labeled(label, ", ".join(groups[key]) + explanation)
+            print_labeled(label, ", ".join(sorted(groups[key])) + explanation)
     for name, reason in other:
         print_labeled(f"{name}:", f"skipped for safety ({reason})")
 
@@ -2662,7 +2676,6 @@ def get_outdated_packages(env_key, prefix, *, refresh=False):
 
 
 def package_signature(packages):
-    """Build a stable signature for comparing package lists."""
     return sorted(
         (
             str(pkg.get("name", "")).lower(),
@@ -2856,19 +2869,26 @@ class _PackageSelector:
         self.nav = ListCursor()
 
     def run(self):
-        """Return chosen names, [] to quit, or BACK_TO_ENV."""
+        """Return chosen names, QUIT, or BACK_TO_ENV.
+
+        The names are [] when CONFIRM was chosen with nothing ticked, and when
+        a completed live scan left nothing to choose: there is nothing left
+        to confirm, so the selector closes on its own.
+        """
         self.stdscr.timeout(150)
         while True:
-            packages, visible = self.draw()
+            state, visible = self.draw()
+            if state["scan_done"] and not state["packages"]:
+                return []
             key = self.stdscr.getch()
             if key == -1:
                 continue
-            result = self.handle_key(key, packages, visible)
+            result = self.handle_key(key, state["packages"], visible)
             if result is not None:
                 return result
 
     def draw(self):
-        """Paint one frame; return the listed packages and visible row count."""
+        """Paint one frame; return the state drawn and the visible row count."""
         state = _read_selector_state(self.package_state)
         packages = state["packages"]
         self.selected &= {pkg["name"].lower() for pkg in packages}
@@ -2893,7 +2913,7 @@ class _PackageSelector:
                 self.stdscr, self.LIST_TOP + offset, 0, line.ljust(safe_w), safe_w, attr
             )
         self.stdscr.refresh()
-        return packages, visible
+        return state, visible
 
     def _draw_header(self, package_count, status, safe_w):
         _screen_text(
@@ -2915,7 +2935,7 @@ class _PackageSelector:
     def handle_key(self, key, packages, visible):
         """Apply one key; return the selector's result, or None to continue."""
         if key in (ord("q"), 27):
-            return []
+            return QUIT
         if self.allow_back and key == ord("b"):
             return BACK_TO_ENV
         if self.nav.navigate(key, len(packages) + 2, visible):
@@ -2935,7 +2955,6 @@ class _PackageSelector:
 
 
 def interactive_select(stdscr, package_state, allow_back=False):
-    """Curses package selector that can live-refresh when background scan completes."""
     return _PackageSelector(stdscr, package_state, allow_back).run()
 
 
@@ -3027,9 +3046,8 @@ def activate_environment(prefix, root_prefix):
 
     Activation normally changes the calling shell, which a child Python process
     cannot do. A clean Bash child instead sources Conda's own hook, activates the
-    exact prefix, and returns the resulting environment. Adopting that environment
-    gives this updater and all of its children normal Conda activation semantics
-    without changing the user's parent shell.
+    exact prefix, and returns the resulting environment, which this process and
+    its children then adopt without touching the user's shell.
     """
     prefix = str(Path(prefix).resolve())
     root = Path(root_prefix).resolve()
@@ -3118,7 +3136,6 @@ def resolve_environment(requested, environments):
 
 
 def conda_doctor(prefix, checks, action):
-    """Return the output of ``conda doctor`` running ``checks`` on ``prefix``."""
     command = [conda_executable(), "doctor", "-p", str(prefix), *checks]
     return run_checked(command, action, timeout=300).stdout
 
@@ -3262,7 +3279,6 @@ def doctor_sections(snapshot):
     interchangeable: altered or missing files mean Conda's own files are
     already damaged and only Conda can put them back, while an inconsistency is
     a statement about dependency metadata with no damaged file anywhere.
-    Reporting an inconsistency as file damage sends the reader after the wrong repair.
     """
     sections = []
     for raw_line in snapshot.splitlines():
@@ -3782,7 +3798,6 @@ def preflight_health(prefix, *, dry_run=False, repair=None):
 
 
 def plan_signature(plan):
-    """Return a stable signature for a resolved pip plan."""
     return sorted(
         (
             canonicalize_name(item["name"]),
@@ -4133,12 +4148,10 @@ def holdback_reasons(held, inventory, plan, marker_env=None, newest_requires=Non
 def print_held_back(held, inventory, reasons):
     """Explain selected updates the resolver kept at their installed versions.
 
-    A hold is not an error: the newest release of a selected package is
-    rejected by a requirement of another package (installed or in this plan),
-    or needs a version of another package that the plan cannot reach, so the
-    resolver keeps the installed version instead of breaking the environment.
-    The cap is named so the user knows which package must move before the hold
-    can lift.
+    A hold is not an error: another package's requirement (installed or in
+    this plan) rejects the newest release, or that release needs a version
+    the plan cannot reach.  The cap is named so the user knows which package
+    must move before the hold can lift.
     """
     announce(
         "INFO",
@@ -4935,6 +4948,47 @@ def _report_holds(prefix, outcome, plan, installed, *, explain=True):
         set_cached_holds(prefix, merged)
 
 
+def _file_hold_records(holds, versions, offers, tried):
+    """Describe file-ownership holds so the next scan hides them like resolver holds.
+
+    ``holds`` maps each held package to the staying packages whose files its
+    new wheel would disturb; ``versions`` gives the installed version of all
+    of them as the inventory spells it (what _hold_cappers compares).  Only an
+    offered package gets a record: a held new dependency is not offered.
+    """
+    offered = {canonicalize_name(package["name"]): package for package in offers}
+    records = {}
+    for name, cappers in holds.items():
+        normalized = canonicalize_name(name)
+        offer = offered.get(normalized)
+        if offer is None or not cappers:
+            continue
+        records[normalized] = {
+            "name": offer["name"],
+            "installed": versions.get(normalized, ""),
+            "latest": offer["latest_version"],
+            "tried": sorted(tried),
+            "cappers": {capper: versions.get(capper, "") for capper in sorted(cappers)},
+            "files": True,
+        }
+    return records
+
+
+def _remember_file_holds(target, holds, versions, offers, tried):
+    """Persist file-ownership holds and drop the held offers from the cache.
+
+    Without this the next pass offers the package again from the cache and
+    repeats a pass that cannot succeed.  The record self-invalidates like a
+    resolver hold: the scan offers the package again once it or a capper
+    changes (see _hold_cappers).
+    """
+    records = _file_hold_records(holds, versions, offers, tried)
+    if not records:
+        return
+    set_cached_holds(target.prefix, {**get_cached_holds(target.prefix), **records})
+    remove_cached_packages(target.env_key, [r["name"] for r in records.values()])
+
+
 def _announce_conflict_repairs(plan, broken):
     """Say which selected updates also satisfy a requirement they already broke."""
     for item in plan:
@@ -5054,31 +5108,43 @@ def _uv_versions(uv, prefix, request, hooks):
         requirements_path.write_text("\n".join(requirements) + "\n", encoding="utf-8")
         constraints_path = Path(tmp) / "constraints.txt"
         constraints_path.write_text("\n".join(constraints) + "\n", encoding="utf-8")
-        result = stream_command(
+        returncode, output = _uv_dry_run(
+            uv,
+            prefix,
             [
-                uv,
-                "pip",
-                "install",
-                "--dry-run",
-                "--no-config",
-                "--color=never",
-                f"--python={environment_python(prefix)}",
-                "--only-binary=:all:",
                 *(f"--upgrade-package={name}" for name in sorted(upgradable)),
                 "-c",
                 str(constraints_path),
                 "-r",
                 str(requirements_path),
             ],
-            timeout=600,
-            hooks=hooks,
+            hooks,
         )
-    output = f"{result.stdout}\n{result.stderr}"
-    if result.returncode == 0:
+    if returncode == 0:
         return _uv_plan(output)
     if "No solution found" in output:
         raise UnsolvableError(output.strip())
     return None
+
+
+def _uv_dry_run(uv, prefix, arguments, hooks):
+    """Run uv's dry-run install with ``arguments``; return ``(returncode, output)``."""
+    result = stream_command(
+        [
+            uv,
+            "pip",
+            "install",
+            "--dry-run",
+            "--no-config",
+            "--color=never",
+            f"--python={environment_python(prefix)}",
+            "--only-binary=:all:",
+            *arguments,
+        ],
+        timeout=600,
+        hooks=hooks,
+    )
+    return result.returncode, f"{result.stdout}\n{result.stderr}"
 
 
 def _uv_candidate(uv, prefix, spec, installed, hooks):
@@ -5090,25 +5156,10 @@ def _uv_candidate(uv, prefix, spec, installed, hooks):
     mistaken for a conflict no version can repair.
     """
     name = requirement_name(spec)
-    result = stream_command(
-        [
-            uv,
-            "pip",
-            "install",
-            "--dry-run",
-            "--no-config",
-            "--color=never",
-            f"--python={environment_python(prefix)}",
-            "--only-binary=:all:",
-            "--no-deps",
-            f"--upgrade-package={name}",
-            spec,
-        ],
-        timeout=600,
-        hooks=hooks,
+    returncode, output = _uv_dry_run(
+        uv, prefix, ["--no-deps", f"--upgrade-package={name}", spec], hooks
     )
-    output = f"{result.stdout}\n{result.stderr}"
-    if result.returncode != 0:
+    if returncode != 0:
         if "No solution found" in output:
             return None
         raise UpdaterError(
@@ -5144,7 +5195,6 @@ def _pinned_choice(targets, installed, planned):
 
 
 def _pip_solve(prefix, requirements, constraints, hooks):
-    """Return pip's dry-run install report for ``requirements``."""
     return pip_install_report(
         prefix,
         [
@@ -5997,7 +6047,7 @@ def _announce_unrepairable(outcome):
 
 def _announce_removals(plan):
     """Say which packages the plan removes, and why nothing else fits."""
-    for item in sorted(plan, key=lambda value: value["name"].lower()):
+    for item in _by_name(plan):
         if item.get("remove"):
             announce(
                 "INFO",
@@ -6341,7 +6391,6 @@ def _announce_conda_moves(items):
 
 
 def _conda_revision(prefix):
-    """Return the environment's current Conda revision number."""
     revisions = json_command(
         [conda_executable(), "list", "-p", str(prefix), "--revisions", "--json"],
         f"Reading Conda revisions of {prefix}",
@@ -6724,7 +6773,6 @@ def _wheel_member_target(info, wheel_name, prefix, bases):
 
 
 def _wheel_root_is_purelib(archive, names, dist_info, wheel_name):
-    """Read the WHEEL file's Root-Is-Purelib flag."""
     wheel_metadata = f"{dist_info}/WHEEL"
     if wheel_metadata not in names:
         raise UpdaterError(f"Wheel {wheel_name} lacks WHEEL metadata.")
@@ -7084,11 +7132,17 @@ def shared_file_report(prefix, plan):
     return {
         "groups": {key: len(paths) for key, paths in paths_by_group.items()},
         "details": details,
+        "versions": {
+            name: str((inventory.get(name) or {}).get("version") or "")
+            for key in paths_by_group
+            for name in key
+        },
     }
 
 
 def shared_file_holds(report, plan):
-    """Name the planned packages whose new wheel cannot replace a shared file.
+    """Map each planned package whose new wheel cannot replace a shared file
+    to the staying packages that provide the file.
 
     From shared_file_report's groups: a planned package that shares a file
     with a package staying installed, while the copy on disk is a staying
@@ -7102,15 +7156,20 @@ def shared_file_holds(report, plan):
     holds = {}
     for group, detail in report["details"].items():
         staying = set(group) - planned
-        kept = sorted(detail["on_disk"] & staying)
+        kept = detail["on_disk"] & staying
         if not kept:
             continue
         for name in sorted(set(group) & planned):
-            holds[name] = (
-                f"its new wheel would replace a file {', '.join(kept)} shares "
-                "and currently provides"
-            )
+            holds[name] = set(kept)
     return holds
+
+
+def _file_hold_reason(cappers):
+    """Say why a package stays as installed: ``cappers`` provide a file it ships."""
+    return (
+        f"its new wheel would replace a file {', '.join(sorted(cappers))} shares "
+        "and currently provides"
+    )
 
 
 def _sharer_line(name, required_by):
@@ -7705,6 +7764,13 @@ class _WheelOwnershipCheck:
                 f"Wheel {wheel['name']} would overwrite unowned existing file {target}."
             )
 
+    def _versions(self, names):
+        """Return the installed version of each of ``names`` as the inventory spells it."""
+        return {
+            name: str((self.inventory.get(name) or {}).get("version") or "")
+            for name in names
+        }
+
     def _recorded_hash(self, name, target):
         """Return the hash installed ``name`` records for ``target``, or None."""
         if name not in self._recorded:
@@ -7760,11 +7826,14 @@ class _WheelOwnershipCheck:
             whose = "the file is missing or unreadable"
         else:
             whose = "the copy on disk matches no installed package's recorded copy"
+        cappers = kept or unhashed or sorted(staying)
         raise WheelRefusal(
             f"Updating {wheel['name']} would replace shared file {target}, but "
             f"{whose}; {wheel['name']} stays as installed to keep that file "
             "intact.",
             {normalized},
+            cappers,
+            self._versions({normalized, *cappers}),
         )
 
     def check_stranded_shared_files(self):
@@ -7805,6 +7874,8 @@ class _WheelOwnershipCheck:
                 f"{', '.join(sorted(claimants))} share. Each updated owner must "
                 "retain the identical shared file, regardless of installation order.",
                 missing,
+                claimants - implicated,
+                self._versions(claimants),
             )
 
 
@@ -7837,27 +7908,26 @@ def _check_wheel_ownership(prefix, plan, new_wheels, inventory, ownership):
     check = _WheelOwnershipCheck(prefix, plan, new_wheels, inventory, ownership)
     collisions = check.claim_targets(new_wheels)
     if collisions:
+        hold = _collision_holds(collisions, plan)
+        owners = {owner for _, owner in collisions}
         raise WheelRefusal(
             explain_owner_collisions(prefix, collisions, plan),
-            _collision_holds(collisions, plan),
+            hold,
+            owners,
+            check._versions(hold | owners),
         )
     check.check_stranded_shared_files()
 
 
-def validate_new_wheels(prefix, plan, new_wheels, inventory, ownership):
-    """Require the complete wheelhouse and reject every ownership collision."""
-    _check_downloaded_artifacts(plan, new_wheels, require_complete=True)
-    _check_wheel_ownership(prefix, plan, new_wheels, inventory, ownership)
+def validate_wheels(prefix, plan, new_wheels, inventory, ownership, *, complete):
+    """Reject a wrong artifact or an ownership collision among ``new_wheels``.
 
-
-def validate_introduced_wheels(prefix, plan, new_wheels, inventory, ownership):
-    """Check newly introduced dependencies before the large main download.
-
-    Only part of the plan is downloaded yet, so the wheel set may be partial;
-    ownership is still judged against the complete plan.  The assembled
-    wheelhouse is always checked again by validate_new_wheels.
+    ``complete`` requires the whole plan to be present; the newly introduced
+    dependencies are checked before the large main download with a partial
+    set, judged against the complete plan, and the assembled wheelhouse is
+    checked again complete.
     """
-    _check_downloaded_artifacts(plan, new_wheels, require_complete=False)
+    _check_downloaded_artifacts(plan, new_wheels, require_complete=complete)
     _check_wheel_ownership(prefix, plan, new_wheels, inventory, ownership)
 
 
@@ -7885,14 +7955,13 @@ def _safe_remove_transaction(path):
     shutil.rmtree(candidate)
 
 
-def prune_stale_locks():
-    """Keep lock inodes stable: unlinking lets another opener lock a new inode."""
-    return 0
-
-
 @contextlib.contextmanager
 def environment_lock(prefix):
-    """Prevent concurrent updater transactions for the same prefix."""
+    """Prevent concurrent updater transactions for the same prefix.
+
+    Lock files are never unlinked: unlinking would let another opener lock a
+    new inode while this one still holds the old.
+    """
     resolved = str(Path(prefix).resolve())
     digest = hashlib.sha256(resolved.encode("utf-8")).hexdigest()
     lock_path = _cache_subdir("locks") / f"{digest}.lock"
@@ -7921,6 +7990,14 @@ def environment_lock(prefix):
         with contextlib.suppress(OSError):
             fcntl.flock(fd, fcntl.LOCK_UN)
         os.close(fd)
+
+
+def _recorded_inventory(prefix, manifest, message):
+    """Return the indexed inventory, or raise ``message`` if it left the manifest's state."""
+    inventory = index_inventory(get_environment_inventory(prefix), prefix)
+    if _inventory_state(inventory) != manifest["inventory"]:
+        raise UpdaterError(message)
+    return inventory
 
 
 def _verify_transaction_result(prefix, versions, baseline, failures, removed=()):
@@ -8207,11 +8284,11 @@ def rollback_transaction(transaction_dir, manifest):
         # Persist package writes before the journal records a terminal state;
         # one sync(2) avoids serializing writeback of every file.
         os.sync()
-        inventory = index_inventory(get_environment_inventory(prefix), prefix)
-        if _inventory_state(inventory) != manifest["inventory"]:
-            raise UpdaterError(
-                "Installed package metadata differs after restoring the saved files."
-            )
+        _recorded_inventory(
+            prefix,
+            manifest,
+            "Installed package metadata differs after restoring the saved files.",
+        )
         _verify_transaction_result(
             prefix,
             manifest["old_versions"],
@@ -8358,12 +8435,13 @@ def _download_new_wheels(prefix, plan, transaction_dir, inventory, ownership):
             "New dependencies ",
             artifacts=introduced,
         )
-        validate_introduced_wheels(
+        validate_wheels(
             prefix,
             plan,
             inspect_wheelhouse(preflight_dir, prefix),
             inventory,
             ownership,
+            complete=False,
         )
 
     download_exact_wheels(
@@ -8380,7 +8458,7 @@ def _download_new_wheels(prefix, plan, transaction_dir, inventory, ownership):
     # make the user fetch a second multi-gigabyte rollback batch for a
     # transaction that can never be applied.
     wheels = inspect_wheelhouse(new_dir, prefix)
-    validate_new_wheels(prefix, plan, wheels, inventory, ownership)
+    validate_wheels(prefix, plan, wheels, inventory, ownership, complete=True)
     return wheels
 
 
@@ -8469,9 +8547,8 @@ def installed_record_targets(prefix, wheel_dir):
     The binary-distribution format requires a wheel's ``.dist-info`` directory
     to be named after the distribution and version fields of its filename, and
     pip writes that directory's RECORD as the very last step of installing a
-    package.  A RECORD's appearance is therefore a truthful per-package
-    completion signal that needs nothing from pip's output.  Both library
-    roots are candidates because either may be the wheel's install base.
+    package.  Both library roots are candidates because either may be the
+    wheel's install base.
     """
     layout = environment_layout(prefix)
     roots = sorted({layout["purelib"], layout["platlib"]})
@@ -8576,14 +8653,19 @@ def apply_transaction(transaction_dir, manifest):
     removed = manifest.get("removed") or {}
     _validate_snapshot(transaction_dir, manifest)
     _verify_snapshot(prefix, manifest["files"])
-    inventory = index_inventory(get_environment_inventory(prefix), prefix)
-    if _inventory_state(inventory) != manifest["inventory"]:
-        raise UpdaterError(
-            "Installed metadata changed after preparation; no packages were changed."
-        )
+    inventory = _recorded_inventory(
+        prefix,
+        manifest,
+        "Installed metadata changed after preparation; no packages were changed.",
+    )
     wheels = inspect_wheelhouse(Path(transaction_dir) / "new", prefix)
-    validate_new_wheels(
-        prefix, manifest["artifacts"], wheels, inventory, load_conda_ownership(prefix)
+    validate_wheels(
+        prefix,
+        manifest["artifacts"],
+        wheels,
+        inventory,
+        load_conda_ownership(prefix),
+        complete=True,
     )
     # Detect file/health changes during potentially long downloads before pip
     # starts, instead of rolling back somebody else's work afterward.
@@ -8905,7 +8987,6 @@ HELP_EXAMPLES = [
 
 
 def parse_args():
-    """Parse command-line arguments."""
     parser = HelpParser(
         title="Conda pip Updater",
         description=(
@@ -8975,7 +9056,6 @@ def parse_package_list(raw):
 
 
 def select_non_interactive(packages, *, select_all=False, requested_csv=None):
-    """Choose packages without curses UI based on CLI flags."""
     if select_all:
         return [pkg["name"] for pkg in packages]
     selected, missing = reconcile_selected(parse_package_list(requested_csv), packages)
@@ -9063,7 +9143,6 @@ def format_plan_change(item, name_width=0, version_width=0):
 
 
 def print_plan_group(title, items):
-    """Print one logically grouped set of package changes."""
     if not items:
         return
     print_section(f"{title} ({len(items)}):")
@@ -9072,39 +9151,53 @@ def print_plan_group(title, items):
     version_width = min(
         20, max(len(item.get("current_version") or "not installed") for item in items)
     )
-    for item in sorted(items, key=lambda value: value["name"].lower()):
+    for item in _by_name(items):
         print(format_plan_change(item, name_width, version_width))
+
+
+def _plan_groups(plan):
+    """Split a plan into the groups every report names; each item lands in one.
+
+    ``conda`` holds Conda's own moves.  Of the pip items, a ``selected`` one is
+    also ``major`` or ``routine`` by its version jump; the rest are
+    ``removals``, ``downgrades``, ``repairs`` or ``dependencies``.
+    """
+    keys = (
+        "conda",
+        "selected",
+        "major",
+        "routine",
+        "removals",
+        "downgrades",
+        "repairs",
+        "dependencies",
+    )
+    groups = {key: [] for key in keys}
+    for item in plan:
+        if item.get("conda"):
+            key = "conda"
+        elif item["requested"]:
+            groups["selected"].append(item)
+            key = "major" if is_major_version_change(item) else "routine"
+        elif item.get("remove"):
+            key = "removals"
+        elif item.get("downgrade"):
+            key = "downgrades"
+        elif item.get("repair"):
+            key = "repairs"
+        else:
+            key = "dependencies"
+        groups[key].append(item)
+    return groups
 
 
 def print_resolved_plan(plan, *, show_details=False):
     """Explain direct, dependency, and major-version changes in plain language."""
-    conda_moves = [item for item in plan if item.get("conda")]
-    plan = [item for item in plan if not item.get("conda")]
-    selected = [item for item in plan if item["requested"]]
-    removals = [item for item in plan if item.get("remove")]
-    downgrades = [
-        item for item in plan if item.get("downgrade") and not item["requested"]
-    ]
-    repairs = [
-        item
-        for item in plan
-        if item.get("repair")
-        and not item["requested"]
-        and item not in downgrades
-        and item not in removals
-    ]
-    dependencies = [
-        item
-        for item in plan
-        if not item["requested"] and not item.get("repair") and not item.get("remove")
-    ]
-    major_changes = [item for item in selected if is_major_version_change(item)]
-    routine_changes = [item for item in selected if item not in major_changes]
-
+    groups = _plan_groups(plan)
+    repaired = len(groups["repairs"]) + len(groups["downgrades"])
     print_section("PACKAGE CHANGES")
-    repaired = len(repairs) + len(downgrades)
     print(
-        f"  {count_label(len(selected), 'package')} you selected; "
+        f"  {count_label(len(groups['selected']), 'package')} you selected; "
         + (
             count_label(
                 repaired,
@@ -9115,40 +9208,44 @@ def print_resolved_plan(plan, *, show_details=False):
             if repaired
             else ""
         )
-        + (count_label(len(removals), "removal") + "; " if removals else "")
-        + f"{count_label(len(dependencies), 'required dependency change')}"
         + (
-            f"; {count_label(len(conda_moves), 'Conda-managed package')} moved by Conda"
-            if conda_moves
+            count_label(len(groups["removals"]), "removal") + "; "
+            if groups["removals"]
+            else ""
+        )
+        + f"{count_label(len(groups['dependencies']), 'required dependency change')}"
+        + (
+            f"; {count_label(len(groups['conda']), 'Conda-managed package')} "
+            "moved by Conda"
+            if groups["conda"]
             else ""
         )
         + "."
     )
-    print_plan_group(
-        "Conda-managed packages Conda moves first (pip packages require them)",
-        conda_moves,
-    )
-    print_plan_group(
-        "Review carefully — major-version updates can change behavior",
-        major_changes,
-    )
-    print_plan_group(
-        "Other selected updates" if major_changes else "Selected updates",
-        routine_changes,
-    )
-    print_plan_group("Repairs of conflicts that already existed", repairs)
-    print_plan_group(
-        "Downgrades that repair existing conflicts (only an older release fits)",
-        downgrades,
-    )
-    print_plan_group(
-        "Removed because no version choice satisfies their requirements", removals
-    )
-    print_plan_group("Extra dependencies required automatically", dependencies)
+    for title, key in (
+        (
+            "Conda-managed packages Conda moves first (pip packages require them)",
+            "conda",
+        ),
+        ("Review carefully — major-version updates can change behavior", "major"),
+        (
+            "Other selected updates" if groups["major"] else "Selected updates",
+            "routine",
+        ),
+        ("Repairs of conflicts that already existed", "repairs"),
+        (
+            "Downgrades that repair existing conflicts (only an older release fits)",
+            "downgrades",
+        ),
+        ("Removed because no version choice satisfies their requirements", "removals"),
+        ("Extra dependencies required automatically", "dependencies"),
+    ):
+        print_plan_group(title, groups[key])
 
-    if show_details and plan:
+    pip_items = [item for item in plan if not item.get("conda")]
+    if show_details and pip_items:
         print_section("Technical artifact checksums:")
-        for item in sorted(plan, key=lambda value: value["name"].lower()):
+        for item in _by_name(pip_items):
             print(f"  {item['name']}=={item['version']}: sha256:{item['sha256']}")
 
 
@@ -9237,18 +9334,16 @@ def print_dry_run_result(env_name, args, selected, plan, baseline=None):
     baseline = baseline or {}
     existing_conflicts = set(baseline.get("pip_broken") or ())
     repair_pending = bool(baseline.get("repair_pending"))
-    major_changes = [
-        item for item in plan if item["requested"] and is_major_version_change(item)
-    ]
+    groups = _plan_groups(plan)
+    major_changes = groups["major"]
     major_repairs = [
         item for item in plan if not item["requested"] and is_major_version_change(item)
     ]
-    conda_moves = [item for item in plan if item.get("conda")]
+    conda_moves = groups["conda"]
     print_banner("PREVIEW COMPLETE — NO CHANGES WERE MADE", "preview")
     if conda_moves:
         names = ", ".join(
-            f"{item['name']} to {item['version']}"
-            for item in sorted(conda_moves, key=lambda value: value["name"].lower())
+            f"{item['name']} to {item['version']}" for item in _by_name(conda_moves)
         )
         announce(
             "INFO",
@@ -9292,10 +9387,7 @@ def print_dry_run_result(env_name, args, selected, plan, baseline=None):
         "INFO", "Package files are downloaded and inspected only during a real update."
     )
     if major_changes:
-        names = ", ".join(
-            item["name"]
-            for item in sorted(major_changes, key=lambda value: value["name"].lower())
-        )
+        names = ", ".join(item["name"] for item in _by_name(major_changes))
         verb = "needs" if len(major_changes) == 1 else "need"
         announce(
             "REVIEW",
@@ -9305,7 +9397,7 @@ def print_dry_run_result(env_name, args, selected, plan, baseline=None):
     if major_repairs:
         names = ", ".join(
             f"{item['name']} {item['current_version']} -> {item['version']}"
-            for item in sorted(major_repairs, key=lambda value: value["name"].lower())
+            for item in _by_name(major_repairs)
         )
         announce(
             "REVIEW",
@@ -9320,7 +9412,7 @@ def print_dry_run_result(env_name, args, selected, plan, baseline=None):
             "  Safest approach: update and test the major-version packages "
             "one at a time:"
         )
-        for item in sorted(major_changes, key=lambda value: value["name"].lower()):
+        for item in _by_name(major_changes):
             command = build_update_command(
                 env_name, ["--packages", item["name"]], show_details=args.details
             )
@@ -9381,15 +9473,13 @@ def print_update_success(env_name, plan, before_conflicts=(), after_conflicts=()
     """Report a successful transaction and its recommended follow-up."""
     before = set(before_conflicts)
     after = set(after_conflicts)
-    conda_moves = [item for item in plan if item.get("conda")]
+    groups = _plan_groups(plan)
+    conda_moves = groups["conda"]
     plan = [item for item in plan if not item.get("conda")]
-    selected_count = sum(bool(item["requested"]) for item in plan)
-    removal_count = sum(bool(item.get("remove")) for item in plan)
-    repair_count = sum(
-        bool(item.get("repair")) and not item["requested"] and not item.get("remove")
-        for item in plan
-    )
-    dependency_count = len(plan) - selected_count - repair_count - removal_count
+    selected_count = len(groups["selected"])
+    removal_count = len(groups["removals"])
+    repair_count = len(groups["repairs"]) + len(groups["downgrades"])
+    dependency_count = len(groups["dependencies"])
     repaired = (
         count_label(
             repair_count,
@@ -9524,8 +9614,10 @@ def _choose_environment(selectable, environments, up_to_date):
 def _check_environment(target, root_prefix):
     """Activate, recover interrupted updates, and read environment health.
 
-    Damaged Conda files are repaired here in a real run (confirmed first);
-    returns the health check's baseline (see preflight_health).
+    Damaged Conda files are repaired here in a real run (confirmed first).
+    Returns ``(baseline, inventory)``: the health check's baseline (see
+    preflight_health) and the installed packages indexed by normalized name,
+    read after every repair so they describe the environment as it is now.
     """
     prefix = target.prefix
     dry_run = target.args.dry_run
@@ -9547,10 +9639,9 @@ def _check_environment(target, root_prefix):
     print_conda_inconsistencies(conda_issues)
     if existing_conflicts:
         print_existing_conflicts(existing_conflicts)
-    print_user_site_shadowing(
-        prefix, index_inventory(get_environment_inventory(prefix), prefix)
-    )
-    return baseline
+    inventory = index_inventory(get_environment_inventory(prefix), prefix)
+    print_user_site_shadowing(prefix, inventory)
+    return baseline, inventory
 
 
 def _live_scan(target, *, report_exclusions=True):
@@ -9561,10 +9652,32 @@ def _live_scan(target, *, report_exclusions=True):
     return packages
 
 
-def _find_outdated(target):
+def _verify_cached_offers(packages, inventory):
+    """Split cached offers into ``(kept, changed)`` by their installed version.
+
+    A package whose installed version differs from the one the scan saw was
+    updated, downgraded or removed since, by this updater or anything else,
+    so its cached row is stale.  Versions are compared as pip spells them; a
+    spelling difference only costs a live recheck, which can offer the
+    package again.
+    """
+    kept = []
+    changed = []
+    for package in packages:
+        row = inventory.get(canonicalize_name(package["name"]))
+        if row is not None and row["version"] == package["version"]:
+            kept.append(package)
+        else:
+            changed.append(package["name"])
+    return kept, changed
+
+
+def _find_outdated(target, inventory):
     """Return ``(packages, from_cache, live)``, or None when nothing is outdated.
 
-    ``live`` means the list came from a scan completed in this run.
+    ``live`` means the list came from a scan completed in this run.  A cached
+    list is first checked against ``inventory``, the installed packages, so a
+    package changed since that scan is not offered from stale data.
     """
     args = target.args
     print_step("2/3", "Looking for pip packages that can be safely updated...")
@@ -9573,6 +9686,13 @@ def _find_outdated(target):
     )
     if from_cache:
         announce("OK", "Loaded the previous package scan; it will be rechecked live.")
+        packages, changed = _verify_cached_offers(packages, inventory)
+        if changed:
+            announce(
+                "INFO",
+                "Changed since that scan, no longer offered: " + ", ".join(changed),
+            )
+            set_cached_packages(target.env_key, packages)
     else:
         announce("OK", "Fresh package scan completed.")
     if args.details:
@@ -9641,7 +9761,7 @@ def _start_background_refresh(target, package_state):
 
 
 def _choose_interactive(target, packages, from_cache, live):
-    """Run the selector; return ``(selected, packages, live)`` or BACK_TO_ENV.
+    """Run the selector; return ``(selected, packages, live)``, QUIT or BACK_TO_ENV.
 
     A cached list is refreshed in the background while the user chooses; the
     selector shows the refreshed list as soon as it lands.  A list is live
@@ -9681,8 +9801,8 @@ def _choose_interactive(target, packages, from_cache, live):
             f"Failed to initialize terminal UI ({exc}). Run this in a local terminal."
         ) from exc
     wait_for_background_scan(refresh_thread, refresh_progress)
-    if selected == BACK_TO_ENV:
-        return BACK_TO_ENV
+    if selected in (BACK_TO_ENV, QUIT):
+        return selected
 
     if refresh_thread:
         with package_state["lock"]:
@@ -9764,7 +9884,6 @@ def _nothing_to_update(target, waiting=(), *, all_held=False):
 
 
 def _unselected(packages, selected):
-    """Return the packages in ``packages`` that ``selected`` does not name."""
     chosen = {canonicalize_name(name) for name in selected}
     return [p for p in packages if canonicalize_name(p["name"]) not in chosen]
 
@@ -9809,7 +9928,7 @@ def _plan_and_apply(target, selected, live_packages, baseline):
     plan = resolve_update_plan(target.prefix, selected)
     while True:
         if not plan:
-            return _nothing_to_update(target, waiting, all_held=bool(selected))
+            return _nothing_to_update(target, waiting, all_held=bool(selected or hold))
         if _conda_only(plan):
             announce("OK", "Conda can move the package pip packages cap.")
             print_resolved_plan(plan, show_details=args.details)
@@ -9827,12 +9946,7 @@ def _plan_and_apply(target, selected, live_packages, baseline):
             if _apply_with_holds(target, selected, plan, hold, confirm=True) is None:
                 return _another_environment_wanted(target)
             moved.add(signature)
-            print_update_success(
-                target.env_name,
-                plan,
-                set(baseline["pip_broken"]),
-                pip_check_report(target.prefix),
-            )
+            _report_success(target, plan, baseline)
             announce("INFO", "Planning the pip updates again after Conda's move.")
             baseline = preflight_health(target.prefix)
             if args.all or args.packages:
@@ -9853,20 +9967,22 @@ def _plan_and_apply(target, selected, live_packages, baseline):
             break
         announce("OK", "pip found a compatible update plan.")
         print_resolved_plan(plan, show_details=args.details)
-        holds = {}
+        holds, report = {}, {}
         try:
             report = shared_file_report(target.prefix, plan)
             print_shared_file_warning(report)
             holds = shared_file_holds(report, plan)
         except (UpdaterError, OSError) as exc:
-            # Advisory only; validate_new_wheels enforces the real guarantee
+            # Advisory only; validate_wheels enforces the real guarantee
             # before anything is installed, so this must never end the run.
             announce("INFO", f"Could not check for shared files ({exc}).")
-        holds = {name: why for name, why in holds.items() if name not in hold}
+        holds = {name: cappers for name, cappers in holds.items() if name not in hold}
         if not holds:
             break
-        for name, why in sorted(holds.items()):
-            announce("!", f"{name} stays as installed: {why}.")
+        for name, cappers in sorted(holds.items()):
+            announce("!", f"{name} stays as installed: {_file_hold_reason(cappers)}.")
+        tried = hold | {canonicalize_name(name) for name in selected}
+        _remember_file_holds(target, holds, report["versions"], live_packages, tried)
         hold.update(holds)
         hold_rounds += 1
         selected = _unheld(selected, hold)
@@ -9883,10 +9999,14 @@ def _plan_and_apply(target, selected, live_packages, baseline):
         print(paint("Cancelled. No packages were changed.", "warn"))
         return _another_environment_wanted(target)
 
-    applied = _apply_with_holds(target, selected, plan, hold, confirm=unconfirmed)
+    applied = _apply_with_holds(
+        target, selected, plan, hold, confirm=unconfirmed, offers=live_packages
+    )
     if applied is None:
         return _another_environment_wanted(target)
     selected, plan = applied
+    if not plan:
+        return _nothing_to_update(target, waiting, all_held=True)
     # The plan can also update unselected offered packages (conflict repairs,
     # dependencies); one now at its offered version is no longer waiting.
     # pip reports raw METADATA text but normalized latest_version, so a
@@ -9899,12 +10019,7 @@ def _plan_and_apply(target, selected, live_packages, baseline):
     ]
     waiting = _unselected(waiting, done)
     remove_cached_packages(target.env_key, [*selected, *done])
-    print_update_success(
-        target.env_name,
-        plan,
-        set(baseline["pip_broken"]),
-        pip_check_report(target.prefix),
-    )
+    _report_success(target, plan, baseline)
     _repair_until_settled(target)
     target.up_to_date = not waiting
     return _another_environment_wanted(target)
@@ -9914,7 +10029,6 @@ MAX_HOLD_RETRIES = 4
 
 
 def _unheld(selected, hold):
-    """Return the selection without the packages ``hold`` keeps as installed."""
     return [name for name in selected if canonicalize_name(name) not in hold]
 
 
@@ -9935,16 +10049,28 @@ def _hold_summary(hold, plan):
     return parts[0][0].upper() + parts[0][1:]
 
 
-def _apply_with_holds(target, selected, plan, hold, *, confirm):
+def _report_success(target, plan, baseline):
+    """Report an applied plan against the health baseline it started from."""
+    print_update_success(
+        target.env_name,
+        plan,
+        set(baseline["pip_broken"]),
+        pip_check_report(target.prefix),
+    )
+
+
+def _apply_with_holds(target, selected, plan, hold, *, confirm, offers=()):
     """Apply ``plan``; when a wheel is refused, hold its package and re-plan.
 
     A refusal happens before any mutation.  The refused package (or the
-    selections that pull a refused new dependency in) joins ``hold``, the
-    rest is resolved again and, unless ``-y`` was given, confirmed again
-    when ``confirm`` is set.  A refusal that names nothing new to hold (a
-    new dependency only a repair pulls in) would repeat the same plan, so
-    it stops the run instead.  Returns ``(selected, plan)`` as applied, or
-    None when nothing was left to apply or the user declined.
+    selections that pull a refused new dependency in) joins ``hold`` and is
+    remembered for the next scan when it is one of the ``offers``, the rest
+    is resolved again and, unless ``-y`` was given, confirmed again when
+    ``confirm`` is set.  A refusal that names nothing new to hold (a new
+    dependency only a repair pulls in) would repeat the same plan, so it
+    stops the run instead.  Returns ``(selected, plan)`` as applied,
+    ``([], [])`` when the holds left nothing to apply, or None when the user
+    declined.
     """
     args = target.args
     for attempt in range(MAX_HOLD_RETRIES + 1):
@@ -9962,7 +10088,15 @@ def _apply_with_holds(target, selected, plan, hold, *, confirm):
                 ) from refusal
             if attempt == MAX_HOLD_RETRIES:
                 break
+            tried = hold | {canonicalize_name(name) for name in selected}
             hold.update(additional)
+            _remember_file_holds(
+                target,
+                dict.fromkeys(additional, refusal.cappers),
+                refusal.versions,
+                offers,
+                tried,
+            )
             selected = _unheld(selected, hold)
             announce(
                 "INFO", _hold_summary(hold, plan) + " and planning the rest again."
@@ -9970,7 +10104,7 @@ def _apply_with_holds(target, selected, plan, hold, *, confirm):
             plan = resolve_update_plan(target.prefix, selected, hold=hold)
             if not plan:
                 announce("OK", "Nothing else can be updated or repaired right now.")
-                return None
+                return [], []
             print_resolved_plan(plan, show_details=args.details)
             if confirm and not args.yes and not _confirmed(target.env_name):
                 print(paint("Cancelled. No packages were changed.", "warn"))
@@ -10009,15 +10143,9 @@ def _repair_until_settled(target):
             print(paint("Stopped; the conflicts listed above remain.", "warn"))
             return
         applied = _apply_with_holds(target, [], plan, set(), confirm=True)
-        if applied is None:
+        if applied is None or not applied[1]:
             return
-        _, plan = applied
-        print_update_success(
-            target.env_name,
-            plan,
-            set(baseline["pip_broken"]),
-            pip_check_report(target.prefix),
-        )
+        _report_success(target, applied[1], baseline)
     announce(
         "!",
         f"Stopped after {MAX_REPAIR_ROUNDS} repair rounds; run the updater again "
@@ -10035,9 +10163,9 @@ def _update_environment(target, root_prefix):
             paint("Mode:", "strong"),
             "preview only — this command will not change any packages",
         )
-    baseline = _check_environment(target, root_prefix)
+    baseline, inventory = _check_environment(target, root_prefix)
 
-    found = _find_outdated(target)
+    found = _find_outdated(target, inventory)
     if found is None:
         # Nothing to select; existing conflicts are still repaired.
         return _plan_and_apply(target, [], [], baseline)
@@ -10051,11 +10179,14 @@ def _update_environment(target, root_prefix):
         chosen = _choose_interactive(target, packages, from_cache, live)
         if chosen == BACK_TO_ENV:
             return True
+        if chosen == QUIT:
+            print("\nQuit. Exiting.")
+            return False
         selected, packages, live = chosen
 
-    if not selected:
-        print("\nNo packages selected. Exiting.")
-        return False
+    # An empty selection is planned like any other: a live scan that emptied
+    # the list reports the environment as current and offers the picker again,
+    # and unticked packages stay waiting.
     # A list from a scan completed in this run is not rescanned: that only
     # repeats a network round trip (measured at ~2.6s, about a quarter of
     # total runtime).  Time-of-use safety does not depend on it:
@@ -10069,9 +10200,8 @@ def main():
     args = parse_args()
     paint.configure(sys.stdout)
     install_termination_handlers()
-    for prune in (prune_stale_locks, prune_stale_cache):
-        with contextlib.suppress(UpdaterError):
-            prune()
+    with contextlib.suppress(UpdaterError):
+        prune_stale_cache()
 
     environments, root_prefix = get_known_environments()
     selectable = sorted(
