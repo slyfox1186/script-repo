@@ -77,6 +77,18 @@ class UnsolvableError(UpdaterError):
     """pip's resolver proved that no set of versions meets the requirements."""
 
 
+class WheelRefusal(UpdaterError):
+    """A downloaded wheel must not be installed over the files on disk.
+
+    ``hold`` names the planned packages to leave as installed so that the
+    rest of the plan can be resolved and applied without them.
+    """
+
+    def __init__(self, message, hold):
+        super().__init__(message)
+        self.hold = frozenset(hold)
+
+
 class UpdateInterrupted(BaseException):
     """A termination signal, raised so an active transaction can roll back.
 
@@ -1802,6 +1814,100 @@ print(json.dumps(rows, separators=(",", ":")))
     return rows
 
 
+_USER_SITE_HELPER = r"""
+import json, os, site
+from importlib import metadata
+
+path = site.getusersitepackages()
+rows = []
+if os.path.isdir(path):
+    for dist in metadata.distributions(path=[path]):
+        name = dist.metadata.get("Name") or ""
+        if not name:
+            continue
+        metadata_path = getattr(dist, "_path", None)
+        rows.append({
+            "name": name,
+            "version": dist.version,
+            "installer": (dist.read_text("INSTALLER") or "").strip().lower(),
+            "requires": dist.requires or [],
+            "direct_url": (dist.read_text("direct_url.json") or "").strip(),
+            "metadata_path": str(metadata_path) if metadata_path is not None else "",
+            "location": str(dist.locate_file("")),
+        })
+# site.check_enableusersite() answers False under -I; its remaining rule is
+# that a process whose effective ids differ from its real ids has no user site.
+enabled = not (
+    (hasattr(os, "getuid") and os.geteuid() != os.getuid())
+    or (hasattr(os, "getgid") and os.getegid() != os.getgid())
+)
+print(json.dumps({"enabled": enabled, "path": path, "rows": rows}))
+"""
+
+
+def get_user_site_inventory(prefix):
+    """Read the user-site distributions the target interpreter would import.
+
+    Python puts the user site (``~/.local/lib/pythonX.Y/site-packages``)
+    ahead of an environment's own site-packages, so its packages are loaded
+    by every environment of that Python version.  The updater never modifies
+    the user site, but it must see those packages' requirements: a missing
+    one is installed into the selected environment.  Returns an empty list
+    when the interpreter would not import from the user site at all.
+    """
+    if os.environ.get("PYTHONNOUSERSITE"):
+        return []
+    report = json_command(
+        [environment_python(prefix), "-I", "-c", _USER_SITE_HELPER],
+        f"Reading user-site packages seen by {prefix}",
+    )
+    if (
+        not isinstance(report, dict)
+        or not isinstance(report.get("rows"), list)
+        or not isinstance(report.get("path"), str)
+    ):
+        raise UpdaterError(f"User-site package inventory for {prefix} was malformed.")
+    if not report.get("enabled"):
+        return []
+    rows = report["rows"]
+    for row in rows:
+        if (
+            not isinstance(row, dict)
+            or not all(
+                isinstance(row.get(key), str)
+                for key in (
+                    "name",
+                    "version",
+                    "installer",
+                    "metadata_path",
+                    "location",
+                    "direct_url",
+                )
+            )
+            or not isinstance(row.get("requires"), list)
+            or not all(isinstance(requirement, str) for requirement in row["requires"])
+        ):
+            raise UpdaterError(f"Malformed user-site package metadata for {prefix}.")
+    return rows
+
+
+def user_site_holders(prefix, inventory):
+    """Return ``(foreign, shadowed)`` for the user-site packages ``prefix`` sees.
+
+    ``foreign`` maps each user-site package the environment does not also
+    hold to its row; ``shadowed`` names the environment packages a user-site
+    copy hides at import time (the user site comes first on ``sys.path``).
+    """
+    foreign, shadowed = {}, []
+    for row in get_user_site_inventory(prefix):
+        normalized = canonicalize_name(row["name"])
+        if normalized in inventory:
+            shadowed.append(str(row["name"]))
+        elif normalized not in foreign:
+            foreign[normalized] = row
+    return foreign, sorted(shadowed)
+
+
 def _group_inventory(rows):
     grouped = {}
     for row in rows:
@@ -2265,6 +2371,40 @@ def load_conda_ownership(prefix):
     }
 
 
+def conda_record_for_distribution(prefix, normalized):
+    """Return the Conda record that installs distribution ``normalized``, or None.
+
+    The match is by the dist-info the record's files list, as in
+    load_conda_ownership; the result carries the record's name, version,
+    build, channel and subdir.
+    """
+    prefix_path = Path(prefix).resolve(strict=False)
+    for record_path in sorted((prefix_path / "conda-meta").glob("*.json")):
+        try:
+            record = json.loads(record_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if not isinstance(record, dict):
+            continue
+        for raw_path in record.get("files") or []:
+            if not isinstance(raw_path, str):
+                continue
+            posix_path = PurePosixPath(raw_path)
+            if not is_distribution_metadata(posix_path):
+                continue
+            name = _metadata_name(
+                prefix_path / Path(*posix_path.parts)
+            ) or _metadata_directory_name(posix_path)
+            if name and canonicalize_name(name) == normalized:
+                fields = {
+                    key: record.get(key)
+                    for key in ("name", "version", "build", "channel", "subdir")
+                }
+                if all(isinstance(fields[key], str) for key in ("name", "version")):
+                    return fields
+    return None
+
+
 def ownership_problem(normalized, installed, ownership, prefix):
     """Return why pip must not replace this distribution, or None.
 
@@ -2317,29 +2457,49 @@ def filter_outdated_packages(packages, inventory, conda_ownership, prefix):
             excluded.append((name, reason))
         else:
             eligible[normalized] = package_entry(name, package)
-    settled = _settled_holds(eligible, get_cached_holds(prefix), inventory_by_name)
+    foreign, _shadowed = user_site_holders(prefix, inventory_by_name)
+    settled = _settled_holds(
+        eligible,
+        get_cached_holds(prefix),
+        imported_versions(inventory_by_name, foreign),
+    )
     for normalized, cappers in settled.items():
         excluded.append((eligible.pop(normalized)["name"], "held back by " + cappers))
     offered = sorted(eligible.values(), key=lambda package: package["name"].lower())
     return offered, excluded
 
 
-def _installed_version(inventory_by_name, name):
-    """Return the installed version of ``name`` as text, "" when absent."""
-    row = inventory_by_name.get(canonicalize_name(str(name))) or {}
-    return str(row.get("version") or "")
+def imported_versions(inventory, foreign):
+    """Map every distribution the interpreter imports to its version.
+
+    ``inventory`` holds the environment's rows, ``foreign`` the user-site rows
+    the environment does not also hold (see user_site_holders); both cap
+    packages, so a hold is checked and fingerprinted against both.
+    """
+    return {
+        normalized: str(row.get("version") or "")
+        for rows in (foreign, inventory)
+        for normalized, row in rows.items()
+    }
 
 
-def _hold_cappers(hold, package, inventory_by_name):
+def _installed_version(versions, name):
+    """Return the version of ``name`` in ``versions`` as text, "" when absent."""
+    return versions.get(canonicalize_name(str(name)), "")
+
+
+def _hold_cappers(hold, package, versions):
     """Return the packages a recorded hold depends on, or None once it lapsed.
 
     A hold is trusted only while nothing that produced it has moved: the held
     package's newest release and installed version are unchanged, and every
-    capping package is still installed at the recorded version.  A cap that
-    could not be named depends on the whole environment, which must be exactly
-    as planned, so every installed package then counts as a capper.
+    capping package is still installed at the recorded version.  ``versions``
+    maps every distribution the interpreter imports, user site included, to
+    its version: a capper may live in the user site.  A cap that could not be
+    named depends on the whole environment, which must be exactly as planned,
+    so every imported package then counts as a capper.
     """
-    installed = _installed_version(inventory_by_name, package["name"])
+    installed = _installed_version(versions, package["name"])
     if (
         not isinstance(hold, dict)
         or hold.get("latest") != package["latest_version"]
@@ -2350,20 +2510,17 @@ def _hold_cappers(hold, package, inventory_by_name):
     if isinstance(cappers, dict) and cappers:
         named = {canonicalize_name(str(name)): str(v) for name, v in cappers.items()}
         unchanged = all(
-            _installed_version(inventory_by_name, name) == version
+            _installed_version(versions, name) == version
             for name, version in named.items()
         )
         return set(named) if unchanged else None
-    current = {
-        name: str(row.get("version") or "") for name, row in inventory_by_name.items()
-    }
     fingerprint = hold.get("environment")
-    if fingerprint and fingerprint == inventory_fingerprint(current):
-        return set(current)
+    if fingerprint and fingerprint == inventory_fingerprint(versions):
+        return set(versions)
     return None
 
 
-def _settled_holds(eligible, holds, inventory_by_name):
+def _settled_holds(eligible, holds, versions):
     """Return ``{normalized: capper text}`` for offers a recorded hold settles.
 
     A hold proves only that the selections tried together could not move the
@@ -2374,7 +2531,7 @@ def _settled_holds(eligible, holds, inventory_by_name):
     pending = {}
     for normalized, package in eligible.items():
         hold = holds.get(normalized)
-        cappers = _hold_cappers(hold, package, inventory_by_name)
+        cappers = _hold_cappers(hold, package, versions)
         if cappers is None:
             continue
         tried = hold.get("tried")
@@ -3041,8 +3198,23 @@ def print_existing_conflicts(conflicts):
     for line in sorted(conflicts):
         print(f"      {describe_pip_conflict(line)}")
     print("\n    This is not something the updater did, and it is not fatal.")
-    print("    Updating these packages is often what repairs it.")
+    print("    The update plan repairs them: by updating, by downgrading when only")
+    print("    an older release fits, or by removing a package nothing depends on")
+    print("    whose requirements no version choice can satisfy.")
     print("    If an update introduces any *new* conflict, it is undone automatically.")
+
+
+def print_user_site_shadowing(prefix, inventory):
+    """Name the environment packages a user-site copy hides at import time."""
+    _foreign, shadowed = user_site_holders(prefix, inventory)
+    if shadowed:
+        announce(
+            "!",
+            "User-site copies hide this environment's own "
+            + ", ".join(shadowed)
+            + " at import time (Python loads ~/.local first); the updater "
+            "leaves the user site alone.",
+        )
 
 
 def print_conda_inconsistencies(issues):
@@ -3355,14 +3527,19 @@ def _conda_spec(record):
     return spec
 
 
-def conda_repair_steps(prefix, records):
-    """Return the commands that restore the damaged records' exact builds.
+def conda_repair_plan(prefix, records):
+    """Return ``(lines, steps, manual)``: how to restore the records' builds.
 
-    Copies installed over Conda's packages must go first, or the reinstall
-    leaves two copies of each.  Their uninstall also deletes files the two
-    share, so the builds are downloaded before anything is removed, and
-    reinstalled offline after it.  No command passes -y: Conda shows its plan
-    and pip lists the files it will remove before either changes anything.
+    ``lines`` describe the copies installed over Conda's packages, ``steps``
+    are ``(kind, what, argv)`` in the order they must run, and ``manual``
+    the copies no uninstall by name is certain to reach.  Copies installed
+    over Conda's packages must go first, or the reinstall leaves two copies
+    of each.  Their uninstall also deletes files the two share, so the
+    builds are downloaded before anything is removed, and reinstalled
+    offline after it.  No command passes -y: when printed for the user,
+    Conda shows its plan and pip lists the files it will remove before
+    either changes anything; repair_conda_damage adds it after its own
+    confirmation.
     """
     inventory = get_environment_inventory(prefix)
     copies = foreign_distribution_metadata(prefix, records, inventory)
@@ -3396,6 +3573,7 @@ def conda_repair_steps(prefix, records):
     if copies:
         steps.append(
             (
+                "conda",
                 "Download the recorded builds and review the plan; nothing changes yet:",
                 [*reinstall, "--download-only", *specs],
             )
@@ -3403,6 +3581,7 @@ def conda_repair_steps(prefix, records):
     if removable:
         steps.append(
             (
+                "pip",
                 "Uninstall the copies installed over them:",
                 [environment_python(prefix), "-I", "-m", "pip", "uninstall"]
                 + [row["name"] for row in removable],
@@ -3410,6 +3589,7 @@ def conda_repair_steps(prefix, records):
         )
     steps.append(
         (
+            "conda",
             "Reinstall the recorded builds"
             + (" from the downloaded packages:" if copies else ":"),
             [*reinstall, *(["--offline"] if copies else []), *specs],
@@ -3417,14 +3597,28 @@ def conda_repair_steps(prefix, records):
     )
     steps.append(
         (
+            "doctor",
             "Check that Conda's files are intact, then rerun the updater:",
             [conda, "doctor", "-p", str(prefix)]
             + ["altered-files", "missing-files", "consistency"],
         )
     )
-    lines += ["", "To restore Conda's recorded builds, run these commands in order:"]
-    for number, (what, command) in enumerate(steps, 1):
+    return lines, steps, manual
+
+
+def _numbered_steps(steps, start=1):
+    """Render repair steps as the numbered commands a user runs in order."""
+    lines = []
+    for number, (_kind, what, command) in enumerate(steps, start):
         lines += [f"  {number}. {what}", f"     {shlex.join(command)}"]
+    return lines
+
+
+def conda_repair_steps(prefix, records):
+    """Return the text that tells the user how to restore the damaged records."""
+    lines, steps, _ = conda_repair_plan(prefix, records)
+    lines += ["", "To restore Conda's recorded builds, run these commands in order:"]
+    lines += _numbered_steps(steps)
     lines.append(
         "--no-deps restores only these packages' files; it neither changes nor "
         "checks their dependencies."
@@ -3432,8 +3626,12 @@ def conda_repair_steps(prefix, records):
     return lines
 
 
-def explain_conda_damage(prefix, sections, snapshot):
-    """Explain file damage, printing repair commands only once each is verified."""
+def explain_conda_damage(prefix, sections, snapshot, *, preview=False):
+    """Explain file damage, printing repair commands only once each is verified.
+
+    ``preview`` is a dry run: a real run repairs the damage itself (see
+    repair_conda_damage), which the text says instead of "not attempted".
+    """
     try:
         records = damaged_conda_records(prefix, sections)
         steps = conda_repair_steps(prefix, records)
@@ -3447,11 +3645,67 @@ def explain_conda_damage(prefix, sections, snapshot):
         ]
     else:
         names = ", ".join(record["name"] for record in records)
-        lines = [
-            f"Conda reports damaged files in {names}. No automatic repair was attempted.",
-            *steps,
-        ]
+        status = (
+            "A real run repairs this automatically after confirmation; the "
+            "commands it runs are:"
+            if preview
+            else "No automatic repair was attempted."
+        )
+        lines = [f"Conda reports damaged files in {names}. {status}", *steps]
     return "\n".join(lines) + "\n\nConda's full report:\n" + snapshot
+
+
+def _unattended(kind, command):
+    """Add the flags that let a repair command run without prompting."""
+    if kind == "conda":
+        return [*command, "--yes"]
+    if kind == "pip":
+        return [*command, "--yes", "--no-input", "--disable-pip-version-check"]
+    return list(command)
+
+
+def repair_conda_damage(target, prefix, sections, snapshot):
+    """Restore the damaged records' exact builds, after the usual confirmation.
+
+    The steps are the ones conda_repair_plan prints for a manual repair, run
+    in the same order with prompts answered (``-y`` skips the updater's own
+    confirmation, as everywhere else); the final doctor check is left to the
+    caller, which rereads health.  A copy no uninstall by name can reach is
+    never removed: the manual explanation is raised instead.  A step that
+    fails stops the repair with the remaining commands to run by hand; the
+    builds are downloaded before anything is removed, so the offline
+    reinstall can always be run again.
+    """
+    try:
+        records = damaged_conda_records(prefix, sections)
+        lines, steps, manual = conda_repair_plan(prefix, records)
+    except (UpdaterError, OSError):
+        raise UpdaterError(explain_conda_damage(prefix, sections, snapshot)) from None
+    if manual:
+        raise UpdaterError(explain_conda_damage(prefix, sections, snapshot))
+    names = ", ".join(record["name"] for record in records)
+    announce(
+        "!",
+        f"Conda reports damaged files in {names}; its recorded builds can be restored.",
+    )
+    for line in lines:
+        print(f"  {line}", flush=True)
+    print("  The updater runs these commands in order:", flush=True)
+    print("\n".join(_numbered_steps(steps)), flush=True)
+    if not target.args.yes and not _confirmed(target.env_name):
+        raise UpdaterError("Cancelled. Conda's files were not changed.")
+    to_run = [step for step in steps if step[0] != "doctor"]
+    for number, (kind, what, command) in enumerate(to_run, 1):
+        announce("INFO", f"[{number}/{len(to_run)}] {what}")
+        result = run_command(
+            _unattended(kind, command), capture_output=True, timeout=1800
+        )
+        if result.returncode != 0:
+            failure = command_failure(f"Conda repair step {number}", result)
+            remaining = "\n".join(_numbered_steps(steps[number - 1 :], number))
+            raise UpdaterError(
+                f"{failure}\n\nRun the remaining steps by hand, in order:\n{remaining}"
+            ) from failure
 
 
 def explain_unknown_doctor_report(snapshot):
@@ -3486,18 +3740,34 @@ def _file_damage(sections):
     ]
 
 
-def preflight_health(prefix, *, dry_run=False):
-    """Read health without automatically uninstalling or repairing Conda files.
+def preflight_health(prefix, *, dry_run=False, repair=None):
+    """Read health; repair damaged Conda files only through ``repair``.
 
-    Restoring a Conda package can change builds, erase a pip overwrite, or fail
-    after uninstalling it. That needs a separately reviewed Conda repair, not
-    an implicit side effect of selecting pip updates (or declining confirmation).
+    Restoring a Conda package can change builds, erase a pip overwrite, or
+    fail after uninstalling it, so it never happens as a side effect of a
+    health read (a transaction's baseline check, a preview, a repair round).
+    The environment check at the start of a real run passes ``repair`` (see
+    repair_conda_damage), which shows and confirms the Conda commands before
+    running them; health is then read again and must be clean.
     """
     snapshot = doctor_snapshot(prefix)
     sections = _checked_doctor_sections(snapshot)
     blocking = _file_damage(sections)
+    if blocking and repair is not None:
+        repair(prefix, blocking, snapshot)
+        snapshot = doctor_snapshot(prefix)
+        sections = _checked_doctor_sections(snapshot)
+        blocking = _file_damage(sections)
+        if blocking:
+            raise UpdaterError(
+                "The automatic repair did not restore Conda's files.\n"
+                + explain_conda_damage(prefix, blocking, snapshot)
+            )
+        announce("OK", "Restored Conda's recorded builds; Conda's files are intact.")
     if blocking:
-        raise UpdaterError(explain_conda_damage(prefix, blocking, snapshot))
+        raise UpdaterError(
+            explain_conda_damage(prefix, blocking, snapshot, preview=dry_run)
+        )
     ownership = load_conda_ownership(prefix)
     inconsistent = any(
         section["failed"] and section["kind"] == "consistency" for section in sections
@@ -3707,15 +3977,18 @@ def _caps_rejecting(normalized, latest_version, parsed, active_extras, marker_en
     return causes
 
 
-def broken_installed_requirements(inventory, marker_env):
+def broken_installed_requirements(inventory, marker_env, parsed=None):
     """Find installed versions that an installed package's requirement rejects.
 
     `pip check` misses these when the requirement sits behind an extra that
     another package asks for (discord-ext-voice-recv -> discord.py[voice] ->
-    PyNaCl<1.6), yet pip's resolver enforces them.  Returns
-    {normalized name: [cause]} in the holdback_reasons cause format.
+    PyNaCl<1.6), yet pip's resolver enforces them.  ``parsed`` supplies the
+    requirement sources when the caller already read them (user-site holders
+    included); only packages in ``inventory`` can be the rejected side.
+    Returns {normalized name: [cause]} in the holdback_reasons cause format.
     """
-    parsed = _parsed_requirement_sources(inventory, [])
+    if parsed is None:
+        parsed = _parsed_requirement_sources(inventory, [])
     if parsed is None:
         return {}
     # packaging is importable: _parsed_requirement_sources just imported it.
@@ -3742,11 +4015,14 @@ def broken_installed_requirements(inventory, marker_env):
             ):
                 continue
             broken.setdefault(normalized, []).append(
-                cap_cause(
-                    capper_name,
-                    capper_version,
-                    _requirement_text(capper_name, capper_version, requirement),
-                )
+                {
+                    **cap_cause(
+                        capper_name,
+                        capper_version,
+                        _requirement_text(capper_name, capper_version, requirement),
+                    ),
+                    "specifier": str(requirement.specifier),
+                }
             )
     return broken
 
@@ -3998,14 +4274,60 @@ def _selection_spec(name, installed, newest, extras):
 class RepairOption:
     """One way to repair an existing conflict.
 
-    ``packages`` are installed packages to update, ``specs`` missing
-    requirements to install, and ``tags`` names the conflict each package
-    the option moves or installs repairs.
+    ``packages`` are installed packages to update, ``specs`` extra requirement
+    lines the solve must satisfy (a missing requirement to install, or the
+    range a downgrade must land in), ``fixed`` the names those specs pin, and
+    ``tags`` names the conflict each package the option moves repairs.  A
+    ``grouped`` option also lets every package tied to the moved ones move
+    up; a ``relaxed`` one lets them move down as well, as a last resort (see
+    _grow_plan), and ``downgraded`` then records which ones did.
     """
 
     packages: tuple
     specs: tuple
     tags: dict
+    fixed: frozenset = frozenset()
+    grouped: bool = False
+    relaxed: bool = False
+    downgraded: frozenset = frozenset()
+
+
+@dataclasses.dataclass(frozen=True)
+class RepairUnit:
+    """One existing conflict and the ways to repair it.
+
+    ``holder`` is the package whose requirement is unmet, ``package`` the
+    installed package that requirement rejects (None when the requirement is
+    not installed at all) and ``specifier`` the unmet requirement's range.
+    """
+
+    reason: str
+    holder: str
+    package: object
+    specifier: str
+    options: tuple
+
+
+@dataclasses.dataclass(frozen=True)
+class ConflictTriage:
+    """Which version conflicts no upgrade can repair, and what that pins.
+
+    ``unrepairable`` lists ``(holder, package, cause)`` for each conflict
+    neither side can escape by moving up; ``pinned`` names every package a
+    group solve keeps as installed (those packages, plus the ones the updater
+    may not move) and ``dropped_caps`` the ``(holder, package)`` requirements
+    that stay broken and so are not enforced on a group solve.
+    """
+
+    unrepairable: tuple
+    pinned: frozenset
+    dropped_caps: frozenset
+
+
+def _conflict_text(inventory, package, cause):
+    """Word one broken requirement with the installed version it rejects."""
+    row = inventory[package]
+    return f"{cause['text']}, which installed {row['name']} {row['version']} fails"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -4015,7 +4337,9 @@ class InstalledRequirements:
     ``edges`` pairs each package with every requirement it makes that applies
     here (markers judged for the target interpreter, extras only when some
     package requests them); ``broken`` holds installed versions a requirement
-    already rejects, in the holdback_reasons cause format.
+    already rejects, in the holdback_reasons cause format.  ``foreign`` holds
+    the user-site packages the interpreter also imports: their requirements
+    count, but they are never moved, pinned, or removed.
     """
 
     inventory: dict
@@ -4023,19 +4347,27 @@ class InstalledRequirements:
     edges: list
     extras: dict
     broken: dict
+    foreign: dict = dataclasses.field(default_factory=dict)
+    excluded: frozenset = frozenset()
 
     @classmethod
-    def load(cls, inventory, marker_env):
-        """Read the applicable requirements of every installed package."""
+    def load(cls, inventory, marker_env, foreign=None, excluded=frozenset()):
+        """Read the applicable requirements of every installed package.
+
+        ``excluded`` names packages that are not installed and must not be
+        installed by any solve (their wheels were refused).
+        """
         if marker_env is None:
             raise UpdaterError(
                 "Cannot read the target Python's requirement markers; no update was planned."
             )
+        foreign = dict(foreign or {})
         parsed = _parsed_requirement_sources(inventory, [])
         if parsed is None:
             raise UpdaterError(
                 "Planning an update needs the Python 'packaging' library."
             )
+        parsed.extend(_parsed_requirement_sources(foreign, []) or [])
         extras = _active_extras(parsed, marker_env)
         edges = []
         for name, _, requirements in parsed:
@@ -4045,10 +4377,25 @@ class InstalledRequirements:
                 for requirement in requirements
                 if _marker_applies(requirement, extras.get(owner, set()), marker_env)
             )
-        broken = broken_installed_requirements(inventory, marker_env)
-        return cls(inventory, marker_env, edges, extras, broken)
+        broken = broken_installed_requirements(inventory, marker_env, parsed)
+        return cls(
+            inventory, marker_env, edges, extras, broken, foreign, frozenset(excluded)
+        )
 
-    def specs(self, targets):
+    def without(self, names):
+        """Return the requirements as they stand once ``names`` are removed."""
+        inventory = {
+            normalized: row
+            for normalized, row in self.inventory.items()
+            if normalized not in names
+        }
+        return self.load(inventory, self.marker_env, self.foreign, self.excluded)
+
+    def row(self, normalized):
+        """Return the inventory or user-site row of ``normalized``."""
+        return self.inventory.get(normalized) or self.foreign[normalized]
+
+    def specs(self, targets, floors=(), free=()):
         """Let each selection settle from its installed version to its newest.
 
         The newest wheel was found ignoring dependencies, so it can need a
@@ -4057,9 +4404,12 @@ class InstalledRequirements:
         it, the whole solve is impossible, while a range lets pip hold that
         selection back or stop at an older release.  The floor stops the plan
         from downgrading a selection.  Extras another package requests stay
-        installed.
+        installed.  Each package in ``floors`` gets only its floor, so a group
+        repair may move it, but only as far as the solve needs; each package
+        in ``free`` gets no bound at all, so it may also move down when a cap
+        leaves no other way.
         """
-        return [
+        lines = [
             _selection_spec(
                 name,
                 str((self.inventory.get(normalized) or {}).get("version") or ""),
@@ -4068,8 +4418,26 @@ class InstalledRequirements:
             )
             for normalized, (name, newest) in targets.items()
         ]
+        for normalized in sorted(floors):
+            row = self.inventory[normalized]
+            lines.append(
+                _selection_spec(
+                    str(row["name"]),
+                    str(row.get("version") or ""),
+                    "",
+                    sorted(self.extras.get(normalized, ())),
+                )
+            )
+        for normalized in sorted(free):
+            row = self.inventory[normalized]
+            lines.append(
+                _selection_spec(
+                    str(row["name"]), "", "", sorted(self.extras.get(normalized, ()))
+                )
+            )
+        return lines
 
-    def constraints(self, targets, fixed=()):
+    def constraints(self, targets, fixed=(), dropped_caps=()):
         """Pin every other package, and keep each cap it places on the solve.
 
         pip checks only the requirements of packages its solve reaches, so a
@@ -4077,8 +4445,13 @@ class InstalledRequirements:
         its cap on that selection, or on a package the plan might add, is
         passed explicitly.  Its requirements on other pinned packages cannot
         change and are left out.  A cap the installed version already breaks
-        is kept too, so a selection moves only to repair that conflict.
-        ``fixed`` names packages the request pins itself to a planned version.
+        is kept too, so a selection moves only to repair that conflict, except
+        the ``dropped_caps`` a group repair has proven no upgrade can satisfy.
+        ``fixed`` names packages the request itself places (pinned by a spec,
+        or floored so the solve may move them).  Each ``excluded`` package
+        gets a bound no version satisfies (``<0.dev0``; both pip and uv then
+        reject any plan that needs it), so a refused new wheel is never
+        planned again while another release of its dependents may still fit.
         """
         moving = set(targets) | set(fixed)
         for owner, requirement in self.edges:
@@ -4095,11 +4468,13 @@ class InstalledRequirements:
             for owner, requirement in self.edges
             if owner not in moving
             and requirement.specifier
+            and (owner, canonicalize_name(requirement.name)) not in dropped_caps
             and (
                 canonicalize_name(requirement.name) in moving
                 or canonicalize_name(requirement.name) not in self.inventory
             )
         }
+        caps.update(f"{name}<0.dev0" for name in self.excluded)
         return retained_environment_pins(self.inventory, moving) + sorted(caps)
 
     def exposure(self, targets):
@@ -4108,10 +4483,10 @@ class InstalledRequirements:
         pip rechecks every requirement in the dependency graph it walks.  A
         selection whose installed version a requirement already rejects, or
         whose installed dependencies (itself included) reach a package with
-        an unmet requirement, therefore has no answer that leaves it as it is:
-        the solve repairs that conflict or fails.  Any other selection can
-        always stay installed.  Each conflict is named twice, once per side,
-        so a recorded hold lifts when either side moves.
+        an unmet or missing requirement, therefore has no answer that leaves
+        it as it is: the solve repairs that conflict or fails.  Any other
+        selection can always stay installed.  Each conflict is named twice,
+        once per side, so a recorded hold lifts when either side moves.
         """
         graph = {}
         for owner, requirement in self.edges:
@@ -4121,66 +4496,220 @@ class InstalledRequirements:
             for cause in causes:
                 holder = canonicalize_name(cause["capper"])
                 unmet.setdefault(holder, []).append((package, cause))
+        missing = {}
+        present = set(self.inventory) | set(self.foreign)
+        for owner, requirement in self.edges:
+            dependency = canonicalize_name(requirement.name)
+            if dependency not in present:
+                row = self.row(owner)
+                text = (
+                    f"{row['name']} {row['version']} requires "
+                    f"{requirement.name}{requirement.specifier}, which is not installed"
+                )
+                # The hold lapses once either side changes: the holder, or the
+                # missing package once something installs it.
+                missing.setdefault(owner, []).extend(
+                    (
+                        cap_cause(row["name"], row["version"], text),
+                        cap_cause(requirement.name, "", text),
+                    )
+                )
         exposure = {}
         for normalized, (name, _) in targets.items():
+            reached = _dependency_closure(normalized, graph)
             touched = [(normalized, cause) for cause in self.broken.get(normalized, ())]
-            for holder in sorted(_dependency_closure(normalized, graph) & set(unmet)):
+            for holder in sorted(reached & set(unmet)):
                 touched.extend(unmet[holder])
-            if touched:
+            causes = [
+                cause
+                for holder in sorted(reached & set(missing))
+                for cause in missing[holder]
+            ]
+            if touched or causes:
                 exposure[normalized] = [
                     conflict_cause
                     for package, cause in touched
                     for conflict_cause in self._conflict_causes(
                         (normalized, name), package, cause
                     )
-                ]
+                ] + causes
         return exposure
 
-    def repair_units(self, selected, updatable, blocked):
-        """List the ways to repair each existing conflict without a downgrade.
+    def repair_units(self, updatable, blocked):
+        """List each existing conflict with the ways to repair it by moving up.
 
         A missing requirement is repaired by installing it.  A version conflict
         is repaired by updating the package whose requirement is unmet, or else
         the package that requirement rejects; each update has a floor, so
-        neither moves down.  A conflict a selection takes part in is left to
-        that selection.  Returns ``(units, unrepairable)``: each unit is
-        ``(reason, [RepairOption])``, and ``unrepairable`` names conflicts
-        whose packages the updater may not touch (``blocked`` names may not be
-        installed; only ``updatable`` ones may move).
+        neither moves down.  Returns ``(units, unrepairable)``: the RepairUnits
+        (a version conflict with no updatable side has no options; the triage
+        decides what else can be done) and ``(holder, reason)`` pairs for
+        missing requirements the updater may not install (``blocked`` names
+        may not be installed; only ``updatable`` ones may move).
         """
-        units, unrepairable = self._missing_units(selected, blocked)
-        for (holder, package), reason in sorted(self._conflicts(selected).items()):
-            options = [
+        units, unrepairable = self._missing_units(blocked)
+        for (holder, package), (reason, specifier) in sorted(self._conflicts().items()):
+            options = tuple(
                 RepairOption((name,), (), {name: reason})
                 for name in (holder, package)
                 if name in updatable
-            ]
-            if options:
-                units.append((reason, options))
-            else:
-                unrepairable.append(reason)
+            )
+            units.append(RepairUnit(reason, holder, package, specifier, options))
         return units, unrepairable
 
-    def _missing_units(self, selected, blocked):
+    def classify(self, updatable, newest, newest_requires, candidate):
+        """Decide which version conflicts no upgrade can repair.
+
+        ``newest`` maps each package with a newer same-build wheel to
+        ``(name, version)`` and ``newest_requires`` to that wheel's
+        requirements; ``candidate(spec, installed)`` returns the newest
+        version of the installed build the index offers for one requirement
+        string, or None.  A conflict is repairable when the rejected package
+        can move up into the requirement, or the holder's newest release
+        accepts the rejected package as installed or moved up.  Every check
+        honors the caps of the pinned packages (those the updater may not
+        move, and both sides of every conflict already found unrepairable),
+        so the decision is repeated until it settles.  The verdict only
+        decides what is pinned while other conflicts are repaired: the unit
+        built for an unrepairable conflict still tries the holder's older
+        releases before any downgrade (see _downgrade_units).
+        """
+        pinned = {name for name in self.inventory if name not in updatable}
+        pinned.update(self.foreign)
+        dropped = set()
+        unrepairable = []
+        settled = False
+        while not settled:
+            settled = True
+            for package, causes in sorted(self.broken.items()):
+                for cause in causes:
+                    holder = canonicalize_name(cause["capper"])
+                    if (holder, package) in dropped or self._upgrade_repairs(
+                        (holder, package, cause),
+                        (pinned, dropped),
+                        (newest, newest_requires, candidate),
+                    ):
+                        continue
+                    unrepairable.append((holder, package, cause))
+                    pinned.update((holder, package))
+                    dropped.add((holder, package))
+                    settled = False
+        return ConflictTriage(
+            tuple(unrepairable), frozenset(pinned), frozenset(dropped)
+        )
+
+    def _upgrade_repairs(self, conflict, kept, offered):
+        """True when moving a side of ``conflict`` up can satisfy it.
+
+        The rejected package is searched inside every cap the pinned packages
+        place on it, so a newest release those caps reject does not hide an
+        older one they admit.
+        """
+        holder, package, cause = conflict
+        pinned, dropped = kept
+        newest, newest_requires, candidate = offered
+        row = self.inventory[package]
+        installed = str(row.get("version") or "")
+        public = installed.split("+", 1)[0]
+
+        def package_moves_into(specifier):
+            if package in pinned or package not in newest:
+                return False
+            bounds = [f">={public}", str(specifier)]
+            bounds.extend(
+                str(cap) for cap in self._enforced_caps(package, pinned, dropped)
+            )
+            spec = row["name"] + ",".join(
+                dict.fromkeys(bound for bound in bounds if bound)
+            )
+            version = candidate(spec, installed)
+            return version is not None and self._admitted(
+                package, version, pinned, dropped
+            )
+
+        if package_moves_into(cause.get("specifier", "")):
+            return True
+        if holder in pinned or holder not in newest:
+            return False
+        if not self._admitted(holder, newest[holder][1], pinned, dropped):
+            return False
+        requirement = self._newest_requirement(holder, package, newest_requires)
+        if requirement is None or not requirement.specifier:
+            return True
+        return requirement.specifier.contains(
+            installed, prereleases=True
+        ) or package_moves_into(requirement.specifier)
+
+    def _admitted(self, normalized, version, pinned, dropped):
+        """True when every enforced cap of a pinned package admits ``version``."""
+        # packaging is importable: load() parsed every requirement with it.
+        from packaging.version import (  # pylint: disable=import-outside-toplevel
+            InvalidVersion,
+            Version,
+        )
+
+        try:
+            candidate = Version(version)
+        except InvalidVersion:
+            return False
+        return all(
+            cap.contains(candidate, prereleases=True)
+            for cap in self._enforced_caps(normalized, pinned, dropped)
+        )
+
+    def _enforced_caps(self, normalized, pinned, dropped):
+        """Return each specifier a pinned package places on ``normalized``."""
+        return [
+            requirement.specifier
+            for owner, requirement in self.edges
+            if owner in pinned
+            and canonicalize_name(requirement.name) == normalized
+            and (owner, normalized) not in dropped
+            and requirement.specifier
+        ]
+
+    def _newest_requirement(self, holder, package, newest_requires):
+        """Return newest ``holder``'s applicable requirement on ``package``."""
+        # packaging is importable: load() parsed every requirement with it.
+        from packaging.requirements import (  # pylint: disable=import-outside-toplevel
+            InvalidRequirement,
+            Requirement,
+        )
+
+        for raw in newest_requires.get(holder, ()):
+            try:
+                requirement = Requirement(str(raw))
+            except InvalidRequirement:
+                continue
+            if canonicalize_name(requirement.name) == package and _marker_applies(
+                requirement, self.extras.get(holder, set()), self.marker_env
+            ):
+                return requirement
+        return None
+
+    def _missing_units(self, blocked):
         """Return one unit per package with missing requirements to install."""
         unrepairable = []
         missing = {}
         for owner, requirement in self.edges:
             dependency = canonicalize_name(requirement.name)
-            if dependency in self.inventory or owner in selected:
+            if dependency in self.inventory or dependency in self.foreign:
                 continue
-            row = self.inventory[owner]
+            row = self.row(owner)
             text = (
                 f"{row['name']} {row['version']} requires "
                 f"{requirement.name}{requirement.specifier}, which is not installed"
             )
             if requirement.url:
                 unrepairable.append(
-                    f"{owner} requires a direct-URL copy of {requirement.name}; repair it separately"
+                    (
+                        owner,
+                        f"{owner} requires a direct-URL copy of {requirement.name}; repair it separately",
+                    )
                 )
                 continue
             if dependency in blocked:
-                unrepairable.append(text)
+                unrepairable.append((owner, text))
                 continue
             extras = ",".join(sorted(requirement.extras))
             spec = requirement.name + (f"[{extras}]" if extras else "")
@@ -4189,46 +4718,51 @@ class InstalledRequirements:
                 text,
             )
         units = [
-            (
+            RepairUnit(
                 "; ".join(text for _, text in entries.values()),
-                [
+                owner,
+                None,
+                "",
+                (
                     RepairOption(
                         (),
                         tuple(spec for spec, _ in entries.values()),
                         {name: text for name, (_, text) in entries.items()},
-                    )
-                ],
+                    ),
+                ),
             )
-            for _, entries in sorted(missing.items())
+            for owner, entries in sorted(missing.items())
         ]
         return units, unrepairable
 
-    def _conflicts(self, selected):
-        """Map each version conflict no selection takes part in to its reason."""
+    def _conflicts(self):
+        """Map each version conflict to its reason and the unmet specifier."""
         conflicts = {}
         for package, causes in self.broken.items():
-            row = self.inventory[package]
             for cause in causes:
                 holder = canonicalize_name(cause["capper"])
-                if package not in selected and holder not in selected:
-                    conflicts[(holder, package)] = (
-                        f"{cause['text']}, which installed {row['name']} "
-                        f"{row['version']} fails"
-                    )
+                conflicts[(holder, package)] = (
+                    _conflict_text(self.inventory, package, cause),
+                    cause.get("specifier", ""),
+                )
         return conflicts
 
     def _conflict_causes(self, selection, package, cause):
         """Name both sides of the conflict ``cause`` describes on ``package``."""
         normalized, name = selection
         row = self.inventory[package]
-        text = f"{cause['text']}, which installed {row['name']} {row['version']} fails"
+        text = _conflict_text(self.inventory, package, cause)
         if normalized not in (package, canonicalize_name(cause["capper"])):
             text = f"{name} needs {cause['capper']}; {text}"
         return [{**cause, "text": text}, cap_cause(row["name"], row["version"], text)]
 
 
-def _plan_item(raw_item, inventory, ownership, prefix):
-    """Validate one item of pip's resolver report and return its plan entry."""
+def _plan_item(raw_item, inventory, ownership, prefix, downgrades=frozenset()):
+    """Validate one item of pip's resolver report and return its plan entry.
+
+    ``downgrades`` names the packages a planned conflict repair moves down;
+    any other package must not move below its installed version.
+    """
     metadata = raw_item.get("metadata") or {}
     name = str(metadata.get("name") or "")
     version = str(metadata.get("version") or "")
@@ -4240,7 +4774,11 @@ def _plan_item(raw_item, inventory, ownership, prefix):
 
     try:
         proposed = Version(version)
-        if installed and proposed < Version(installed["version"]):
+        if (
+            installed
+            and proposed < Version(installed["version"])
+            and canonicalize_name(name) not in downgrades
+        ):
             raise UpdaterError(
                 f"Refusing to downgrade {name} from {installed['version']} to {version}."
             )
@@ -4270,7 +4808,7 @@ def _plan_item(raw_item, inventory, ownership, prefix):
     }
 
 
-def _plan_from_report(raw_plan, inventory, ownership, prefix):
+def _plan_from_report(raw_plan, inventory, ownership, prefix, downgrades=frozenset()):
     """Validate pip's whole resolver report into the ordered update plan."""
     plan = []
     seen = set()
@@ -4290,7 +4828,7 @@ def _plan_from_report(raw_plan, inventory, ownership, prefix):
         if normalized in seen:
             raise UpdaterError(f"pip proposed {name} more than once.")
         seen.add(normalized)
-        plan.append(_plan_item(raw_item, inventory, ownership, prefix))
+        plan.append(_plan_item(raw_item, inventory, ownership, prefix, downgrades))
     return plan
 
 
@@ -4318,16 +4856,13 @@ def _limited_selections(targets, plan):
     return held, capped
 
 
-def _hold_records(limited, reasons, inventory, plan, tried):
+def _hold_records(limited, reasons, installed, plan, tried):
     """Describe each limited selection so a later scan can trust the hold.
 
     ``tried`` names every selection of the solve, so a later scan knows which
     cappers were already tried together with the held package.
     """
-    after_plan = {
-        normalized: str(row.get("version") or "")
-        for normalized, row in inventory.items()
-    }
+    after_plan = imported_versions(installed.inventory, installed.foreign)
     after_plan.update(
         {canonicalize_name(item["name"]): item["version"] for item in plan}
     )
@@ -4358,7 +4893,7 @@ def _limitation_reasons(limited, outcome, plan, installed):
     """Name what keeps each limited selection from its newest release."""
     reasons = holdback_reasons(
         limited,
-        installed.inventory,
+        {**installed.foreign, **installed.inventory},
         plan,
         installed.marker_env,
         outcome.newest_requires,
@@ -4383,9 +4918,7 @@ def _report_holds(prefix, outcome, plan, installed, *, explain=True):
     held, capped = _limited_selections(outcome.targets, plan)
     limited = {**held, **capped}
     reasons = _limitation_reasons(limited, outcome, plan, installed) if limited else {}
-    records = _hold_records(
-        limited, reasons, installed.inventory, plan, outcome.targets
-    )
+    records = _hold_records(limited, reasons, installed, plan, outcome.targets)
     cached_holds = get_cached_holds(prefix)
     # Explain every result, not only holds that are new since the last scan.
     if explain and held:
@@ -4442,8 +4975,12 @@ class ResolverOutcome:
     an existing conflict to that conflict's causes; ``rebuilt`` holds the
     selections whose newest wheel is a different build, as
     ``(name, installed, newest)``; ``repairs`` names the conflict each
-    repaired package fixes, and ``unrepairable`` the conflicts left as they
-    are.
+    repaired package fixes and ``downgrades`` the repaired packages that move
+    down to fix it; ``unrepairable`` lists the conflicts left as they are,
+    and ``unfixable`` maps each package whose requirements no version choice
+    can satisfy to those conflicts; ``conda_capped`` maps each holder whose
+    requirements only a Conda-owned package fails, with no pip-side repair,
+    to its caps on that package (``{package: specifier}``).
     """
 
     targets: dict
@@ -4452,7 +4989,10 @@ class ResolverOutcome:
     set_aside: dict
     rebuilt: dict
     repairs: dict
+    downgrades: dict
     unrepairable: list
+    unfixable: dict
+    conda_capped: dict = dataclasses.field(default_factory=dict)
 
 
 # pip settings that change where packages come from; uv cannot see them.
@@ -4541,6 +5081,46 @@ def _uv_versions(uv, prefix, request, hooks):
     return None
 
 
+def _uv_candidate(uv, prefix, spec, installed, hooks):
+    """Return the newest same-build version uv offers for ``spec``, or None.
+
+    None means uv proved that no version satisfies the requirement, or that
+    the only ones that do are a different build than ``installed``.  Any
+    other uv failure stops the planning: a transient index error must not be
+    mistaken for a conflict no version can repair.
+    """
+    name = requirement_name(spec)
+    result = stream_command(
+        [
+            uv,
+            "pip",
+            "install",
+            "--dry-run",
+            "--no-config",
+            "--color=never",
+            f"--python={environment_python(prefix)}",
+            "--only-binary=:all:",
+            "--no-deps",
+            f"--upgrade-package={name}",
+            spec,
+        ],
+        timeout=600,
+        hooks=hooks,
+    )
+    output = f"{result.stdout}\n{result.stderr}"
+    if result.returncode != 0:
+        if "No solution found" in output:
+            return None
+        raise UpdaterError(
+            f"uv could not look up {spec}; no update was planned.\n{output.strip()}"
+        )
+    planned = _uv_plan(output) or {}
+    entry = planned.get(canonicalize_name(name))
+    if entry is None or build_change(installed, entry[1]):
+        return None
+    return entry[1]
+
+
 def _pinned_choice(targets, installed, planned):
     """Pin every target and every package uv plans at uv's chosen version.
 
@@ -4586,33 +5166,52 @@ def _pip_solve(prefix, requirements, constraints, hooks):
 def _solve(prefix, request, installed, hooks, uv):
     """Ask for the joint plan that moves only what ``request`` names.
 
-    ``request`` is ``(targets, specs, fixed)``: packages that may move within
-    their range, extra requirement specs, and the names ``specs`` pin exactly.
-    With ``uv``, uv chooses the versions and pip checks exactly those and
-    writes the report; pip searches the ranges itself only when uv is
-    unavailable or pip rejects uv's choice.
+    ``request`` is ``(targets, specs, fixed, floors, dropped_caps, free)``:
+    packages that may move within their range, extra requirement specs, the
+    names ``specs`` pin, the packages a group repair may move up as far as
+    the solve needs, the broken caps the solve leaves unenforced, and the
+    packages a last-resort repair may also move down.  With ``uv``, uv
+    chooses the versions (keeping every floor and free package it can) and
+    pip checks exactly those and writes the report; pip searches the ranges
+    itself only when uv is unavailable or pip rejects uv's choice.  pip's
+    ``--upgrade`` moves every named package to its newest release, so floors
+    and free packages are never named to pip: the ones uv moved reach it as
+    exact pins, the rest as constraints, and a request with free packages
+    has no pip-only answer at all.
     """
-    targets, specs, fixed = request
+    targets, specs, fixed, floors, dropped, free = request
     requirements = [*installed.specs(targets), *specs]
-    constraints = installed.constraints(targets, fixed)
+    loose = set(floors) | set(free)
     if uv is not None:
         try:
             planned = _uv_versions(
-                uv, prefix, (requirements, constraints, targets), hooks
+                uv,
+                prefix,
+                (
+                    [*installed.specs(targets, floors, free), *specs],
+                    installed.constraints(targets, set(fixed) | loose, dropped),
+                    targets,
+                ),
+                hooks,
             )
         except UnsolvableError:
             planned = None  # pip is authoritative, including for private indexes.
         if planned is not None:
+            moved = {name for name in planned if name in loose}
             try:
                 return _pip_solve(
                     prefix,
                     [*requirements, *_pinned_choice(targets, installed, planned)],
-                    constraints,
+                    installed.constraints(targets, set(fixed) | moved, dropped),
                     hooks,
                 )
             except UnsolvableError:
                 pass
-    return _pip_solve(prefix, requirements, constraints, hooks)
+    if free:
+        raise UnsolvableError("pip cannot search for a plan that moves packages down.")
+    return _pip_solve(
+        prefix, requirements, installed.constraints(targets, fixed, dropped), hooks
+    )
 
 
 def _split_rebuilt(found, inventory):
@@ -4645,31 +5244,96 @@ def _plan_pins(report):
 def _repair_side(option, options):
     """Name what one of several repair options updates, for its step label.
 
-    A version conflict can be repaired from either side; without this the
-    two solves log identical lines.
+    A version conflict can be repaired from either side, and a group solve
+    is retried alone; without this the solves log identical lines.
     """
     if len(options) < 2:
         return ""
     moves = ", ".join(f"{name} to {version}" for _, (name, version) in option.packages)
-    return f" · update {moves}"
+    label = f" · update {moves}" if moves else ""
+    if option.fixed and not option.packages:
+        names = ", ".join(requirement_name(spec) or spec for spec in option.specs)
+        label = f" · moving {names} down"
+    if option.relaxed:
+        label += " · allowing downgrades"
+    elif moves and not option.grouped and any(other.grouped for other in options):
+        label += " · alone"
+    return label
 
 
-def _grow_plan(solve, base, units):
+def _moved_between(before, after):
+    """Name the packages whose planned version differs between two reports."""
+    previous = {
+        canonicalize_name(str((item.get("metadata") or {}).get("name"))): str(
+            (item.get("metadata") or {}).get("version")
+        )
+        for item in before.get("install") or []
+    }
+    moved = set()
+    for item in after.get("install") or []:
+        metadata = item.get("metadata") or {}
+        normalized = canonicalize_name(str(metadata.get("name")))
+        if previous.get(normalized) != str(metadata.get("version")):
+            moved.add(normalized)
+    return moved
+
+
+def _moved_down(report, inventory, names):
+    """Name the packages among ``names`` the report plans below installed."""
+    # packaging is importable: planning already parsed every requirement.
+    from packaging.version import (  # pylint: disable=import-outside-toplevel
+        InvalidVersion,
+        Version,
+    )
+
+    down = set()
+    for item in report.get("install") or []:
+        metadata = item.get("metadata") or {}
+        normalized = canonicalize_name(str(metadata.get("name")))
+        if normalized not in names:
+            continue
+        try:
+            planned = Version(str(metadata.get("version")))
+            installed = Version(str(inventory[normalized].get("version") or ""))
+        except (InvalidVersion, KeyError):
+            continue
+        if planned < installed:
+            down.add(normalized)
+    return down
+
+
+def _grow_plan(
+    solve,
+    base,
+    units,
+    group=frozenset(),
+    dropped=frozenset(),
+    inventory=None,
+    keep_up=frozenset(),
+):
     """Solve the selections, then add each unit that fits around that plan.
 
     ``solve(request, label)`` returns pip's report for a ``(targets, specs,
-    fixed)`` request.  ``base`` holds the selections that can always stay as
-    installed.  Each unit ``(key, label, [RepairOption])`` is then tried with
-    everything planned so far pinned, so the solve searches only that unit's
-    own versions and rejects an impossible one quickly.  A unit that did not
-    fit is tried again after a later unit changed the plan (fastapi-cli fits
-    only once typer has moved).  Returns ``(report, kept options, keys of
-    units that did not fit)``.
+    fixed, floors, dropped_caps, free)`` request.  ``base`` holds the
+    selections that can always stay as installed.  Each unit ``(key, label,
+    [RepairOption])`` is then tried with everything planned so far pinned,
+    so the solve searches only that unit's own versions and rejects an
+    impossible one quickly; a grouped option also floors every package in
+    ``group`` that the plan has not pinned, so packages tied to the repaired
+    one (an exporter pinned to its SDK's minor version) move with it, with
+    ``dropped`` caps left unenforced; a relaxed option frees those packages
+    to move down too, except the ``keep_up`` selections, and records in the
+    kept option which ones did (judged against ``inventory``).  A unit that
+    did not fit is tried again after a later unit changed the plan
+    (fastapi-cli fits only once typer has moved).  Returns ``(report, kept
+    options, keys of units that did not fit)``; a kept option tags every
+    package its solve moved with its reason.
     """
     report = {"install": []}
     if base:
         report = solve(
-            (base, [], ()), f"Solving {count_label(len(base), 'selected package')}"
+            (base, [], (), frozenset(), frozenset(), frozenset()),
+            f"Solving {count_label(len(base), 'selected package')}",
         )
     kept = []
     pending = list(enumerate(units, 1))
@@ -4678,16 +5342,33 @@ def _grow_plan(solve, base, units):
         failed = []
         for position, (key, label, options) in pending:
             for option in options:
-                pins, fixed = _plan_pins(report)
+                request = _unit_request(option, report, group, dropped, keep_up)
+                free = request[5]
                 try:
-                    report = solve(
-                        (dict(option.packages), [*pins, *option.specs], fixed),
+                    grown = solve(
+                        request,
                         f"[{position}/{len(units)}] {label}"
                         f"{_repair_side(option, options)}{retry}",
                     )
                 except UnsolvableError:
                     continue
-                kept.append(option)
+                reason = key[2]
+                tags = dict(option.tags)
+                moved = _moved_between(report, grown)
+                if reason is not None:
+                    for name in moved - set(tags):
+                        tags[name] = reason
+                downgraded = frozenset()
+                if option.relaxed:
+                    downgraded = frozenset(
+                        _moved_down(grown, inventory or {}, moved & free)
+                    )
+                    for name in downgraded:
+                        tags[name] = f"{tags[name]}; moved down to fit"
+                kept.append(
+                    dataclasses.replace(option, tags=tags, downgraded=downgraded)
+                )
+                report = grown
                 break
             else:
                 failed.append((position, (key, label, options)))
@@ -4695,38 +5376,276 @@ def _grow_plan(solve, base, units):
             break
         pending = failed
         retry = " (retry after the plan changed)"
-    return report, kept, [key for _, (key, _label, _options) in pending]
+    return report, kept, [key for _, (key, *_rest) in pending]
 
 
-def _resolver_units(installed, found, selected, repairable):
-    """Build the units the plan grows by: repairs first, then selections.
+def _unit_request(option, report, group, dropped, keep_up):
+    """Build the solve request for ``option`` around the plan in ``report``.
 
-    ``repairable`` is ``(repair units, unrepairable)`` from repair_units;
-    ``found`` maps every candidate to its newest wheel.  A repair option is
-    usable only when each package it moves has a newer wheel of the same build.
-    Returns ``(base targets, units, exposure, unrepairable)``.
+    Everything the report plans is pinned at its planned version; a grouped
+    option floors the rest of ``group``, and a relaxed one frees those (not
+    the ``keep_up`` selections) to move down as well.
     """
-    units = repairable[0]
-    unrepairable = list(repairable[1])
-    exposure = installed.exposure(selected)
+    pins, fixed = _plan_pins(report)
+    targets = dict(option.packages)
+    floors = free = frozenset()
+    if option.grouped:
+        floors = group - set(targets) - fixed - option.fixed
+    if option.relaxed:
+        floors, free = floors & keep_up, floors - keep_up
+    return (
+        targets,
+        [*pins, *option.specs],
+        fixed | option.fixed,
+        floors,
+        dropped if option.grouped else frozenset(),
+        free,
+    )
+
+
+def _removal_proofs(solve, units, failed, group, dropped, keep_up):
+    """Solve each failed last-resort unit once more without the plan's pins.
+
+    A unit fails under the exact pins of everything planned before it, which
+    proves nothing about its holder.  Its relaxed option solved against an
+    empty plan is the freest request this planning allows: every updatable
+    package may move either way (selections only up), the holder's own caps
+    are dropped, everything else stays pinned.  Returns ``{holder: [moved
+    package names]}`` for the holders that solve this way; they are not
+    removed but repaired in a later round, once the other changes are
+    applied.  A holder whose freest request fails has no version choice the
+    updater may make, which is what a removal requires.
+    """
+    by_key = {key: (label, options) for key, label, options in units}
+    proofs = {}
+    for key in failed:
+        label, options = by_key[key]
+        if key[0] != "downgrade" or not options:
+            continue
+        request = _unit_request(options[-1], {"install": []}, group, dropped, keep_up)
+        try:
+            report = solve(request, f"{label} · without the other planned changes")
+        except UnsolvableError:
+            continue
+        proofs[key[1]] = sorted(
+            str((item.get("metadata") or {}).get("name"))
+            for item in report.get("install") or []
+        )
+    return proofs
+
+
+def _downgrade_problem(package, inventory, updatable):
+    """Return why ``package`` cannot be moved down to repair a conflict."""
+    if package not in updatable:
+        return "the updater may not replace it"
+    if "+" in str(inventory[package].get("version") or ""):
+        return "its installed build is not on the index"
+    return None
+
+
+def _downgrade_units(
+    installed,
+    found,
+    triage,
+    updatable,
+    selected,
+    unfixable,
+    owned=frozenset(),
+    capped=None,
+):
+    """Build one last-resort unit per holder the triage found no upgrade for.
+
+    The triage judged the holder by its newest release only, so the unit
+    first moves the holder itself up, with its tied packages free to move up
+    and then alone: pip may stop at an older release that accepts the
+    packages the newest one rejects.  Failing that, it moves every package
+    the holder's unrepairable requirements reject into the required range
+    at once, with everything else pinned, so the holder ends up whole.  A
+    ``selected`` package never moves down for this: such a unit keeps only
+    the holder's upgrades and its failure is reported, not taken as proof.
+    The last option is the same request relaxed: every other updatable
+    package may move either way (see _grow_plan), and it doubles as the
+    removal proof (_removal_proofs).  A holder with a requirement that
+    cannot be met even by a downgrade (a differently built package, or a
+    missing requirement the updater may not install) is recorded in
+    ``unfixable`` with every reason unless its own upgrade can still be
+    tried.  A package in ``owned`` (Conda's) is never replaced by pip and
+    never grounds for removing its holder: the holder's caps on it are
+    recorded in ``capped`` instead, for Conda to move it (see _conda_moves).
+    """
+    capped = {} if capped is None else capped
+    by_holder = {}
+    for holder, package, cause in triage.unrepairable:
+        by_holder.setdefault(holder, []).append((package, cause))
+    units = []
+    for holder, conflicts in sorted(by_holder.items()):
+        reasons = [
+            _conflict_text(installed.inventory, package, cause)
+            for package, cause in conflicts
+        ]
+        if holder in unfixable:
+            unfixable[holder].extend(reasons)
+            continue
+        blockers = []
+        specs, fixed, tags = [], set(), {}
+        conda_caps = {}
+        for (package, cause), reason in zip(conflicts, reasons):
+            if package in owned:
+                blockers.append(f"{reason} (Conda owns it)")
+                conda_caps[package] = str(cause.get("specifier", ""))
+                continue
+            problem = _downgrade_problem(package, installed.inventory, updatable)
+            if problem:
+                blockers.append(f"{reason} ({problem})")
+                continue
+            row = installed.inventory[package]
+            specs.append(f"{row['name']}{cause.get('specifier', '')}")
+            fixed.add(package)
+            tags[package] = f"{reason}; moved down to fit"
+        reason = "; ".join(blockers or reasons)
+        up = ()
+        if holder in found and holder in updatable:
+            up = ((holder, found[holder]),)
+        options = [
+            RepairOption(up, (), {holder: reason}, grouped=grouped)
+            for grouped in (True, False)
+            if up
+        ]
+        kind = "downgrade"
+        protected = sorted(
+            installed.inventory[package]["name"] for package in fixed & selected
+        )
+        if protected and not blockers:
+            kind = "repair"
+            reason += (
+                " (selected packages cannot move below their installed versions: "
+                + ", ".join(protected)
+                + ")"
+            )
+        elif not blockers:
+            options.append(RepairOption((), tuple(specs), tags, frozenset(fixed)))
+        if kind == "downgrade" and options:
+            # The freest request: the holder up (if it can move), the rejected
+            # packages into range (unless one may not move at all), and every
+            # other updatable package free to move either way.
+            down = not blockers
+            options.append(
+                RepairOption(
+                    up,
+                    tuple(specs) if down else (),
+                    {holder: reason, **(tags if down else {})},
+                    frozenset(fixed) if down else frozenset(),
+                    True,
+                    True,
+                )
+            )
+        if conda_caps and len(conda_caps) == len(blockers):
+            capped[holder] = conda_caps
+        if not options and kind == "downgrade":
+            if holder not in capped:
+                unfixable.setdefault(holder, []).extend(blockers or reasons)
+            continue
+        if options and not options[0].packages:
+            names = ", ".join(
+                installed.inventory[package]["name"] for package in sorted(fixed)
+            )
+            label = f"downgrade {names} to repair: {reason}"
+        else:
+            label = f"repair: {reason}"
+        units.append(((kind, holder, reason), label, options))
+    return units
+
+
+def _resolver_units(
+    installed,
+    found,
+    selected,
+    repairable,
+    triage,
+    updatable,
+    grouping=True,
+    hold=frozenset(),
+    owned=frozenset(),
+):
+    """Build the units the plan grows by: repairs, downgrades, then selections.
+
+    ``repairable`` is ``(repair units, blocked)`` from repair_units;
+    ``found`` maps every candidate to its newest wheel.  A repair option is
+    usable only when each package it moves has a newer wheel of the same
+    build and the triage did not pin it (a party to a conflict no upgrade
+    repairs stays where it is while the other conflicts are repaired); with
+    ``grouping`` each is tried with its tied packages free to move up first,
+    then alone, then with them free to move down as a last resort.  A
+    missing requirement whose package is in ``hold`` (its wheel was refused)
+    is only reported: nothing may install it, and that proves nothing about
+    its holder.  Returns ``(base targets, units, exposure, unfixable,
+    parties, capped)``, where ``unfixable`` maps each holder with a
+    requirement no upgrade or downgrade can satisfy to the reasons,
+    ``parties`` each package of a repairable conflict to that conflict, and
+    ``capped`` each holder whose only blockers are Conda-``owned`` packages
+    to its caps on them (``{package: specifier}``).
+    """
+    repair_units, blocked = repairable
+    unfixable = {}
+    for holder, reason in blocked:
+        unfixable.setdefault(holder, []).append(reason)
+    unrepairable = {(holder, package) for holder, package, _ in triage.unrepairable}
     grown = []
-    for reason, options in units:
+    parties = {}
+    for unit in repair_units:
+        if (unit.holder, unit.package) in unrepairable:
+            continue  # the triage found no upgrade; a downgrade unit follows
         usable = [
             RepairOption(
                 tuple((name, found[name]) for name in option.packages),
                 option.specs,
                 option.tags,
+                option.fixed,
+                grouped,
+                relaxed,
             )
-            for option in options
-            if all(name in found for name in option.packages)
+            for option in unit.options
+            if all(
+                name in found and name not in triage.pinned for name in option.packages
+            )
+            for grouped, relaxed in (
+                ((True, False), (False, False), (True, True))
+                if grouping
+                else ((False, False),)
+            )
         ]
-        if usable:
-            grown.append((("repair", reason), f"repair: {reason}", usable))
+        kind = "missing" if unit.package is None else "repair"
+        refused = sorted(
+            name for option in usable for name in option.tags if name in hold
+        )
+        if refused:
+            reason = (
+                f"{unit.reason} ({', '.join(refused)} stays uninstalled: its wheel "
+                "was refused)"
+            )
+            grown.append((("repair", unit.holder, reason), f"repair: {reason}", []))
+        elif usable:
+            grown.append(
+                ((kind, unit.holder, unit.reason), f"repair: {unit.reason}", usable)
+            )
+            for name in (unit.holder, unit.package):
+                if name is not None:
+                    parties.setdefault(name, unit.reason)
         else:
-            unrepairable.append(reason)
+            # Nothing to solve with: reported, never taken as proof of anything.
+            grown.append(
+                (("repair", unit.holder, unit.reason), f"repair: {unit.reason}", [])
+            )
+    capped = {}
+    grown.extend(
+        _downgrade_units(
+            installed, found, triage, updatable, set(selected), unfixable, owned, capped
+        )
+    )
+    exposure = installed.exposure(selected)
     grown.extend(
         (
-            ("selection", normalized),
+            ("selection", normalized, None),
             (
                 f"{selected[normalized][0]} -> {selected[normalized][1]}, "
                 "which touches an existing conflict"
@@ -4736,7 +5655,7 @@ def _resolver_units(installed, found, selected, repairable):
         for normalized in sorted(exposure)
     )
     base = {name: target for name, target in selected.items() if name not in exposure}
-    return base, grown, exposure, unrepairable
+    return base, grown, exposure, unfixable, parties, capped
 
 
 def _repair_candidates(repairable, inventory, wanted):
@@ -4746,8 +5665,8 @@ def _repair_candidates(repairable, inventory, wanted):
         for normalized in sorted(
             {
                 package
-                for _, options in repairable[0]
-                for option in options
+                for unit in repairable[0]
+                for option in unit.options
                 for package in option.packages
             }
             - wanted
@@ -4755,25 +5674,158 @@ def _repair_candidates(repairable, inventory, wanted):
     ]
 
 
-def _outcome(found, selected, grown, exposure):
-    """Assemble the ResolverOutcome from what the plan kept and dropped.
+def _planned_edges(report, installed):
+    """Pair each planned package with the names its planned version requires.
 
-    ``found`` is ``(newest_requires, rebuilt selections)`` from the wheel search;
-    ``grown`` is ``(report, kept options, failed unit keys, unrepairable)``.
+    Only applicable requirements count, as for the installed edges: a marker
+    is evaluated for this environment, and an extra-gated requirement only
+    when some package, installed or planned, requests that extra.
     """
-    newest_requires, rebuilt = found
-    report, kept, failed, unrepairable = grown
+    rows = [
+        {
+            "name": str(metadata.get("name")),
+            "version": str(metadata.get("version")),
+            "requires": list(metadata.get("requires_dist") or []),
+        }
+        for item in report.get("install") or []
+        for metadata in ((item.get("metadata") or {}),)
+    ]
+    try:
+        parsed = _parsed_requirement_sources(
+            {**installed.foreign, **installed.inventory}, rows
+        )
+    except UpdaterError:
+        # A planned requirement that cannot be read only loses its edges: the
+        # packages it brings along keep their option's tag.  The plan itself
+        # was already verified by pip.
+        return []
+    if parsed is None:
+        return []
+    extras = _active_extras(parsed, installed.marker_env)
+    planned = {canonicalize_name(row["name"]) for row in rows}
+    return [
+        (owner, canonicalize_name(requirement.name))
+        for name, _version, requirements in parsed
+        for owner in (canonicalize_name(str(name)),)
+        if owner in planned
+        for requirement in requirements
+        if _marker_applies(requirement, extras.get(owner, set()), installed.marker_env)
+    ]
+
+
+def _attributed(installed, kept, parties, report):
+    """Explain each package a solve moved by the package or conflict behind it.
+
+    The first group solve moves every package whose installed requirements
+    the floors no longer allow, whatever conflict that solve was labeled
+    with, and a missing requirement's install brings its own dependencies
+    along.  Packages an option moves on purpose (its targets, downgrades,
+    and the requirements it installs) keep their own tags; a moved package
+    that is a party to a repairable conflict is explained by that conflict;
+    every other moved package by the nearest of those it is tied to through
+    an applicable requirement, in the installed or the planned versions (an
+    exporter pinned to its SDK, the transport that exporter's new release
+    adds, the certifi that requests brings).
+    """
     repairs = {}
+    own = set()
     for option in kept:
         repairs.update(option.tags)
+        own.update(dict(option.packages))
+        own.update(option.fixed)
+        own.update(option.downgraded)
+        own.update(canonicalize_name(requirement_name(spec)) for spec in option.specs)
+    moved = set(repairs)
+    names = {
+        canonicalize_name(str(metadata.get("name"))): str(metadata.get("name"))
+        for item in report.get("install") or []
+        for metadata in ((item.get("metadata") or {}),)
+    }
+    neighbors = {}
+    for owner, dependency in [
+        *(
+            (owner, canonicalize_name(requirement.name))
+            for owner, requirement in installed.edges
+        ),
+        *_planned_edges(report, installed),
+    ]:
+        if owner in moved and dependency in moved:
+            neighbors.setdefault(owner, set()).add(dependency)
+            neighbors.setdefault(dependency, set()).add(owner)
+    seeds = moved & (own | set(parties))
+    explained = {name: parties[name] for name in seeds - own}
+    pending = sorted(seeds)
+    while pending:
+        name = pending.pop(0)
+        for neighbor in sorted(neighbors.get(name, ())):
+            if neighbor in explained or neighbor in own:
+                continue
+            if name in seeds:
+                display = names.get(name) or installed.row(name)["name"]
+                explained[neighbor] = (
+                    f"moves with {display}: {parties.get(name) or repairs[name]}"
+                )
+            else:
+                explained[neighbor] = explained[name]
+            pending.append(neighbor)
+    repairs.update(explained)
+    return repairs
+
+
+def _outcome(
+    found, selected, grown, exposure, unfixable, repairs, proofs=None, capped=None
+):
+    """Assemble the ResolverOutcome from what the plan kept and dropped.
+
+    ``found`` is ``(newest_requires, rebuilt selections)`` from the wheel
+    search; ``grown`` is ``(report, kept options, failed unit keys)`` and
+    ``repairs`` the attributed reason for every package they move.  A failed
+    missing-requirement or last-resort unit proves its holder cannot be made
+    whole, so the holder joins ``unfixable``, unless ``proofs`` (see
+    _removal_proofs) shows a free solve that does make it whole: then it is
+    only reported, like a failed upgrade repair, since nothing proves a
+    later release cannot fit.  ``capped`` holds the holders only a
+    Conda-owned package fails (see _run_resolver); their units' failures
+    are neither reported here nor taken as proof: Conda is asked to move
+    the package instead.
+    """
+    newest_requires, rebuilt = found
+    capped = capped or {}
+    report, kept, failed = grown
+    downgrades = {}
+    for option in kept:
+        downgrades.update(
+            {name: option.tags[name] for name in option.fixed | option.downgraded}
+        )
+    unrepairable = []
+    remaining = {holder: list(reasons) for holder, reasons in unfixable.items()}
+    for kind, ident, reason in failed:
+        if kind == "repair":
+            unrepairable.append(reason)
+        elif kind == "downgrade" and ident in capped:
+            continue
+        elif kind == "downgrade" and ident in (proofs or {}):
+            unrepairable.append(
+                f"{reason} (a repair exists by moving "
+                + ", ".join(proofs[ident])
+                + "; it does not fit with the other planned changes and is tried "
+                "again after this update)"
+            )
+        elif kind in {"missing", "downgrade"}:
+            remaining.setdefault(ident, []).append(reason)
     return ResolverOutcome(
         targets=selected,
         newest_requires=newest_requires,
         report=report,
-        set_aside={key: exposure[key] for kind, key in failed if kind == "selection"},
+        set_aside={
+            ident: exposure[ident] for kind, ident, _ in failed if kind == "selection"
+        },
         rebuilt=rebuilt,
         repairs=repairs,
-        unrepairable=unrepairable + [key for kind, key in failed if kind == "repair"],
+        downgrades=downgrades,
+        unrepairable=unrepairable,
+        unfixable=remaining,
+        conda_capped=capped,
     )
 
 
@@ -4786,9 +5838,10 @@ def _newest_wheels(prefix, names, inventory, repairable, hooks):
     targets.
     """
     wanted = {canonicalize_name(name) for name in names}
-    found, newest_requires = _compatible_wheel_targets(
-        prefix, [*names, *_repair_candidates(repairable, inventory, wanted)], hooks
-    )
+    candidates = [*names, *_repair_candidates(repairable, inventory, wanted)]
+    if not candidates:
+        return {}, ({}, {}), {}
+    found, newest_requires = _compatible_wheel_targets(prefix, candidates, hooks)
     found, rebuilt = _split_rebuilt(found, inventory)
     return (
         found,
@@ -4814,14 +5867,47 @@ def _logged_solve(progress, label, solve):
     return report
 
 
-def _run_resolver(prefix, names, installed, repairable):
+def _triage(prefix, installed, found, newest_requires, updatable, uv, progress):
+    """Classify the existing conflicts, logging the step on the dashboard.
+
+    Without uv there is no quick way to ask the index which versions fit, so
+    every conflict counts as repairable and the plan grows one package at a
+    time; resolve_update_plan announces that limitation.
+    """
+    if uv is None or not installed.broken:
+        return ConflictTriage(
+            (), frozenset(installed.inventory) - updatable, frozenset()
+        )
+    hooks = StreamHooks(progress.watch, progress.note, progress.tick)
+    conflicts = sum(len(causes) for causes in installed.broken.values())
+    progress.begin_step(
+        f"Checking which of {count_label(conflicts, 'conflict')} an update can repair"
+    )
+    triage = installed.classify(
+        updatable,
+        found,
+        newest_requires,
+        lambda spec, version: _uv_candidate(uv, prefix, spec, version, hooks),
+    )
+    progress.end_step(
+        f"{count_label(len(triage.unrepairable), 'conflict')} beyond any update"
+    )
+    return triage
+
+
+def _run_resolver(
+    prefix, names, installed, repairable, updatable, hold=frozenset(), owned=frozenset()
+):
     """Find each candidate's newest wheel, then grow the joint plan with pip.
 
     The plan starts from the selections that can always stay as installed.
-    Repairs of existing conflicts (``repairable``, from repair_units) and then
-    the selections that touch an existing conflict are tried one at a time
-    around that plan, each kept only if pip can solve it with everything kept
-    before it.  Every solve is logged as a step, so a long one stays visible.
+    Repairs of existing conflicts (``repairable``, from repair_units), the
+    downgrades left for conflicts no upgrade repairs, and then the selections
+    that touch an existing conflict are tried one at a time around that plan,
+    each kept only if pip can solve it with everything kept before it.  Every
+    solve is logged as a step, so a long one stays visible.  A holder only a
+    Conda-``owned`` package fails, with no pip-side repair left (its own
+    upgrade failed, or it has none), is handed back as ``conda_capped``.
     """
     progress = ResolverProgress(names)
     progress.phase = "Discovering compatible wheels"
@@ -4832,38 +5918,195 @@ def _run_resolver(prefix, names, installed, repairable):
         found, searched, selected = _newest_wheels(
             prefix, names, installed.inventory, repairable, hooks
         )
-        base, units, exposure, unrepairable = _resolver_units(
-            installed, found, selected, repairable
+        triage = _triage(prefix, installed, found, searched[0], updatable, uv, progress)
+        base, units, exposure, unfixable, parties, capped = _resolver_units(
+            installed,
+            found,
+            selected,
+            repairable,
+            triage,
+            updatable,
+            uv is not None,
+            hold,
+            owned,
         )
         grown = ({"install": []}, [], [])
+        proofs = {}
         if base or units:
             progress.phase = "Resolving dependencies"
-            grown = _grow_plan(
-                lambda request, label: _logged_solve(
+
+            def solve(request, label):
+                return _logged_solve(
                     progress,
                     label,
                     lambda: _solve(prefix, request, installed, hooks, uv),
-                ),
+                )
+
+            group = (
+                frozenset(installed.inventory) - triage.pinned if uv else frozenset()
+            )
+            keep_up = frozenset(selected)
+            grown = _grow_plan(
+                solve,
                 base,
                 units,
+                group,
+                triage.dropped_caps,
+                installed.inventory,
+                keep_up,
+            )
+            proofs = _removal_proofs(
+                solve, units, grown[2], group, triage.dropped_caps, keep_up
             )
     except BaseException:
         progress.finish(False)
         raise
     progress.finish(True)
-    return _outcome(searched, selected, (*grown, unrepairable), exposure)
+    # A capped holder whose own upgrade fit (its unit was kept) is repaired by
+    # pip; one with a free solve ahead (proofs) waits for the next round.
+    tried = {key[1] for key, _, _ in units if key[0] == "downgrade"}
+    failed = {key[1] for key in grown[2] if key[0] == "downgrade"}
+    pending = {
+        holder: caps
+        for holder, caps in capped.items()
+        if (holder not in tried or holder in failed) and holder not in proofs
+    }
+    return _outcome(
+        searched,
+        selected,
+        grown,
+        exposure,
+        unfixable,
+        _attributed(installed, grown[1], parties, grown[0]),
+        proofs,
+        pending,
+    )
 
 
 def _announce_unrepairable(outcome):
-    """Name the existing conflicts no update the updater may make repairs."""
+    """Name the existing conflicts this plan leaves as they are."""
     if outcome.unrepairable:
         announce(
             "INFO",
             "These conflicts already existed, and no update of the packages "
-            "involved repairs them (the updater never downgrades):",
+            "involved repairs them:",
         )
         for reason in sorted(set(outcome.unrepairable)):
             print(f"      {reason}", flush=True)
+
+
+def _announce_removals(plan):
+    """Say which packages the plan removes, and why nothing else fits."""
+    for item in sorted(plan, key=lambda value: value["name"].lower()):
+        if item.get("remove"):
+            announce(
+                "INFO",
+                f"Removing {item['name']} {item['current_version']}: no version "
+                f"choice satisfies its requirements ({item['remove']})",
+            )
+
+
+def removal_problem(normalized, inventory, ownership, prefix, dependents, shared):
+    """Return why ``normalized`` must not be uninstalled, or None.
+
+    pip uninstalls by RECORD, so the same metadata contract as a replacement
+    is required, except that a direct-URL install is removable: nothing has
+    to be reproduced.  A package another installed package requires, or one
+    whose RECORD claims a file a staying package also claims, stays.
+    """
+    installed = inventory.get(normalized)
+    if installed is None:
+        return "it is not installed"
+    if normalized in PROTECTED_BOOTSTRAP_PACKAGES:
+        return "bootstrap tooling is protected"
+    if normalized in ownership["distributions"]:
+        return "owned by conda"
+    if installed.get("installer") not in UPDATABLE_INSTALLERS:
+        return f"installer is {installed.get('installer') or 'unknown'}"
+    metadata_path = Path(installed.get("metadata_path", ""))
+    if not _is_within(metadata_path, prefix):
+        return "outside the selected environment"
+    if not str(metadata_path).endswith(".dist-info"):
+        return "legacy package metadata has no supported wheel uninstall contract"
+    legacy_scripts = metadata_path / "scripts"
+    if legacy_scripts.is_dir() or legacy_scripts.is_symlink():
+        return "legacy script metadata can remove files outside its RECORD"
+    if not (metadata_path / "RECORD").is_file():
+        return "installed RECORD is missing"
+    needed_by = sorted(dependents.get(normalized, ()))
+    if needed_by:
+        return f"{', '.join(needed_by)} still require it"
+    sharers = sorted(
+        {
+            claimant
+            for claimants in shared.values()
+            if normalized in claimants
+            for claimant in claimants
+        }
+        - {normalized}
+    )
+    if sharers:
+        return f"it shares installed files with {', '.join(sharers)}"
+    return None
+
+
+def _removable(prefix, installed, ownership, unfixable, hold=frozenset()):
+    """Split packages no version choice can satisfy into removals and keeps.
+
+    Returns ``({normalized: reason}, [explanations])``: the packages the plan
+    removes with every unmet requirement as the reason, and one line per
+    package that stays, saying why it cannot be removed.  A package is still
+    required when any applicable requirement names it (``installed.edges``:
+    an activated extra and a user-site package count), a held package stays
+    as it is, and a user-site holder always stays: the updater never
+    modifies the user site.
+    """
+    if not unfixable:
+        return {}, []
+    inventory = installed.inventory
+    dependents = {}
+    for owner, requirement in installed.edges:
+        dependents.setdefault(canonicalize_name(requirement.name), set()).add(owner)
+    _, _, shared = installed_file_owners(prefix, inventory)
+    removals, kept = {}, []
+    for normalized, reasons in sorted(unfixable.items()):
+        reason = "; ".join(dict.fromkeys(reasons))
+        if normalized in installed.foreign:
+            name = installed.foreign[normalized]["name"]
+            kept.append(
+                f"{reason} ({name} lives in the user site, which the updater "
+                "never modifies)"
+            )
+            continue
+        if normalized in hold:
+            kept.append(
+                f"{reason} ({inventory[normalized]['name']} is held as installed)"
+            )
+            continue
+        problem = removal_problem(
+            normalized, inventory, ownership, prefix, dependents, shared
+        )
+        if problem:
+            name = inventory[normalized]["name"]
+            kept.append(f"{reason} ({name} cannot be removed: {problem})")
+        else:
+            removals[normalized] = reason
+    return removals, kept
+
+
+def _removal_item(row, reason):
+    """Return the plan entry that uninstalls ``row``."""
+    return {
+        "name": str(row["name"]),
+        "current_version": str(row.get("version") or ""),
+        "version": None,
+        "sha256": None,
+        "url": None,
+        "filename": None,
+        "requested": False,
+        "requires": [],
+        "remove": reason,
+    }
 
 
 def _announce_rebuilt(outcome):
@@ -4890,42 +6133,431 @@ def _announce_set_aside(outcome):
         )
 
 
-def resolve_update_plan(prefix, names, *, explain=True):
+# Conda refreshes these on every install (``conda config --show
+# aggressive_update_packages``); a move that also touches them is still a
+# move of one package.
+CONDA_AGGRESSIVE_UPDATES = frozenset({"ca-certificates", "certifi", "openssl"})
+# The updater runs the environment's pip; Conda is never asked to move it.
+CONDA_NEVER_MOVED = frozenset({"pip", "python"})
+MAX_CONDA_CANDIDATES = 5
+
+
+def _conda_channel_base(record):
+    """Return the record's channel without its subdir, when it is a plain URL."""
+    channel = record.get("channel")
+    if (
+        not isinstance(channel, str)
+        or not CONDA_CHANNEL_URL.fullmatch(channel)
+        or "/t/" in channel
+    ):
+        return None
+    subdir = record.get("subdir")
+    if isinstance(subdir, str) and subdir and channel.endswith("/" + subdir):
+        channel = channel[: -len(subdir) - 1]
+    return channel
+
+
+def _conda_candidates(record, specifier):
+    """Return the versions Conda offers for ``record`` inside ``specifier``.
+
+    Newest first, the installed version left out.  The record's own channel
+    is searched when it is a plain URL, otherwise the configured channels.
+    """
+    # packaging is importable: the caller parsed every requirement with it.
+    from packaging.version import (  # pylint: disable=import-outside-toplevel
+        InvalidVersion,
+        Version,
+    )
+
+    command = [conda_executable(), "search", "--json"]
+    base = _conda_channel_base(record)
+    if base:
+        command += ["--override-channels", "-c", base]
+    result = run_command([*command, record["name"]], capture_output=True, timeout=300)
+    if result.returncode != 0:
+        return []
+    found = parse_json_output(result.stdout, f"searching Conda for {record['name']}")
+    entries = found.get(record["name"]) if isinstance(found, dict) else None
+    versions = {}
+    for entry in entries if isinstance(entries, list) else ():
+        raw = entry.get("version") if isinstance(entry, dict) else None
+        if not isinstance(raw, str) or raw == record["version"]:
+            continue
+        try:
+            parsed = Version(raw)
+        except InvalidVersion:
+            continue
+        if specifier.contains(parsed, prereleases=False):
+            versions[raw] = parsed
+    return sorted(versions, key=versions.get, reverse=True)
+
+
+def _conda_dry_run(prefix, specs, mode):
+    """Return the Conda package names a solve of ``specs`` would change, or None.
+
+    ``mode`` is ``--freeze-installed`` (Conda checks the dependencies against
+    the installed set) or ``--no-deps`` (only the named packages).  None
+    means Conda found no solution.
+    """
+    result = run_command(
+        [
+            conda_executable(),
+            "install",
+            "-p",
+            str(prefix),
+            "--dry-run",
+            "--json",
+            mode,
+            *specs,
+        ],
+        capture_output=True,
+        timeout=600,
+    )
+    if result.returncode != 0:
+        return None
+    report = parse_json_output(result.stdout, "reading Conda's dry run")
+    if not isinstance(report, dict) or not report.get("success"):
+        return None
+    actions = report.get("actions") or {}
+    return {
+        str(entry.get("name"))
+        for key in ("LINK", "UNLINK")
+        for entry in (actions.get(key) or [])
+        if isinstance(entry, dict)
+    }
+
+
+def conda_move_problem(prefix, spec, name):
+    """Return why Conda cannot move ``name`` to ``spec`` alone, or None.
+
+    Conda must find a solution with every other package frozen that changes
+    only the package (and the ones Conda refreshes anyway), and a solution
+    without dependencies that changes exactly the package: the first proves
+    the dependencies are satisfied, the second is what gets applied.
+    """
+    checked = _conda_dry_run(prefix, [spec], "--freeze-installed")
+    if checked is None:
+        return "Conda found no solution with the other packages frozen"
+    others = sorted(checked - {name} - CONDA_AGGRESSIVE_UPDATES)
+    if others:
+        return "it would also change " + ", ".join(others)
+    alone = _conda_dry_run(prefix, [spec], "--no-deps")
+    if alone != {name}:
+        return "Conda's plan for the package alone does not change exactly it"
+    return None
+
+
+def _conda_moves(prefix, installed, capped):
+    """Plan Conda moves for the Conda-owned packages pip packages cap.
+
+    ``capped`` is ResolverOutcome.conda_capped.  For each capped package the
+    newest Conda release inside every applicable installed requirement on it
+    that conda_move_problem accepts becomes a plan item (``conda`` is the
+    spec Conda installs).  Returns ``(items, kept)``, ``kept`` explaining
+    each package Conda cannot move; its holders stay as they are, never
+    removed: the cap is Conda's, not theirs.
+    """
+    # packaging is importable: load() parsed every requirement with it.
+    from packaging.specifiers import (  # pylint: disable=import-outside-toplevel
+        SpecifierSet,
+    )
+
+    by_package = {}
+    for holder, caps in capped.items():
+        for package in caps:
+            by_package.setdefault(package, []).append(holder)
+    items, kept = [], []
+    for package, holders in sorted(by_package.items()):
+        row = installed.inventory[package]
+        reason = "; ".join(
+            f"{installed.row(holder)['name']} {installed.row(holder)['version']} "
+            f"requires {row['name']}{capped[holder][package]}"
+            for holder in sorted(holders)
+        )
+        if package in CONDA_NEVER_MOVED:
+            kept.append(
+                f"{reason} (Conda owns {row['name']}; the updater never moves it)"
+            )
+            continue
+        record = conda_record_for_distribution(prefix, package)
+        if record is None:
+            kept.append(f"{reason} (Conda owns {row['name']}, but no record names it)")
+            continue
+        specifier = SpecifierSet(
+            ",".join(
+                str(requirement.specifier)
+                for _, requirement in installed.edges
+                if canonicalize_name(requirement.name) == package
+                and requirement.specifier
+            )
+        )
+        tried = []
+        chosen = None
+        for version in _conda_candidates(record, specifier)[:MAX_CONDA_CANDIDATES]:
+            tried.append(version)
+            if (
+                conda_move_problem(
+                    prefix, f"{record['name']}=={version}", record["name"]
+                )
+                is None
+            ):
+                chosen = version
+                break
+        if chosen is None:
+            kept.append(
+                f"{reason} (Conda owns {row['name']} and offers no release "
+                f"satisfying {specifier}"
+                + (f" that moves alone; tried {', '.join(tried)}" if tried else "")
+                + ")"
+            )
+            continue
+        items.append(
+            {
+                "name": str(row["name"]),
+                "current_version": str(row.get("version") or ""),
+                "version": chosen,
+                "sha256": None,
+                "url": None,
+                "filename": None,
+                "requested": False,
+                "requires": [],
+                "repair": f"{reason}; Conda owns {row['name']}",
+                "conda": f"{record['name']}=={chosen}",
+                "conda_name": str(record["name"]),
+            }
+        )
+    return items, kept
+
+
+def _announce_conda_moves(items):
+    """Say which Conda-owned packages Conda moves before pip is planned."""
+    for item in items:
+        announce(
+            "INFO",
+            f"Conda owns {item['name']}; Conda moves it {item['current_version']} -> "
+            f"{item['version']} first ({item['repair']}), then the rest is planned "
+            "again.",
+        )
+
+
+def _conda_revision(prefix):
+    """Return the environment's current Conda revision number."""
+    revisions = json_command(
+        [conda_executable(), "list", "-p", str(prefix), "--revisions", "--json"],
+        f"Reading Conda revisions of {prefix}",
+        timeout=300,
+    )
+    numbers = [
+        entry.get("rev")
+        for entry in (revisions if isinstance(revisions, list) else [])
+        if isinstance(entry, dict) and isinstance(entry.get("rev"), int)
+    ]
+    if not numbers:
+        raise UpdaterError(f"Conda listed no revisions for {prefix}.")
+    return max(numbers)
+
+
+def _conda_move_failures(prefix, items, baseline):
+    """Return what is wrong after Conda's move, or an empty list."""
+    problems = []
+    inventory = index_inventory(get_environment_inventory(prefix), prefix)
+    for item in items:
+        installed = str(
+            (inventory.get(canonicalize_name(item["name"])) or {}).get("version") or ""
+        )
+        if installed != item["version"]:
+            problems.append(
+                f"{item['name']} is {installed or 'missing'} instead of {item['version']}"
+            )
+    try:
+        preflight_health(prefix)
+    except UpdaterError as exc:
+        problems.append(str(exc))
+    worse = sorted(pip_check_report(prefix) - set(baseline["pip_broken"]))
+    problems.extend(f"new conflict: {line}" for line in worse)
+    return problems
+
+
+def apply_conda_moves(prefix, env_label, items):
+    """Let Conda move the packages in ``items``, verified before and after.
+
+    Each move is checked again under the environment lock (the Conda plan
+    must still change exactly that package), applied with ``--no-deps``
+    (what the check proved sufficient), and then verified: the versions, a
+    clean Conda health report, and no pip conflict that was not there
+    before.  Any failure reverts to the Conda revision taken just before.
+    """
+    with environment_lock(prefix):
+        recover_incomplete_transactions(prefix)
+        baseline = preflight_health(prefix)
+        for item in items:
+            problem = conda_move_problem(prefix, item["conda"], item["conda_name"])
+            if problem:
+                raise UpdaterError(
+                    f"Conda's plan for {item['name']} changed after confirmation "
+                    f"({problem}); nothing was modified."
+                )
+        revision = _conda_revision(prefix)
+        names = ", ".join(
+            f"{item['name']} {item['current_version']} -> {item['version']}"
+            for item in items
+        )
+        announce("INFO", f"Conda is moving {names} in '{env_label}'...")
+        result = run_command(
+            [
+                conda_executable(),
+                "install",
+                "-p",
+                str(prefix),
+                "--no-deps",
+                "--yes",
+                "--json",
+                *(item["conda"] for item in items),
+            ],
+            capture_output=True,
+            timeout=1800,
+        )
+        if result.returncode != 0:
+            raise command_failure(f"Conda moving {names}", result)
+        problems = _conda_move_failures(prefix, items, baseline)
+        if problems:
+            revert = run_command(
+                [
+                    conda_executable(),
+                    "install",
+                    "-p",
+                    str(prefix),
+                    "--revision",
+                    str(revision),
+                    "--yes",
+                    "--json",
+                ],
+                capture_output=True,
+                timeout=1800,
+            )
+            status = (
+                f"reverted to Conda revision {revision}"
+                if revert.returncode == 0
+                else f"the revert to Conda revision {revision} failed too:\n"
+                + (revert.stderr or revert.stdout or "").strip()
+            )
+            raise UpdaterError(
+                f"Conda's move of {names} left the environment worse ("
+                + "; ".join(problems)
+                + f"); {status}."
+            )
+        announce("OK", f"Conda moved {names}; Conda's files are intact.")
+
+
+MAX_REMOVAL_PASSES = 3
+
+
+def resolve_update_plan(prefix, names, *, explain=True, hold=frozenset()):
     """Resolve an update without mutation and enforce package ownership.
 
-    ``explain=False`` re-verifies a plan the user already saw explained, so
-    its holds, caps, and repairs are not printed a second time.
+    ``hold`` names packages that stay exactly as installed, whatever the
+    selection or a repair would do with them (their new wheels were refused
+    for the files they would overwrite).
+
+    Existing conflicts are repaired along with the selection: by updates
+    where a release fits, by downgrades where only an older release does,
+    and by removing a package nothing depends on whose requirements no
+    version choice can satisfy.  A removal lifts the caps that package held,
+    so the plan is resolved again without it until the removals settle.  A
+    requirement only a Conda-owned package fails is handed to Conda: the
+    plan then holds just that move (see _conda_moves), and the caller plans
+    pip again once Conda has made it.  ``explain=False`` re-verifies a plan
+    the user already saw explained, so its holds, caps, and repairs are not
+    printed a second time.
     """
-    if not names:
-        raise UpdaterError("No package names were selected.")
     for name in names:
         if not SAFE_PROJECT_NAME.fullmatch(name):
             raise UpdaterError(f"Unsafe project name in selection: {name!r}")
+    names = [name for name in names if canonicalize_name(name) not in hold]
 
     inventory = index_inventory(get_environment_inventory(prefix), prefix)
     ownership = load_conda_ownership(prefix)
     _check_selected_ownership(names, inventory, ownership, prefix)
-    installed = InstalledRequirements.load(inventory, marker_environment(prefix))
+    foreign, _shadowed = user_site_holders(prefix, inventory)
+    installed = InstalledRequirements.load(
+        inventory,
+        marker_environment(prefix),
+        foreign,
+        {name for name in hold if name not in inventory},
+    )
     updatable = {
         normalized
         for normalized, row in inventory.items()
-        if not _ownership_refusal(str(row.get("name")), inventory, ownership, prefix)
+        if normalized not in hold
+        and not _ownership_refusal(str(row.get("name")), inventory, ownership, prefix)
     }
-    repairable = installed.repair_units(
-        {canonicalize_name(name) for name in names},
-        updatable,
-        PROTECTED_BOOTSTRAP_PACKAGES | set(ownership["distributions"]),
-    )
-
-    outcome = _run_resolver(prefix, names, installed, repairable)
+    blocked = PROTECTED_BOOTSTRAP_PACKAGES | set(ownership["distributions"])
+    removals = {}
+    for passes_left in reversed(range(MAX_REMOVAL_PASSES)):
+        current = installed.without(removals) if removals else installed
+        repairable = current.repair_units(updatable - set(removals), blocked)
+        if not names and not removals and not repairable[0] and not repairable[1]:
+            return []
+        from_user_site = sorted(
+            {
+                current.foreign[unit.holder]["name"]
+                for unit in repairable[0]
+                if unit.holder in current.foreign
+            }
+        )
+        if explain and from_user_site and not removals:
+            announce(
+                "INFO",
+                "User-site packages outside this environment have unmet "
+                f"requirements ({', '.join(from_user_site)}); the missing ones "
+                "are installed here, since the user site is never modified.",
+            )
+        if explain and uv_resolver(prefix) is None and repairable[0]:
+            announce(
+                "INFO",
+                "uv is not installed, so conflicts that need several packages "
+                "to move together, or a downgrade, are not repaired.",
+            )
+        active = _unheld(names, removals)
+        outcome = _run_resolver(
+            prefix,
+            active,
+            current,
+            repairable,
+            updatable - set(removals),
+            hold,
+            ownership["distributions"],
+        )
+        moves, kept = _conda_moves(prefix, current, outcome.conda_capped)
+        if moves:
+            if explain:
+                _announce_conda_moves(moves)
+            return moves
+        found, more = _removable(prefix, current, ownership, outcome.unfixable, hold)
+        kept.extend(more)
+        new = {name: reason for name, reason in found.items() if name not in removals}
+        if new and not passes_left:
+            kept.extend(
+                f"{reason} ({current.inventory[name]['name']} was not removed: "
+                "the plan was resolved the most times it may be)"
+                for name, reason in sorted(new.items())
+            )
+        outcome = dataclasses.replace(
+            outcome, unrepairable=[*outcome.unrepairable, *kept]
+        )
+        if not new or not passes_left:
+            break
+        removals.update(new)
     raw_plan = report_install_items(
         outcome.report, "pip's install report did not contain an install list."
     )
     if explain:
-        _announce_missing_wheels(names, outcome)
+        _announce_missing_wheels(active, outcome)
         _announce_rebuilt(outcome)
         _announce_set_aside(outcome)
-    plan = _plan_from_report(raw_plan, inventory, ownership, prefix)
+    plan = _plan_from_report(
+        raw_plan, current.inventory, ownership, prefix, set(outcome.downgrades)
+    )
     for item in plan:
         normalized = canonicalize_name(item["name"])
         if (
@@ -4939,10 +6571,17 @@ def resolve_update_plan(prefix, names, *, explain=True):
         item["requested"] = normalized in outcome.targets
         if normalized in outcome.repairs:
             item["repair"] = outcome.repairs[normalized]
+        if normalized in outcome.downgrades:
+            item["downgrade"] = True
+    plan.extend(
+        _removal_item(inventory[normalized], reason)
+        for normalized, reason in sorted(removals.items())
+    )
     if explain:
         _announce_conflict_repairs(plan, installed.broken)
+        _announce_removals(plan)
         _announce_unrepairable(outcome)
-    _report_holds(prefix, outcome, plan, installed, explain=explain)
+    _report_holds(prefix, outcome, plan, current, explain=explain)
     return plan
 
 
@@ -5446,6 +7085,32 @@ def shared_file_report(prefix, plan):
         "groups": {key: len(paths) for key, paths in paths_by_group.items()},
         "details": details,
     }
+
+
+def shared_file_holds(report, plan):
+    """Name the planned packages whose new wheel cannot replace a shared file.
+
+    From shared_file_report's groups: a planned package that shares a file
+    with a package staying installed, while the copy on disk is a staying
+    package's recorded copy, would have its wheel refused once downloaded
+    (see _WheelOwnershipCheck._check_shared_copy), so holding it now spares
+    the download.  The one case that check allows, a new wheel shipping the
+    identical bytes, cannot be known before the download; the hold then
+    skips an update that would have fit.
+    """
+    planned = {canonicalize_name(item["name"]) for item in plan}
+    holds = {}
+    for group, detail in report["details"].items():
+        staying = set(group) - planned
+        kept = sorted(detail["on_disk"] & staying)
+        if not kept:
+            continue
+        for name in sorted(set(group) & planned):
+            holds[name] = (
+                f"its new wheel would replace a file {', '.join(kept)} shares "
+                "and currently provides"
+            )
+    return holds
 
 
 def _sharer_line(name, required_by):
@@ -6095,10 +7760,11 @@ class _WheelOwnershipCheck:
             whose = "the file is missing or unreadable"
         else:
             whose = "the copy on disk matches no installed package's recorded copy"
-        raise UpdaterError(
+        raise WheelRefusal(
             f"Updating {wheel['name']} would replace shared file {target}, but "
-            f"{whose}. Leave {wheel['name']}, and any selected update that "
-            "requires it, unchecked to keep that file intact."
+            f"{whose}; {wheel['name']} stays as installed to keep that file "
+            "intact.",
+            {normalized},
         )
 
     def check_stranded_shared_files(self):
@@ -6134,18 +7800,47 @@ class _WheelOwnershipCheck:
                 # recompiles it on import.
                 continue
             updating = ", ".join(sorted(missing))
-            raise UpdaterError(
+            raise WheelRefusal(
                 f"Updating {updating} would delete {target}, which "
                 f"{', '.join(sorted(claimants))} share. Each updated owner must "
-                "retain the identical shared file, regardless of installation order."
+                "retain the identical shared file, regardless of installation order.",
+                missing,
             )
+
+
+def _collision_holds(collisions, plan):
+    """Name the plan's packages to leave alone so the collisions disappear.
+
+    An installed package whose new wheel collides is held itself.  A new
+    dependency that collides is held through the selections that pull it in;
+    when no selection does (a repair needs it), it is held itself, which
+    keeps it uninstalled (see InstalledRequirements.constraints) while its
+    dependents may still settle on a release that does not need it.
+    """
+    items = {canonicalize_name(item["name"]): item for item in plan}
+    reverse_requirements = _reverse_requirements(plan)
+    holds = set()
+    for updating, _ in collisions:
+        normalized = canonicalize_name(updating)
+        item = items.get(normalized, {})
+        causes = set()
+        if "current_version" in item and item.get("current_version") is None:
+            causes = {
+                canonicalize_name(name)
+                for name in _selected_causes(normalized, reverse_requirements, items)
+            }
+        holds.update(causes or {normalized})
+    return holds
 
 
 def _check_wheel_ownership(prefix, plan, new_wheels, inventory, ownership):
     check = _WheelOwnershipCheck(prefix, plan, new_wheels, inventory, ownership)
     collisions = check.claim_targets(new_wheels)
     if collisions:
-        raise UpdaterError(explain_owner_collisions(prefix, collisions, plan))
+        raise WheelRefusal(
+            explain_owner_collisions(prefix, collisions, plan),
+            _collision_holds(collisions, plan),
+        )
     check.check_stranded_shared_files()
 
 
@@ -6228,16 +7923,22 @@ def environment_lock(prefix):
         os.close(fd)
 
 
-def _verify_transaction_result(prefix, versions, baseline, failures):
+def _verify_transaction_result(prefix, versions, baseline, failures, removed=()):
     """Prove the environment holds ``versions`` and is no less healthy than before.
 
     Every package in ``versions`` must be installed by pip at exactly that
-    version.  Only *new* ``pip check`` conflicts fail: one that already existed
-    is not caused by the transaction, and may even be resolved by it.  Conda's
-    records and health report must be unchanged.  ``failures`` gives the
-    messages for a new conflict, changed Conda records and changed Conda health.
+    version, and none of ``removed`` may remain.  Only *new* ``pip check``
+    conflicts fail: one that already existed is not caused by the
+    transaction, and may even be resolved by it.  Conda's records and health
+    report must be unchanged.  ``failures`` gives the messages for a new
+    conflict, changed Conda records and changed Conda health.
     """
     inventory = index_inventory(get_environment_inventory(prefix), prefix)
+    for name in removed:
+        if canonicalize_name(name) in inventory:
+            raise UpdaterError(
+                f"Postflight: {name} is still installed after its removal."
+            )
     for name, version in versions.items():
         normalized = canonicalize_name(name)
         item = inventory.get(normalized)
@@ -6707,10 +8408,15 @@ def prepare_transaction(prefix, plan, baseline):
             else:
                 new_only.append(item["name"])
 
+        installs = [item for item in plan if not item.get("remove")]
+        removed = {
+            item["name"]: item["current_version"] for item in plan if item.get("remove")
+        }
         new_wheels = _download_new_wheels(
-            prefix, plan, transaction_dir, inventory, ownership
+            prefix, installs, transaction_dir, inventory, ownership
         )
         owners, _, shared = installed_file_owners(prefix, inventory)
+        # A removed package's files are saved too, so a rollback restores it.
         planned = {canonicalize_name(item["name"]) for item in plan}
         targets = {
             target for wheel in new_wheels.values() for target in wheel["targets"]
@@ -6733,7 +8439,8 @@ def prepare_transaction(prefix, plan, baseline):
             "baseline": baseline,
             "old_versions": old_versions,
             "new_only": new_only,
-            "new_versions": {item["name"]: item["version"] for item in plan},
+            "new_versions": {item["name"]: item["version"] for item in installs},
+            "removed": removed,
             "plan_signature": plan_signature(plan),
             "environment_identity": _environment_identity(prefix),
             "inventory": _inventory_state(inventory),
@@ -6741,7 +8448,7 @@ def prepare_transaction(prefix, plan, baseline):
             "directories": directories,
             "artifacts": [
                 {key: item[key] for key in ("name", "version", "sha256", "filename")}
-                for item in plan
+                for item in installs
             ],
         }
         # apply_transaction validates and verifies the snapshot before pip runs.
@@ -6835,9 +8542,38 @@ def _install_local_wheels(prefix, wheel_dir, versions, labels, *, artifacts):
         raise command_failure(action, result)
 
 
+def _uninstall_packages(prefix, removed):
+    """Uninstall ``removed`` (``{name: version}``) through their RECORDs."""
+    announce(
+        "INFO",
+        "Removing "
+        + ", ".join(f"{name} {version}" for name, version in sorted(removed.items()))
+        + "...",
+    )
+    result = stream_command(
+        pip_command(prefix, local=True)
+        + [
+            "uninstall",
+            "--yes",
+            "--no-input",
+            "--quiet",
+            "--disable-pip-version-check",
+            *sorted(removed),
+        ],
+        timeout=1800,
+    )
+    if result.returncode != 0:
+        raise command_failure("Removing packages", result)
+
+
 def apply_transaction(transaction_dir, manifest):
-    """Install only prevalidated local wheels and roll back on any failure."""
+    """Remove and install only as journaled, and roll back on any failure.
+
+    Removals run first: a wheel that replaces files a removed package claimed
+    must land after pip has deleted that package's RECORD.
+    """
     prefix = manifest["prefix"]
+    removed = manifest.get("removed") or {}
     _validate_snapshot(transaction_dir, manifest)
     _verify_snapshot(prefix, manifest["files"])
     inventory = index_inventory(get_environment_inventory(prefix), prefix)
@@ -6858,13 +8594,16 @@ def apply_transaction(transaction_dir, manifest):
     manifest["status"] = "applying"
     _save_manifest(transaction_dir, manifest)
     try:
-        _install_local_wheels(
-            prefix,
-            Path(transaction_dir) / "new",
-            manifest["new_versions"],
-            ("Installing       ", "Applying prevalidated wheels"),
-            artifacts=manifest["artifacts"],
-        )
+        if removed:
+            _uninstall_packages(prefix, removed)
+        if manifest["new_versions"]:
+            _install_local_wheels(
+                prefix,
+                Path(transaction_dir) / "new",
+                manifest["new_versions"],
+                ("Installing       ", "Applying prevalidated wheels"),
+                artifacts=manifest["artifacts"],
+            )
         announce("INFO", "Verifying the updated environment...")
         _verify_transaction_result(
             prefix,
@@ -6875,11 +8614,13 @@ def apply_transaction(transaction_dir, manifest):
                 "Conda package records changed during the pip transaction.",
                 "Conda-managed files or health changed during the pip transaction.",
             ),
+            removed=removed,
         )
         after = _inventory_state(
             index_inventory(get_environment_inventory(prefix), prefix)
         )
         changed = {canonicalize_name(name) for name in manifest["new_versions"]}
+        changed.update(canonicalize_name(name) for name in removed)
         if {name: row for name, row in after.items() if name not in changed} != {
             name: row
             for name, row in manifest["inventory"].items()
@@ -6914,8 +8655,15 @@ def apply_transaction(transaction_dir, manifest):
     _safe_remove_transaction(transaction_dir)
 
 
-def update_packages(prefix, env_label, names, expected_plan):
-    """Run an ownership-safe, journaled pip transaction."""
+def update_packages(prefix, env_label, names, expected_plan, hold=frozenset()):
+    """Run an ownership-safe, journaled pip transaction.
+
+    ``hold`` names packages an earlier attempt's refused wheel keeps as
+    installed; the re-resolution must see the same holds.
+    """
+    if expected_plan and all(item.get("conda") for item in expected_plan):
+        apply_conda_moves(prefix, env_label, expected_plan)
+        return
     # ``names`` also counts selections the resolver held back; the plan is
     # what actually changes, matching the PACKAGE CHANGES summary.
     print(
@@ -6929,7 +8677,7 @@ def update_packages(prefix, env_label, names, expected_plan):
     with environment_lock(prefix):
         recover_incomplete_transactions(prefix)
         baseline = preflight_health(prefix)
-        current_plan = resolve_update_plan(prefix, names, explain=False)
+        current_plan = resolve_update_plan(prefix, names, explain=False, hold=hold)
         if plan_signature(current_plan) != plan_signature(expected_plan):
             raise UpdaterError(
                 "The resolved update plan changed after confirmation; no packages were modified."
@@ -7162,7 +8910,10 @@ def parse_args():
         title="Conda pip Updater",
         description=(
             "Safely update pip- and uv-installed packages in a named conda environment. "
-            "Protects base and conda-owned packages, and saves verified recovery files before installing."
+            "Repairs existing dependency conflicts on its own (updating, downgrading when "
+            "only an older release fits, or removing a package nothing depends on whose "
+            "requirements no version can satisfy), protects base and conda-owned packages, "
+            "and saves verified recovery files before installing."
         ),
         examples=HELP_EXAMPLES,
     )
@@ -7297,12 +9048,16 @@ def format_plan_change(item, name_width=0, version_width=0):
     arrow = paint("→" if paint.enabled else "->", "muted")
     line = (
         f"  {name} {paint(f'{current:<{version_width}}', 'muted')} {arrow} "
-        f"{paint(item['version'], 'new')}"
+        f"{paint(item['version'] or 'removed', 'new')}"
     )
     if item.get("newest"):
         note = f"(newest is {item['newest']}; capped by another package)"
         line += " " + paint(note, "note")
-    if item.get("repair"):
+    if item.get("conda"):
+        line += " " + paint(f"(Conda moves it: {item['repair']})", "note")
+    elif item.get("remove"):
+        line += " " + paint(f"(unsatisfiable: {item['remove']})", "note")
+    elif item.get("repair"):
         line += " " + paint(f"(repairs: {item['repair']})", "note")
     return line
 
@@ -7323,38 +9078,75 @@ def print_plan_group(title, items):
 
 def print_resolved_plan(plan, *, show_details=False):
     """Explain direct, dependency, and major-version changes in plain language."""
+    conda_moves = [item for item in plan if item.get("conda")]
+    plan = [item for item in plan if not item.get("conda")]
     selected = [item for item in plan if item["requested"]]
-    repairs = [item for item in plan if item.get("repair") and not item["requested"]]
+    removals = [item for item in plan if item.get("remove")]
+    downgrades = [
+        item for item in plan if item.get("downgrade") and not item["requested"]
+    ]
+    repairs = [
+        item
+        for item in plan
+        if item.get("repair")
+        and not item["requested"]
+        and item not in downgrades
+        and item not in removals
+    ]
     dependencies = [
-        item for item in plan if not item["requested"] and not item.get("repair")
+        item
+        for item in plan
+        if not item["requested"] and not item.get("repair") and not item.get("remove")
     ]
     major_changes = [item for item in selected if is_major_version_change(item)]
     routine_changes = [item for item in selected if item not in major_changes]
 
     print_section("PACKAGE CHANGES")
+    repaired = len(repairs) + len(downgrades)
     print(
         f"  {count_label(len(selected), 'package')} you selected; "
         + (
             count_label(
-                len(repairs),
+                repaired,
                 "repair of an existing conflict",
                 "repairs of existing conflicts",
             )
             + "; "
-            if repairs
+            if repaired
             else ""
         )
-        + f"{count_label(len(dependencies), 'required dependency change')}."
+        + (count_label(len(removals), "removal") + "; " if removals else "")
+        + f"{count_label(len(dependencies), 'required dependency change')}"
+        + (
+            f"; {count_label(len(conda_moves), 'Conda-managed package')} moved by Conda"
+            if conda_moves
+            else ""
+        )
+        + "."
+    )
+    print_plan_group(
+        "Conda-managed packages Conda moves first (pip packages require them)",
+        conda_moves,
     )
     print_plan_group(
         "Review carefully — major-version updates can change behavior",
         major_changes,
     )
-    print_plan_group("Other selected updates", routine_changes)
+    print_plan_group(
+        "Other selected updates" if major_changes else "Selected updates",
+        routine_changes,
+    )
     print_plan_group("Repairs of conflicts that already existed", repairs)
+    print_plan_group(
+        "Downgrades that repair existing conflicts (only an older release fits)",
+        downgrades,
+    )
+    print_plan_group(
+        "Removed because no version choice satisfies their requirements", removals
+    )
     print_plan_group("Extra dependencies required automatically", dependencies)
 
-    if show_details:
+    if show_details and plan:
         print_section("Technical artifact checksums:")
         for item in sorted(plan, key=lambda value: value["name"].lower()):
             print(f"  {item['name']}=={item['version']}: sha256:{item['sha256']}")
@@ -7369,8 +9161,12 @@ def display_script_command():
 
 
 def build_apply_command(env_name, args, selected):
-    """Build the non-dry-run command matching the user's selection mode."""
-    if args.all:
+    """Build the non-dry-run command matching the user's selection mode.
+
+    With nothing selected the plan holds only conflict repairs, which every
+    mode plans on its own; ``--all`` reaches them without a selector.
+    """
+    if args.all or not selected:
         return build_update_command(env_name, ["--all"], show_details=args.details)
     packages = args.packages or ",".join(selected)
     return build_update_command(
@@ -7441,24 +9237,55 @@ def print_dry_run_result(env_name, args, selected, plan, baseline=None):
     baseline = baseline or {}
     existing_conflicts = set(baseline.get("pip_broken") or ())
     repair_pending = bool(baseline.get("repair_pending"))
-    major_changes = [item for item in plan if is_major_version_change(item)]
+    major_changes = [
+        item for item in plan if item["requested"] and is_major_version_change(item)
+    ]
+    major_repairs = [
+        item for item in plan if not item["requested"] and is_major_version_change(item)
+    ]
+    conda_moves = [item for item in plan if item.get("conda")]
     print_banner("PREVIEW COMPLETE — NO CHANGES WERE MADE", "preview")
+    if conda_moves:
+        names = ", ".join(
+            f"{item['name']} to {item['version']}"
+            for item in sorted(conda_moves, key=lambda value: value["name"].lower())
+        )
+        announce(
+            "INFO",
+            f"A real run lets Conda move {names} first (confirmed like any other "
+            "change), then plans the pip updates again and shows them before "
+            "applying.",
+        )
     if repair_pending:
         announce(
             "REPAIR",
             "The damaged Conda files require a separate repair before updating.",
         )
     if existing_conflicts:
-        if not repair_pending:
+        if conda_moves:
+            announce(
+                "OK",
+                "Conda-managed packages are healthy; Conda itself makes the move above.",
+            )
+        elif not repair_pending:
             announce(
                 "OK", "Conda-managed packages are healthy and will stay untouched."
             )
         _print_conflict_outlook(existing_conflicts, plan)
     elif not repair_pending:
         announce("OK", "The environment health and package-ownership checks passed.")
-    announce("OK", "pip found a compatible installation plan.")
+    announce(
+        "OK",
+        "Conda found a compatible move."
+        if _conda_only(plan)
+        else "pip found a compatible installation plan.",
+    )
     untouched = "Conda-managed packages and core update tools will stay untouched."
-    if repair_pending:
+    if conda_moves:
+        untouched = (
+            "Apart from Conda's own move, " + untouched[0].lower() + untouched[1:]
+        )
+    elif repair_pending:
         untouched = "Apart from that repair, " + untouched[0].lower() + untouched[1:]
     announce("OK", untouched)
     announce(
@@ -7474,6 +9301,17 @@ def print_dry_run_result(env_name, args, selected, plan, baseline=None):
             "REVIEW",
             f"{count_label(len(major_changes), 'major-version change')} "
             f"{verb} extra care: {names}.",
+        )
+    if major_repairs:
+        names = ", ".join(
+            f"{item['name']} {item['current_version']} -> {item['version']}"
+            for item in sorted(major_repairs, key=lambda value: value["name"].lower())
+        )
+        announce(
+            "REVIEW",
+            f"{count_label(len(major_repairs), 'conflict repair')} also "
+            f"{'crosses' if len(major_repairs) == 1 else 'cross'} a major version "
+            f"(planned whatever you select): {names}.",
         )
 
     print_section("What to do next:")
@@ -7543,11 +9381,15 @@ def print_update_success(env_name, plan, before_conflicts=(), after_conflicts=()
     """Report a successful transaction and its recommended follow-up."""
     before = set(before_conflicts)
     after = set(after_conflicts)
+    conda_moves = [item for item in plan if item.get("conda")]
+    plan = [item for item in plan if not item.get("conda")]
     selected_count = sum(bool(item["requested"]) for item in plan)
+    removal_count = sum(bool(item.get("remove")) for item in plan)
     repair_count = sum(
-        bool(item.get("repair")) and not item["requested"] for item in plan
+        bool(item.get("repair")) and not item["requested"] and not item.get("remove")
+        for item in plan
     )
-    dependency_count = len(plan) - selected_count - repair_count
+    dependency_count = len(plan) - selected_count - repair_count - removal_count
     repaired = (
         count_label(
             repair_count,
@@ -7559,13 +9401,27 @@ def print_update_success(env_name, plan, before_conflicts=(), after_conflicts=()
         else "and "
     )
     print_banner("UPDATE COMPLETED SUCCESSFULLY", "ok")
-    announce(
-        "OK",
-        f"Updated {count_label(selected_count, 'selected package')}"
-        f"{', ' if repair_count else ' '}{repaired}"
-        f"{count_label(dependency_count, 'required dependency package')} "
-        f"in '{env_name}'.",
-    )
+    for item in conda_moves:
+        announce(
+            "OK",
+            f"Conda moved {item['name']} {item['current_version']} -> "
+            f"{item['version']} in '{env_name}' ({item['repair']}).",
+        )
+    if plan:
+        announce(
+            "OK",
+            f"Updated {count_label(selected_count, 'selected package')}"
+            f"{', ' if repair_count else ' '}{repaired}"
+            f"{count_label(dependency_count, 'required dependency package')} "
+            f"in '{env_name}'"
+            + (
+                f"; removed {count_label(removal_count, 'package')} whose requirements "
+                "no version choice could satisfy"
+                if removal_count
+                else ""
+            )
+            + ".",
+        )
     capped = sorted(item["name"] for item in plan if item.get("newest"))
     if capped:
         announce(
@@ -7605,7 +9461,10 @@ def print_update_success(env_name, plan, before_conflicts=(), after_conflicts=()
                 f"before this update {'is' if len(before) == 1 else 'are'} now "
                 "resolved.",
             )
-    announce("OK", "Conda-managed files and environment health are unchanged.")
+    if conda_moves:
+        announce("OK", "Conda's files are intact after its own change.")
+    else:
+        announce("OK", "Conda-managed files and environment health are unchanged.")
     print(
         "\n" + paint("Next:", "strong"),
         "start the application or run its tests to confirm normal behavior.",
@@ -7662,16 +9521,23 @@ def _choose_environment(selectable, environments, up_to_date):
     return env_name, environments[env_name]
 
 
-def _check_environment(prefix, root_prefix, *, dry_run):
+def _check_environment(target, root_prefix):
     """Activate, recover interrupted updates, and read environment health.
 
-    Returns the health check's baseline (see preflight_health).
+    Damaged Conda files are repaired here in a real run (confirmed first);
+    returns the health check's baseline (see preflight_health).
     """
+    prefix = target.prefix
+    dry_run = target.args.dry_run
     print_step("1/3", "Activating and checking the environment...")
     activate_environment(prefix, root_prefix)
     with environment_lock(prefix):
         recover_incomplete_transactions(prefix, dry_run=dry_run)
-        baseline = preflight_health(prefix, dry_run=dry_run)
+        baseline = preflight_health(
+            prefix,
+            dry_run=dry_run,
+            repair=None if dry_run else functools.partial(repair_conda_damage, target),
+        )
     existing_conflicts = set(baseline["pip_broken"])
     conda_issues = baseline.get("conda_issues") or {}
     if existing_conflicts or conda_issues:
@@ -7681,6 +9547,9 @@ def _check_environment(prefix, root_prefix, *, dry_run):
     print_conda_inconsistencies(conda_issues)
     if existing_conflicts:
         print_existing_conflicts(existing_conflicts)
+    print_user_site_shadowing(
+        prefix, index_inventory(get_environment_inventory(prefix), prefix)
+    )
     return baseline
 
 
@@ -7695,8 +9564,7 @@ def _live_scan(target, *, report_exclusions=True):
 def _find_outdated(target):
     """Return ``(packages, from_cache, live)``, or None when nothing is outdated.
 
-    ``live`` means the list came from a scan performed moments ago in this run,
-    with no user interaction since.
+    ``live`` means the list came from a scan completed in this run.
     """
     args = target.args
     print_step("2/3", "Looking for pip packages that can be safely updated...")
@@ -7727,14 +9595,26 @@ def _find_outdated(target):
     return packages, from_cache, True
 
 
+def _package_names(packages):
+    """Return the sorted normalized names of a scan's offered packages."""
+    return sorted(canonicalize_name(str(package["name"])) for package in packages)
+
+
 def _choose_non_interactive(target, packages, live):
     """Apply --all/--packages; return ``(selected, packages)``, or None."""
     # For non-interactive modes, prefer correctness over stale cache.
     if not live:
         announce("INFO", "Confirming the cached list with a live scan...")
+        cached = packages
         packages = _live_scan(target)
         if not packages:
             return None
+        if _package_names(packages) != _package_names(cached):
+            announce(
+                "OK",
+                f"Live scan found {count_label(len(packages), 'package')} that can "
+                "be updated; the cached list was out of date.",
+            )
     selected = select_non_interactive(
         packages,
         select_all=target.args.all,
@@ -7760,8 +9640,15 @@ def _start_background_refresh(target, package_state):
     return thread, progress
 
 
-def _choose_interactive(target, packages, from_cache):
-    """Run the selector; return ``(selected, packages, live)`` or BACK_TO_ENV."""
+def _choose_interactive(target, packages, from_cache, live):
+    """Run the selector; return ``(selected, packages, live)`` or BACK_TO_ENV.
+
+    A cached list is refreshed in the background while the user chooses; the
+    selector shows the refreshed list as soon as it lands.  A list is live
+    once any scan completed cleanly in this run, however long the selector
+    stayed open: the plan step resolves against the index live, so there is
+    nothing to rescan for.
+    """
     if not sys.stdin.isatty() or not sys.stdout.isatty():
         raise UpdaterError(
             "Interactive selection requires a TTY terminal; use --all or "
@@ -7779,7 +9666,7 @@ def _choose_interactive(target, packages, from_cache):
         "scan_progress": None,
     }
     refresh_thread = refresh_progress = None
-    if from_cache and not target.args.refresh:
+    if from_cache and not live and not target.args.refresh:
         refresh_thread, refresh_progress = _start_background_refresh(
             target, package_state
         )
@@ -7793,13 +9680,10 @@ def _choose_interactive(target, packages, from_cache):
         raise UpdaterError(
             f"Failed to initialize terminal UI ({exc}). Run this in a local terminal."
         ) from exc
-    waited_for_refresh = wait_for_background_scan(refresh_thread, refresh_progress)
+    wait_for_background_scan(refresh_thread, refresh_progress)
     if selected == BACK_TO_ENV:
         return BACK_TO_ENV
 
-    # The user spent an unbounded amount of time in the selector, so the list
-    # they saw is live only if the background scan finished cleanly just now.
-    live = False
     if refresh_thread:
         with package_state["lock"]:
             packages = list(package_state["packages"])
@@ -7810,7 +9694,7 @@ def _choose_interactive(target, packages, from_cache):
             if dropped:
                 print_section("Removed stale selections no longer outdated:")
                 print("  " + ", ".join(dropped))
-        live = waited_for_refresh and scan_ok
+        live = live or scan_ok
     return selected, packages, live
 
 
@@ -7896,11 +9780,19 @@ def _confirmed(env_name):
     return answer.strip().lower() == "y"
 
 
+def _conda_only(plan):
+    """True when the plan holds nothing but moves Conda makes."""
+    return bool(plan) and all(item.get("conda") for item in plan)
+
+
 def _plan_and_apply(target, selected, live_packages, baseline):
     """Resolve, confirm, and apply; return True to choose another environment.
 
     ``live_packages`` is the outdated list when it is fresh from this run,
-    otherwise None and it is rescanned first.
+    otherwise None and it is rescanned first.  A plan that is only a Conda
+    move is confirmed and applied first, then pip is planned again from the
+    environment Conda left; a move that repeats without clearing the
+    conflict stops the run.
     """
     args = target.args
     print_step("3/3", "Building and checking the exact update plan...")
@@ -7910,32 +9802,91 @@ def _plan_and_apply(target, selected, live_packages, baseline):
     if dropped:
         announce("INFO", "No longer need an update: " + ", ".join(dropped))
     waiting = _unselected(live_packages, selected)
-    if not selected:
-        return _nothing_to_update(target, waiting)
 
+    hold = set()
+    moved = set()
+    hold_rounds = 0
     plan = resolve_update_plan(target.prefix, selected)
-    if not plan:
-        return _nothing_to_update(target, waiting, all_held=True)
-    announce("OK", "pip found a compatible update plan.")
-    print_resolved_plan(plan, show_details=args.details)
-    try:
-        print_shared_file_warning(shared_file_report(target.prefix, plan))
-    except (UpdaterError, OSError) as exc:
-        # Advisory only; validate_new_wheels enforces the real guarantee
-        # before anything is installed, so this must never end the run.
-        announce("INFO", f"Could not check for shared files ({exc}).")
+    while True:
+        if not plan:
+            return _nothing_to_update(target, waiting, all_held=bool(selected))
+        if _conda_only(plan):
+            announce("OK", "Conda can move the package pip packages cap.")
+            print_resolved_plan(plan, show_details=args.details)
+            if args.dry_run:
+                break
+            signature = tuple(plan_signature(plan))
+            if signature in moved:
+                raise UpdaterError(
+                    "Conda made this move already and the conflict is still "
+                    "reported; no further change was made."
+                )
+            if not args.yes and not _confirmed(target.env_name):
+                print(paint("Cancelled. No packages were changed.", "warn"))
+                return _another_environment_wanted(target)
+            if _apply_with_holds(target, selected, plan, hold, confirm=True) is None:
+                return _another_environment_wanted(target)
+            moved.add(signature)
+            print_update_success(
+                target.env_name,
+                plan,
+                set(baseline["pip_broken"]),
+                pip_check_report(target.prefix),
+            )
+            announce("INFO", "Planning the pip updates again after Conda's move.")
+            baseline = preflight_health(target.prefix)
+            if args.all or args.packages:
+                # A hold the moved package capped has lapsed; the scan sees it.
+                live_packages = _live_scan(target, report_exclusions=False)
+                selected = _unheld(
+                    select_non_interactive(
+                        live_packages,
+                        select_all=args.all,
+                        requested_csv=args.packages,
+                    ),
+                    hold,
+                )
+                waiting = _unselected(live_packages, selected)
+            plan = resolve_update_plan(target.prefix, selected, hold=hold)
+            continue
+        if hold_rounds > MAX_HOLD_RETRIES:
+            break
+        announce("OK", "pip found a compatible update plan.")
+        print_resolved_plan(plan, show_details=args.details)
+        holds = {}
+        try:
+            report = shared_file_report(target.prefix, plan)
+            print_shared_file_warning(report)
+            holds = shared_file_holds(report, plan)
+        except (UpdaterError, OSError) as exc:
+            # Advisory only; validate_new_wheels enforces the real guarantee
+            # before anything is installed, so this must never end the run.
+            announce("INFO", f"Could not check for shared files ({exc}).")
+        holds = {name: why for name, why in holds.items() if name not in hold}
+        if not holds:
+            break
+        for name, why in sorted(holds.items()):
+            announce("!", f"{name} stays as installed: {why}.")
+        hold.update(holds)
+        hold_rounds += 1
+        selected = _unheld(selected, hold)
+        announce("INFO", "Planning the rest again without it.")
+        plan = resolve_update_plan(target.prefix, selected, hold=hold)
 
     if args.dry_run:
         print_dry_run_result(target.env_name, args, selected, plan, baseline)
         return _another_environment_wanted(target)
-    # Choosing GO in the selector is the confirmation; only --all/--packages
-    # reach this point without the user having confirmed anything.
-    non_interactive = args.all or args.packages
-    if non_interactive and not args.yes and not _confirmed(target.env_name):
+    # Choosing GO in the selector is the confirmation; --all/--packages and a
+    # repair-only pass with nothing selected reach this point without one.
+    unconfirmed = args.all or args.packages or not selected
+    if unconfirmed and not args.yes and not _confirmed(target.env_name):
         print(paint("Cancelled. No packages were changed.", "warn"))
         return _another_environment_wanted(target)
 
-    update_packages(target.prefix, target.env_name, selected, plan)
+    applied = _apply_with_holds(target, selected, plan, hold, confirm=unconfirmed)
+    if applied is None:
+        return _another_environment_wanted(target)
+    selected, plan = applied
     # The plan can also update unselected offered packages (conflict repairs,
     # dependencies); one now at its offered version is no longer waiting.
     # pip reports raw METADATA text but normalized latest_version, so a
@@ -7954,8 +9905,124 @@ def _plan_and_apply(target, selected, live_packages, baseline):
         set(baseline["pip_broken"]),
         pip_check_report(target.prefix),
     )
+    _repair_until_settled(target)
     target.up_to_date = not waiting
     return _another_environment_wanted(target)
+
+
+MAX_HOLD_RETRIES = 4
+
+
+def _unheld(selected, hold):
+    """Return the selection without the packages ``hold`` keeps as installed."""
+    return [name for name in selected if canonicalize_name(name) not in hold]
+
+
+def _hold_summary(hold, plan):
+    """Say what each held package stays as: installed, or not installed at all."""
+    new = {
+        canonicalize_name(item["name"])
+        for item in plan
+        if item.get("current_version") is None
+    }
+    parts = []
+    if hold - new:
+        parts.append("Leaving " + ", ".join(sorted(hold - new)) + " as installed")
+    if hold & new:
+        parts.append("not installing " + ", ".join(sorted(hold & new)))
+    if hold - new:
+        return " and ".join(parts)
+    return parts[0][0].upper() + parts[0][1:]
+
+
+def _apply_with_holds(target, selected, plan, hold, *, confirm):
+    """Apply ``plan``; when a wheel is refused, hold its package and re-plan.
+
+    A refusal happens before any mutation.  The refused package (or the
+    selections that pull a refused new dependency in) joins ``hold``, the
+    rest is resolved again and, unless ``-y`` was given, confirmed again
+    when ``confirm`` is set.  A refusal that names nothing new to hold (a
+    new dependency only a repair pulls in) would repeat the same plan, so
+    it stops the run instead.  Returns ``(selected, plan)`` as applied, or
+    None when nothing was left to apply or the user declined.
+    """
+    args = target.args
+    for attempt in range(MAX_HOLD_RETRIES + 1):
+        try:
+            update_packages(target.prefix, target.env_name, selected, plan, hold)
+            return selected, plan
+        except WheelRefusal as refusal:
+            announce("!", str(refusal))
+            additional = refusal.hold - hold
+            if not additional:
+                raise UpdaterError(
+                    "A refused wheel left nothing new to hold (it serves a repair, "
+                    "or its package is already held), so the same plan would be "
+                    f"refused again; no packages were changed.\n{refusal}"
+                ) from refusal
+            if attempt == MAX_HOLD_RETRIES:
+                break
+            hold.update(additional)
+            selected = _unheld(selected, hold)
+            announce(
+                "INFO", _hold_summary(hold, plan) + " and planning the rest again."
+            )
+            plan = resolve_update_plan(target.prefix, selected, hold=hold)
+            if not plan:
+                announce("OK", "Nothing else can be updated or repaired right now.")
+                return None
+            print_resolved_plan(plan, show_details=args.details)
+            if confirm and not args.yes and not _confirmed(target.env_name):
+                print(paint("Cancelled. No packages were changed.", "warn"))
+                return None
+    raise UpdaterError(
+        f"{MAX_HOLD_RETRIES + 1} plans in a row had a refused wheel; no packages "
+        "were changed."
+    )
+
+
+MAX_REPAIR_ROUNDS = 3
+
+
+def _repair_until_settled(target):
+    """Re-plan after a successful update and apply any repair it still finds.
+
+    The changes just made can expose a repair the previous plan could not
+    make: a removal deferred past the resolution pass limit, or a hold that
+    lifted once another package moved.  Each further round is planned from
+    the live environment and applied under the same confirmation, until
+    nothing repairable remains or the round limit stops it.
+    """
+    args = target.args
+    for round_number in range(2, MAX_REPAIR_ROUNDS + 2):
+        baseline = preflight_health(target.prefix)
+        plan = resolve_update_plan(target.prefix, [])
+        if not plan:
+            return
+        announce(
+            "INFO",
+            f"Repair round {round_number}: the previous changes left conflicts "
+            "that can still be repaired.",
+        )
+        print_resolved_plan(plan, show_details=args.details)
+        if not args.yes and not _confirmed(target.env_name):
+            print(paint("Stopped; the conflicts listed above remain.", "warn"))
+            return
+        applied = _apply_with_holds(target, [], plan, set(), confirm=True)
+        if applied is None:
+            return
+        _, plan = applied
+        print_update_success(
+            target.env_name,
+            plan,
+            set(baseline["pip_broken"]),
+            pip_check_report(target.prefix),
+        )
+    announce(
+        "!",
+        f"Stopped after {MAX_REPAIR_ROUNDS} repair rounds; run the updater again "
+        "to continue.",
+    )
 
 
 def _update_environment(target, root_prefix):
@@ -7968,19 +10035,20 @@ def _update_environment(target, root_prefix):
             paint("Mode:", "strong"),
             "preview only — this command will not change any packages",
         )
-    baseline = _check_environment(target.prefix, root_prefix, dry_run=args.dry_run)
+    baseline = _check_environment(target, root_prefix)
 
     found = _find_outdated(target)
     if found is None:
-        return _nothing_to_update(target)
+        # Nothing to select; existing conflicts are still repaired.
+        return _plan_and_apply(target, [], [], baseline)
     packages, from_cache, live = found
     if args.all or args.packages:
         chosen = _choose_non_interactive(target, packages, live)
         if chosen is None:
-            return _nothing_to_update(target)
+            return _plan_and_apply(target, [], [], baseline)
         (selected, packages), live = chosen, True
     else:
-        chosen = _choose_interactive(target, packages, from_cache)
+        chosen = _choose_interactive(target, packages, from_cache, live)
         if chosen == BACK_TO_ENV:
             return True
         selected, packages, live = chosen
@@ -7988,8 +10056,8 @@ def _update_environment(target, root_prefix):
     if not selected:
         print("\nNo packages selected. Exiting.")
         return False
-    # A list from a scan seconds ago in this same run is not rescanned: that
-    # only repeats a network round trip (measured at ~2.6s, about a quarter of
+    # A list from a scan completed in this run is not rescanned: that only
+    # repeats a network round trip (measured at ~2.6s, about a quarter of
     # total runtime).  Time-of-use safety does not depend on it:
     # resolve_update_plan queries pip live, and update_packages re-resolves
     # under the environment lock and refuses to proceed if the plan moved.
