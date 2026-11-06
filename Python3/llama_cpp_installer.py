@@ -4,7 +4,13 @@ Build and install these CUDA-enabled llama.cpp binaries: llama, llama-cli,
 llama-server and install the latest llama-swap release binary alongside them.
 
 Tuned for this host: AMD Ryzen 9 7900X (Zen 4), NVIDIA RTX 4090
-(compute capability 8.9), Ubuntu 24.04, system CUDA under /usr/local/cuda.
+(compute capability 8.9), Ubuntu 26.04, system CUDA under /usr/local/cuda.
+
+With --web-ui, llama-server's web UI comes from the matching llama.cpp
+release's prebuilt asset, verified against GitHub's SHA-256 digest, and the
+build fails if it was not embedded. --offline rebuilds with no network access
+from the checkout, release assets and build number an earlier online run kept
+with --keep-source.
 
 Run without sudo. The script escalates only for apt and for installing into a
 folder the caller cannot write to, and it primes the sudo timestamp up front so
@@ -30,8 +36,9 @@ import tempfile
 import textwrap
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
-from collections.abc import Sequence
+from collections.abc import Collection, Sequence
 from dataclasses import dataclass
 from types import TracebackType
 from typing import Any, ClassVar
@@ -53,6 +60,48 @@ PRIVATE_LIB_SUBDIR = os.path.join(os.pardir, "lib", "llama.cpp")
 # -D value after the flag that set it is dropped, so a kept tree would silently
 # reuse a previous run's --cmake-arg values without this record to compare.
 CMAKE_ARGS_RECORD = "llama-cpp-installer-cmake-args.json"
+
+# Also in the build tree: per source commit, its upstream build number and the
+# web UI release it was paired with, so --offline can reuse both. Entries are
+# pruned to the tips of the checkout's local branches.
+SOURCE_RECORD = "llama-cpp-installer-sources.json"
+
+# llama-swap's cache folder records the release its tarball came from.
+LLAMA_SWAP_RECORD = "release.json"
+
+# The web UI is placed where upstream's scripts/ui-assets.cmake looks first
+# (tools/ui/dist), as upstream's release workflow does, from the release asset
+# llama-<tag>-ui.tar.gz whose single top folder is llama-<tag>/. Tarballs are
+# cached inside the build tree. Sources without tools/ui/ui.h.in (b10000 and
+# older) use an earlier UI layout this does not support.
+UPSTREAM_REPO = "ggml-org/llama.cpp"
+UI_TEMPLATE = os.path.join("tools", "ui", "ui.h.in")
+UI_DIST = os.path.join("tools", "ui", "dist")
+UI_CACHE = "web-ui"
+# The newest releases scanned for a UI asset when the source has no release of
+# its own; upstream publishes one per b<N> build.
+UI_RELEASE_SCAN = 20
+RELEASE_TAG_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
+GIT_SHA_RE = re.compile(r"[0-9a-f]{40}")
+SHA256_RE = re.compile(r"[0-9a-f]{64}")
+
+# The web UI comes only from the verified release asset, never from CMake's own
+# npm build or Hugging Face download, which only warn when they fail. The
+# deprecated names still override the new ones when set (tools/ui/CMakeLists),
+# so a kept cache loses them. Placed after --cmake-arg values, which may not set
+# any of them.
+MANAGED_UI_OPTIONS = (
+    "LLAMA_BUILD_UI",
+    "LLAMA_USE_PREBUILT_UI",
+    "LLAMA_BUILD_WEBUI",
+    "LLAMA_USE_PREBUILT_WEBUI",
+)
+MANAGED_UI_ARGS = (
+    "-ULLAMA_BUILD_WEBUI",
+    "-ULLAMA_USE_PREBUILT_WEBUI",
+    "-DLLAMA_BUILD_UI=OFF",
+    "-DLLAMA_USE_PREBUILT_UI=OFF",
+)
 
 SYSTEM_PACKAGES = (
     "build-essential",
@@ -108,8 +157,8 @@ HARDENING_COMPILE_FLAGS = (
 )
 HARDENING_LINK_FLAGS = ("-Wl,-z,relro", "-Wl,-z,now")
 
-# With both UI options off, scripts/ui-assets.cmake always ends in this
-# message(WARNING). It runs as a `cmake -P` build step whose command line is
+# With both UI options off and no tools/ui/dist, scripts/ui-assets.cmake ends in
+# this message(WARNING). It runs as a `cmake -P` build step whose command line is
 # fixed upstream, so it is filtered out of ninja's output instead.
 UI_NO_ASSETS_WARNING = "UI: no assets available"
 NINJA_STATUS_RE = re.compile(r"\[\d+/\d+\] ")
@@ -525,11 +574,16 @@ def cuda_architectures(gpus: Sequence[Gpu]) -> tuple[str, str]:
     fails ("nvcc warning : Cannot find valid GPU for '-arch=native'"). The docs
     recommend listing compute capabilities explicitly, so the driver's own
     answer is used and "native" is only a fallback.
+
+    Each entry is <N>-real: device code for the installed GPU only. A bare <N>
+    also embeds PTX for that architecture, which these GPUs never use; it would
+    only let a future GPU JIT-compile the kernels without a rebuild. Native
+    detection resolves to <N>-real too.
     """
     architectures: list[str] = []
     for gpu in gpus:
-        if gpu.arch and gpu.arch not in architectures:
-            architectures.append(gpu.arch)
+        if gpu.arch and f"{gpu.arch}-real" not in architectures:
+            architectures.append(f"{gpu.arch}-real")
     if not architectures:
         return "native", "fallback, no compute capability from the driver"
     return ";".join(architectures), "reported by the driver"
@@ -816,7 +870,7 @@ def nvcc_probe(nvcc: str, flags: Sequence[str], *, env: dict[str, str]) -> tuple
 def nvcc_rejects_architectures(
     nvcc: str, architectures: str, *, env: dict[str, str]
 ) -> list[str]:
-    """Return the architectures in the list that this nvcc will not compile for.
+    """Return the plain architecture numbers in the list this nvcc will not compile for.
 
     The host-compiler probe uses nvcc's default architecture, so a toolkit too
     old for the installed GPU passes it and only fails once the real compile
@@ -829,9 +883,14 @@ def nvcc_rejects_architectures(
         return []
     return [
         arch
-        for arch in architectures.split(";")
-        if arch and not nvcc_probe(nvcc, [f"-arch=sm_{arch}"], env=env)[0]
+        for arch in plain_architectures(architectures)
+        if not nvcc_probe(nvcc, [f"-arch=sm_{arch}"], env=env)[0]
     ]
+
+
+def plain_architectures(architectures: str) -> list[str]:
+    """CMAKE_CUDA_ARCHITECTURES entries without their -real suffix (89-real -> 89)."""
+    return [arch.removesuffix("-real") for arch in architectures.split(";") if arch]
 
 
 def select_gcc_toolchain(nvcc: str, *, env: dict[str, str]) -> HostCompiler:
@@ -1086,13 +1145,26 @@ def describe_head(repo_dir: str, *, env: dict[str, str]) -> dict[str, str]:
 
 
 def sync_repo(
-    repo_dir: str, repo_url: str, ref: str, local_branch: str, *, env: dict[str, str]
+    repo_dir: str,
+    repo_url: str,
+    ref: str,
+    local_branch: str,
+    *,
+    env: dict[str, str],
+    offline: bool = False,
+    refill: str = "",
 ) -> None:
     """Check out the newest commit of ref, reusing repo_dir when it exists.
 
     A shallow fetch into an existing checkout downloads only what changed and
     keeps the build tree, so ninja and ccache rebuild only what changed too.
+    Offline, the local branch an earlier online run made for the same ref is
+    checked out instead, with no fetch; refill names that online run.
     """
+    if offline and not os.path.isdir(os.path.join(repo_dir, ".git")):
+        raise RuntimeError(
+            f"no kept checkout at {os.path.abspath(repo_dir)}; run online first: {refill}"
+        )
     if not os.path.lexists(repo_dir):
         run(["git", "init", "--quiet", repo_dir], env=env)
     elif not os.path.isdir(os.path.join(repo_dir, ".git")):
@@ -1115,11 +1187,78 @@ def sync_repo(
                 "commit or discard them, or run with --clean"
             )
 
+    if offline:
+        branch_ref = f"refs/heads/{local_branch}"
+        found = run(
+            ["git", "-C", repo_dir, "show-ref", "--verify", "--quiet", branch_ref],
+            env=env,
+            check=False,
+            quiet=True,
+        )
+        if found.returncode != 0:
+            raise RuntimeError(
+                f"the kept checkout has no {local_branch} branch; run online first: {refill}"
+            )
+        if GIT_SHA_RE.fullmatch(ref):
+            tip = capture(
+                ["git", "-C", repo_dir, "rev-parse", "--verify", f"{branch_ref}^{{commit}}"],
+                env=env,
+                quiet=True,
+            )
+            if tip != ref:
+                raise RuntimeError(f"branch {local_branch} is at {tip}, not the requested {ref}")
+        run(["git", "-C", repo_dir, "checkout", "--quiet", local_branch, "--"], env=env)
+        return
+
     run(["git", "-C", repo_dir, "fetch", "--depth", "1", repo_url, ref], env=env)
     run(
         ["git", "-C", repo_dir, "checkout", "--quiet", "-B", local_branch, "FETCH_HEAD"],
         env=env,
     )
+
+
+def local_branch_tips(repo_dir: str, *, env: dict[str, str]) -> set[str]:
+    """Commit SHAs at the tips of the checkout's local branches."""
+    output = capture(
+        ["git", "-C", repo_dir, "for-each-ref", "--format=%(objectname)", "refs/heads"],
+        env=env,
+        quiet=True,
+    )
+    return set(output.split())
+
+
+def build_number_arg(build_number: int | None) -> str:
+    """The CMake argument for the build number.
+
+    Upstream derives LLAMA_BUILD_NUMBER only when it is not defined, and a kept
+    cache would otherwise keep the number of whatever commit set it last.
+    """
+    if build_number is None:
+        return "-ULLAMA_BUILD_NUMBER"
+    return f"-DLLAMA_BUILD_NUMBER={build_number}"
+
+
+def check_managed_cmake_args(extra_args: Sequence[str]) -> None:
+    """Refuse --cmake-arg values that would take web UI provisioning away from --web-ui."""
+    for arg in extra_args:
+        match = re.match(r"-D([A-Za-z_][A-Za-z0-9_]*)(?::[A-Za-z]+)?=", arg)
+        if match is not None and match.group(1) in MANAGED_UI_OPTIONS:
+            raise RuntimeError(
+                f"--cmake-arg cannot set {match.group(1)}; the web UI is managed by --web-ui"
+            )
+
+
+def online_command(args: argparse.Namespace) -> str:
+    """The online run that fills the caches this offline run needs."""
+    command = [sys.argv[0] or "llama_cpp_installer.py"]
+    if args.beta is not None:
+        command += ["--beta", str(args.beta)]
+    elif args.ref_tag is not None:
+        command += ["-r", args.ref_tag]
+    command.append("-k")
+    if args.web_ui:
+        command.append("--web-ui")
+    return shlex.join(command)
 
 
 def upstream_build_number(
@@ -1437,26 +1576,325 @@ def http_get(url: str) -> bytes:
         raise RuntimeError(f"download failed: {url}: {error}") from error
 
 
-def fetch_llama_swap(cache_dir: str) -> tuple[str, str]:
-    """Download and verify the latest llama-swap release; return (binary path, tag).
+def atomic_write(path: str, data: bytes) -> None:
+    """Replace path with data so a reader never sees a partial file."""
+    parent = os.path.dirname(os.path.abspath(path))
+    os.makedirs(parent, exist_ok=True)
+    temporary = ""
+    try:
+        with tempfile.NamedTemporaryFile(dir=parent, prefix=".partial-", delete=False) as handle:
+            temporary = handle.name
+            handle.write(data)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, path)
+        temporary = ""
+    finally:
+        if temporary:
+            remove_path(temporary)
 
-    A tarball already in cache_dir that matches the release checksum is reused
-    instead of downloaded again.
+
+class UpstreamDataError(RuntimeError):
+    """A GitHub API answer that does not have the documented shape."""
+
+
+def github_json(path: str) -> Any | None:
+    """GET a GitHub REST API path; None only when GitHub answers 404."""
+    url = f"https://api.github.com/{path}"
+    log.command(f"GET {url}")
+    try:
+        payload = http_get(url)
+    except RuntimeError as error:
+        cause = error.__cause__
+        if isinstance(cause, urllib.error.HTTPError) and cause.code == 404:
+            return None
+        raise
+    try:
+        value = json.loads(payload)
+    except ValueError as error:
+        raise RuntimeError(f"invalid JSON from {url}") from error
+    if value is None:
+        raise RuntimeError(f"empty JSON from {url}")
+    return value
+
+
+def github_asset_sha256(digest: object) -> str:
+    """The hex SHA-256 from a release asset's "digest" field ("sha256:<hex>").
+
+    GitHub computes it when the asset is uploaded and never changes it.
     """
+    match = re.fullmatch(r"sha256:([0-9a-fA-F]{64})", digest) if isinstance(digest, str) else None
+    if match is None:
+        raise RuntimeError(f"release asset has no valid SHA-256 digest: {digest!r}")
+    return match.group(1).lower()
+
+
+def cached_download(url: str, path: str, expected_sha256: str) -> None:
+    """Make path hold the file at url with this SHA-256, reusing a matching copy."""
+    if os.path.isfile(path) and _sha256(path) == expected_sha256:
+        log.info(f"reusing verified {path}")
+        return
+    log.command(f"GET {url}")
+    data = http_get(url)
+    actual = hashlib.sha256(data).hexdigest()
+    name = os.path.basename(path)
+    if actual != expected_sha256:
+        raise RuntimeError(f"{name} checksum mismatch: expected {expected_sha256}, got {actual}")
+    atomic_write(path, data)
+    log.ok(f"downloaded {name} ({len(data) / (1024 ** 2):.1f} MiB), sha256 verified")
+
+
+def read_json(path: str) -> object | None:
+    """A JSON file's value, None when it does not exist."""
+    try:
+        with open(path, encoding="utf-8") as handle:
+            value: object = json.load(handle)
+    except FileNotFoundError:
+        return None
+    except (OSError, ValueError) as error:
+        raise RuntimeError(f"cannot read {path}: {error}; delete it or run with --clean") from error
+    return value
+
+
+def write_json(path: str, value: object) -> None:
+    atomic_write(path, (json.dumps(value, indent=2, sort_keys=True) + "\n").encode())
+
+
+def valid_sha256(value: object) -> str | None:
+    return value if isinstance(value, str) and SHA256_RE.fullmatch(value) else None
+
+
+def valid_tag(value: object) -> str | None:
+    return value if isinstance(value, str) and RELEASE_TAG_RE.fullmatch(value) else None
+
+
+def ui_asset_name(tag: str) -> str:
+    """Upstream's release-publish workflow names the UI tarball this way."""
+    return f"llama-{tag}-ui.tar.gz"
+
+
+@dataclass(frozen=True)
+class UiRelease:
+    """A llama.cpp release's web UI asset, identified by tag and SHA-256."""
+
+    tag: str
+    sha256: str
+
+    @property
+    def asset(self) -> str:
+        return ui_asset_name(self.tag)
+
+
+@dataclass(frozen=True)
+class SourceRecord:
+    """What an online run learned about one source commit."""
+
+    build_number: int | None
+    ui: UiRelease | None
+
+
+def load_source_records(build_dir: str) -> dict[str, SourceRecord]:
+    path = os.path.join(build_dir, SOURCE_RECORD)
+    value = read_json(path)
+    if value is None:
+        return {}
+    invalid = RuntimeError(f"{path} is not a valid source record; delete it or run with --clean")
+    if not isinstance(value, dict):
+        raise invalid
+    records: dict[str, SourceRecord] = {}
+    for sha, entry in value.items():
+        if not isinstance(sha, str) or GIT_SHA_RE.fullmatch(sha) is None:
+            raise invalid
+        if not isinstance(entry, dict) or set(entry) != {"build_number", "ui"}:
+            raise invalid
+        number, ui = entry["build_number"], entry["ui"]
+        if number is not None and (type(number) is not int or number <= 0):
+            raise invalid
+        release: UiRelease | None = None
+        if ui is not None:
+            if not isinstance(ui, dict) or set(ui) != {"tag", "sha256"}:
+                raise invalid
+            tag, digest = valid_tag(ui["tag"]), valid_sha256(ui["sha256"])
+            if tag is None or digest is None:
+                raise invalid
+            release = UiRelease(tag, digest)
+        records[sha] = SourceRecord(number, release)
+    return records
+
+
+def save_source_records(
+    build_dir: str, records: dict[str, SourceRecord], *, keep: Collection[str]
+) -> dict[str, SourceRecord]:
+    """Write the records for the commits in keep; return what was written."""
+    kept = {sha: record for sha, record in records.items() if sha in keep}
+    write_json(
+        os.path.join(build_dir, SOURCE_RECORD),
+        {
+            sha: {
+                "build_number": record.build_number,
+                "ui": (
+                    None
+                    if record.ui is None
+                    else {"tag": record.ui.tag, "sha256": record.ui.sha256}
+                ),
+            }
+            for sha, record in kept.items()
+        },
+    )
+    return kept
+
+
+def prune_web_ui_cache(cache_dir: str, records: dict[str, SourceRecord]) -> None:
+    """Delete cached UI tarballs no source record refers to."""
+    wanted = {record.ui.asset for record in records.values() if record.ui is not None}
+    if not os.path.isdir(cache_dir):
+        return
+    for name in os.listdir(cache_dir):
+        if name.startswith("llama-") and name.endswith("-ui.tar.gz") and name not in wanted:
+            os.remove(os.path.join(cache_dir, name))
+
+
+def release_ui_asset(release: object) -> tuple[UiRelease, str] | None:
+    """(UI release, download URL) of a GitHub release object, None without a UI asset."""
+    if not isinstance(release, dict):
+        raise UpstreamDataError("unexpected GitHub release response")
+    tag, assets = release.get("tag_name"), release.get("assets")
+    if not isinstance(tag, str) or not isinstance(assets, list):
+        raise UpstreamDataError("GitHub release response lacks tag_name or assets")
+    if valid_tag(tag) is None:
+        return None
+    name = ui_asset_name(tag)
+    for asset in assets:
+        if isinstance(asset, dict) and asset.get("name") == name:
+            url = asset.get("browser_download_url")
+            if not isinstance(url, str) or not url.startswith("https://"):
+                raise RuntimeError(f"{name} has no HTTPS download URL")
+            return UiRelease(tag, github_asset_sha256(asset.get("digest"))), url
+    return None
+
+
+def select_ui_release(wanted_tag: str | None, *, pinned: bool) -> tuple[UiRelease, str]:
+    """Pick the web UI release for a source; return (release, download URL).
+
+    The UI calls server routes that change between builds (the stream route
+    moved from /v1/stream/:conv_id to /v1/stream?conv_id= after b10000), so a
+    pinned tag or commit gets its own release's UI or none at all. Untagged
+    master and pull requests get the newest b<N> release's, as upstream's own
+    UI download falls back to "latest".
+    """
+    if wanted_tag is not None and valid_tag(wanted_tag) is not None:
+        exact = github_json(
+            f"repos/{UPSTREAM_REPO}/releases/tags/{urllib.parse.quote(wanted_tag, safe='')}"
+        )
+        found = None if exact is None else release_ui_asset(exact)
+        if found is not None:
+            return found
+    if pinned:
+        what = wanted_tag if wanted_tag is not None else "this commit (no b tag points at it)"
+        raise RuntimeError(
+            f"no llama.cpp release with a web UI asset matches {what}; the UI must "
+            "come from the same build. Pick a b<N> release tag or drop --web-ui"
+        )
+    releases = github_json(f"repos/{UPSTREAM_REPO}/releases?per_page={UI_RELEASE_SCAN}")
+    if not isinstance(releases, list):
+        raise UpstreamDataError("unexpected GitHub release list response")
+    for release in releases:
+        found = release_ui_asset(release)
+        if found is not None and re.fullmatch(r"b\d+", found[0].tag):
+            return found
+    raise RuntimeError(
+        f"none of the newest {UI_RELEASE_SCAN} llama.cpp releases has a web UI asset"
+    )
+
+
+def cached_web_ui(cache_dir: str, release: UiRelease, *, refill: str) -> str:
+    """Path of the cached UI tarball after checking its SHA-256."""
+    path = os.path.join(cache_dir, release.asset)
+    if not os.path.isfile(path):
+        raise RuntimeError(f"cached web UI {path} is missing; run online first: {refill}")
+    if _sha256(path) != release.sha256:
+        raise RuntimeError(f"cached web UI {path} fails its SHA-256 check; run online first: {refill}")
+    log.ok(f"web UI {release.tag} verified from cache")
+    return path
+
+
+def validate_ui_archive(archive: tarfile.TarFile, tag: str) -> None:
+    """Accept only directories and regular files under llama-<tag>/, with index.html.
+
+    The data extraction filter would also refuse links leaving the folder, but
+    the published archives contain none, so none are accepted at all.
+    """
+    root = f"llama-{tag}"
+    found_index = False
+    for member in archive.getmembers():
+        parts = member.name.split("/")
+        if parts[0] != root or ".." in parts or not (member.isdir() or member.isfile()):
+            raise RuntimeError(f"unexpected member in the web UI archive: {member.name!r}")
+        if member.name == f"{root}/index.html" and member.isfile():
+            found_index = True
+    if not found_index:
+        raise RuntimeError(f"the web UI archive has no {root}/index.html")
+
+
+def place_web_ui(repo_dir: str, build_dir: str, tarball: str | None, tag: str | None) -> None:
+    """Install the UI as tools/ui/dist, or remove it when tarball is None.
+
+    ui-assets.cmake embeds tools/ui/dist first and, with nothing provisioned,
+    whatever an earlier build left in the build tree's own dist, so that one is
+    always removed and a stale UI can never be embedded. The new tree is
+    extracted and checked before the old one is replaced.
+    """
+    remove_path(os.path.join(build_dir, UI_DIST))
+    dist = os.path.join(repo_dir, UI_DIST)
+    if tarball is None or tag is None:
+        remove_path(dist)
+        return
+    with tempfile.TemporaryDirectory(dir=os.path.dirname(dist), prefix=".dist-") as staging:
+        with tarfile.open(tarball, "r:gz") as archive:
+            validate_ui_archive(archive, tag)
+            archive.extractall(staging, filter="data")
+        extracted = os.path.join(staging, f"llama-{tag}")
+        if not os.path.isfile(os.path.join(extracted, "index.html")):
+            raise RuntimeError(f"the web UI archive extracted without llama-{tag}/index.html")
+        remove_path(dist)
+        os.rename(extracted, dist)
+    log.ok(f"web UI {tag} placed in {dist}")
+
+
+def embedded_ui(build_dir: str) -> bool | None:
+    """Whether the generated tools/ui/ui.h says assets were embedded; None if absent."""
+    try:
+        with open(os.path.join(build_dir, "tools", "ui", "ui.h"), encoding="utf-8") as handle:
+            text = handle.read()
+    except FileNotFoundError:
+        return None
+    return re.search(r"^\s*#\s*define\s+LLAMA_UI_HAS_ASSETS\b", text, re.MULTILINE) is not None
+
+
+def llama_swap_asset(tag: str) -> str:
     machine = platform.machine()
     arch = LLAMA_SWAP_ARCHES.get(machine)
     if arch is None:
         raise RuntimeError(f"no llama-swap release build for this CPU: {machine}")
+    return f"llama-swap_{tag.removeprefix('v')}_linux_{arch}.tar.gz"
 
-    release_url = f"https://api.github.com/repos/{LLAMA_SWAP_REPO}/releases/latest"
-    log.command(f"GET {release_url}")
-    release = json.loads(http_get(release_url))
-    tag = str(release["tag_name"])
+
+def fetch_llama_swap(cache_dir: str) -> tuple[str, str]:
+    """Download and verify the latest llama-swap release; return (binary path, tag).
+
+    A tarball already in cache_dir that matches the release checksum is reused
+    instead of downloaded again. The release is recorded for --offline.
+    """
+    release = github_json(f"repos/{LLAMA_SWAP_REPO}/releases/latest")
+    if not isinstance(release, dict):
+        raise UpstreamDataError(f"no latest llama-swap release found at {LLAMA_SWAP_REPO}")
+    tag = valid_tag(release.get("tag_name"))
+    if tag is None:
+        raise RuntimeError(f"unexpected llama-swap release tag: {release.get('tag_name')!r}")
     assets = {asset["name"]: asset["browser_download_url"] for asset in release["assets"]}
 
-    number = tag.removeprefix("v")
-    tarball_name = f"llama-swap_{number}_linux_{arch}.tar.gz"
-    checksums_name = f"llama-swap_{number}_checksums.txt"
+    tarball_name = llama_swap_asset(tag)
+    checksums_name = f"llama-swap_{tag.removeprefix('v')}_checksums.txt"
     for name in (tarball_name, checksums_name):
         if name not in assets:
             raise RuntimeError(f"llama-swap {tag} has no release asset named {name}")
@@ -1465,40 +1903,50 @@ def fetch_llama_swap(cache_dir: str) -> tuple[str, str]:
     for line in http_get(assets[checksums_name]).decode().splitlines():
         fields = line.split()
         if len(fields) == 2 and fields[1] == tarball_name:
-            expected = fields[0].lower()
+            expected = valid_sha256(fields[0].lower())
     if expected is None:
         raise RuntimeError(f"{checksums_name} lists no checksum for {tarball_name}")
 
-    os.makedirs(cache_dir, exist_ok=True)
     tarball = os.path.join(cache_dir, tarball_name)
-    if os.path.isfile(tarball) and _sha256(tarball) == expected:
-        log.info(f"reusing verified {tarball}")
-    else:
-        log.command(f"GET {assets[tarball_name]}")
-        data = http_get(assets[tarball_name])
-        actual = hashlib.sha256(data).hexdigest()
-        if actual != expected:
-            raise RuntimeError(
-                f"{tarball_name} checksum mismatch: expected {expected}, got {actual}"
-            )
-        with open(tarball, "wb") as handle:
-            handle.write(data)
-        log.ok(f"downloaded {tarball_name} ({len(data) / (1024 ** 2):.1f} MiB), sha256 verified")
-
+    cached_download(assets[tarball_name], tarball, expected)
+    # Record before pruning, so an interruption leaves a record whose tarball exists.
+    write_json(os.path.join(cache_dir, LLAMA_SWAP_RECORD), {"tag": tag, "sha256": expected})
     for name in os.listdir(cache_dir):
         if name.startswith("llama-swap_") and name.endswith(".tar.gz") and name != tarball_name:
             os.remove(os.path.join(cache_dir, name))
+    return extract_llama_swap(tarball, cache_dir), tag
 
+
+def cached_llama_swap(cache_dir: str, *, refill: str) -> tuple[str, str]:
+    """The llama-swap release an online run recorded, verified; return (binary path, tag)."""
+    path = os.path.join(cache_dir, LLAMA_SWAP_RECORD)
+    value = read_json(path)
+    if value is None:
+        raise RuntimeError(f"no cached llama-swap release in {cache_dir}; run online first: {refill}")
+    tag = valid_tag(value.get("tag")) if isinstance(value, dict) else None
+    digest = valid_sha256(value.get("sha256")) if isinstance(value, dict) else None
+    if tag is None or digest is None:
+        raise RuntimeError(f"{path} is not a valid release record; run online first: {refill}")
+    tarball = os.path.join(cache_dir, llama_swap_asset(tag))
+    if not os.path.isfile(tarball) or _sha256(tarball) != digest:
+        raise RuntimeError(f"cached {tarball} is missing or corrupt; run online first: {refill}")
+    log.ok(f"llama-swap {tag} verified from cache")
+    return extract_llama_swap(tarball, cache_dir), tag
+
+
+def extract_llama_swap(tarball: str, cache_dir: str) -> str:
     binary = os.path.join(cache_dir, LLAMA_SWAP_BINARY)
     with tarfile.open(tarball, "r:gz") as archive:
         member = archive.getmember(LLAMA_SWAP_BINARY)
         source = archive.extractfile(member) if member.isfile() else None
         if source is None:
-            raise RuntimeError(f"{tarball_name} has no regular file named {LLAMA_SWAP_BINARY}")
+            raise RuntimeError(
+                f"{os.path.basename(tarball)} has no regular file named {LLAMA_SWAP_BINARY}"
+            )
         with source, open(binary, "wb") as handle:
             shutil.copyfileobj(source, handle)
     os.chmod(binary, 0o755)
-    return binary, tag
+    return binary
 
 
 def _sha256(path: str) -> str:
@@ -1801,6 +2249,7 @@ HELP_EXAMPLES = [
     ),
     ("Use 8 compile jobs to keep the machine responsive", "-j 8"),
     ("Include llama-server's built-in web UI", "--web-ui"),
+    ("Rebuild with no network from a tree kept by an earlier -k run", "--offline --web-ui"),
     ("Compile with the newest clang on PATH instead of GCC", "--clang"),
     ("Delete the llama.cpp and llama-swap folders, then exit", "--clean"),
 ]
@@ -1816,15 +2265,17 @@ def parse_args() -> argparse.Namespace:
             "or the --install-dir folder. The newest upstream commit is built unless "
             f"--ref-tag or --beta picks another. The {REPO_DIR} and {LLAMA_SWAP_DIR} "
             "working folders are made in the current directory and deleted after a "
-            "successful install unless --keep-source is given. Run as a normal "
-            "user; sudo is asked for only when apt runs or you cannot write to the "
-            "install folder. After successful GPU verification, older APT-managed "
-            "CUDA toolkits and replaced NVIDIA driver packages are purged with sudo."
+            "successful install unless --keep-source is given; --offline rebuilds "
+            "from them with no network access. Run as a normal user; sudo is asked "
+            "for only when apt runs or you cannot write to the install folder. "
+            "After successful GPU verification, older APT-managed CUDA toolkits and "
+            "replaced NVIDIA driver packages are purged with sudo (not with --offline)."
         ),
         examples=HELP_EXAMPLES,
     )
 
-    source = parser.add_argument_group("Source").add_mutually_exclusive_group()
+    source_group = parser.add_argument_group("Source")
+    source = source_group.add_mutually_exclusive_group()
     source.add_argument(
         "-r",
         "--ref-tag",
@@ -1846,6 +2297,18 @@ def parse_args() -> argparse.Namespace:
             "commit; its binaries report build number 1. Add --install-dir to try "
             "it without replacing your installed binaries. Cannot be combined with "
             "--ref-tag"
+        ),
+    )
+    source_group.add_argument(
+        "--offline",
+        action="store_true",
+        help=(
+            "Build with no network access from what an earlier online run with "
+            "--keep-source left: the local branch for the same --ref-tag or --beta "
+            "choice, its build number, the llama-swap release and, for --web-ui, "
+            "the web UI release fetched for that commit. Skips git fetch, GitHub "
+            "and all apt use, including the CUDA/driver cleanup, and keeps the "
+            "folders. --cmake-arg options that download dependencies fail"
         ),
     )
 
@@ -1881,8 +2344,11 @@ def parse_args() -> argparse.Namespace:
         "--web-ui",
         action="store_true",
         help=(
-            "Embed llama-server's built-in web UI. Off by default: its files download "
-            "at build time, and a bad download fails the whole build"
+            "Embed llama-server's built-in web UI, taken from the llama.cpp release "
+            "of the same build (the newest release for untagged commits and pull "
+            "requests) and verified against GitHub's SHA-256 digest. A pinned "
+            "--ref-tag with no such release fails, and so does a build that ends "
+            "without the UI embedded"
         ),
     )
     build.add_argument(
@@ -1894,9 +2360,11 @@ def parse_args() -> argparse.Namespace:
         help=(
             "Add a CMake configure setting; repeat for more. KEY=VALUE is passed "
             "as -DKEY=VALUE after this script's own settings, so it overrides "
-            "them. Other CMake flags pass through as given but must be joined "
-            "with '=', as in --cmake-arg=-Wno-dev. A kept build tree is "
-            "reconfigured from scratch when these change"
+            "them, except the web UI settings (LLAMA_BUILD_UI, "
+            "LLAMA_USE_PREBUILT_UI and their WEBUI forms), which --web-ui manages. "
+            "Other CMake flags pass through as given but must be joined with '=', "
+            "as in --cmake-arg=-Wno-dev. A kept build tree is reconfigured from "
+            "scratch when these change"
         ),
     )
     build.add_argument(
@@ -1931,7 +2399,7 @@ def parse_args() -> argparse.Namespace:
         help=(
             f"Keep the {REPO_DIR} and {LLAMA_SWAP_DIR} folders after a successful "
             "install, so the next run updates the checkout in place and rebuilds "
-            "only what changed"
+            "only what changed, and --offline can rebuild without a network"
         ),
     )
     install.add_argument(
@@ -1955,6 +2423,13 @@ def main() -> None:
         raise RuntimeError("Run this script as a normal user, not with sudo or as root.")
     if args.jobs < 1:
         raise RuntimeError(f"--jobs must be at least 1, got {args.jobs}")
+    check_managed_cmake_args(args.cmake_arg)
+    # The online run that fills what an offline run reuses, for error messages.
+    refill = online_command(args)
+    if args.offline:
+        # apt needs the network, and the folders are the offline cache.
+        args.skip_apt = True
+        args.keep_source = True
 
     if args.clean:
         removed = [path for path in (REPO_DIR, LLAMA_SWAP_DIR) if remove_path(path)]
@@ -2039,10 +2514,11 @@ def main() -> None:
     if args.skip_apt:
         missing = missing_packages(SYSTEM_PACKAGES)
         if missing:
+            flag = "--offline" if args.offline else "--skip-apt"
             raise RuntimeError(
-                f"--skip-apt was given but {plural(len(missing), 'build package')} "
+                f"{flag} was given but {plural(len(missing), 'build package')} "
                 f"{'is' if len(missing) == 1 else 'are'} not installed: "
-                f"{' '.join(missing)}. Run once without --skip-apt."
+                f"{' '.join(missing)}. Run once online without {flag}."
             )
         log.ok(
             f"apt skipped; all {plural(len(SYSTEM_PACKAGES), 'package')} installed: "
@@ -2108,7 +2584,7 @@ def main() -> None:
             "fail once it reaches a CUDA source."
         )
     elif cuda_archs != "native":
-        log.info(f"nvcc accepts sm_{cuda_archs.replace(';', ', sm_')}")
+        log.info(f"nvcc accepts sm_{', sm_'.join(plain_architectures(cuda_archs))}")
 
     log.table(
         tool_rows
@@ -2122,21 +2598,26 @@ def main() -> None:
     # ---------------------------------------------------------------- step 5
     log.step("Source checkout")
 
+    if args.offline:
+        log.info("offline mode: using the kept checkout, no fetch")
     if args.beta is not None:
         log.info(f"beta mode: building from PR #{args.beta}")
         branch = f"pr-{args.beta}"
-        sync_repo(REPO_DIR, REPO_URL, f"refs/pull/{args.beta}/head", branch, env=env)
-    elif args.ref_tag is not None and re.fullmatch(r"[0-9a-f]{40}", args.ref_tag):
+        fetch_ref = f"refs/pull/{args.beta}/head"
+    elif args.ref_tag is not None and GIT_SHA_RE.fullmatch(args.ref_tag):
         log.info(f"pinned mode: building commit {args.ref_tag}")
         branch = f"commit-{args.ref_tag[:12]}"
-        sync_repo(REPO_DIR, REPO_URL, args.ref_tag, branch, env=env)
+        fetch_ref = args.ref_tag
     elif args.ref_tag is not None:
         log.info(f"pinned mode: building tag {args.ref_tag}")
         branch = f"tag-{args.ref_tag}"
-        sync_repo(REPO_DIR, REPO_URL, f"refs/tags/{args.ref_tag}", branch, env=env)
+        fetch_ref = f"refs/tags/{args.ref_tag}"
     else:
         branch = "master"
-        sync_repo(REPO_DIR, REPO_URL, "HEAD", branch, env=env)
+        fetch_ref = "HEAD"
+    sync_repo(
+        REPO_DIR, REPO_URL, fetch_ref, branch, env=env, offline=args.offline, refill=refill
+    )
 
     head = describe_head(REPO_DIR, env=env)
     log.table(
@@ -2148,12 +2629,22 @@ def main() -> None:
         ]
     )
 
+    build_dir = os.path.join(REPO_DIR, "build")
+    source_records = load_source_records(build_dir)
+    source_record = source_records.get(head["sha"])
     build_number: int | None = None
     newest_tag: int | None = None
-    if args.beta is None:
+    if args.offline:
+        build_number = source_record.build_number if source_record is not None else None
+    elif args.beta is None:
         build_number, newest_tag = upstream_build_number(REPO_DIR, REPO_URL, env=env)
     if build_number is not None:
         log.ok(f"upstream build number for this commit: b{build_number}")
+    elif args.offline:
+        log.info(
+            "no build number recorded for this commit; upstream derives one from "
+            "the local history, 1 for a shallow checkout"
+        )
     elif args.beta is not None:
         log.info("PR branches carry no b tag; the build number will report as 1")
     else:
@@ -2168,9 +2659,56 @@ def main() -> None:
         )
 
     # ---------------------------------------------------------------- step 6
-    log.step("llama-swap release")
-    swap_binary, swap_tag = fetch_llama_swap(LLAMA_SWAP_DIR)
+    log.step("Release assets: llama-swap and web UI")
+    if args.offline:
+        swap_binary, swap_tag = cached_llama_swap(LLAMA_SWAP_DIR, refill=refill)
+    else:
+        swap_binary, swap_tag = fetch_llama_swap(LLAMA_SWAP_DIR)
     log.ok(f"llama-swap {swap_tag} ready at {swap_binary}")
+
+    ui_layout = os.path.isfile(os.path.join(REPO_DIR, UI_TEMPLATE))
+    ui_cache = os.path.join(build_dir, UI_CACHE)
+    ui_release: UiRelease | None = None
+    ui_tarball: str | None = None
+    if args.web_ui:
+        if not ui_layout:
+            raise RuntimeError(
+                f"this llama.cpp source has no {UI_TEMPLATE}; --web-ui supports only "
+                "the tools/ui layout of b11000-era and newer sources. Drop --web-ui"
+            )
+        if args.offline:
+            ui_release = source_record.ui if source_record is not None else None
+            if ui_release is None:
+                raise RuntimeError(
+                    f"no web UI was fetched for commit {head['short_sha']}; "
+                    f"run online first: {refill}"
+                )
+            ui_tarball = cached_web_ui(ui_cache, ui_release, refill=refill)
+        else:
+            wanted = f"b{build_number}" if build_number is not None else None
+            if args.ref_tag is not None and not GIT_SHA_RE.fullmatch(args.ref_tag):
+                wanted = args.ref_tag
+            ui_release, ui_url = select_ui_release(wanted, pinned=args.ref_tag is not None)
+            if ui_release.tag != wanted:
+                log.info(
+                    f"commit {head['short_sha']} has no release of its own; using the "
+                    f"newest release's web UI, {ui_release.tag}"
+                )
+            ui_tarball = os.path.join(ui_cache, ui_release.asset)
+            cached_download(ui_url, ui_tarball, ui_release.sha256)
+
+    if not args.offline:
+        # Recorded after the downloads, before pruning, so a record never names
+        # a tarball that is gone. A run without --web-ui keeps an earlier UI.
+        previous_ui = source_record.ui if source_record is not None else None
+        source_records[head["sha"]] = SourceRecord(build_number, ui_release or previous_ui)
+        kept = save_source_records(
+            build_dir, source_records, keep=local_branch_tips(REPO_DIR, env=env)
+        )
+        prune_web_ui_cache(ui_cache, kept)
+    place_web_ui(
+        REPO_DIR, build_dir, ui_tarball, ui_release.tag if ui_release is not None else None
+    )
 
     # ---------------------------------------------------------------- step 7
     log.step("CMake configure")
@@ -2183,10 +2721,11 @@ def main() -> None:
     # BUILD_SHARED_LIBS=OFF links libllama and libggml into each binary, so
     # copying the binaries alone into the install folder is a complete install.
     #
-    # Both UI variables must be set together: scripts/ui-assets.cmake gates
-    # provisioning on BUILD_UI and HF_ENABLED independently, and HF_ENABLED
-    # comes from LLAMA_USE_PREBUILT_UI, which defaults ON. Passing only
-    # LLAMA_BUILD_UI=OFF still runs the Hugging Face download.
+    # Both UI provisioning options are always OFF (MANAGED_UI_ARGS): CMake's npm
+    # build and Hugging Face download only warn when they fail, so --web-ui
+    # instead places the verified release UI in tools/ui/dist above, which
+    # ui-assets.cmake embeds first. LLAMA_USE_PREBUILT_UI defaults ON, so both
+    # must be passed.
     #
     # Left at upstream defaults on purpose, so they follow upstream changes:
     #   GGML_CUDA_FA, GGML_CUDA_GRAPHS, GGML_OPENMP, GGML_CCACHE,
@@ -2194,7 +2733,9 @@ def main() -> None:
     #   GGML_CUDA_FA_QUANTS ...... f16, bf16, q8_0 and q4_0 K/V pairs. "all"
     #       compiles every combination and takes far longer.
     #   GGML_LTO ................. OFF. It adds substantial link time and
-    #       nearly all compute runs in CUDA kernels.
+    #       nearly all compute runs in CUDA kernels, which it does not reach:
+    #       CMake applies CUDA IPO only with CUDA_SEPARABLE_COMPILATION, which
+    #       ggml-cuda does not set.
     #   GGML_CUDA_COMPRESSION_MODE "size".
     #
     # LLAMA_ALL_WARNINGS=OFF drops upstream's developer lint set (-Wall -Wextra
@@ -2213,9 +2754,9 @@ def main() -> None:
     # since every library is static; nvcc splits -Xcompiler values on commas,
     # so -Wl,... could not go through it anyway.
     #
-    # --cmake-arg values go last: CMake keeps the last -D for a variable, so
-    # they override any setting above.
-    ui_enabled = "ON" if args.web_ui else "OFF"
+    # --cmake-arg values go after this script's settings: CMake keeps the last
+    # -D for a variable, so they override any setting above. Only the managed
+    # UI settings follow them.
     # nvcc flags beyond hardening, shown in the summary.
     cuda_extra_flags = [
         *host.nvcc_flags,
@@ -2230,8 +2771,6 @@ def main() -> None:
     ]
     hardening = " ".join(HARDENING_COMPILE_FLAGS)
     configure_args = [
-        f"-DLLAMA_BUILD_UI={ui_enabled}",
-        f"-DLLAMA_USE_PREBUILT_UI={ui_enabled}",
         "-DBUILD_SHARED_LIBS=OFF",
         "-DCMAKE_BUILD_TYPE=Release",
         "-DLLAMA_ALL_WARNINGS=OFF",
@@ -2251,15 +2790,12 @@ def main() -> None:
         # Single GPU here, so the NVIDIA collectives library is dead weight.
         "-DGGML_CUDA_NCCL=OFF",
         "-DGGML_NATIVE=ON",
+        build_number_arg(build_number),
     ]
-    if build_number is not None:
-        # llama.cpp only derives this itself when the caller has not set it.
-        configure_args.append(f"-DLLAMA_BUILD_NUMBER={build_number}")
     if args.cmake_arg:
         log.table([("extra CMake args", shlex.join(args.cmake_arg))])
-    configure_args += args.cmake_arg
+    configure_args += [*args.cmake_arg, *MANAGED_UI_ARGS]
 
-    build_dir = f"{REPO_DIR}/build"
     reset_stale_cmake_cache(
         build_dir,
         {
@@ -2289,7 +2825,22 @@ def main() -> None:
     compile_seconds = time.monotonic() - compile_started
 
     log.table(report_ccache_delta(ccache_before, ccache_counters(env=env)))
-    if not args.web_ui:
+    if ui_layout:
+        has_ui = embedded_ui(build_dir)
+        if has_ui is None:
+            raise RuntimeError(
+                f"the build did not generate {os.path.join(build_dir, 'tools', 'ui', 'ui.h')}; "
+                "cannot confirm whether the web UI was embedded"
+            )
+        if has_ui != args.web_ui:
+            raise RuntimeError(
+                "the web UI was not embedded despite --web-ui"
+                if args.web_ui
+                else "a web UI was embedded although --web-ui was not given"
+            )
+    if args.web_ui and ui_release is not None:
+        log.ok(f"web UI {ui_release.tag} embedded in llama-server")
+    else:
         log.info(
             "web UI not embedded (--web-ui adds it); upstream's expected "
             f"'{UI_NO_ASSETS_WARNING}' build warning was hidden"
@@ -2402,10 +2953,15 @@ def main() -> None:
             "Installed llama-cli failed CUDA device verification; old CUDA/driver packages retained"
         )
 
-    cuda_cleanup = cleanup_old_cuda(cuda_version, nvcc, env=env)
+    if args.offline:
+        # apt purge runs package scripts and hooks, which may reach the network.
+        cuda_cleanup = "skipped (offline)"
+        log.info("offline mode: obsolete CUDA/driver cleanup skipped")
+    else:
+        cuda_cleanup = cleanup_old_cuda(cuda_version, nvcc, env=env)
     # Verify the installed applications again without build-only environment
     # overrides, before discarding the source/build tree.
-    if cuda_cleanup != "nothing obsolete":
+    if cuda_cleanup not in {"nothing obsolete", "skipped (offline)"}:
         for path in installed:
             run([path, "--version"], capture=True, output_limit=2)
         status, output = capture_all([os.path.join(install_dir, "llama-cli"), "--list-devices"])
@@ -2444,7 +3000,12 @@ def main() -> None:
         ),
         "cmake / ninja": f"{version_text(cmake_version)} / {version_text(ninja_version)}",
         "CUDA arch": cuda_archs,
-        "web UI": "embedded" if args.web_ui else "disabled",
+        "web UI": (
+            f"embedded ({ui_release.tag})"
+            if args.web_ui and ui_release is not None
+            else "disabled"
+        ),
+        "network": "offline (kept checkout and caches)" if args.offline else "online",
         "extra CMake args": shlex.join(args.cmake_arg) or "none",
         "installed": ", ".join(installed),
         "sources": sources,
