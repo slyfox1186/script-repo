@@ -722,8 +722,7 @@ mi() {
 
 
 cdff() { clear; cd "$HOME/tmp/ffmpeg-build" || exit 1; cl; }
-ffm() { clear; bash <(curl -sSL 'http://ffmpeg.optimizethis.net'); }
-ffp() { clear; bash <(curl -sSL 'http://ffpb.optimizethis.net'); }
+ffm() { [[ -d ffmpeg-build-script/.git ]] || git clone 'https://github.com/slyfox1186/ffmpeg-build-script.git' || return 1; clear; (cd ffmpeg-build-script && git pull --ff-only && python3 build-ffmpeg.py --build --enable-gpl-and-non-free --latest); }
 
 
 listppas() {

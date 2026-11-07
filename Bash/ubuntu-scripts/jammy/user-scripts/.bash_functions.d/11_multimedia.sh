@@ -12,9 +12,9 @@ ffdl() {
 }
 
 ffs() {
-    wget --show-progress -cqO "https://raw.githubusercontent.com/slyfox1186/ffmpeg-build-script/main/build-ffmpeg.sh"
+    [[ -d ffmpeg-build-script/.git ]] || git clone "https://github.com/slyfox1186/ffmpeg-build-script.git" || return 1
     clear
-    ffr build-ffmpeg.sh
+    (cd ffmpeg-build-script && git pull --ff-only && python3 build-ffmpeg.py --build --enable-gpl-and-non-free --latest)
 }
 
 ffstaticdl() {
@@ -42,7 +42,7 @@ ffrv() {
 ## IMAGEMAGICK ##
 
 imow() {
-    if wget --timeout=2 --tries=2 -cqO "optimize-jpg.py" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer-Scripts/ImageMagick/scripts/optimize-jpg.py"; then
+    if wget --timeout=2 --tries=2 -cqO "optimize-jpg.py" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/installer-scripts/imagemagick/optimize-jpg.py"; then
         clear
         box_out_banner "Optimizing Images: $PWD"
         echo

@@ -104,14 +104,14 @@ install_choice() {
 # Download all of the git-project scripts and number them ascending starting with one
 cd "$cwd" || exit 1
 
-scripts=(aria2 brotli clang-16 garbage-collector git libpng
+scripts=(aria2 brotli clang garbage-collector git libpng
          libxml2 nasm openssl python3 wsl2-kernel yasm zlib
          zstd)
 count=0
 
 for script in "${scripts[@]}"; do
     ((count++))
-    wget --show-progress -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer-Scripts/GitHub-Projects/build-${script}.sh"
+    wget --show-progress -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/installer-scripts/github-projects/build-${script}.sh"
     mv "build-${script}.sh" "$(printf '%02d' "$count")-build-${script}.sh"
 done
 

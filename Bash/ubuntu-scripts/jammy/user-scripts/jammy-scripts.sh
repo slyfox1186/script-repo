@@ -25,9 +25,9 @@ cd "$td" || fail "Failed to change to temporary directory"
 
 # Create list of URLs to download main files
 cat > "$tf" <<'EOF'
-https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Ubuntu-Scripts/jammy/user-scripts/.bash_aliases
-https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Ubuntu-Scripts/jammy/user-scripts/.bash_functions
-https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Ubuntu-Scripts/jammy/user-scripts/.bashrc
+https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/ubuntu-scripts/jammy/user-scripts/.bash_aliases
+https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/ubuntu-scripts/jammy/user-scripts/.bash_functions
+https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/ubuntu-scripts/jammy/user-scripts/.bashrc
 EOF
 
 # Download main files
@@ -44,42 +44,42 @@ done
 # Download .bash_aliases.d files
 mkdir -p ".bash_aliases.d"
 wget -qN -P ".bash_aliases.d" \
-    "https://raw.githubusercontent.com/slyfox1186/script-repo/refs/heads/main/Bash/Ubuntu-Scripts/jammy/user-scripts/.bash_aliases.d/01_sudo_aliases.sh" \
-    "https://raw.githubusercontent.com/slyfox1186/script-repo/refs/heads/main/Bash/Ubuntu-Scripts/jammy/user-scripts/.bash_aliases.d/02_system_control.sh" \
-    "https://raw.githubusercontent.com/slyfox1186/script-repo/refs/heads/main/Bash/Ubuntu-Scripts/jammy/user-scripts/.bash_aliases.d/03_network.sh" \
-    "https://raw.githubusercontent.com/slyfox1186/script-repo/refs/heads/main/Bash/Ubuntu-Scripts/jammy/user-scripts/.bash_aliases.d/04_docker.sh" \
-    "https://raw.githubusercontent.com/slyfox1186/script-repo/refs/heads/main/Bash/Ubuntu-Scripts/jammy/user-scripts/.bash_aliases.d/05_filesystem.sh" \
-    "https://raw.githubusercontent.com/slyfox1186/script-repo/refs/heads/main/Bash/Ubuntu-Scripts/jammy/user-scripts/.bash_aliases.d/06_package_management.sh" \
-    "https://raw.githubusercontent.com/slyfox1186/script-repo/refs/heads/main/Bash/Ubuntu-Scripts/jammy/user-scripts/.bash_aliases.d/07_editors.sh" \
-    "https://raw.githubusercontent.com/slyfox1186/script-repo/refs/heads/main/Bash/Ubuntu-Scripts/jammy/user-scripts/.bash_aliases.d/08_project_specific.sh"
+    "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/ubuntu-scripts/jammy/user-scripts/.bash_aliases.d/01_sudo_aliases.sh" \
+    "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/ubuntu-scripts/jammy/user-scripts/.bash_aliases.d/02_system_control.sh" \
+    "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/ubuntu-scripts/jammy/user-scripts/.bash_aliases.d/03_network.sh" \
+    "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/ubuntu-scripts/jammy/user-scripts/.bash_aliases.d/04_docker.sh" \
+    "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/ubuntu-scripts/jammy/user-scripts/.bash_aliases.d/05_filesystem.sh" \
+    "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/ubuntu-scripts/jammy/user-scripts/.bash_aliases.d/06_package_management.sh" \
+    "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/ubuntu-scripts/jammy/user-scripts/.bash_aliases.d/07_editors.sh" \
+    "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/ubuntu-scripts/jammy/user-scripts/.bash_aliases.d/08_project_specific.sh"
 
 # Download .bash_functions.d files
 mkdir -p ".bash_functions.d"
 wget -qN -P ".bash_functions.d" \
-    "https://raw.githubusercontent.com/slyfox1186/script-repo/refs/heads/main/Bash/Ubuntu-Scripts/jammy/user-scripts/.bash_functions.d/01_gui_apps.sh" \
-    "https://raw.githubusercontent.com/slyfox1186/script-repo/refs/heads/main/Bash/Ubuntu-Scripts/jammy/user-scripts/.bash_functions.d/02_filesystem.sh" \
-    "https://raw.githubusercontent.com/slyfox1186/script-repo/refs/heads/main/Bash/Ubuntu-Scripts/jammy/user-scripts/.bash_functions.d/03_text_processing.sh" \
-    "https://raw.githubusercontent.com/slyfox1186/script-repo/refs/heads/main/Bash/Ubuntu-Scripts/jammy/user-scripts/.bash_functions.d/04_compression.sh" \
-    "https://raw.githubusercontent.com/slyfox1186/script-repo/refs/heads/main/Bash/Ubuntu-Scripts/jammy/user-scripts/.bash_functions.d/06_process_management.sh" \
-    "https://raw.githubusercontent.com/slyfox1186/script-repo/refs/heads/main/Bash/Ubuntu-Scripts/jammy/user-scripts/.bash_functions.d/07_dev_tools.sh" \
-    "https://raw.githubusercontent.com/slyfox1186/script-repo/refs/heads/main/Bash/Ubuntu-Scripts/jammy/user-scripts/.bash_functions.d/08_file_analysis.sh" \
-    "https://raw.githubusercontent.com/slyfox1186/script-repo/refs/heads/main/Bash/Ubuntu-Scripts/jammy/user-scripts/.bash_functions.d/09_security.sh" \
-    "https://raw.githubusercontent.com/slyfox1186/script-repo/refs/heads/main/Bash/Ubuntu-Scripts/jammy/user-scripts/.bash_functions.d/10_networking.sh" \
-    "https://raw.githubusercontent.com/slyfox1186/script-repo/refs/heads/main/Bash/Ubuntu-Scripts/jammy/user-scripts/.bash_functions.d/11_multimedia.sh" \
-    "https://raw.githubusercontent.com/slyfox1186/script-repo/refs/heads/main/Bash/Ubuntu-Scripts/jammy/user-scripts/.bash_functions.d/12_utilities.sh" \
-    "https://raw.githubusercontent.com/slyfox1186/script-repo/refs/heads/main/Bash/Ubuntu-Scripts/jammy/user-scripts/.bash_functions.d/13_database.sh" \
-    "https://raw.githubusercontent.com/slyfox1186/script-repo/refs/heads/main/Bash/Ubuntu-Scripts/jammy/user-scripts/.bash_functions.d/14_docker.sh"
+    "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/ubuntu-scripts/jammy/user-scripts/.bash_functions.d/01_gui_apps.sh" \
+    "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/ubuntu-scripts/jammy/user-scripts/.bash_functions.d/02_filesystem.sh" \
+    "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/ubuntu-scripts/jammy/user-scripts/.bash_functions.d/03_text_processing.sh" \
+    "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/ubuntu-scripts/jammy/user-scripts/.bash_functions.d/04_compression.sh" \
+    "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/ubuntu-scripts/jammy/user-scripts/.bash_functions.d/06_process_management.sh" \
+    "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/ubuntu-scripts/jammy/user-scripts/.bash_functions.d/07_dev_tools.sh" \
+    "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/ubuntu-scripts/jammy/user-scripts/.bash_functions.d/08_file_analysis.sh" \
+    "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/ubuntu-scripts/jammy/user-scripts/.bash_functions.d/09_security.sh" \
+    "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/ubuntu-scripts/jammy/user-scripts/.bash_functions.d/10_networking.sh" \
+    "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/ubuntu-scripts/jammy/user-scripts/.bash_functions.d/11_multimedia.sh" \
+    "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/ubuntu-scripts/jammy/user-scripts/.bash_functions.d/12_utilities.sh" \
+    "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/ubuntu-scripts/jammy/user-scripts/.bash_functions.d/13_database.sh" \
+    "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/ubuntu-scripts/jammy/user-scripts/.bash_functions.d/14_docker.sh"
 
 # Download .bashrc.d files
 mkdir -p ".bashrc.d"
 wget -qN -P ".bashrc.d" \
-    "https://raw.githubusercontent.com/slyfox1186/script-repo/refs/heads/main/Bash/Ubuntu-Scripts/jammy/user-scripts/.bashrc.d/01_history.sh" \
-    "https://raw.githubusercontent.com/slyfox1186/script-repo/refs/heads/main/Bash/Ubuntu-Scripts/jammy/user-scripts/.bashrc.d/02_shell_options.sh" \
-    "https://raw.githubusercontent.com/slyfox1186/script-repo/refs/heads/main/Bash/Ubuntu-Scripts/jammy/user-scripts/.bashrc.d/03_prompt.sh" \
-    "https://raw.githubusercontent.com/slyfox1186/script-repo/refs/heads/main/Bash/Ubuntu-Scripts/jammy/user-scripts/.bashrc.d/04_dircolors.sh" \
-    "https://raw.githubusercontent.com/slyfox1186/script-repo/refs/heads/main/Bash/Ubuntu-Scripts/jammy/user-scripts/.bashrc.d/05_environment.sh" \
-    "https://raw.githubusercontent.com/slyfox1186/script-repo/refs/heads/main/Bash/Ubuntu-Scripts/jammy/user-scripts/.bashrc.d/06_path.sh" \
-    "https://raw.githubusercontent.com/slyfox1186/script-repo/refs/heads/main/Bash/Ubuntu-Scripts/jammy/user-scripts/.bashrc.d/07_external_tools.sh"
+    "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/ubuntu-scripts/jammy/user-scripts/.bashrc.d/01_history.sh" \
+    "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/ubuntu-scripts/jammy/user-scripts/.bashrc.d/02_shell_options.sh" \
+    "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/ubuntu-scripts/jammy/user-scripts/.bashrc.d/03_prompt.sh" \
+    "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/ubuntu-scripts/jammy/user-scripts/.bashrc.d/04_dircolors.sh" \
+    "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/ubuntu-scripts/jammy/user-scripts/.bashrc.d/05_environment.sh" \
+    "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/ubuntu-scripts/jammy/user-scripts/.bashrc.d/06_path.sh" \
+    "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/ubuntu-scripts/jammy/user-scripts/.bashrc.d/07_external_tools.sh"
 
 # Clean up unnecessary files
 find . ! \( -name ".*" -o -name "*.sh" \) -type f -delete 2>/dev/null

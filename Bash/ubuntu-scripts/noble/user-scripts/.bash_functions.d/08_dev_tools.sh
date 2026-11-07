@@ -145,7 +145,7 @@ venv() {
     local choice random_dir
     local -a package_names venv_args
     random_dir=$(mktemp -d)
-    if ! wget -cqO "$random_dir/pip-venv-installer.sh" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Misc/Python3/pip-venv-installer.sh"; then
+    if ! wget -cqO "$random_dir/pip-venv-installer.sh" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/misc/pip-venv-installer.sh"; then
         rm -rf -- "$random_dir"
         return 1
     fi
@@ -368,17 +368,20 @@ script_repo() {
         break
         ;;
       "Install ImageMagick 7")
-        wget --show-progress -cqO build-magick.sh "https://imagick.optimizethis.net"
-        sudo bash build-magick.sh
+        [[ -d imagemagick-build-script/.git ]] || git clone "https://github.com/slyfox1186/imagemagick-build-script.git" || return 1
+        (cd imagemagick-build-script && git pull --ff-only && python3 build-magick.py --build) || return 1
         break
         ;;
       "Compile FFmpeg from Source")
-        git clone "https://github.com/slyfox1186/ffmpeg-build-script.git"
-        cd ffmpeg-build-script || return 1
-        clear
-        sudo ./build-ffmpeg.sh -h
-        read -r -a command_args -p "Enter your chosen arguments: (e.g. --build --gpl-and-nonfree --latest): "
-        sudo ./build-ffmpeg.sh "${command_args[@]}"
+        [[ -d ffmpeg-build-script/.git ]] || git clone "https://github.com/slyfox1186/ffmpeg-build-script.git" || return 1
+        (
+            cd ffmpeg-build-script || exit 1
+            git pull --ff-only || exit 1
+            clear
+            python3 build-ffmpeg.py --help
+            read -r -a command_args -p "Enter your chosen arguments: (e.g. --build --enable-gpl-and-non-free --latest): "
+            python3 build-ffmpeg.py "${command_args[@]}"
+        ) || return 1
         break
         ;;
       "Install OpenSSL Latest Version")
@@ -451,7 +454,7 @@ script_repo() {
 # The master script download menu for github repository script-repo
 dlmaster() {
     local script_path="/usr/local/bin/download-master.py"
-    local script_url="https://raw.githubusercontent.com/slyfox1186/script-repo/main/Python3/download-master.py"
+    local script_url="https://raw.githubusercontent.com/slyfox1186/script-repo/main/Python3/download_master.py"
 
     # Check if the script exists
     if [[ ! -f "$script_path" ]]; then

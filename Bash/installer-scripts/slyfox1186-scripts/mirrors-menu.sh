@@ -56,7 +56,7 @@ download_menu() {
         if [[ ! -d "/etc/pacman.d" ]]; then
             sudo mkdir -p "/etc/pacman.d"
         fi
-        execution_menu "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer-Scripts/Arch-Linux/reflector-mirror-speed-test.sh" "reflector_mirror_test.sh"
+        execution_menu "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/arch-linux/reflector-mirror-speed-test.sh" "reflector_mirror_test.sh"
         return 0
     fi
 
@@ -64,12 +64,9 @@ download_menu() {
         ubuntu)
             echo -e "${GREEN}1)${NC} Ubuntu 24.04 - Noble Numbat"
             echo -e "${GREEN}2)${NC} Ubuntu 22.04 - Jammy Jellyfish"
-            echo -e "${GREEN}3)${NC} Ubuntu 20.04 - Focal Fossa"
-            echo -e "${GREEN}4)${NC} Ubuntu 18.04 - Bionic Beaver"
             ;;
         debian)
-            echo -e "${GREEN}1)${NC} Debian 11 (Bullseye)"
-            echo -e "${GREEN}2)${NC} Debian 12 (Bookworm)"
+            echo -e "${GREEN}1)${NC} Debian 12 (Bookworm)"
             ;;
     esac
 
@@ -86,16 +83,7 @@ download_menu() {
         ubuntu:2)
             execution_menu "https://jammy.optimizethis.net" "jammy-mirrors.sh"
             ;;
-        ubuntu:3)
-            execution_menu "https://focal-mirrors.optimizethis.net" "focal-mirrors.sh"
-            ;;
-        ubuntu:4)
-            execution_menu "https://bionic-mirrors.optimizethis.net" "bionic-mirrors.sh"
-            ;;
         debian:1)
-            execution_menu "https://bullseye-mirrors.optimizethis.net" "bullseye-mirrors.sh"
-            ;;
-        debian:2)
             execution_menu "https://bookworm-mirrors.optimizethis.net" "bookworm-mirrors.sh"
             ;;
         *)

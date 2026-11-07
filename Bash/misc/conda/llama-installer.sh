@@ -89,7 +89,7 @@ if [[ -z "$CONDA_ENV_SWITCHED" ]]; then
         echo
         read -p "Do you want to install conda (y/n): install_conda.sh ?" answer
         if [[ -n "$answer" ]]; then
-            bash <(curl -fsSL https://raw.githubusercontent.com/slyfox1186/script-repo/refs/heads/main/Bash/Misc/Conda/install_conda.sh)
+            bash <(curl -fsSL https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/misc/conda/install_conda.sh)
             # After installation, try to detect conda again
             if ! detect_conda; then
                 echo "Failed to detect conda after installation. Please restart your terminal and try again."

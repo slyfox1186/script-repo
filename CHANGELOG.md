@@ -2,6 +2,56 @@
 
 Log of corpus-wide bug sweeps performed on `Python3/` and `Bash/`. Purpose: record every change, its reasoning, and the triage knowledge needed to repeat this task without re-litigating settled decisions.
 
+## 2026-11-06 — optimizethis.net shortlinks restored; links repointed after the folder renames
+
+### Shortlinks (`*.optimizethis.net`)
+- **Cause of the outage:** the domain moved to Namecheap on 2026-07-10 but stayed delegated to Squarespace's
+  nameservers, which serve an empty parked zone. Every host has been NXDOMAIN since then.
+- **Restored on Cloudflare,** with a Bulk Redirect list and one 302 per host. Namecheap URL Redirect records
+  were rejected because Namecheap's redirect servers don't answer HTTPS, and every one-liner here uses
+  `https://`.
+- **The mapping was recovered** from a 2026-07-04 harvest of the live Squarespace redirects, then rebased
+  onto the current paths through git rename history. All 83 targets return 200. This supersedes the
+  2026-09-26 note that the mapping was unrecoverable.
+- **Wrong Squarespace rules corrected:**
+  - `arch-grub` served `cuda-ffpb-loop-x265.sh`; it now serves `arch-linux-gnome-grub.sh`, which takes the
+    `-u -p -r -c -t -d` options in `INSTALL.md`.
+  - `ffdl-wmv` served the x265 loop; it now serves `wmv-to-mp4.sh`.
+  - `arch-post`, used by `INSTALL.md`, had no rule; it now serves `arch-linux-post-reboot.sh`.
+- **Left unmapped,** because their targets were deleted or replaced by the Python build projects:
+  `ffmpeg`, `build-ffmpeg`, `imagick`, `magick`, `focal-mirrors`, `bionic-mirrors`, `bullseye-mirrors`,
+  `dl-tools`, `ld` and `ffpb`. Every reference to them was replaced or removed:
+  - The README ImageMagick one-liner, the `build-menu.sh` ImageMagick/FFmpeg entries, and the dotfile
+    menus and `ffs`/`ffm` now clone the Python projects and run `build-magick.py` / `build-ffmpeg.py`.
+    sudo is not needed because the launchers call `sudo -n` themselves.
+  - The `dl-tools` entry and the focal/bionic/bullseye mirror entries were removed (those trees were deleted
+    on 2026-07-05), and `noble-mirrors` was added to the `build-menu.sh` mirror list.
+  - The `ld.optimizethis.net` step in `build-all-git-safer.sh` was removed; its script was deleted in
+    `fca41cab`, and Debian/Ubuntu's `libc.conf` already lists `/usr/local/lib`.
+  - `ffp` was removed; `ffpb` never had a recoverable target.
+- **"Install Clang"** in the bookworm and raspbian dotfiles ran `build-ffmpeg.sh` with the Clang arguments;
+  it now runs `build-clang.sh`.
+
+### Raw GitHub links
+- 69 of the 72 `raw.githubusercontent.com/.../script-repo/...` URLs returned 404 after the `fca41cab` casing
+  normalization and earlier moves:
+  - 55 occurrences of 46 URLs now point at their renamed paths (each verified 200).
+  - The folder bases in `arch-scripts.sh`, `build-all-git.sh`, `build-all-git-safer.sh` and
+    `download_master.py` were updated, and every file those scripts fetch returns 200.
+  - `build-all-git.sh` now builds `clang`, because `build-clang-16.sh` no longer exists.
+
+### Not changed (owner decision)
+- **Legacy dotfile functions** still fetch files that were deleted with no successor:
+  - `build-clang-16`/`-17`, and the extensionless `build-ffmpeg`, `build-magick` and `build-gcc`.
+  - `FFmpeg/repo.sh`, `favorite-installer-scripts.txt` and `ImageMagick/scripts/optimize-and-overwrite.sh`.
+  - Locations: noble `08_dev_tools.sh`, jammy `07_dev_tools.sh` and `12_utilities.sh`, the raspbian and
+    bookworm `.bash_functions`, bookworm `plain-scripts/.bash_functions`, and `imagick-run-script.sh`.
+- **`download_master.py`** still lists 9 deleted scripts, which return 404:
+  - `build-ffmpeg.sh` (×2) and `build-magick.sh`.
+  - `build-aria2-git.sh` and `build-terminator-terminal.sh`.
+  - `build-all-gnu-safer.sh`, `build-all-gnu-safer-archlinux.sh` and `build-gettext-libiconv.sh`.
+  - `squid-proxy.sh`.
+
 ## 2026-09-26 — Review of the files changed since the July sweeps
 
 **Method:** Claude investigated the 11 files changed since `50791ff4`; GPT Codex reviewed them independently; every finding was re-verified against the code before fixing. Each fix has regression tests under `tests/` (new; run with `python -m pytest`), which pass on Python 3.13 and on the 3.9 floor (3 end-to-end pip tests skip on 3.9 because the pip a 3.9 venv bundles omits local-wheel hashes from `--report`).

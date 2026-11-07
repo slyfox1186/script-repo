@@ -67,7 +67,7 @@ url="$2"
 
 if [[ ! -f "$HOME/.aria2/aria2.conf" ]]; then
     mkdir -p "$HOME/.aria2"
-    if ! wget -cqO "/tmp/create-aria2-folder.sh" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Misc/Networking/create-aria2-folder.sh"; then
+    if ! wget -cqO "/tmp/create-aria2-folder.sh" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/misc/networking/create-aria2-folder.sh"; then
         echo "Failed to download the aria2.conf installer script."
         return 1
     fi

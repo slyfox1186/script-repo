@@ -176,7 +176,7 @@ venv() {
     local choice pkgs random_dir
     local -a venv_args extra_pkgs
     random_dir=$(mktemp -d)
-    wget -cqO "$random_dir/pip-venv-installer.sh" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Misc/Python3/pip-venv-installer.sh"
+    wget -cqO "$random_dir/pip-venv-installer.sh" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/misc/pip-venv-installer.sh"
 
     case "$#" in
         0)

@@ -3,7 +3,7 @@
 set -Eeuo pipefail
 umask 077
 
-base_url="https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Arch-Linux-Scripts"
+base_url="https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/arch-linux/user-scripts"
 home_files=(.bashrc .bash_aliases .bash_functions)
 functions_d=(
     01_gui_apps.sh 02_filesystem.sh 03_text_processing.sh 04_compression.sh

@@ -180,7 +180,7 @@ install_dependencies() {
 install_7zip() {
     log "Installing 7-Zip using the provided installer script..."
     local installer_script installer_url
-    installer_url="https://raw.githubusercontent.com/slyfox1186/script-repo/refs/heads/main/Bash/Installer-Scripts/SlyFox1186-Scripts/7zip_installer.sh"
+    installer_url="https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/installer-scripts/slyfox1186-scripts/7zip_installer.sh"
     installer_script="$TEMP_DIR/7zip_installer.sh"
 
     log "Downloading 7-Zip installer from $installer_url..."

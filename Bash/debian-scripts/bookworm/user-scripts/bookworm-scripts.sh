@@ -18,9 +18,9 @@ fi
 cd "$td" || exit 1
 
 cat > "$tf" <<'EOF'
-https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Debian-Scripts/bookworm/user-scripts/.bashrc
-https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Debian-Scripts/bookworm/user-scripts/.bash_aliases
-https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Debian-Scripts/bookworm/user-scripts/.bash_functions
+https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/debian-scripts/bookworm/user-scripts/.bashrc
+https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/debian-scripts/bookworm/user-scripts/.bash_aliases
+https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/debian-scripts/bookworm/user-scripts/.bash_functions
 EOF
 
 wget -qN - -i "$tf"

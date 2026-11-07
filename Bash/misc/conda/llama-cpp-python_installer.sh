@@ -10,7 +10,7 @@ if ! type -P conda &>/dev/null; then
     echo
     read -p "Do you want to install conda (y/n): install_conda.sh ?" answer
     if [[ -n "$answer" ]]; then
-        bash <(curl -fsSL https://raw.githubusercontent.com/slyfox1186/script-repo/refs/heads/main/Bash/Misc/Conda/install_conda.sh)
+        bash <(curl -fsSL https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/misc/conda/install_conda.sh)
     fi
 fi
 

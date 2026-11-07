@@ -516,7 +516,7 @@ rmf() {
 ## IMAGEMAGICK ##
 
 imow() {
-    if wget --timeout=2 --tries=2 -cqO "optimize-jpg.py" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer-Scripts/ImageMagick/scripts/optimize-jpg.py"; then
+    if wget --timeout=2 --tries=2 -cqO "optimize-jpg.py" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/installer-scripts/imagemagick/optimize-jpg.py"; then
         clear
         box_out_banner "Optimizing Images: $PWD"
         echo
@@ -600,9 +600,9 @@ ffdl() {
 }
 
 ffs() {
-    wget --show-progress -cqO "https://raw.githubusercontent.com/slyfox1186/ffmpeg-build-script/main/build-ffmpeg.sh"
+    [[ -d ffmpeg-build-script/.git ]] || git clone "https://github.com/slyfox1186/ffmpeg-build-script.git" || return 1
     clear
-    ffr build-ffmpeg.sh
+    (cd ffmpeg-build-script && git pull --ff-only && python3 build-ffmpeg.py --build --enable-gpl-and-non-free --latest)
 }
 
 ffstaticdl() {
@@ -1164,7 +1164,7 @@ url="$2"
 
 if [[ ! -f "$HOME/.aria2/aria2.conf" ]]; then 
     mkdir -p "$HOME/.aria2"
-    if ! wget -cqO "/tmp/create-aria2-folder.sh" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Misc/Networking/create-aria2-folder.sh"; then
+    if ! wget -cqO "/tmp/create-aria2-folder.sh" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/misc/networking/create-aria2-folder.sh"; then
         echo "Failed to download the aria2.conf installer script."
         return 1
     fi
@@ -1769,7 +1769,7 @@ dlu() {
 venv() {
     local choice arg random_dir
     random_dir=$(mktemp -d)
-    wget -cqO "$random_dir/pip-venv-installer.sh" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Misc/Python3/pip-venv-installer.sh"
+    wget -cqO "$random_dir/pip-venv-installer.sh" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/misc/pip-venv-installer.sh"
 
     case "$#" in
         0)
@@ -1971,7 +1971,7 @@ script_repo() {
         sudo bash build-clang.sh --help
         echo
         read -p "Enter your chosen arguments: (e.g. -c -v 17.0.6): " clang_args
-        sudo bash build-ffmpeg.sh $clang_args
+        sudo bash build-clang.sh $clang_args
         break
         ;;
       "Install Latest 7-Zip Version")
@@ -1979,17 +1979,20 @@ script_repo() {
         break
         ;;
       "Install ImageMagick 7")
-        wget --show-progress -cqO build-magick.sh "https://imagick.optimizethis.net"
-        sudo bash build-magick.sh
+        [[ -d imagemagick-build-script/.git ]] || git clone "https://github.com/slyfox1186/imagemagick-build-script.git" || return 1
+        (cd imagemagick-build-script && git pull --ff-only && python3 build-magick.py --build) || return 1
         break
         ;;
       "Compile FFmpeg from Source")
-        git clone "https://github.com/slyfox1186/ffmpeg-build-script.git"
-        cd ffmpeg-build-script || exit 1
-        clear
-        sudo ./build-ffmpeg.sh -h
-        read -p "Enter your chosen arguments: (e.g. --build --gpl-and-nonfree --latest): " ff_args
-        sudo ./build-ffmpeg.sh $ff_args
+        [[ -d ffmpeg-build-script/.git ]] || git clone "https://github.com/slyfox1186/ffmpeg-build-script.git" || return 1
+        (
+            cd ffmpeg-build-script || exit 1
+            git pull --ff-only || exit 1
+            clear
+            python3 build-ffmpeg.py --help
+            read -r -a command_args -p "Enter your chosen arguments: (e.g. --build --enable-gpl-and-non-free --latest): "
+            python3 build-ffmpeg.py "${command_args[@]}"
+        ) || return 1
         break
         ;;
       "Install OpenSSL Latest Version")
@@ -2141,7 +2144,7 @@ adt() {
     # Check if the Python script exists
     if [ ! -f "$script_path" ]; then
         echo "Python script not found. Downloading from GitHub..."
-        if ! wget --show-progress -cqO "$script_path" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Python3/create-json-file-batch-processing-aria2.py"; then
+        if ! wget --show-progress -cqO "$script_path" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Python3/aria2/add_video_to_json.py"; then
             echo "Error: Failed to download the Python script from GitHub." >&2
             return 1
         fi

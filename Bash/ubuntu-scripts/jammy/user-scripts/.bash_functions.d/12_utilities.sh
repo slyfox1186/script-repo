@@ -188,22 +188,19 @@ script_repo() {
         break
         ;;
       "Install ImageMagick 7")
-        wget --show-progress -cqO build-magick.sh "https://imagick.optimizethis.net"
-        sudo bash build-magick.sh
+        [[ -d imagemagick-build-script/.git ]] || git clone "https://github.com/slyfox1186/imagemagick-build-script.git" || return 1
+        (cd imagemagick-build-script && git pull --ff-only && python3 build-magick.py --build) || return 1
         break
         ;;
       "Compile FFmpeg from Source")
-        git clone "https://github.com/slyfox1186/ffmpeg-build-script.git"
-        local ff_args_str
-        local -a ff_args_arr
+        [[ -d ffmpeg-build-script/.git ]] || git clone "https://github.com/slyfox1186/ffmpeg-build-script.git" || return 1
         (
             cd ffmpeg-build-script || exit 1
+            git pull --ff-only || exit 1
             clear
-            sudo ./build-ffmpeg.sh -h
-            read -rp "Enter your chosen arguments: (e.g. --build --gpl-and-nonfree --latest): " ff_args_str
-            # shellcheck disable=SC2206
-            read -ra ff_args_arr <<< "$ff_args_str"
-            sudo ./build-ffmpeg.sh "${ff_args_arr[@]}"
+            python3 build-ffmpeg.py --help
+            read -r -a command_args -p "Enter your chosen arguments: (e.g. --build --enable-gpl-and-non-free --latest): "
+            python3 build-ffmpeg.py "${command_args[@]}"
         ) || return 1
         break
         ;;

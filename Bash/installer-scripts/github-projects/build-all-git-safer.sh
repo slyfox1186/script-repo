@@ -69,11 +69,6 @@ if [[ -n "$missing_pkgs" ]]; then
     echo
 fi
 
-# Add additional search paths to the ld library linker
-wget --show-progress -cqO /tmp/ld-script.sh "https://ld.optimizethis.net"
-sudo bash /tmp/ld-script.sh || fail "Failed to execute /tmp/ld-script.sh"
-sudo rm -f /tmp/ld-script.sh
-
 # Change into the working directory
 cd "$cwd" || exit 1
 
@@ -86,7 +81,7 @@ scripts=(
 count=0
 for script in "${scripts[@]}"; do
     ((count++))
-    wget --show-progress -t 2 -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer-Scripts/GitHub-Projects/build-$script.sh"
+    wget --show-progress -t 2 -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/installer-scripts/github-projects/build-$script.sh"
     mv "build-$script.sh" "$count-build-$script.sh" || fail "Failed to move the file build-$script.sh"
 done
 

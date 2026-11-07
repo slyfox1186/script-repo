@@ -91,11 +91,11 @@ if "-o" in sys.argv or "--output" in sys.argv:
 check_wget()
 
 # Define base URLs for each category
-ff_url = "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer-Scripts/FFmpeg/"
-git_url = "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer-Scripts/GitHub-Projects/"
-gnu_url = "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer-Scripts/GNU-Software/"
+ff_url = "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/installer-scripts/ffmpeg/"
+git_url = "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/installer-scripts/github-projects/"
+gnu_url = "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/installer-scripts/gnu-software/"
 magick_url = "https://raw.githubusercontent.com/slyfox1186/imagemagick-build-script/main/"
-sly_url = "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer-Scripts/SlyFox1186-Scripts/"
+sly_url = "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/installer-scripts/slyfox1186-scripts/"
 wsl_url = "https://raw.githubusercontent.com/slyfox1186/wsl2-kernel-build-script/main/"
 
 # Define script URLs using base URLs and script names
