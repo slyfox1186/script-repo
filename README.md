@@ -16,7 +16,7 @@ Welcome to Sly's Script Repository! This collection is dedicated to sharing my f
 The scripts have been tested and confirmed to work on the following operating systems:
 - Arch Linux
 - Debian 12
-- Ubuntu 22.04
+- Ubuntu 22.04|24.04|26.04
 
 ### Purpose of This Repository
 The goals behind creating and maintaining this repository are:
