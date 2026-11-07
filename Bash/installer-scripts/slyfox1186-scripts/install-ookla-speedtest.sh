@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer-Scripts/SlyFox1186-Scripts/install-ookla-speedtest.sh
+# GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/installer-scripts/slyfox1186-scripts/install-ookla-speedtest.sh
 # Purpose: Installs the Ookla speedtest program
 # Supported version: Linux x86_64
 # Updated: 06.01.24

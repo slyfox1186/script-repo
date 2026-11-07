@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer-Scripts/GitHub-Projects/build-libxml2.sh
+# Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/installer-scripts/github-projects/build-libxml2.sh
 # Purpose: Build libxml2
 # Updated: 07.03.24
 # Script version: 1.7

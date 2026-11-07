@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-## GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer-Scripts/GitHub-Projects/build-adobe-fonts.sh
+## GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/installer-scripts/github-projects/build-adobe-fonts.sh
 ## Purpose: Install Adobe Sans, Pro, and Serif fonts system-wide
 ## Created: 03.19.24
 ## Script version: 1.3

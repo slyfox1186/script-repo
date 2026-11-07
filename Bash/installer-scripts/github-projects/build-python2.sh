@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Shellcheck disable=sc2162,sc2317
 
-##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer-Scripts/GitHub-Projects/build-python2
+##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/installer-scripts/github-projects/build-python2.sh
 ##  Purpose: Install Python2 - version 2.7.18
 ##  Updated: 10.26.23
 ##  Script version: 1.0

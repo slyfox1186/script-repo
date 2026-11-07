@@ -40,17 +40,26 @@ Log of corpus-wide bug sweeps performed on `Python3/` and `Bash/`. Purpose: reco
     `download_master.py` were updated, and every file those scripts fetch returns 200.
   - `build-all-git.sh` now builds `clang`, because `build-clang-16.sh` no longer exists.
 
-### Not changed (owner decision)
-- **Legacy dotfile functions** still fetch files that were deleted with no successor:
-  - `build-clang-16`/`-17`, and the extensionless `build-ffmpeg`, `build-magick` and `build-gcc`.
-  - `FFmpeg/repo.sh`, `favorite-installer-scripts.txt` and `ImageMagick/scripts/optimize-and-overwrite.sh`.
-  - Locations: noble `08_dev_tools.sh`, jammy `07_dev_tools.sh` and `12_utilities.sh`, the raspbian and
-    bookworm `.bash_functions`, bookworm `plain-scripts/.bash_functions`, and `imagick-run-script.sh`.
-- **`download_master.py`** still lists 9 deleted scripts, which return 404:
-  - `build-ffmpeg.sh` (×2) and `build-magick.sh`.
-  - `build-aria2-git.sh` and `build-terminator-terminal.sh`.
-  - `build-all-gnu-safer.sh`, `build-all-gnu-safer-archlinux.sh` and `build-gettext-libiconv.sh`.
-  - `squid-proxy.sh`.
+- 47 `github.com/.../blob/main/...` header links now name each script's current path.
+
+### Dead links removed
+Every concrete `optimizethis.net`, `github.com/slyfox1186` and `raw.githubusercontent.com/slyfox1186` URL in
+the repo now resolves. Base URLs that scripts append filenames to were checked per file. Links with no
+successor were removed:
+- **`dl_clang`, `gitdl` and `dlfs`** were deleted from the noble, jammy, raspbian and bookworm dotfiles, as
+  the Arch dotfiles did on 2026-10-13. They only downloaded files deleted long ago: `build-clang-16`/`-17`,
+  the extensionless `build-ffmpeg`/`build-magick`/`build-gcc`, `repo.sh` and
+  `favorite-installer-scripts.txt`.
+- **`download_master.py`:**
+  - The FFmpeg and ImageMagick categories were removed; both projects are Python now.
+  - The deleted `build-aria2-git.sh`, `build-terminator-terminal.sh` and `build-all-gnu-safer*.sh` were
+    dropped.
+  - `build-gettext-libiconv.sh` → `build-libiconv-gettext.sh`, and `squid-proxy.sh` →
+    `personal-installer-scripts/squid-proxy.sh`.
+- **`imagick-run-script.sh` and `imdl`** now fetch `optimize-jpg.sh`, which `optimize-and-overwrite.sh` was
+  renamed to in 2024. The plain-scripts `ffs` uses the FFmpeg launcher.
+- **`Rust/README.md`:** dropped the pre-built-binary option (the repo publishes no releases), and the build
+  steps now `cd script-repo/Rust`, where the crate actually lives.
 
 ## 2026-09-26 — Review of the files changed since the July sweeps
 

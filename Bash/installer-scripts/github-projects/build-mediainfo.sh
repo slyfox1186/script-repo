@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Github: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer-Scripts/GitHub-Projects/build-mediainfo.sh
+# Github: https://github.com/slyfox1186/script-repo/blob/main/Bash/installer-scripts/github-projects/build-mediainfo.sh
 # Purpose: Build MediaInfo
 # Updated: 07.03.24
 # Script version: 1.1

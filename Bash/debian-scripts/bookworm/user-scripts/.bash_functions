@@ -619,27 +619,6 @@ ffstaticdl() {
     fi
 }
 
-dlfs() {
-    local f scripts
-    clear
-
-    wget --show-progress -qN - -i "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer-Scripts/SlyFox1186-Scripts/favorite-installer-scripts.txt"
-
-    scripts=(build-ffmpeg build-all-git-safer build-all-gnu-safer build-magick)
-
-    for file in ${scripts[@]}; do
-        chown -R "$USER:$USER" "$file"
-        chmod -R 744 "$PWD" "$file"
-        if [[ $file == "build-all-git-safer" || $file == "build-all-gnu-safer" ]]; then
-            mv "$file" "${file%-safer}"
-        fi
-        [[ -n "favorite-installer-scripts.txt" ]] && sudo rm "favorite-installer-scripts.txt"
-    done
-
-    clear
-    ls -1AhFv --color --group-directories-first
-}
-
 ## List large files by type
 large_files() {
     local choice
@@ -1310,22 +1289,6 @@ jpgs() {
     sudo rm /tmp/img-sizes.txt
 }
 
-######################################
-## DOWNLOAD IMPORTANT BUILD SCRIPTS ##
-######################################
-
-gitdl() {
-    clear
-    wget -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer-Scripts/FFmpeg/build-ffmpeg"
-    wget -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer-Scripts/ImageMagick/build-magick"
-    wget -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer-Scripts/GNU-Software/build-gcc"
-    wget -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer-Scripts/FFmpeg/repo.sh"
-    sudo chmod -R build-gcc build-magick build-ffmpeg repo.sh -- *
-    sudo chown -R "$USER:$USER" build-gcc build-magick build-ffmpeg repo.sh
-    clear
-    ls -1AvhF --color --group-directories-first
-}
-
 # COUNT ITEMS IN THE CURRENT FOLDER W/O SUBDIRECTORIES INCLUDED
 countf() {
     local folder_count
@@ -1505,23 +1468,6 @@ show_rpath() {
 
     clear
     sudo chrpath -l "$(command -v ${find_rpath})"
-}
-
-######################################
-## DOWNLOAD CLANG INSTALLER SCRIPTS ##
-######################################
-
-dl_clang() {
-    clear
-    if [[ ! -d "$HOME/tmp" ]]; then
-        mkdir -p "$HOME/tmp"
-    fi
-    wget --show-progress -cqO "$HOME/tmp/build-clang-16" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer-Scripts/GitHub-Projects/build-clang-16"
-    wget --show-progress -cqO "$HOME/tmp/build-clang-17" "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer-Scripts/GitHub-Projects/build-clang-17"
-    sudo chmod rwx "$HOME/tmp/build-clang-16" "$HOME/tmp/build-clang-17"
-    sudo chown "$USER":"$USER" "$HOME/tmp/build-clang-16" "$HOME/tmp/build-clang-17"
-    clear
-    ls -1AvhF--color --group-directories-first
 }
 
 #################

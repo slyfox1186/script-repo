@@ -274,43 +274,6 @@ script_repo() {
   done
 }
 
-# Download GitHub scripts
-dlfs() {
-    local file
-    local -a scripts
-    clear
-
-    wget --show-progress -qN - -i "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/SlyFox1186%20Scripts/favorite-installer-scripts.txt"
-
-    scripts=(build-ffmpeg build-all-git-safer build-all-gnu-safer build-magick)
-
-    for file in "${scripts[@]}"; do
-        [[ -e "$file" ]] || continue
-        chown -R "$USER:$USER" "$file"
-        chmod 744 "$file"
-        if [[ "$file" == "build-all-git-safer" || "$file" == "build-all-gnu-safer" ]]; then
-            mv "$file" "${file%-safer}"
-        fi
-    done
-
-    [[ -f favorite-installer-scripts.txt ]] && sudo rm favorite-installer-scripts.txt
-
-    clear
-    ls -1AhFv --color --group-directories-first
-}
-
-gitdl() {
-    clear
-    wget -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/FFmpeg/build-ffmpeg"
-    wget -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/ImageMagick/build-magick"
-    wget -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/GNU%20Software/build-gcc"
-    wget -cq "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer%20Scripts/FFmpeg/repo.sh"
-    sudo chmod 755 build-gcc build-magick build-ffmpeg repo.sh
-    sudo chown "$USER:$USER" build-gcc build-magick build-ffmpeg repo.sh
-    clear
-    ls -1AvhF --color --group-directories-first
-}
-
 # Display all loaded functions from ~/.bashrc and ~/.bash_functions
 list_loaded_functions() {
     # Ensure ~/.bash_functions exists and is sourced

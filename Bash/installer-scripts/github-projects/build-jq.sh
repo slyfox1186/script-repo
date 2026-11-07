@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer-Scripts/GitHub-Projects/build-jq.sh
+##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/installer-scripts/github-projects/build-jq.sh
 ##  Purpose: Build jq
 ##  Updated: 05.06.24
 ##  Script version: 1.2

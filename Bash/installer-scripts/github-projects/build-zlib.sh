@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer-Scripts/GitHub-Projects/build-zlib.sh
+# Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/installer-scripts/github-projects/build-zlib.sh
 # Purpose: Build zlib compression software
 # Features: Static and shared build
 # Changed: Static build to both

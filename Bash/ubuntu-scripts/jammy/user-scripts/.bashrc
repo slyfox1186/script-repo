@@ -3,7 +3,7 @@
 # ===============================================================
 # Enhanced .bashrc for Ubuntu - Modular Version
 # Author: slyfox1186 (https://github.com/slyfox1186/script-repo)
-# Source: https://github.com/slyfox1186/script-repo/tree/main/Bash/Ubuntu-Scripts/jammy
+# Source: https://github.com/slyfox1186/script-repo/tree/main/Bash/ubuntu-scripts/jammy
 # ===============================================================
 
 # If not running interactively, don't do anything

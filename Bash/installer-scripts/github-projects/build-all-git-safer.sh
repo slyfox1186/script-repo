@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer-Scripts/GitHub-Projects/build-all-git-safer.sh
+##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/installer-scripts/github-projects/build-all-git-safer.sh
 ##  Purpose: Loops multiple build scripts and installs them.
 ##  Disclaimer: This is the safer of the two scripts offered in the "GitHub Projects" folder. This is because this script is less likely
 ##              To experience unexpected bugs of various types of severity. When the code gets updated, eventually unintentional bugs will

@@ -11,7 +11,7 @@ user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Geck
 cd "${tmp_dir}" || exit 1
 
 # Download the scripts from github
-curl -A "${user_agent}" -m 10 -Lso 'imow' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/Installer-Scripts/ImageMagick/scripts/optimize-and-overwrite.sh'
+curl -A "${user_agent}" -m 10 -Lso 'imow' 'https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/installer-scripts/imagemagick/optimize-jpg.sh'
 
 # Move the scripts to the original directory the script was executed from
 sudo mv 'imow' "${cwd}"

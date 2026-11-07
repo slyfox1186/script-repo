@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer-Scripts/GitHub-Projects/build-git.sh
+# Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/installer-scripts/github-projects/build-git.sh
 # Purpose: Build Git
 # Updated: 11.09.2025
 # Script version: 1.7

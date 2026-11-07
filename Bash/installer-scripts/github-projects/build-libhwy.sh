@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-##  Github: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer-Scripts/GNU-Software/build-libhwy.sh
+##  Github: https://github.com/slyfox1186/script-repo/blob/main/Bash/installer-scripts/github-projects/build-libhwy.sh
 ##  Purpose: build libhwy
 ##  Updated: 07.03.24
 ##  Script version: 1.3

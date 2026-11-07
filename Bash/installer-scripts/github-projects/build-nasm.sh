@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Shellcheck disable=sc2162,sc2317
 
-# Github: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer-Scripts/GitHub-Projects/build-nasm.sh
+# Github: https://github.com/slyfox1186/script-repo/blob/main/Bash/installer-scripts/github-projects/build-nasm.sh
 # Purpose: Build NASM
 # Updated: 07.03.24
 # Script version: 1.3

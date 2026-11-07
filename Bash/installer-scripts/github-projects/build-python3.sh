@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-## Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer-Scripts/GitHub-Projects/build-python3.sh
+## Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/installer-scripts/github-projects/build-python3.sh
 ## Purpose: Install Python 3 from the official source releases at https://www.python.org/downloads
 ## Features: Source build, OpenSSL backend
 ## Updated: 03.20.2026

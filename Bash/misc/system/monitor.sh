@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Live, color-coded view of filesystem events under a directory tree.
-# Based on: https://github.com/slyfox1186/script-repo/blob/main/Bash/Misc/System/monitor.sh
+# Based on: https://github.com/slyfox1186/script-repo/blob/main/Bash/misc/system/monitor.sh
 # Script version: 2.0
 # Last update: 09-29-26
 #

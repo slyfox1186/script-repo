@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer-Scripts/ImageMagick/scripts/optimize-jpg.py
+# GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/installer-scripts/imagemagick/optimize-jpg.py
 
 import argparse
 import concurrent.futures

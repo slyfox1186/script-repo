@@ -39,7 +39,7 @@ gnu_new_workdir() {
 gnu_jobs="${JOBS:-$(nproc)}"
 [[ "$gnu_jobs" =~ ^[1-9][0-9]*$ ]] || { printf 'JOBS must be a positive integer.\n' >&2; exit 1; }
 
-#  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/installer-scripts/gnu-software/build-gettext-libiconv.sh
+#  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/installer-scripts/gnu-software/build-libiconv-gettext.sh
 #  Purpose: Build gettext and libiconv
 #  Changed: Static build to both
 #  Updated: 05.08.24

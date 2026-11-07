@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-# GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer-Scripts/GitHub-Projects/build-curl.sh
+# GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/installer-scripts/github-projects/build-curl.sh
 # Purpose: Build the latest release version of cURL from source code including nghttp3 support
 # Updated: 11.09.2025
 # Version: 1.4

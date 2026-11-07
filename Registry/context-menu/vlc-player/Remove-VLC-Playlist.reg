@@ -1,6 +1,6 @@
 Windows Registry Editor Version 5.00
 
-; https://github.com/slyfox1186/script-repo/blob/main/Registry/context-menu/VLC-Player/Remove-VLC-Playlist.reg
+; https://github.com/slyfox1186/script-repo/blob/main/Registry/context-menu/vlc-player/Remove-VLC-Playlist.reg
 
 [-HKEY_CLASSES_ROOT\SystemFileAssociations\.avi\shell\AddToVLCPlaylist]
 [-HKEY_CLASSES_ROOT\SystemFileAssociations\.flv\shell\AddToVLCPlaylist]

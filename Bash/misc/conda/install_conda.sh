@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Misc/Conda/install_conda.sh
+# GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/misc/conda/install_conda.sh
 
 # main creates the private workspace and log. Until then, log only to stderr so
 # the functions can be sourced by tests without side effects.

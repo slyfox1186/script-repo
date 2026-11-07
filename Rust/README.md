@@ -60,21 +60,12 @@ For multilib builds: `libc6-dev-i386`
 
 ## Installation
 
-### Option 1: Download Pre-built Binary
-
-```bash
-# Download the latest release
-curl -LO https://github.com/slyfox1186/script-repo/releases/latest/download/build-gcc
-chmod +x build-gcc
-sudo mv build-gcc /usr/local/bin/
-```
-
-### Option 2: Build from Source
+### Build from Source
 
 ```bash
 # Clone the repository
 git clone https://github.com/slyfox1186/script-repo.git
-cd script-repo/Rust/build-gcc
+cd script-repo/Rust
 
 # Build in release mode (optimized)
 cargo build --release
@@ -83,7 +74,7 @@ cargo build --release
 sudo cp target/release/build-gcc /usr/local/bin/
 ```
 
-### Option 3: Install with Cargo
+### Install with Cargo
 
 ```bash
 cargo install --path .

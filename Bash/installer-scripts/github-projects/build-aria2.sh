@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer-Scripts/GitHub-Projects/build-aria2.sh
+##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/installer-scripts/github-projects/build-aria2.sh
 ##  Purpose: Build aria2 from source code with hardening options
 ##  Updated: 05.24.24
 ##  Script version: 2.8

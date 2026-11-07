@@ -3,7 +3,7 @@
 # Github script for building opencl sdk
 # Script version: 1.0
 # Updated: 01.08.24
-# Url: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer-Scripts/GitHub-Projects/build-opencl-sdk
+# Url: https://github.com/slyfox1186/script-repo/blob/main/Bash/installer-scripts/github-projects/build-opencl-sdk.sh
 
 clear
 

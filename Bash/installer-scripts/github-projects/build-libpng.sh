@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2162,SC2317
 
-##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer-Scripts/GitHub-Projects/build-libpng.sh
+##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/installer-scripts/github-projects/build-libpng.sh
 ##  Purpose: Build GNU libpng
 ##  Updated: 07.03.23
 ##  Script version: 1.2

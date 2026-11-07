@@ -2,7 +2,7 @@
 
 set -eo pipefail
 
-## Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer-Scripts/SlyFox1186-Scripts/build-dmd.sh
+## Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/installer-scripts/slyfox1186-scripts/build-dmd.sh
 ## Purpose: Install DLang D Compiler (DMD)
 ## Date: 05.03.24
 ## Script version 1.1

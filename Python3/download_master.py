@@ -46,11 +46,6 @@ def check_wget():
 # Function to download a single script; returns the script name on failure, None on success
 def download_script(url, output_path):
     script_name = Path(urlparse(url).path).name
-    if url in ffmpeg_scripts:
-        repo_name = Path(urlparse(url).path).parent.name
-        script_name_with_repo = f"{Path(script_name).stem}_{repo_name}{Path(script_name).suffix}"
-    else:
-        script_name_with_repo = script_name
     colorecho("blue", f"Downloading {script_name} ...")
     try:
         response = session.get(url, timeout=30)
@@ -58,10 +53,10 @@ def download_script(url, output_path):
     except requests.RequestException:
         colorecho("red", f"Failed to download {script_name}.")
         return script_name
-    script_path = output_path / script_name_with_repo
+    script_path = output_path / script_name
     script_path.parent.mkdir(parents=True, exist_ok=True)
     script_path.write_bytes(response.content)
-    colorecho("green", f"{script_name_with_repo} downloaded successfully.")
+    colorecho("green", f"{script_name} downloaded successfully.")
     return None
 
 # Function to download scripts; returns the list of failed script names
@@ -91,10 +86,8 @@ if "-o" in sys.argv or "--output" in sys.argv:
 check_wget()
 
 # Define base URLs for each category
-ff_url = "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/installer-scripts/ffmpeg/"
 git_url = "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/installer-scripts/github-projects/"
 gnu_url = "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/installer-scripts/gnu-software/"
-magick_url = "https://raw.githubusercontent.com/slyfox1186/imagemagick-build-script/main/"
 sly_url = "https://raw.githubusercontent.com/slyfox1186/script-repo/main/Bash/installer-scripts/slyfox1186-scripts/"
 wsl_url = "https://raw.githubusercontent.com/slyfox1186/wsl2-kernel-build-script/main/"
 
@@ -113,13 +106,11 @@ slyfox1186_scripts = [
     f"{sly_url}enable-headless-mode.sh",
     f"{sly_url}fix-dbus.sh",
     f"{sly_url}mirrors-menu.sh",
-    f"{sly_url}squid-proxy.sh",
+    f"{sly_url}personal-installer-scripts/squid-proxy.sh",
     f"{sly_url}user-scripts-menu.sh"
 ]
 
 gnu_software_scripts = [
-    f"{gnu_url}build-all-gnu-safer-archlinux.sh",
-    f"{gnu_url}build-all-gnu-safer.sh",
     f"{gnu_url}build-all-gnu.sh",
     f"{gnu_url}build-attr.sh",
     f"{gnu_url}build-autoconf-archive.sh",
@@ -134,7 +125,7 @@ gnu_software_scripts = [
     f"{gnu_url}build-eog.sh",
     f"{gnu_url}build-gawk.sh",
     f"{gnu_url}build-gcc.sh",
-    f"{gnu_url}build-gettext-libiconv.sh",
+    f"{gnu_url}build-libiconv-gettext.sh",
     f"{gnu_url}build-glibc.sh",
     f"{gnu_url}build-gnutls.sh",
     f"{gnu_url}build-grep.sh",
@@ -164,7 +155,6 @@ github_projects_scripts = [
     f"{git_url}build-alive-progress.sh",
     f"{git_url}build-all-git-safer.sh",
     f"{git_url}build-all-git.sh",
-    f"{git_url}build-aria2-git.sh",
     f"{git_url}build-aria2.sh",
     f"{git_url}build-brotli.sh",
     f"{git_url}build-clang.sh",
@@ -189,22 +179,12 @@ github_projects_scripts = [
     f"{git_url}build-python2.sh",
     f"{git_url}build-python3.sh",
     f"{git_url}build-rust.sh",
-    f"{git_url}build-terminator-terminal.sh",
     f"{git_url}build-tilix.sh",
     f"{git_url}build-tools.sh",
     f"{git_url}build-wsl2-kernel.sh",
     f"{git_url}build-yasm.sh",
     f"{git_url}build-zlib.sh",
     f"{git_url}build-zstd.sh"
-]
-
-ffmpeg_scripts = [
-    f"{ff_url}build-ffmpeg.sh",
-    "https://raw.githubusercontent.com/slyfox1186/ffmpeg-build-script/main/build-ffmpeg.sh"
-]
-
-imagemagick_scripts = [
-    f"{magick_url}build-magick.sh"
 ]
 
 wsl2_kernel_scripts = [
@@ -216,8 +196,6 @@ menu_items = [
     {"name": "SlyFox1186 Scripts", "scripts": slyfox1186_scripts},
     {"name": "GNU Software Scripts", "scripts": gnu_software_scripts},
     {"name": "GitHub Projects Scripts", "scripts": github_projects_scripts},
-    {"name": "FFmpeg Scripts", "scripts": ffmpeg_scripts},
-    {"name": "ImageMagick Scripts", "scripts": imagemagick_scripts},
     {"name": "WSL2 Kernel Scripts", "scripts": wsl2_kernel_scripts},
 ]
 

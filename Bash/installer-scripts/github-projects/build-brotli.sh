@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2162,SC2317
 
-##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer-Scripts/GitHub-Projects/build-brotli.sh
+##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/installer-scripts/github-projects/build-brotli.sh
 ##  Purpose: Build GNU BROTLI
 ##  Updated: 03.22.24
 ##  Script version: 1.3

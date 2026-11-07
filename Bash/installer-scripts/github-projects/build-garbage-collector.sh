@@ -2,7 +2,7 @@
 
 ###########################################################################################################
 ##
-##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer-Scripts/GitHub-Projects/build-garbage-collector
+##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/installer-scripts/github-projects/build-garbage-collector.sh
 ##
 ##  Purpose: Build Boehm-Demers-Weiser Conservative Garbage Collector
 ##

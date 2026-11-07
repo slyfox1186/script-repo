@@ -3,7 +3,7 @@ set -Eeuo pipefail
 
 # Build OpenSSL
 # Updated: 04.30.24
-# GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer-Scripts/GitHub-Projects/build-openssl.sh
+# GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/installer-scripts/github-projects/build-openssl.sh
 # Script Version: 1.6
 
 list_versions_flag=0

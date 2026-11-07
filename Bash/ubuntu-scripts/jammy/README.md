@@ -2,7 +2,7 @@
 
 A modular and organized bash configuration for Ubuntu Jammy (and potentially other distributions). This configuration splits the traditional monolithic bash files into smaller, more manageable modules organized by function.
 
-Source: [slyfox1186/script-repo](https://github.com/slyfox1186/script-repo/tree/main/Bash/Ubuntu-Scripts/jammy)
+Source: [slyfox1186/script-repo](https://github.com/slyfox1186/script-repo/tree/main/Bash/ubuntu-scripts/jammy)
 
 ## Installation
 

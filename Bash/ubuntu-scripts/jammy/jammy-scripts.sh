@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Jammy User Scripts - Deploy modular bash files to user's home directory
 # Author: slyfox1186 (https://github.com/slyfox1186/script-repo)
-# Repository: https://github.com/slyfox1186/script-repo/tree/main/Bash/Ubuntu-Scripts/jammy
+# Repository: https://github.com/slyfox1186/script-repo/tree/main/Bash/ubuntu-scripts/jammy
 # shellcheck disable=SC2155
 
 # Colors for output

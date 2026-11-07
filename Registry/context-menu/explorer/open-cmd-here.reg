@@ -1,7 +1,7 @@
 Windows Registry Editor Version 5.00
 
 ; ADD OPEN CMD AS ADMINISTRATOR TO WINDOWS EXPLORER CONTEXT MENU
-; https://github.com/slyfox1186/script-repo/blob/main/Registry/context-menu/open-cmd-here.reg
+; https://github.com/slyfox1186/script-repo/blob/main/Registry/context-menu/explorer/open-cmd-here.reg
 
 [HKEY_CLASSES_ROOT\*\shell\CMDAsAdmin]
 @="Open CMD Here"

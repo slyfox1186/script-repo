@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2162,SC2317
 
-##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer-Scripts/GitHub-Projects/build-yasm
+##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/installer-scripts/github-projects/build-yasm.sh
 ##  Purpose: Build yasm
 ##  Updated: 08.31.23
 ##  Script version: 1.1

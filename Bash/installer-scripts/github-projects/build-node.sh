@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer-Scripts/GitHub-Projects/build-node.sh
+# GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/installer-scripts/github-projects/build-node.sh
 # Script version: 1.1
 # Last update: 05-28-24
 

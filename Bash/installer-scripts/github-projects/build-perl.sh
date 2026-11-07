@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-## GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer-Scripts/GitHub-Projects/build-perl.sh
+## GitHub: https://github.com/slyfox1186/script-repo/blob/main/Bash/installer-scripts/github-projects/build-perl.sh
 ## Purpose: Install the latest even Perl version from source code
 ## Updated: 03.20.2026
 ## Script version: 2.0

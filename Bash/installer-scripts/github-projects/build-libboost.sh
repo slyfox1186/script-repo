@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/Installer-Scripts/GitHub-Projects/build-boost.sh
+##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/installer-scripts/github-projects/build-libboost.sh
 ##  Purpose: build libboost
 ##  Updated: 09.13.23
 ##  Script version: 1.0

@@ -1,6 +1,6 @@
 #!/bin/bash
 # Master .bash_aliases file - Part of the Jammy modular bash configuration
-# https://github.com/slyfox1186/script-repo/tree/main/Bash/Ubuntu-Scripts/jammy
+# https://github.com/slyfox1186/script-repo/tree/main/Bash/ubuntu-scripts/jammy
 # This file sources modular alias scripts for better organization
 
 # Export color settings for GCC
