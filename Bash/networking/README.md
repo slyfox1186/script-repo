@@ -12,7 +12,7 @@ Successful activation commands do not prove Internet connectivity.
 ## Netplan
 
 ```bash
-sudo bash /home/jman/tmp/script-repo/Bash/Networking/netplan.sh
+sudo bash /home/jman/tmp/github_projects/script-repo/Bash/networking/netplan.sh
 ```
 
 Requires Netplan with `get`, `set --root-dir`, `generate --root-dir`, and `try`,
@@ -57,7 +57,7 @@ References: [Netplan set](https://netplan.readthedocs.io/en/stable/netplan-set/)
 ## ifupdown
 
 ```bash
-sudo bash /home/jman/tmp/script-repo/Bash/Networking/set-static-or-dhcp-ip-address.sh
+sudo bash /home/jman/tmp/github_projects/script-repo/Bash/networking/set-static-or-dhcp-ip-address.sh
 ```
 
 Requires `ip`, `ifquery`, `ifup`, `ifdown`, `flock`, `awk`, and standard GNU
@@ -104,11 +104,11 @@ menus, generated ifupdown content, Netplan command arguments, backups, errors,
 EOF, signals, shared locking, and recovery without changing the host network.
 
 ```bash
-bash -n /home/jman/tmp/script-repo/Bash/Networking/networking-common.sh
-bash -n /home/jman/tmp/script-repo/Bash/Networking/netplan.sh
-bash -n /home/jman/tmp/script-repo/Bash/Networking/set-static-or-dhcp-ip-address.sh
-shellcheck /home/jman/tmp/script-repo/Bash/Networking/*.sh
-/home/jman/miniconda3/envs/agent-duet/bin/python -m pytest /home/jman/tmp/script-repo/tests/test_networking_scripts.py -q
+bash -n /home/jman/tmp/github_projects/script-repo/Bash/networking/networking-common.sh
+bash -n /home/jman/tmp/github_projects/script-repo/Bash/networking/netplan.sh
+bash -n /home/jman/tmp/github_projects/script-repo/Bash/networking/set-static-or-dhcp-ip-address.sh
+shellcheck /home/jman/tmp/github_projects/script-repo/Bash/networking/*.sh
+/home/jman/miniconda3/envs/agent-duet/bin/python -m pytest /home/jman/tmp/github_projects/script-repo/tests/test_networking_scripts.py -q
 ```
 
 The interpreter above was verified locally with Python 3.13 and pytest. CI uses

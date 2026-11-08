@@ -1,9 +1,13 @@
 # Script repository status
 
-Updated: 2026-10-09
+Updated: 2026-11-07
+
+Latest change: every dotfile set (`arch-linux`, `debian-scripts/bookworm`, `raspbian-os`,
+`ubuntu-scripts/noble`, and the `ubuntu-scripts/jammy` prompt module) uses the same two-line prompt
+as JSERVERPC's `~/.bashrc`: `(base) ~/path [exit code]` above `user@host $ `. See `CHANGELOG.md`.
 
 Current work covers all 40 installers in
-`/home/jman/tmp/script-repo/Bash/installer-scripts/gnu-software/`, the GitHub
+`/home/jman/tmp/github_projects/script-repo/Bash/installer-scripts/gnu-software/`, the GitHub
 version helper, and its bulk lookup caller. Jeff authorized committing and
 pushing all pending changes, including his manual directory moves and deletions.
 The release branch is `main`; use `git log -1` for the release commit.
@@ -23,7 +27,7 @@ correctly. Saved static binaries survive build cleanup. glibc remains isolated
 in its versioned prefix, requires passing tests, and no longer modifies global
 library links or the timezone. Existing pinned releases were retained.
 
-`/home/jman/tmp/script-repo/Bash/misc/source-git-repo-version.sh` has a new
+`/home/jman/tmp/github_projects/script-repo/Bash/misc/source-git-repo-version.sh` has a new
 `-h`/`--help` menu with cyan headings, green commands, and clearer spacing.
 Help fits an 80-column terminal and honors `NO_COLOR`; redirected output stays
 plain. Tag links accept GitHub's canonical repository casing, including
@@ -35,7 +39,7 @@ versions, and reports errors with nonzero status. Successful output is one
 numeric version line. The bulk caller uses the corrected lowercase URL and
 downloads the helper once, completely, before execution.
 
-Read `/home/jman/tmp/script-repo/Bash/installer-scripts/gnu-software/README.md`
+Read `/home/jman/tmp/github_projects/script-repo/Bash/installer-scripts/gnu-software/README.md`
 for resource controls, cleanup behavior, install locations, and validation limits.
 Do not run multiple installers into the same prefix concurrently. Actual GNU
 compilation and real installed programs still need validation on a disposable
@@ -51,8 +55,8 @@ also passed. Bash syntax, the repository's ShellCheck error baseline, Ruff
 Repeat the focused checks:
 
 ```bash
-bash /home/jman/tmp/script-repo/tests/gnu_installers_test.sh
-bash /home/jman/tmp/script-repo/tests/source_git_repo_version_test.sh
+bash /home/jman/tmp/github_projects/script-repo/tests/gnu_installers_test.sh
+bash /home/jman/tmp/github_projects/script-repo/tests/source_git_repo_version_test.sh
 ```
 
 Python validation uses the verified interpreter
@@ -63,14 +67,14 @@ GitHub's `Python package` workflow is manually disabled; CodeQL is active.
 Previous project facts retained for continuity:
 
 - Architecture detection is at
-  `/home/jman/tmp/script-repo/Bash/misc/check-gcc-architecture.sh`. It queries
+  `/home/jman/tmp/github_projects/script-repo/Bash/misc/check-gcc-architecture.sh`. It queries
   GCC's native selection instead of maintaining a CPU list. It prints an
   architecture name, accepts a compiler argument or `GCC`, and fails when native
   detection is unsupported. That work was included in commit `8720da4b`.
 - Networking tools and their usage/recovery guide are at
-  `/home/jman/tmp/script-repo/Bash/networking/`. The prior networking release was
+  `/home/jman/tmp/github_projects/script-repo/Bash/networking/`. The prior networking release was
   `88bb4da9`. Real Netplan/ifupdown activation remains unverified on this machine.
-- Personal dotfiles in `/home/jman/tmp/script-repo/Bash/arch-linux-scripts/`
+- Personal dotfiles in `/home/jman/tmp/github_projects/script-repo/Bash/arch-linux-scripts/`
   target Ubuntu/APT. The retained `.bashrc` loads `.bash_aliases`; modular alias
   files remain omitted by the installer.
 - QNAP scripts were removed at Jeff's request. Earlier permission snapshots

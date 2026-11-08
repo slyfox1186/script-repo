@@ -20,8 +20,8 @@ a minimum of one job. Ninja and Wget retain their existing `--jobs` options.
 For example:
 
 ```bash
-JOBS=2 bash /home/jman/tmp/script-repo/Bash/installer-scripts/gnu-software/build-bash.sh --version 5.3
-bash /home/jman/tmp/script-repo/Bash/installer-scripts/gnu-software/build-all-gnu.sh --help
+JOBS=2 bash /home/jman/tmp/github_projects/script-repo/Bash/installer-scripts/gnu-software/build-bash.sh --version 5.3
+bash /home/jman/tmp/github_projects/script-repo/Bash/installer-scripts/gnu-software/build-all-gnu.sh --help
 ```
 
 The example build performs compilation and may install dependencies with sudo.
@@ -74,8 +74,8 @@ privileged commands. Filesystem-publication checks use real links and copies in
 temporary directories. Repeat them with:
 
 ```bash
-bash /home/jman/tmp/script-repo/tests/gnu_installers_test.sh
-bash /home/jman/tmp/script-repo/tests/source_git_repo_version_test.sh
+bash /home/jman/tmp/github_projects/script-repo/tests/gnu_installers_test.sh
+bash /home/jman/tmp/github_projects/script-repo/tests/source_git_repo_version_test.sh
 ```
 
 These checks do not prove each package compiles against every distribution's
