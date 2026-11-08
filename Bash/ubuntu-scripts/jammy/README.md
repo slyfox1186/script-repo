@@ -22,7 +22,7 @@ This configuration provides:
 
 - Organized directory structure for better maintainability
 - Separate modules for different functionality areas
-- Colorful prompt with git branch information
+- Two-line colored prompt showing the conda or virtualenv name, directory and last exit code
 - Enhanced history settings
 - Numerous utility functions and aliases
 - Performance optimizations

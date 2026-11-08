@@ -1,53 +1,36 @@
 #!/bin/bash
 # Prompt settings and appearance
 
-# ====================
-# CHROOT DETECTION
-# ====================
-if [[ -z "${debian_chroot:-}" ]] && [[ -r "/etc/debian_chroot" ]]; then
-    debian_chroot=$(cat /etc/debian_chroot)
-fi
+# Prompt: "(env) path [exit code]" on line 1, "user@host $ " on line 2.
+# __prompt_command draws the env name, so conda's own prefix is kept off.
+CONDA_CHANGEPS1=false
+export CONDA_CHANGEPS1
 
-# ====================
-# PROMPT SETTINGS
-# ====================
-# Check for color support
-case "$TERM" in
-    xterm-color|*-256color) color_prompt="yes" ;;
-esac
+__prompt_command() {
+    # Must stay the first statement: any command before it, even "local", resets $?.
+    local exit_code=$?
+    local reset='\[\e[0m\]'
+    local red='\[\e[0;31m\]'
+    local green='\[\e[0;32m\]'
+    local yellow='\[\e[0;33m\]'
+    local blue='\[\e[0;34m\]'
+    local cyan='\[\e[0;36m\]'
 
-# Force colored prompt if terminal supports it
-force_color_prompt="yes"
-if [[ -n "$force_color_prompt" ]]; then
-    if [[ -x /usr/bin/tput ]] && tput setaf 1 >&/dev/null; then
-        color_prompt="yes"
-    else
-        color_prompt=""
+    # The env name goes through this global rather than being pasted into PS1, so a name
+    # containing "$(cmd)" is shown as text instead of being run.
+    __prompt_venv=""
+    if [[ -n "${CONDA_DEFAULT_ENV-}" ]]; then
+        __prompt_venv="(${CONDA_DEFAULT_ENV}) "
+    elif [[ -n "${VIRTUAL_ENV-}" ]]; then
+        __prompt_venv="(${VIRTUAL_ENV##*/}) "
     fi
-fi
 
-# Use a modern, informative prompt with git branch support
-__git_ps1() {
-    local b="$(git symbolic-ref HEAD 2>/dev/null)";
-    if [ -n "$b" ]; then
-        printf " (%s)" "${b##refs/heads/}";
+    local exit_info=""
+    if (( exit_code != 0 )); then
+        exit_info=" ${red}[${exit_code}]${reset}"
     fi
+
+    PS1="${yellow}"'${__prompt_venv}'"${blue}\w${reset}${exit_info}\n${green}\u${reset}@${cyan}\h${reset} \$ "
 }
 
-# Define a fancy multi-line prompt
-if [[ "$color_prompt" == "yes" ]]; then
-    PS1='\n\[\e[38;5;227m\]\w\[\e[38;5;82m\]$(__git_ps1 " (%s)")\n\[\e[38;5;215m\]\u\[\e[38;5;183;1m\]@\[\e[0;38;5;117m\]\h\[\e[97;1m\]\\$\[\e[0m\] '
-else
-    PS1='\n\w$(__git_ps1 " (%s)")\n\u@\h\$ '
-fi
-unset color_prompt force_color_prompt
-
-# Set xterm window title
-case "$TERM" in
-    xterm*|rxvt*)
-        PS1="\[\e]0;${debian_chroot:+($debian_chroot)}\u@\h: \w\a\]$PS1"
-        ;;
-esac
-
-# Export PS1 variable
-export PS1
+PROMPT_COMMAND=__prompt_command

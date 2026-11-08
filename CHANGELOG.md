@@ -2,6 +2,22 @@
 
 Log of corpus-wide bug sweeps performed on `Python3/` and `Bash/`. Purpose: record every change, its reasoning, and the triage knowledge needed to repeat this task without re-litigating settled decisions.
 
+## 2026-11-07 Shared prompt for every dotfile set
+
+- The `.bashrc` files in `Bash/arch-linux/user-scripts/`, `Bash/debian-scripts/bookworm/user-scripts/`,
+  `Bash/raspbian-os/user-scripts/` and `Bash/ubuntu-scripts/noble/user-scripts/`, and
+  `Bash/ubuntu-scripts/jammy/user-scripts/.bashrc.d/03_prompt.sh`, now set one shared prompt from
+  `__prompt_command` in `PROMPT_COMMAND`. Line 1 shows the conda or virtualenv name, the working
+  directory, and the exit code in red after a failed command. Line 2 shows `user@host $ `.
+- Conda's own `(env)` prefix is off (`CONDA_CHANGEPS1=false`). Conda prepended it ahead of the old
+  prompt's leading newline, which left `(base)` alone on the line above the path.
+- The env name reaches `PS1` through a variable reference instead of being pasted in, so a name
+  containing `$(...)` is printed and never run.
+- `bookworm` and `raspbian-os` no longer export `PS1`. It is rebuilt before every prompt, and the
+  exported copy leaked the old prompt into child shells.
+- The `jammy` module dropped its stub `__git_ps1`, its window-title code and its color detection,
+  which only served the old prompt. The prompt does not show a git branch.
+
 ## 2026-11-06 — optimizethis.net shortlinks restored; links repointed after the folder renames
 
 ### Shortlinks (`*.optimizethis.net`)
