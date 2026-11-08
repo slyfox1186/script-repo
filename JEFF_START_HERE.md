@@ -4,7 +4,8 @@ Updated: 2026-11-07
 
 Latest change: every dotfile set (`arch-linux`, `debian-scripts/bookworm`, `raspbian-os`,
 `ubuntu-scripts/noble`, and the `ubuntu-scripts/jammy` prompt module) uses the same two-line prompt
-as JSERVERPC's `~/.bashrc`: `(base) ~/path [exit code]` above `user@host $ `. See `CHANGELOG.md`.
+as JSERVERPC's `~/.bashrc`: `(base) ~/path [exit code]` above `user@host $ `, in the same 24-bit
+colors (gray env, yellow path, orange user, lilac `@`, blue host, white `$`). See `CHANGELOG.md`.
 
 Current work covers all 40 installers in
 `/home/jman/tmp/github_projects/script-repo/Bash/installer-scripts/gnu-software/`, the GitHub
@@ -59,9 +60,9 @@ bash /home/jman/tmp/github_projects/script-repo/tests/gnu_installers_test.sh
 bash /home/jman/tmp/github_projects/script-repo/tests/source_git_repo_version_test.sh
 ```
 
-Python validation uses the verified interpreter
-`/home/jman/miniconda3/envs/agent-duet/bin/python` (Python 3.13.15). Ruff 0.16.6
-was installed in that compatible environment for the repository's lint gate.
+The `agent-duet` environment used for earlier Python validation no longer exists. For Python
+checks, set `REPO_PYTHON` to a compatible Miniconda interpreter as `CLAUDE.md` describes, with
+Ruff 0.16.6 for the lint gate.
 GitHub's `Python package` workflow is manually disabled; CodeQL is active.
 
 Previous project facts retained for continuity:
@@ -74,7 +75,7 @@ Previous project facts retained for continuity:
 - Networking tools and their usage/recovery guide are at
   `/home/jman/tmp/github_projects/script-repo/Bash/networking/`. The prior networking release was
   `88bb4da9`. Real Netplan/ifupdown activation remains unverified on this machine.
-- Personal dotfiles in `/home/jman/tmp/github_projects/script-repo/Bash/arch-linux-scripts/`
+- Personal dotfiles in `/home/jman/tmp/github_projects/script-repo/Bash/arch-linux/`
   target Ubuntu/APT. The retained `.bashrc` loads `.bash_aliases`; modular alias
   files remain omitted by the installer.
 - QNAP scripts were removed at Jeff's request. Earlier permission snapshots
