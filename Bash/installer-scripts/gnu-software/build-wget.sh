@@ -9,24 +9,27 @@ gnu_curl() {
 # Purpose: build the latest stable release of GNU Wget from source
 # Target:  Ubuntu 24.04 (works on other Debian/Ubuntu releases as well)
 # Source:  https://ftp.gnu.org/gnu/wget/
-# Script version: 2.0
+# Script version: 2.1
 #
 # What this script does, in order:
 #   1. Finds the newest release on the GNU servers (or uses --version).
-#   2. Downloads the tarball and checks its GPG signature against the GNU
+#   2. Finds every installed version of the chosen compiler family (gcc or
+#      clang) and orders them newest first.
+#   3. Downloads the tarball and checks its GPG signature against the GNU
 #      keyring, which is the procedure documented at https://ftp.gnu.org/.
-#   3. Builds libmetalink as a private static library, so nothing but wget
+#   4. Builds libmetalink as a private static library, so nothing but wget
 #      itself is installed and no ld.so.conf or rpath changes are needed.
-#   4. Builds wget with an optimized, hardened set of compiler and linker
+#   5. Builds wget with an optimized, hardened set of compiler and linker
 #      flags. Every flag is test compiled first and dropped if the compiler
-#      or linker does not support it.
-#   5. Checks the new binary (version, features, hardening) before installing.
-#   6. Installs through a staging directory and records every installed path
+#      or linker does not support it. If the compile step fails, the build
+#      is tried again with the next newest compiler.
+#   6. Checks the new binary (version, features, hardening) before installing.
+#   7. Installs through a staging directory and records every installed path
 #      in a manifest, so --uninstall removes exactly what was installed.
 
 set -Eeuo pipefail
 
-script_ver="2.0"
+script_ver="2.1"
 prog_name="wget"
 version_regex='^[0-9]+(\.[0-9]+)+$'
 
@@ -48,15 +51,29 @@ install_dir="/usr/local" compiler="gcc" ssl_backend="openssl" opt_level="2" acti
 jobs="$(nproc 2>/dev/null || echo 2)"
 version="" build_base="" mirror="" keyring_file=""
 portable=false use_nls=false run_tests=false keep_build=false force=false dry_run=false assume_yes=false
-use_lto=true use_hardening=true use_metalink=true verify_sig=true install_deps=true
+use_lto=true use_hardening=true use_metalink=true verify_sig=true install_deps=true verbose=false
+
+# Compilers are looked for here only. /usr/local/bin is included so that a
+# compiler built from source counts, but nothing else is taken from it.
+compiler_dirs=(/usr/bin /usr/local/bin)
 
 # Working state
 manifest_file="" work_dir="" src_dir="" deps_dir="" stage_dir="" probe_dir="" tmp_manifest=""
-built_binary="" last_url="" user_path="$PATH"
+built_binary="" last_url="" user_path="$PATH" log_dir=""
 made_temp_base=false created_build_base=false deps_checked=false needs_root=false
-CC="" cc_base="" cc_suffix="" tool_prefix="" pkg_config="" pkg_config_path=""
+packages_installed=false packages_missing=false
+pkg_config="" pkg_config_path=""
 cppflags="" cflags="" ldflags="" opt_cflags="" hard_cflags="" sys_cppflags="" fortify_flags=""
-orig_args=() manifest=() skipped_flags=()
+orig_args=() manifest=() skipped_flags=() make_verbose=()
+
+# The compiler candidates, newest first, and the one in use. cc_canon is the
+# real file behind the name that was found, and the archive tools and linker
+# are taken from its directory so they always belong to that installation.
+cc_paths=() cc_names=() cc_canons=() cc_versions=()
+CC="" cc_name="" cc_version="" cc_canon="" cc_ar="" cc_ranlib="" cc_nm="" cc_lld=""
+
+# Set when a compile step fails, so the next compiler can be tried
+failed_step="" failed_status=0 failed_log=""
 
 # Real escape characters, so messages can be printed with printf '%s' and
 # backslashes inside paths are never interpreted. Color is used only on a
@@ -75,9 +92,12 @@ fi
 #   heading  the title of a sub-list, and block: its text wrapped to 80 columns
 #   mark     one file line with a colored +/- in front
 #   log      a plain line, warn: something to look at, fail: stop with an error
+#   vlog     a --verbose detail. It goes to stderr, because several functions
+#            return their result on stdout and it must not end up in there.
 # ---------------------------------------------------------------------------
 step()    { printf '\n%s==>%s %s%s%s\n' "$CYAN$BOLD" "$NC" "$BOLD" "$*" "$NC"; }
 log()     { printf '    %s\n' "$*"; }
+vlog()    { if [[ "$verbose" == true ]]; then printf '    %s%s%s\n' "$DIM" "$*" "$NC" >&2; fi; }
 item()    { printf '    %s%-13s%s %s\n' "$CYAN" "$1" "$NC" "$2"; }
 heading() { printf '    %s%s%s\n' "$CYAN" "$1" "$NC"; }
 block()   { fold -s -w 68 <<<"$1" | sed 's/[[:space:]]*$//; s/^/        /'; }
@@ -86,6 +106,17 @@ warn()    { printf '    %s[WARN]%s %s\n' "$YELLOW" "$NC" "$*" >&2; }
 fail()    { printf '%s[ERROR]%s %s\n' "$RED" "$NC" "$*" >&2; exit 1; }
 
 trap 'fail "Command failed on line $LINENO: $BASH_COMMAND"' ERR
+
+# Ctrl-C or a TERM stops the whole run. Bash runs this once the command in
+# the foreground has ended, so an interrupted build is never mistaken for a
+# compile failure and retried with another compiler.
+on_signal() {
+    trap - "$1"
+    printf '\n%s[ERROR]%s Stopped by SIG%s.\n' "$RED" "$NC" "$1" >&2
+    exit $(( 128 + $(kill -l "$1") ))
+}
+trap 'on_signal INT' INT
+trap 'on_signal TERM' TERM
 
 # item_wrapped LABEL TEXT prints a long value across several lines, with the
 # continuation lines lined up under the first
@@ -97,21 +128,53 @@ item_wrapped() {
     done < <(fold -s -w 58 <<<"$2" | sed 's/[[:space:]]*$//')
 }
 
-# run_task LABEL LOGFILE COMMAND... runs a long command with its output sent
-# to LOGFILE, and reports the result and how long it took on one line
-run_task() {
-    local label="$1" logfile="$2" start="$SECONDS"
+# try_task LABEL LOGFILE COMMAND... runs a long command with its output sent
+# to LOGFILE (and, with --verbose, to the screen as well), reports the result
+# and how long it took, and returns the command's exit status. It is called
+# as a condition, which switches off set -e inside it, so every step in here
+# that can fail is checked by hand.
+try_task() {
+    local label="$1" logfile="$2" start="$SECONDS" status
+    local -a statuses
     shift 2
-    printf '    %-44s ' "$label"
-    if "$@" >>"$logfile" 2>&1; then
-        printf '%sdone%s  %s%ss%s\n' "$GREEN" "$NC" "$DIM" "$(( SECONDS - start ))" "$NC"
+    # Checked first, so that a log that cannot be written is never taken
+    # for a failure of the command
+    : >>"$logfile" || fail "Cannot write the log file $logfile"
+
+    if [[ "$verbose" == true ]]; then
+        heading "$label"
+        # PIPESTATUS has to be read straight away, in both branches
+        if "$@" 2>&1 | tee -a "$logfile"; then
+            statuses=("${PIPESTATUS[@]}")
+        else
+            statuses=("${PIPESTATUS[@]}")
+        fi
+        (( statuses[1] == 0 )) || fail "Could not write the build output to $logfile"
+        status="${statuses[0]}"
+        printf '    %-44s ' "$label"
     else
-        printf '%sFAILED%s\n\n' "$RED" "$NC"
-        printf '%sLast lines of %s%s\n' "$DIM" "$logfile" "$NC" >&2
-        tail -n 40 "$logfile" >&2
-        echo >&2
-        fail "$label failed. Run again with --keep-build to keep the full log."
+        printf '    %-44s ' "$label"
+        status=0
+        "$@" >>"$logfile" 2>&1 || status=$?
     fi
+
+    if (( status == 0 )); then
+        printf '%sdone%s  %s%ss%s\n' "$GREEN" "$NC" "$DIM" "$(( SECONDS - start ))" "$NC"
+        return 0
+    fi
+    printf '%sFAILED%s (exit %s)\n\n' "$RED" "$NC" "$status"
+    # The output is already on the screen in verbose mode
+    if [[ "$verbose" == false ]]; then
+        printf '%sLast lines of %s%s\n' "$DIM" "$logfile" "$NC" >&2
+        tail -n 40 "$logfile" >&2 || true
+        echo >&2
+    fi
+    return "$status"
+}
+
+# run_task is try_task for a step whose failure ends the run
+run_task() {
+    try_task "$@" || fail "$1 failed. Run again with --keep-build to keep the full log ($2)."
 }
 
 # ---------------------------------------------------------------------------
@@ -130,7 +193,7 @@ opt_table="$(cat <<EOF
 -l|--list||action=list|List the available releases.
 |--check||action=check|Compare the version installed in DIR with|the latest release. Exit status is 0 when|up to date and 10 when an update exists.
 #BUILD
--c|--compiler|NAME|compiler|gcc or clang, or an exact name such as|gcc-14 or clang-18.|@$compiler
+-c|--compiler|NAME|compiler|gcc or clang. The newest installed version|is used. If compiling fails, the next|newest one is tried.|@$compiler
 -S|--ssl|BACKEND|ssl_backend|TLS library: openssl or gnutls.|@$ssl_backend
 -O|--optimize|LEVEL|opt_level|Optimization level: 2, 3, or s (size).|@$opt_level
 -p|--portable||portable=true|Build a binary that runs on any CPU of the|same architecture. Without this the build|uses -march=native, which is tuned for this|PC and may not run on others.
@@ -151,6 +214,7 @@ opt_table="$(cat <<EOF
 -y|--yes||assume_yes=true|Do not prompt (passes -y to apt).
 |--no-deps||install_deps=false|Do not check for or install APT packages.
 |--dry-run||dry_run=true|Show what would be done and change nothing.
+|--verbose||verbose=true|Show the full configure and make output|and how the compiler and flags were chosen.
 -u|--uninstall||action=uninstall|Remove a previous install from DIR, using|the manifest it left behind.
 -h|--help||action=help|Show this help.
 EOF
@@ -234,6 +298,7 @@ parse_args() {
     done
     version="${version#v}" mirror="${mirror%/}"
 
+    [[ "$compiler" =~ ^(gcc|clang)$ ]] || fail "--compiler must be gcc or clang, got: $compiler"
     [[ "$jobs" =~ ^[1-9][0-9]*$ ]] || fail "--jobs must be a positive integer, got: $jobs"
     [[ -z "$version" || "$version" =~ $version_regex ]] || fail "--version must look like 1.25.0, got: $version"
     [[ "$ssl_backend" =~ ^(openssl|gnutls)$ ]] || fail "--ssl must be openssl or gnutls, got: $ssl_backend"
@@ -252,6 +317,9 @@ parse_args() {
     [[ "$install_dir" != "/" ]] || fail "Refusing to use / as the install prefix. Use /usr or /usr/local."
     [[ "$install_dir" != *[[:space:]]* ]] || fail "The install prefix cannot contain whitespace (a limit of the GNU build system)."
     manifest_file="$install_dir/share/$prog_name/install_manifest.txt"
+    # Automake's switch for printing every compiler command line
+    [[ "$verbose" == true ]] && make_verbose=(V=1)
+    return 0
 }
 
 # ---------------------------------------------------------------------------
@@ -263,25 +331,136 @@ parse_args() {
 # and exports search paths that would silently link wget against them.
 # /usr/local is left out of PATH on purpose: tools built from source and
 # installed there (a pkg-config that does not know Ubuntu's library
-# directories, for example) would replace the system ones. A compiler that
-# lives there can still be selected by giving --compiler its full path.
+# directories, for example) would replace the system ones. Compilers are the
+# one exception. discover_compilers also looks in /usr/local/bin and always
+# runs the compiler by its full path.
 setup_toolchain() {
     PATH="/usr/sbin:/usr/bin:/sbin:/bin"
     export PATH
     unset CFLAGS CPPFLAGS CXXFLAGS LDFLAGS LIBS CPATH C_INCLUDE_PATH LIBRARY_PATH \
           LD_LIBRARY_PATH PKG_CONFIG_PATH PKG_CONFIG_LIBDIR AR RANLIB NM
+}
 
-    # Wget is written in C, so only a C compiler is needed
-    case "$compiler" in
-        g++|g++-*)         CC="gcc${compiler#g++}" ;;
-        clang++|clang++-*) CC="clang${compiler#clang++}" ;;
-        *)                 CC="$compiler" ;;
-    esac
-    # Link time optimization needs the archive tools that match the compiler,
-    # for example gcc-ar-14 for gcc-14 and llvm-ar-18 for clang-18
-    cc_base="${CC##*/}"
-    [[ "$cc_base" =~ -[0-9.]+$ ]] && cc_suffix="${BASH_REMATCH[0]}"
-    if [[ "$cc_base" == clang* ]]; then tool_prefix="llvm-"; else tool_prefix="gcc-"; fi
+# compiler_version PATH prints "FAMILY MAJOR.MINOR.PATCH", read from the
+# compiler's own predefined macros (documented at
+# https://gcc.gnu.org/onlinedocs/cpp/Common-Predefined-Macros.html and
+# https://clang.llvm.org/docs/LanguageExtensions.html#builtin-macros).
+# Clang also defines __GNUC__, so it is tested first. Clang prints a blank
+# line ahead of the result, so blank lines are skipped, and anything other
+# than exactly one well formed line is refused.
+compiler_version() {
+    local out line family="" ver="" records=0
+    out="$("$1" -E -P -x c - 2>/dev/null <<'EOF'
+#if defined(__clang__)
+clang __clang_major__ __clang_minor__ __clang_patchlevel__
+#elif defined(__GNUC__)
+gcc __GNUC__ __GNUC_MINOR__ __GNUC_PATCHLEVEL__
+#endif
+EOF
+)" || return 1
+    while IFS= read -r line; do
+        [[ "$line" =~ ^[[:space:]]*$ ]] && continue
+        records=$(( records + 1 ))
+        [[ "$line" =~ ^[[:space:]]*(gcc|clang)[[:space:]]+([0-9]+)[[:space:]]+([0-9]+)[[:space:]]+([0-9]+)[[:space:]]*$ ]] || return 1
+        family="${BASH_REMATCH[1]}" ver="${BASH_REMATCH[2]}.${BASH_REMATCH[3]}.${BASH_REMATCH[4]}"
+    done <<<"$out"
+    (( records == 1 )) || return 1
+    printf '%s %s\n' "$family" "$ver"
+}
+
+# Find every installed version of the chosen compiler family and fill the
+# cc_* lists, newest first. Nothing is compiled here, so this works before
+# the development packages are installed. Whether a compiler can really
+# build wget is only known once configure and make have run with it.
+discover_compilers() {
+    local dir path name canon info family ver rec i kept
+    local -a f_path=() f_name=() f_canon=() records=() sorted=()
+    local -A seen=()
+    cc_paths=() cc_names=() cc_canons=() cc_versions=()
+
+    for dir in "${compiler_dirs[@]}"; do
+        for path in "$dir/$compiler" "$dir/$compiler"-[0-9]*; do
+            name="${path##*/}"
+            # gcc, gcc-15 or clang-23, but not gcc-ar-15 or clang-format-23
+            [[ "$name" =~ ^$compiler(-[0-9]+(\.[0-9]+)*)?$ && -f "$path" && -x "$path" ]] || continue
+            if ! canon="$(realpath -e -- "$path")"; then
+                vlog "Skipped $path: it could not be resolved"
+                continue
+            fi
+            # The paths are later split on spaces and tabs
+            if [[ "$path$canon" == *[[:space:]]* ]]; then
+                vlog "Skipped $path: its path contains whitespace"
+                continue
+            fi
+            # gcc and gcc-15 are often the same file. Keep one, and show the
+            # name with the version in it.
+            if [[ -n "${seen[$canon]+set}" ]]; then
+                kept="${seen[$canon]}"
+                if [[ "${f_name[kept]}" != *-[0-9]* && "$name" == *-[0-9]* ]]; then
+                    vlog "${f_path[kept]} is the same compiler as $path"
+                    f_path[kept]="$path" f_name[kept]="$name"
+                else
+                    vlog "$path is the same compiler as ${f_path[kept]}"
+                fi
+                continue
+            fi
+            seen[$canon]="${#f_path[@]}"
+            f_path+=("$path") f_name+=("$name") f_canon+=("$canon")
+        done
+    done
+
+    for i in "${!f_path[@]}"; do
+        if ! info="$(compiler_version "${f_path[i]}")"; then
+            vlog "Rejected ${f_path[i]}: it did not report a version"
+            continue
+        fi
+        family="${info%% *}" ver="${info#* }"
+        if [[ "$family" != "$compiler" ]]; then
+            vlog "Rejected ${f_path[i]}: it is really $family $ver"
+            continue
+        fi
+        records+=("${ver//./$'\t'}"$'\t'"$i")
+    done
+    [[ "${#records[@]}" -gt 0 ]] || return 0
+
+    # Newest version first. Equal versions keep the order they were found in.
+    mapfile -t sorted < <(printf '%s\n' "${records[@]}" | LC_ALL=C sort -s -t $'\t' -k1,1nr -k2,2nr -k3,3nr -k4,4n)
+    for rec in "${sorted[@]}"; do
+        i="${rec##*$'\t'}" ver="${rec%$'\t'*}"
+        cc_paths+=("${f_path[i]}") cc_names+=("${f_name[i]}") cc_canons+=("${f_canon[i]}")
+        cc_versions+=("${ver//$'\t'/.}")
+    done
+    for i in "${!cc_paths[@]}"; do
+        vlog "Candidate $(( i + 1 )): ${cc_names[i]} ${cc_versions[i]}, ${cc_paths[i]} -> ${cc_canons[i]}"
+    done
+}
+
+# use_compiler INDEX makes that candidate the current compiler. The archive
+# tools that link time optimization needs, and lld for clang, are taken from
+# the directory of the real compiler file, never from PATH, so they always
+# belong to the same installation. select_flags checks that they exist.
+use_compiler() {
+    local dir base prev="$CC"
+    CC="${cc_paths[$1]}" cc_name="${cc_names[$1]}" cc_version="${cc_versions[$1]}" cc_canon="${cc_canons[$1]}"
+    dir="${cc_canon%/*}" base="${cc_canon##*/}"
+    if [[ "$compiler" == clang ]]; then
+        cc_ar="$dir/llvm-ar" cc_ranlib="$dir/llvm-ranlib" cc_nm="$dir/llvm-nm" cc_lld="$dir/ld.lld"
+    else
+        # x86_64-linux-gnu-gcc-15 has x86_64-linux-gnu-gcc-ar-15, and a gcc
+        # built from source has a plain gcc-ar next to it
+        cc_ar="$dir/${base%gcc*}gcc-ar${base##*gcc}"
+        cc_ranlib="$dir/${base%gcc*}gcc-ranlib${base##*gcc}"
+        cc_nm="$dir/${base%gcc*}gcc-nm${base##*gcc}"
+        cc_lld=""
+    fi
+    [[ "$prev" == "$CC" ]] || vlog "Using $cc_name $cc_version ($CC), tools from $dir"
+}
+
+# The test program needs the C library headers, so this is only meaningful
+# once the packages are installed. It shows whether the compiler is usable
+# at all, not whether wget will build with it.
+compiler_works() {
+    probe
 }
 
 multiarch() {
@@ -314,7 +493,22 @@ check_prefix_access() {
     [[ "$dry_run" == true ]] || require_root "$1"
 }
 
-fetch()  { gnu_curl -fsSL --connect-timeout 15 --retry 3 --retry-delay 2 "$@"; }
+# The URL is always the last argument
+fetch() {
+    vlog "Download ${*: -1}"
+    gnu_curl -fsSL --connect-timeout 15 --retry 3 --retry-delay 2 "$@"
+}
+
+# try_fetch is fetch for a download that has another server to fall back on.
+# Its errors are expected, so curl's message is only shown with --verbose.
+try_fetch() {
+    if [[ "$verbose" == true ]]; then
+        fetch "$@"
+    else
+        fetch "$@" 2>/dev/null
+    fi
+}
+
 sha256() { sha256sum "$1" | cut -d' ' -f1; }
 
 # Everything under gnu/ on the GNU servers is a stable release. Test releases
@@ -323,7 +517,7 @@ sha256() { sha256sum "$1" | cut -d' ' -f1; }
 list_versions() {
     local base page versions
     for base in ${mirror:+"$mirror"} "$gnu_master" "$gnu_mirror"; do
-        page="$(fetch "$base/$prog_name/" 2>/dev/null)" || continue
+        page="$(try_fetch "$base/$prog_name/")" || continue
         versions="$(grep -oP 'wget-\K[0-9]+(\.[0-9]+)+(?=\.tar\.gz)' <<<"$page" | sort -ruV)" || continue
         if [[ -n "$versions" ]]; then
             echo "$versions"
@@ -349,7 +543,7 @@ installed_version() {
 
 required_packages() {
     local -a pkgs missing=() apt_opts=()
-    local pkg
+    local pkg owner
 
     [[ "$install_deps" == true && "$deps_checked" == false ]] || return 0
     deps_checked=true
@@ -364,13 +558,21 @@ required_packages() {
     if [[ "$ssl_backend" == openssl ]]; then pkgs+=(libssl-dev); else pkgs+=(libgnutls28-dev nettle-dev); fi
     [[ "$use_metalink" == true ]] && pkgs+=(libexpat1-dev libgpgme-dev xz-utils)
     [[ "$run_tests" == true ]] && pkgs+=(python3 libhttp-daemon-perl libio-socket-ssl-perl)
-    case "$cc_base" in
-        clang*) pkgs+=("clang$cc_suffix" "lld$cc_suffix" "llvm$cc_suffix") ;;
-        gcc-*)  pkgs+=("$cc_base") ;;
-        *)      ;;
-    esac
 
     command -v dpkg-query >/dev/null || { warn "dpkg not found, skipping the package check."; return 0; }
+
+    # build-essential brings gcc. When no clang is installed at all, install
+    # the distribution's default one. A clang from APT gets the lld and LLVM
+    # archive tools of its own version for link time optimization. Only the
+    # newest compiler is covered: an older one tried after a failed build
+    # does without LTO if its tools are missing.
+    if [[ "${#cc_paths[@]}" -eq 0 ]]; then
+        [[ "$compiler" == clang ]] && pkgs+=(clang lld llvm)
+    elif [[ "$compiler" == clang && "$use_lto" == true ]]; then
+        owner="$(dpkg-query -S "${cc_canons[0]}" 2>/dev/null | head -n1 | cut -d: -f1)" || owner=""
+        [[ "$owner" =~ ^clang-([0-9]+)$ ]] && pkgs+=("lld-${BASH_REMATCH[1]}" "llvm-${BASH_REMATCH[1]}")
+    fi
+
     for pkg in "${pkgs[@]}"; do
         dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed" || missing+=("$pkg")
     done
@@ -379,12 +581,14 @@ required_packages() {
     item_wrapped "APT packages" "missing: ${missing[*]}"
     if [[ "$dry_run" == true ]]; then
         log "Dry run, so they were not installed."
+        packages_missing=true
         return 0
     fi
     require_root "Installing the missing APT packages needs root: ${missing[*]}"
     [[ "$assume_yes" == true ]] && apt_opts+=(-y)
     apt-get update
     apt-get install "${apt_opts[@]}" "${missing[@]}"
+    packages_installed=true
 }
 
 # Fail early with a clear message instead of halfway through the build
@@ -412,11 +616,32 @@ require_commands() {
 # Compiler and linker flags
 # ---------------------------------------------------------------------------
 
+# The test program every flag is checked with. Created once per run and
+# removed by cleanup.
+make_probe_dir() {
+    probe_dir="$(mktemp -d "${TMPDIR:-/tmp}/wget-flag-probe.XXXXXX")"
+    printf '#include <stdlib.h>\n#include <limits.h>\n#include <stdio.h>\nint main(void) { return 0; }\n' >"$probe_dir/probe.c"
+}
+
 # probe FLAGS... returns 0 if a test program compiles and links with them.
 # -Werror and --fatal-warnings turn "unknown option, ignored" into a failure,
 # which is how clang and the linkers report options they do not support.
+# With --verbose every command is shown, with the reason when it fails.
 probe() {
-    "$CC" -O2 -Werror -Wl,--fatal-warnings "$@" -o "$probe_dir/probe" "$probe_dir/probe.c" >/dev/null 2>&1
+    local out status=0
+    local -a cmd=("$CC" -O2 -Werror "-Wl,--fatal-warnings" "$@" -o "$probe_dir/probe" "$probe_dir/probe.c")
+    out="$("${cmd[@]}" 2>&1)" || status=$?
+    if [[ "$verbose" == true ]]; then
+        if (( status == 0 )); then
+            vlog "Test compile ok: ${cmd[*]}"
+        else
+            vlog "Test compile failed (exit $status): ${cmd[*]}"
+            if [[ -n "$out" ]]; then
+                head -n 6 <<<"$out" | sed 's/^/          /' >&2
+            fi
+        fi
+    fi
+    return "$status"
 }
 
 # add_flags VARIABLE EXTRA_PROBE_FLAGS GROUP...
@@ -439,11 +664,8 @@ add_flags() {
 }
 
 select_flags() {
-    local lto="" linker="" arch dir
-
-    probe_dir="$(mktemp -d "${TMPDIR:-/tmp}/wget-flag-probe.XXXXXX")"
-    printf '#include <stdlib.h>\n#include <limits.h>\n#include <stdio.h>\nint main(void) { return 0; }\n' >"$probe_dir/probe.c"
-    probe || fail "The compiler $CC cannot build a simple program."
+    local lto="" linker="" arch dir tool
+    local -a link_words=() lto_tools=() missing=()
 
     cppflags="" cflags="" ldflags="" opt_cflags="" hard_cflags="" sys_cppflags="" fortify_flags=""
     skipped_flags=()
@@ -464,17 +686,31 @@ select_flags() {
     done
 
     # --- Link time optimization: lets the compiler optimize across all source
-    # files at once. GCC uses its own linker plugin. Clang needs the lld linker.
+    # files at once. GCC uses its own linker plugin. Clang needs the lld linker,
+    # and --ld-path makes sure it is the lld of this clang installation.
+    # Missing tools turn LTO off for this compiler only, so a compiler tried
+    # after it still gets LTO if its own tools are there.
     if [[ "$use_lto" == true ]]; then
-        if [[ "$cc_base" == clang* ]]; then lto="-flto" linker="-fuse-ld=lld"; else lto="-flto=auto"; fi
-        if ! command -v "${tool_prefix}ar$cc_suffix" >/dev/null || ! command -v "${tool_prefix}ranlib$cc_suffix" >/dev/null; then
-            warn "LTO turned off: ${tool_prefix}ar$cc_suffix and ${tool_prefix}ranlib$cc_suffix were not found."
-            lto="" linker=""
-        elif ! probe $lto $linker; then
-            warn "LTO turned off: $CC could not link a test program with $lto $linker."
-            lto="" linker=""
+        lto_tools=("$cc_ar" "$cc_ranlib" "$cc_nm")
+        if [[ "$compiler" == clang ]]; then
+            lto="-flto"
+            link_words=(-fuse-ld=lld "--ld-path=$cc_lld")
+            lto_tools+=("$cc_lld")
+        else
+            lto="-flto=auto"
+        fi
+        for tool in "${lto_tools[@]}"; do
+            [[ -x "$tool" ]] || missing+=("${tool##*/}")
+        done
+        if [[ "${#missing[@]}" -gt 0 ]]; then
+            warn "LTO turned off for $cc_name: ${missing[*]} not found in ${cc_canon%/*}."
+            lto="" link_words=()
+        elif ! probe "$lto" "${link_words[@]}"; then
+            warn "LTO turned off for $cc_name: it could not link a test program with $lto ${link_words[*]}."
+            lto="" link_words=()
         fi
     fi
+    linker="${link_words[*]}"
 
     # --- Optimization. Each function and data item goes in its own section so
     # the linker can drop the ones wget never uses, and library calls skip the PLT.
@@ -518,8 +754,6 @@ select_flags() {
 
     cflags="$opt_cflags${hard_cflags:+ $hard_cflags}"
     cppflags="$sys_cppflags${fortify_flags:+${sys_cppflags:+ }$fortify_flags}"
-    rm -rf -- "$probe_dir"
-    probe_dir=""
 }
 
 show_flags() {
@@ -530,14 +764,14 @@ show_flags() {
         "System headers first" "$sys_cppflags"
         "Linker"               "${ldflags:-(none)}"
     )
-    step "Compiler flags ($CC)"
+    step "Compiler flags ($cc_name $cc_version)"
     for (( i = 0; i < ${#groups[@]}; i += 2 )); do
         [[ -n "${groups[i+1]}" ]] || continue
         heading "${groups[i]}"
         block "${groups[i+1]}"
     done
     if [[ "${#skipped_flags[@]}" -gt 0 ]]; then
-        printf '    %sLeft out, not supported by this toolchain%s\n' "$YELLOW" "$NC"
+        printf '    %sLeft out, they failed the test compile%s\n' "$YELLOW" "$NC"
         block "${skipped_flags[*]}"
     fi
 }
@@ -551,7 +785,7 @@ show_flags() {
 download_gnu() {
     local file="$1" dest="$2" base
     for base in ${mirror:+"$mirror"} "$gnu_mirror" "$gnu_master"; do
-        if fetch -o "$dest" "$base/$prog_name/$file" 2>/dev/null; then
+        if try_fetch -o "$dest" "$base/$prog_name/$file"; then
             last_url="$base/$prog_name/$file"
             return 0
         fi
@@ -604,17 +838,32 @@ configure_vars() {
         "PKG_CONFIG=$pkg_config" "PKG_CONFIG_PATH=$pkg_config_path"
     # LTO objects in a static library need the compiler's own archive tools
     if [[ "$cflags" == *"-flto"* ]]; then
-        printf '%s\n' "AR=${tool_prefix}ar$cc_suffix" "RANLIB=${tool_prefix}ranlib$cc_suffix" "NM=${tool_prefix}nm$cc_suffix"
+        printf '%s\n' "AR=$cc_ar" "RANLIB=$cc_ranlib" "NM=$cc_nm"
     fi
 }
 
-build_libmetalink() {
-    local tarball="$work_dir/libmetalink-$metalink_ver.tar.xz" dir="$work_dir/libmetalink" sum
-    local -a vars
-
+# Downloaded and checked once. Each build attempt unpacks a fresh copy.
+download_libmetalink() {
+    local tarball="$work_dir/libmetalink-$metalink_ver.tar.xz" sum
     fetch -o "$tarball" "$metalink_url" || fail "Could not download $metalink_url"
     sum="$(sha256 "$tarball")"
     [[ "$sum" == "$metalink_sha256" ]] || fail "Checksum mismatch for libmetalink. Expected $metalink_sha256, got $sum."
+}
+
+# compile_step LABEL LOGFILE COMMAND... runs a compile. A failure is recorded
+# in failed_* and returns 1, so the caller can stop this attempt and the next
+# compiler can be tried. Everything else in the build functions stops the run.
+compile_step() {
+    failed_status=0
+    try_task "$@" || failed_status=$?
+    (( failed_status != 0 )) || return 0
+    failed_step="$1" failed_log="$2"
+    return 1
+}
+
+build_libmetalink() {
+    local tarball="$work_dir/libmetalink-$metalink_ver.tar.xz" dir="$work_dir/libmetalink"
+    local -a vars
 
     mkdir -p "$dir"
     tar -xJf "$tarball" -C "$dir" --strip-components 1 || fail "Failed to extract $tarball"
@@ -623,16 +872,17 @@ build_libmetalink() {
     cd "$dir"
     # Static and position independent, so it links straight into the wget
     # binary. Installed into the build directory only, never into the prefix.
-    run_task "Configure libmetalink $metalink_ver" "$work_dir/libmetalink-configure.log" \
+    run_task "Configure libmetalink $metalink_ver" "$log_dir/libmetalink-configure.log" \
         ./configure --prefix="$deps_dir" --disable-shared --enable-static --with-pic \
         --with-libexpat --without-libxml2 --disable-dependency-tracking "${vars[@]}"
-    run_task "Compile libmetalink (static, private)" "$work_dir/libmetalink-build.log" \
-        make -j"$jobs"
-    make install >>"$work_dir/libmetalink-build.log" 2>&1 || fail "libmetalink staging install failed."
+    compile_step "Compile libmetalink (static, private)" "$log_dir/libmetalink-build.log" \
+        make -j"$jobs" "${make_verbose[@]}" || return 0
+    run_task "Stage libmetalink (private)" "$log_dir/libmetalink-install.log" \
+        make install "${make_verbose[@]}"
 }
 
 build_wget() {
-    local pc_path="$deps_dir/lib/pkgconfig:$pkg_config_path"
+    local pc_path="$deps_dir/lib/pkgconfig:$pkg_config_path" metalink_cflags metalink_libs
     local -a vars args
 
     mapfile -t vars < <(configure_vars)
@@ -654,19 +904,20 @@ build_wget() {
     if [[ "$use_metalink" == true ]]; then
         # A static libmetalink does not pull in expat by itself, so ask
         # pkg-config for the complete static link line
-        args+=(
-            --with-metalink
-            "METALINK_CFLAGS=$(PKG_CONFIG_PATH="$pc_path" "$pkg_config" --cflags libmetalink)"
-            "METALINK_LIBS=$(PKG_CONFIG_PATH="$pc_path" "$pkg_config" --static --libs libmetalink)"
-        )
+        metalink_cflags="$(PKG_CONFIG_PATH="$pc_path" "$pkg_config" --cflags libmetalink)" \
+            || fail "pkg-config could not find the private libmetalink in $deps_dir."
+        metalink_libs="$(PKG_CONFIG_PATH="$pc_path" "$pkg_config" --static --libs libmetalink)" \
+            || fail "pkg-config could not find the private libmetalink in $deps_dir."
+        args+=(--with-metalink "METALINK_CFLAGS=$metalink_cflags" "METALINK_LIBS=$metalink_libs")
     else
         args+=(--without-metalink)
     fi
 
     mkdir -p "$src_dir/build"
     cd "$src_dir/build"
-    run_task "Configure wget $version" "$work_dir/wget-configure.log" ../configure "${args[@]}" "${vars[@]}"
-    run_task "Compile wget ($jobs jobs)" "$work_dir/wget-build.log" make -j"$jobs"
+    run_task "Configure wget $version" "$log_dir/wget-configure.log" ../configure "${args[@]}" "${vars[@]}"
+    compile_step "Compile wget ($jobs jobs)" "$log_dir/wget-build.log" \
+        make -j"$jobs" "${make_verbose[@]}" || return 0
     built_binary="$src_dir/build/src/$prog_name"
     [[ -x "$built_binary" ]] || fail "The build finished but $built_binary was not found."
 }
@@ -689,7 +940,7 @@ verify_binary() {
         || fail "Built binary reports \"$(head -n1 <<<"$out")\", expected version $version."
     flat=" $(tr '\n' ' ' <<<"$out") "
     for feature in "${expected[@]}"; do
-        [[ "$flat" == *" $feature "* ]] || fail "The new binary is missing the feature $feature. Nothing was installed. Run again with --keep-build and see wget-configure.log."
+        [[ "$flat" == *" $feature "* ]] || fail "The new binary is missing the feature $feature. Nothing was installed. Run again with --keep-build and see $log_dir/wget-configure.log."
     done
     item "Version" "$version"
     item_wrapped "Features" "${expected[*]}"
@@ -739,10 +990,10 @@ run_test_suite() {
     local summary
     step "Test suite"
     cd "$src_dir/build"
-    run_task "Run the upstream tests (several minutes)" "$work_dir/wget-check.log" make -j"$jobs" check
+    run_task "Run the upstream tests (several minutes)" "$log_dir/wget-check.log" make -j"$jobs" "${make_verbose[@]}" check
     # Automake prints one summary per test directory, so add them up
     summary="$(awk '/^# (TOTAL|PASS|SKIP|XFAIL|FAIL|XPASS|ERROR):/ { gsub(":", "", $2); n[$2] += $3 }
-        END { printf "%d run, %d passed, %d skipped, %d expected failures, %d failed", n["TOTAL"], n["PASS"], n["SKIP"], n["XFAIL"], n["FAIL"] + n["XPASS"] + n["ERROR"] }' "$work_dir/wget-check.log")"
+        END { printf "%d run, %d passed, %d skipped, %d expected failures, %d failed", n["TOTAL"], n["PASS"], n["SKIP"], n["XFAIL"], n["FAIL"] + n["XPASS"] + n["ERROR"] }' "$log_dir/wget-check.log")"
     item "Result" "${GREEN}passed${NC}: $summary"
 }
 
@@ -772,7 +1023,7 @@ install_wget() {
     # of what wget installs, so only finished files are copied into the prefix.
     step "Install into $install_dir"
     cd "$src_dir/build"
-    run_task "Stage the files" "$work_dir/wget-install.log" make install-strip DESTDIR="$stage_dir"
+    run_task "Stage the files" "$log_dir/wget-install.log" make "${make_verbose[@]}" install-strip DESTDIR="$stage_dir"
     [[ -x "$root/bin/$prog_name" ]] || fail "Staging install did not produce $root/bin/$prog_name"
 
     # Remember what an earlier run of this script installed here
@@ -945,8 +1196,52 @@ cleanup() {
     return 0
 }
 
+# Build with the newest compiler, and when a compile step fails, start over
+# with the next one. A failed configure, or anything else going wrong, stops
+# the run as before: only a compile failure is a reason to change compilers.
+build_with_compilers() {
+    local i last_failure=""
+    for (( i = 0; i < ${#cc_paths[@]}; i++ )); do
+        use_compiler "$i"
+        if ! compiler_works; then
+            warn "Skipping $cc_name $cc_version ($CC): it cannot build a simple test program. --verbose shows why."
+            continue
+        fi
+        failed_step="" failed_status=0 failed_log="" built_binary=""
+        # The number keeps two compilers with the same name apart
+        log_dir="$work_dir/logs/$(( i + 1 ))-$cc_name"
+        mkdir -p "$log_dir"
+
+        select_flags
+        show_flags
+        step "Build with $cc_name $cc_version"
+        if [[ "$use_metalink" == true ]]; then build_libmetalink; fi
+        if [[ -z "$failed_step" ]]; then build_wget; fi
+        [[ -n "$failed_step" ]] || return 0
+
+        last_failure="$failed_step failed with $cc_name $cc_version (exit $failed_status), log: $failed_log"
+        # Leave the directories before removing them, and keep what
+        # configure found, since its own log is inside them
+        cd "$work_dir" || fail "Cannot change to $work_dir"
+        if [[ -f "$work_dir/libmetalink/config.log" ]]; then
+            cp -- "$work_dir/libmetalink/config.log" "$log_dir/libmetalink-config.log"
+        fi
+        if [[ -f "$src_dir/build/config.log" ]]; then
+            cp -- "$src_dir/build/config.log" "$log_dir/wget-config.log"
+        fi
+        rm -rf -- "$work_dir/libmetalink" "$deps_dir" "$src_dir/build"
+        if (( i + 1 < ${#cc_paths[@]} )); then
+            warn "$last_failure"
+            warn "Trying the next compiler, ${cc_names[i+1]} ${cc_versions[i+1]} (${cc_paths[i+1]})."
+        fi
+    done
+
+    [[ -n "$last_failure" ]] || fail "None of the installed $compiler compilers can build a simple test program. Run again with --verbose to see why."
+    fail "wget $version could not be built with any installed $compiler compiler. Last failure: $last_failure. Use --keep-build to keep the logs in $work_dir/logs."
+}
+
 main() {
-    local current versions
+    local current versions i first_ok=false
 
     orig_args=("$@")
     parse_args "$@"
@@ -967,7 +1262,10 @@ main() {
     setup_toolchain
 
     # The version lookup needs curl. On a bare system install the packages first.
-    command -v curl >/dev/null || required_packages
+    if ! command -v curl >/dev/null; then
+        discover_compilers
+        required_packages
+    fi
 
     step "Prepare"
     if [[ -z "$version" ]]; then
@@ -989,9 +1287,24 @@ main() {
     # Fail now, before anything is downloaded or built
     check_prefix_access "Writing to $install_dir needs root."
     [[ "$install_dir" == "/usr" ]] && warn "Installing into /usr overwrites the files of the APT wget package."
+    discover_compilers
     required_packages
+    # Installing packages can add a compiler (build-essential brings gcc)
+    if [[ "$packages_installed" == true ]]; then discover_compilers; fi
 
-    item "Compiler" "$CC"
+    if [[ "${#cc_paths[@]}" -gt 0 ]]; then
+        use_compiler 0
+        item "Compiler" "$cc_name $cc_version ($CC)"
+        if (( ${#cc_paths[@]} > 1 )); then
+            item_wrapped "Fallbacks" "${cc_names[*]:1}"
+        fi
+    elif [[ "$dry_run" == true ]]; then
+        item "Compiler" "no $compiler found in ${compiler_dirs[*]} yet"
+    elif [[ "$install_deps" == false ]]; then
+        fail "No $compiler compiler was found in ${compiler_dirs[*]}. Install one, or run without --no-deps."
+    else
+        fail "No $compiler compiler was found in ${compiler_dirs[*]}, even after installing the packages."
+    fi
     item "TLS library" "$ssl_backend"
     item "CPU target" "$([[ "$portable" == true ]] && echo "portable, any CPU of this architecture" || echo "native, tuned for this PC")"
     item "Options" "metalink: $use_metalink, translations: $use_nls, tests: $run_tests"
@@ -999,11 +1312,26 @@ main() {
     if [[ "$dry_run" == true ]]; then
         item "Signature" "$([[ "$verify_sig" == true ]] && echo "will be checked with gpgv" || echo "will NOT be checked")"
         [[ "$needs_root" == true ]] && item "Needs sudo" "yes, to write to $install_dir"
-        if command -v "$CC" >/dev/null; then
-            select_flags
-            show_flags
+        if [[ "${#cc_paths[@]}" -gt 0 ]]; then
+            make_probe_dir
+            for (( i = 0; i < ${#cc_paths[@]}; i++ )); do
+                use_compiler "$i"
+                if compiler_works; then
+                    first_ok=true
+                    break
+                fi
+                warn "Skipping $cc_name $cc_version ($CC): it cannot build a simple test program."
+            done
+            if [[ "$first_ok" == true ]]; then
+                select_flags
+                show_flags
+            elif [[ "$packages_missing" == true ]]; then
+                log "The compilers are tested once the missing packages are installed."
+            else
+                log "None of the $compiler compilers found can build a simple test program."
+            fi
         else
-            log "Compiler flags are chosen once $CC is installed."
+            log "The compiler and its flags are chosen once one is installed."
         fi
         step "Dry run finished"
         log "Nothing was downloaded, built, or installed."
@@ -1026,11 +1354,9 @@ main() {
     mkdir -p "$work_dir"
 
     download_wget
-    select_flags
-    show_flags
-    step "Build"
-    [[ "$use_metalink" == true ]] && build_libmetalink
-    build_wget
+    if [[ "$use_metalink" == true ]]; then download_libmetalink; fi
+    make_probe_dir
+    build_with_compilers
     verify_binary
     [[ "$use_hardening" == true ]] && hardening_report
     [[ "$run_tests" == true ]] && run_test_suite
