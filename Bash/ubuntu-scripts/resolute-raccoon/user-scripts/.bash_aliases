@@ -1,0 +1,57 @@
+alias grep='grep --color=auto'
+alias egrep='grep --color=auto -E'
+alias fgrep='grep --color=auto -F'
+
+alias ls='ls -1AFShv --color=auto --group-directories-first'
+alias cl='clear; ls'
+alias dir='dir --color=auto'
+alias vdir='vdir --color=auto'
+
+alias clean='sudo apt -y autoremove; sudo apt autoclean'
+alias install='sudo apt -y install'
+
+alias nba='nano ~/.bash_aliases; cl'
+alias nbf='nano ~/.bash_functions; cl'
+alias nbrc='nano ~/.bashrc; cl'
+alias npro='nano ~/.profile; cl'
+
+alias g='gnome-text-editor'
+alias gba='g ~/.bash_aliases; cl'
+alias gbf='g ~/.bash_functions; cl'
+alias gbrc='g ~/.bashrc; cl'
+alias gpro='g ~/.profile; cl'
+
+alias cd..='cd ../; cl'
+alias cd...='cd ../..; cl'
+alias cd....='cd ../../..; cl'
+alias cd.....='cd ../../../..; cl'
+alias cdd='pushd ~/Downloads; cl'
+alias cde='pushd ~/Desktop; cl'
+alias cdf='pushd ~/tmp/local_llm_projects/qwen3.8-flash-next-strata/; cl'
+alias cdff='pushd ~/tmp/github_projects/ffmpeg-build-script; cl'
+alias cdg='pushd ~/tmp/thatsgemma/; cl'
+alias cdi='pushd ~/tmp/github_projects/imagemagick-build-script; cl'
+alias cdlt='pushd ~/tmp/local_llm_projects/lightricks-ltx-2.5-gguf; cl'
+alias cdq='pushd ~/tmp/local_llm_projects/qwen3.8-gguf/; cl'
+alias cdqi='pushd ~/tmp/local_llm_projects/qwen-image-2.1-gguf; cl'
+alias cdt='pushd ~/tmp; cl'
+
+alias cba='cat ~/.bash_aliases'
+alias cbf='cat ~/.bash_functions'
+alias cbrc='cat ~/.bashrc'
+alias cpro='cat ~/.profile'
+
+alias wgpu='watch -n0.5 nvidia-smi'
+alias wmem='watch -n0.5 free -m'
+alias wtemp='watch -n0.5 sensors'
+
+alias killall='sudo killall -9'
+alias kill='sudo kill -9'
+
+alias logout='gnome-session-quit --no-prompt'
+alias reboot='sudo systemctl reboot'
+alias rebootu='sudo systemctl reboot --firmware-setup'
+alias shutdown='sudo systemctl poweroff'
+
+# Files and commands on JDESKTOP: jdesk send|get|run|shell|check (jdesk -h for help)
+alias jdesk='/home/jman/tmp/transfer_to_jdesktop.py'

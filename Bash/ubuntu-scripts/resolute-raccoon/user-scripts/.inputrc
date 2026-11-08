@@ -1,0 +1,2 @@
+# Preserve paste formatting in interactive shell line editing.
+set enable-bracketed-paste on

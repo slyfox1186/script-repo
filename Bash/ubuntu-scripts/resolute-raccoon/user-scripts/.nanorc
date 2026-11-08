@@ -1,0 +1,7 @@
+## Keep multiline pastes untouched. Soft-wrapped display can make pasted
+## multiline scripts look like a single line in some terminals.
+set nowrap
+unset softwrap
+
+## Syntax coloring is configured system-wide in /etc/nanorc. Do not include
+## syntax files here: anything loaded here would override those layers.

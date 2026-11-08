@@ -1,0 +1,72 @@
+# Bash functions
+
+`~/.bash_functions` is the loader for this directory. `.bashrc` sources it once, after `.bash_aliases`.
+
+- The loader disables alias expansion while the function files are parsed, exports the shared ANSI colors, sources every first-level `*.sh` file in filename order, then restores the caller's alias-expansion setting.
+- Each numbered file groups functions by type: `01_gui_apps.sh`, `02_filesystem.sh`, `03_text_processing.sh`, `04_compression.sh`, `05_package_management.sh`, `06_system_admin.sh`, `07_process_management.sh`, `08_dev_tools.sh`, `09_file_analysis.sh`, `10_security.sh`, `11_networking.sh`, `12_multimedia.sh`, `13_ai_tools.sh`, `14_utilities.sh`. Nested helpers stay inside their parent function.
+- Functions resolve each other when called, not when loaded, so a function may call one defined in a later file.
+- `startup/pyenv.sh` and `startup/pip.sh` are sourced explicitly at their original positions in `.bashrc`, so they retain their initialization timing and are not loaded by the first-level glob.
+
+To reload the functions in the current terminal:
+
+```bash
+source ~/.bash_functions
+```
+
+The provider menu is `switch_provider`; its definition is in `13_ai_tools.sh`. So are `codexcmd "query"`, which runs `codex exec -s read-only --skip-git-repo-check -c web_search=live -- "query"`, and `claudecmd "query"`, which runs `claude -p --output-format stream-json --verbose --include-partial-messages --model opus --permission-mode dontAsk --allowedTools "WebSearch" "WebFetch" "Grep" "Glob" "Bash" --disallowedTools "Edit" "Write" "NotebookEdit" -- "query"`. `claudecmd` defaults to `--model opus`; `--sonnet` or `--haiku` pick those families, and it also takes `--effort LEVEL`, `-c`/`--continue` and `--quiet`, read only before the query. It runs claude through `claudecmd_progress.py` in this folder (Miniconda Python, stdlib only), which shows each tool call, thinking pass and elapsed time live on stderr and prints only the final answer on stdout. With no arguments each reads the query from stdin and pipes it on, to `codex exec -` or to `claude -p` with no prompt argument. `claudecmd` is not read-only: Bash is pre-approved, so Claude can run any shell command without asking; only deny and ask rules in the Claude settings files stop one. At the interactive prompt a multi-line query goes between `codexcmd """` (or `claudecmd """`) and a closing `"""` line: an Enter-key readline hook, `_aicmd_triple_quote`, rewrites that opening line to the quoted heredoc `codexcmd <<'"""'`. Scripts use a quoted heredoc (`codexcmd <<'EOF'` ... `EOF`) directly. `-h` or `--help` on either command prints its full help with examples. `add_claude_mcp` reads `CONTEXT7_API_KEY` from the environment, which `~/.claude/secrets.env` sets.
+
+The function files keep private permissions because the originals were private.
+
+The cleanup decisions and verification are recorded in [CLEANUP.md](CLEANUP.md).
+
+Changes on 2026-10-13:
+
+- Removed functions whose download sources are gone (404 GitHub paths or the parked
+  optimizethis.net domain): `dl_clang`, `gitdl`, `dlfs`, `venv`, `dlmaster`, `script_repo`,
+  `adt`, `ffdl`, `ffstaticdl`, `imow`, plus the WSL-only `mnd`. Also removed the `gzip`
+  override, the redundant `cdiff` wrapper and the `clean` function, which the `clean` alias
+  already replaced.
+- Renamed the clipboard copier `cc` to `ct`, so `cc` is the C compiler again. Renamed the
+  Chrome launcher `gc` to `gch`; `gc<TAB>` still expands to `git clone`.
+- Every kill path (`kill_process`, `taskkill_pid`/`tkpid`, `check_port`, `port_manager close`,
+  `tkapt`) goes through `_terminate_pids` in `07_process_management.sh`: it lists the targets,
+  sends SIGTERM only after a yes, and offers SIGKILL only for survivors. Enter means no.
+  Port lookups use `_port_listeners`, which only matches listening sockets. `tkapt` never
+  signals dpkg.
+- `pipu`/`pipua` refuse the conda base environment; use `conda update --all` there.
+- Backup and regression suite for this round:
+  `~/.local/state/bash-functions-cleanup/20261013T140623Z/` (57 cases).
+
+Useful changes:
+
+- `7z_1`, `7z_5`, and `7z_9` share one implementation. Run them outside the source
+  directory; existing archives are preserved, hidden files are included, and
+  deletion is offered only after compression and archive verification succeed.
+  Source metadata is checked during compression and again before deletion;
+  detected changes keep the source. Archives are staged privately before publication.
+- `nh`, `nhe`, `nhs`, and `nhse` now forward all command arguments. The sudo
+  variants authenticate before detaching.
+- `big_files` retains its folder and file sections; `big_file` supplies the shared
+  file listing. `big_img [MiB]` defaults to 10 MiB. `jpgsize [MiB]` prompts when
+  omitted. Both JPG commands print absolute paths, including uppercase extensions,
+  without opening an editor or leaving temporary files.
+- `dsize [-r] [-min SIZE] [-max SIZE] [PATH...]` (`09_file_analysis.sh`) prints each
+  path's total size with its absolute path, defaulting to the current directory. `-r`
+  lists every file beneath it, largest first, also with absolute paths. `-min`/`-max`
+  (inclusive, implying `-r`) restrict the list and add a `Matching:` subtotal; SIZE takes
+  B/K/KB/KiB/M/G/T/P/E in any case, all 1024-based like the output. Sizes are disk usage,
+  each hard-linked file counted once in totals. On a terminal, a progress bar on stderr
+  shows percent, elapsed time and time left, preceded by a quick counting pass. Requires
+  `gawk`. Symlinks are not followed; unreadable paths are skipped and counted on stderr.
+- `pipu` calls `pipua`: all outdated non-editable packages are upgraded in one
+  resolver invocation, followed by `pip check`. Neither bypasses externally
+  managed environment protection, and both refuse the conda base environment.
+- `drp [CONTAINER...]` prompts for containers when omitted, then prompts for a
+  restart policy. `padl` reads `FILENAME URL` from the Linux or Windows clipboard;
+  the filename cannot contain spaces.
+- `ffs [OPTIONS...]` clones or fast-forwards a clean checkout in
+  `~/.local/share/ffmpeg-build-script`, then runs its current Python builder through
+  `~/miniconda3/envs/install-ffmpeg/bin/python`. It refuses unrelated directories
+  or local changes. `ffr PATH [OPTIONS...]` and `ffrv` support the current Python
+  builder and legacy shell scripts, running as your user. Without options they
+  request a build with GPL/non-free components and latest dependencies.

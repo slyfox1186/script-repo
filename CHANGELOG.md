@@ -2,6 +2,20 @@
 
 Log of corpus-wide bug sweeps performed on `Python3/` and `Bash/`. Purpose: record every change, its reasoning, and the triage knowledge needed to repeat this task without re-litigating settled decisions.
 
+## 2026-11-08 Ubuntu 26.04 (Resolute Raccoon) dotfile set
+
+- New `Bash/ubuntu-scripts/resolute-raccoon/` holds the Bash configuration in use on JSERVERPC
+  (Ubuntu 26.04 LTS): `.bashrc`, `.bash_aliases`, `.bash_functions`, the 14 topic files plus
+  `startup/` in `.bash_functions.d/`, `.bash_profile`, `.profile`, `.bash_logout`, `.inputrc` and
+  `.nanorc`, copied byte for byte. Ruff and Python caches were left out.
+- `.bash_functions.d/13_ai_tools.sh` includes `codexcmd` (read-only Codex with live web search)
+  and `claudecmd` (Claude Code with live progress from `claudecmd_progress.py`, latest Opus by
+  default, `--sonnet`, `--haiku`, `--effort`, `--continue`, `--quiet`).
+- `~/.claude/secrets.env`, which `.bashrc` sources when present, is not included; a scan found no
+  keys, tokens or private addresses in the copied files.
+- The jammy-style setup, package and mirror scripts were not ported; this set is dotfiles only,
+  like `noble/user-scripts`.
+
 ## 2026-11-07 Shared prompt for every dotfile set
 
 - The `.bashrc` files in `Bash/arch-linux/user-scripts/`, `Bash/debian-scripts/bookworm/user-scripts/`,

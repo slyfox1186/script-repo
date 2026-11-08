@@ -1,11 +1,13 @@
 # Script repository status
 
-Updated: 2026-11-07
+Updated: 2026-11-08
 
-Latest change: every dotfile set (`arch-linux`, `debian-scripts/bookworm`, `raspbian-os`,
-`ubuntu-scripts/noble`, and the `ubuntu-scripts/jammy` prompt module) uses the same two-line prompt
-as JSERVERPC's `~/.bashrc`: `(base) ~/path [exit code]` above `user@host $ `, in the same 24-bit
-colors (gray env, yellow path, orange user, lilac `@`, blue host, white `$`). See `CHANGELOG.md`.
+Latest change: new `Bash/ubuntu-scripts/resolute-raccoon/` holds JSERVERPC's Ubuntu 26.04 Bash
+configuration (`.bashrc`, `.bash_aliases`, `.bash_functions` and `.bash_functions.d/`, login files,
+`.inputrc`, `.nanorc`), copied unchanged, with a README. Dotfiles only: the jammy setup, package and
+mirror scripts were not ported. See `CHANGELOG.md`.
+
+Earlier change (2026-11-07): every dotfile set uses JSERVERPC's two-line prompt and colors.
 
 Current work covers all 40 installers in
 `/home/jman/tmp/github_projects/script-repo/Bash/installer-scripts/gnu-software/`, the GitHub
