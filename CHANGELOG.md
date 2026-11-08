@@ -9,6 +9,9 @@ Log of corpus-wide bug sweeps performed on `Python3/` and `Bash/`. Purpose: reco
   `Bash/ubuntu-scripts/jammy/user-scripts/.bashrc.d/03_prompt.sh`, now set one shared prompt from
   `__prompt_command` in `PROMPT_COMMAND`. Line 1 shows the conda or virtualenv name, the working
   directory, and the exit code in red after a failed command. Line 2 shows `user@host $ `.
+- The prompt colors match JSERVERPC's `~/.bashrc`: a gray env name, a yellow path, an orange user,
+  a lilac `@`, a blue host and a white `$`. They are 24-bit RGB codes, so the terminal theme's
+  palette cannot change them. The old 16-color green, yellow, blue and cyan set is gone.
 - Conda's own `(env)` prefix is off (`CONDA_CHANGEPS1=false`). Conda prepended it ahead of the old
   prompt's leading newline, which left `(base)` alone on the line above the path.
 - The env name reaches `PS1` through a variable reference instead of being pasted in, so a name

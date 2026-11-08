@@ -99,10 +99,13 @@ __prompt_command() {
     local exit_code=$?
     local reset='\[\e[0m\]'
     local red='\[\e[0;31m\]'
-    local green='\[\e[0;32m\]'
-    local yellow='\[\e[0;33m\]'
-    local blue='\[\e[0;34m\]'
-    local cyan='\[\e[0;36m\]'
+    # 24-bit RGB values, so the terminal theme's palette cannot change these colors.
+    local env_gray='\[\e[38;2;167;167;167m\]'
+    local path_yellow='\[\e[38;2;255;255;95m\]'
+    local user_orange='\[\e[38;2;255;175;95m\]'
+    local at_lilac='\[\e[38;2;215;175;255m\]'
+    local host_blue='\[\e[38;2;135;215;255m\]'
+    local dollar_white='\[\e[38;2;255;255;255m\]'
 
     # The env name goes through this global rather than being pasted into PS1, so a name
     # containing "$(cmd)" is shown as text instead of being run.
@@ -118,7 +121,7 @@ __prompt_command() {
         exit_info=" ${red}[${exit_code}]${reset}"
     fi
 
-    PS1="${yellow}"'${__prompt_venv}'"${blue}\w${reset}${exit_info}\n${green}\u${reset}@${cyan}\h${reset} \$ "
+    PS1="${env_gray}"'${__prompt_venv}'"${path_yellow}\w${reset}${exit_info}\n${user_orange}\u${at_lilac}@${host_blue}\h${reset} ${dollar_white}\$${reset} "
 }
 
 PROMPT_COMMAND=__prompt_command
