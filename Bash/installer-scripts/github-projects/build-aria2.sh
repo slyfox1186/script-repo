@@ -3,13 +3,9 @@
 ##  Github Script: https://github.com/slyfox1186/script-repo/blob/main/Bash/installer-scripts/github-projects/build-aria2.sh
 ##  Purpose: Build aria2 from source code with hardening options
 ##  Updated: 11.07.26
-##  Script version: 2.9
+##  Script version: 2.11
 
-script_ver="2.9"
-
-echo "aria2 build script - version $script_ver"
-echo "==============================================="
-echo
+script_ver="2.11"
 
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
@@ -28,27 +24,62 @@ log() { echo -e "${GREEN}[LOG]${NC} $*"; }
 warn() { echo -e "${YELLOW}[WARNING]${NC} $*" >&2; }
 fail() { echo -e "${RED}[ERROR]${NC} $*" >&2; exit 1; }
 
+print_banner() {
+    echo "aria2 build script - version $script_ver"
+    echo "==============================================="
+    echo
+}
+
+# Color only on a terminal, and honor NO_COLOR (https://no-color.org).
 display_help() {
+    local bold="" dim="" heading="" opt="" cmd="" reset=""
+    if [[ -t 1 && -z "${NO_COLOR:-}" && "${TERM:-dumb}" != "dumb" ]]; then
+        bold=$'\033[1m'
+        dim=$'\033[2m'
+        heading=$'\033[1;33m'
+        opt=$'\033[1;36m'
+        cmd=$'\033[0;32m'
+        reset=$'\033[0m'
+    fi
     cat <<EOF
-Usage: $0 [OPTION]...
-Build aria2 from source code with hardening options.
+${bold}aria2 build script${reset} ${dim}version ${script_ver}${reset}
+Builds the latest aria2 release from source with hardening flags and
+installs it under ${INSTALL_PREFIX}.
 
-Options:
-  -h, --help          Display this help message and exit
-  -d, --debug         Enable debug mode for more detailed output
-  -g, --generic       Set CFLAGS to -O2 -pipe -mtune=generic
-  -n, --native        Set CFLAGS to -O2 -pipe -march=native (default)
-  -s, --static        Link aria2 statically (ARIA2_STATIC=yes). A static binary
-                      is not position independent, so it gets no ASLR for its
-                      own code.
+${heading}USAGE${reset}
+  $0 [OPTION]...
 
-Examples:
-  $0                     # Build aria2 from source
-  $0 --debug --generic   # Build aria2 with CFLAGS set to -O2 -pipe -mtune=generic
-  $0 --static            # Build a statically linked aria2
-  $0 -d -g -s            # Build aria2 with debug mode, generic tuning, and static linking
+${heading}OPTIONS${reset}
+  ${opt}-g${reset}, ${opt}--generic${reset}   Build for any CPU of this architecture
+                  (-mtune=generic), so the binary can run on other PCs.
+                  ${dim}Without it the build uses -march=native, tuned for
+                  this PC.${reset}
+  ${opt}-s${reset}, ${opt}--static${reset}    Link aria2 statically. A static binary is not
+                  position independent, so its own code gets no ASLR.
+  ${opt}-d${reset}, ${opt}--debug${reset}     Print every command the script runs (set -x).
+  ${opt}-h${reset}, ${opt}--help${reset}      Show this help and exit.
+
+  Give short options separately: ${opt}-d -g${reset}, not ${opt}-dg${reset}.
+
+${heading}WHAT IT DOES${reset}
+  1. Installs any missing build packages with apt (uses sudo).
+  2. Builds the latest c-ares and sqlite3 as static libraries in a
+     temporary directory.
+  3. Builds the latest aria2 release, with the --max-connection-per-server
+     limit raised from 16 to 128.
+  4. Installs aria2 under ${INSTALL_PREFIX} (uses sudo) and prints its version.
+
+  Run it as a normal user, not as root. If the build fails, the build
+  directory is kept so you can inspect it.
+
+${heading}EXAMPLES${reset}
+  ${cmd}$0${reset}
+      Build and install aria2 tuned for this machine.
+  ${cmd}$0 --generic --static${reset}
+      Build a portable, statically linked aria2c.
+  ${cmd}$0 -d -g${reset}
+      Build for any CPU and print every command as it runs.
 EOF
-    exit "${1:-0}"
 }
 
 parse_args() {
@@ -57,11 +88,11 @@ parse_args() {
             -d|--debug)   set -x ;;
             -s|--static)  ARIA2_STATIC="yes" ;;
             -g|--generic) CFLAGS_OPTION="-mtune=generic" ;;
-            -n|--native)  CFLAGS_OPTION="-march=native" ;;
-            -h|--help)    display_help 0 ;;
+            -h|--help)    display_help; exit 0 ;;
             *)
-                echo "Unknown option: $1" >&2
-                display_help 1 >&2
+                printf '%b %s\n' "${RED}[ERROR]${NC}" "Unknown option: $1" >&2
+                echo "Run '$0 --help' to see the available options." >&2
+                exit 1
                 ;;
         esac
         shift
@@ -295,6 +326,7 @@ main() {
     fi
 
     parse_args "$@"
+    print_banner
     setup_tools
     set_compiler_options
     print_env
