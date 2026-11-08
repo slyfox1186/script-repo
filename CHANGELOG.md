@@ -17,6 +17,13 @@ Log of corpus-wide bug sweeps performed on `Python3/` and `Bash/`. Purpose: reco
   exported copy leaked the old prompt into child shells.
 - The `jammy` module dropped its stub `__git_ps1`, its window-title code and its color detection,
   which only served the old prompt. The prompt does not show a git branch.
+- `Bash/raspbian-os/user-scripts/.bashrc` tested `"$debian_chroot:-"`, which is never empty, so
+  `/etc/debian_chroot` was never read. It now tests `"${debian_chroot:-}"`.
+- The four distro `.bashrc` files carry `# shellcheck shell=bash`, clearing SC2148 at error level.
+- `CLAUDE.md` and `Bash/networking/README.md` no longer point at tests deleted in `fca41cab`
+  (`test_bash_dotfile_snapshot.py`, `test_networking_scripts.py`, `update_mirrorlist_test.sh`), at the
+  removed `agent-duet` environment, or at the old `Bash/Arch-Linux-Scripts/` path. The networking
+  scripts' `shellcheck source=` lines use `SCRIPTDIR`, so `shellcheck -x` resolves them from any folder.
 
 ## 2026-11-06 — optimizethis.net shortlinks restored; links repointed after the folder renames
 

@@ -1,7 +1,7 @@
 # Personal Bash dotfiles
 
 This directory stores the current `/home/jman` Ubuntu/APT dotfile snapshot. Its
-historical `Arch-Linux-Scripts` name does not make these dotfiles an Arch Linux
+`arch-linux` name does not make these dotfiles an Arch Linux
 configuration. The other Arch utilities in this directory are separate scripts.
 
 - `.bash_functions` loads the 14 category files in `.bash_functions.d` with alias

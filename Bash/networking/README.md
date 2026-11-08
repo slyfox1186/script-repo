@@ -99,20 +99,16 @@ Avoid editing configuration or running other network management commands while
 a script is active. Interrupted disk writes have file recovery; runtime recovery
 is best effort and cannot guarantee connectivity.
 
-Focused tests use temporary files and mock network commands. They exercise the
-menus, generated ifupdown content, Netplan command arguments, backups, errors,
-EOF, signals, shared locking, and recovery without changing the host network.
+Check the scripts without changing the host network:
 
 ```bash
 bash -n /home/jman/tmp/github_projects/script-repo/Bash/networking/networking-common.sh
 bash -n /home/jman/tmp/github_projects/script-repo/Bash/networking/netplan.sh
 bash -n /home/jman/tmp/github_projects/script-repo/Bash/networking/set-static-or-dhcp-ip-address.sh
-shellcheck /home/jman/tmp/github_projects/script-repo/Bash/networking/*.sh
-/home/jman/miniconda3/envs/agent-duet/bin/python -m pytest /home/jman/tmp/github_projects/script-repo/tests/test_networking_scripts.py -q
+shellcheck -x /home/jman/tmp/github_projects/script-repo/Bash/networking/*.sh
 ```
 
-The interpreter above was verified locally with Python 3.13 and pytest. CI uses
-the repository's Python 3.9/3.13 environments. Real Netplan/ifupdown parsing,
+The repository has no automated tests for these scripts. Real Netplan/ifupdown parsing,
 DHCP/DNS behavior, and network activation still need a disposable Debian/Ubuntu
 machine with those tools installed. Neither backend is installed on the current
 development machine, and its live network was not changed during verification.

@@ -3,7 +3,7 @@
 set -Eeuo pipefail
 umask 077
 script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
-# shellcheck source=Bash/networking/networking-common.sh
+# shellcheck source=SCRIPTDIR/networking-common.sh
 source "$script_dir/networking-common.sh"
 
 config_dir=/etc/netplan
