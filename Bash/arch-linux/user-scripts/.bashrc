@@ -283,13 +283,3 @@ if _gcc_real=$(readlink -f /usr/local/bin/gcc 2>/dev/null) && [[ -d "${_gcc_real
 fi
 unset _gcc_real
 
-# OpenRouter API key for the orask / openrouter-mcp bridge.
-# The secret lives in ~/.config/openrouter/env (chmod 600), not in this file.
-if [[ -r "$HOME/.config/openrouter/env" ]]; then
-    OPENROUTER_API_KEY=$(sed -n 's/^[[:space:]]*OPENROUTER_API_KEY[[:space:]]*=[[:space:]]*//p' "$HOME/.config/openrouter/env" | head -n 1 | tr -d "\"'")
-    if [[ -n "$OPENROUTER_API_KEY" ]]; then
-        export OPENROUTER_API_KEY
-    else
-        unset OPENROUTER_API_KEY
-    fi
-fi
