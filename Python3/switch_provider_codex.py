@@ -1,4 +1,4 @@
-#!python3
+#!/usr/bin/env python3
 """
 Switch Codex between OpenAI, Z.ai GLM and Kimi Code.
 
