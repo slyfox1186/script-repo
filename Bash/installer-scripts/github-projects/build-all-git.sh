@@ -2,9 +2,7 @@
 
 cwd="$PWD/build-all-git-master"
 
-if [ ! -d "$cwd"/completed ]; then
-    mkdir -p "$cwd"/completed
-fi
+[[ ! -d "$cwd"/completed ]] && mkdir -p "$cwd"/completed
 
 exit_function() {
     printf "\n%s\n\n%s\n\n" \
@@ -53,14 +51,14 @@ for pkg in "${pkgs[@]}"
 do
     missing_pkg="$(dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -o 'ok installed')"
 
-    if [ -z "$missing_pkg" ]; then
+    if [[ -z "$missing_pkg" ]]; then
         missing_pkgs+="$pkg "
     fi
 done
 
-if [ -n "$missing_pkgs" ]; then
-    sudo apt-get update
-    sudo apt-get install $missing_pkgs
+if [[ -n "$missing_pkgs" ]]; then
+    sudo apt update
+    sudo apt install $missing_pkgs
     echo
 fi
 
