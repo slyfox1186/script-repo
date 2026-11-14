@@ -1,15 +1,15 @@
-#!/home/jman/miniconda3/bin/python
+#!python3
 """
 Switch Codex between OpenAI, Z.ai GLM and Kimi Code.
 
 Lives in ~/.codex/ and edits only the provider keys in ~/.codex/config.toml.
 
-    /home/jman/miniconda3/bin/python ~/.codex/switch_provider_codex.py --openai
-    /home/jman/miniconda3/bin/python ~/.codex/switch_provider_codex.py --glm
-    /home/jman/miniconda3/bin/python ~/.codex/switch_provider_codex.py --kimi
-    /home/jman/miniconda3/bin/python ~/.codex/switch_provider_codex.py --status
-    /home/jman/miniconda3/bin/python ~/.codex/switch_provider_codex.py --set-key [KEY]
-    /home/jman/miniconda3/bin/python ~/.codex/switch_provider_codex.py --repair FILE
+    python3 ~/.codex/switch_provider_codex.py --openai
+    python3 ~/.codex/switch_provider_codex.py --glm
+    python3 ~/.codex/switch_provider_codex.py --kimi
+    python3 ~/.codex/switch_provider_codex.py --status
+    python3 ~/.codex/switch_provider_codex.py --set-key [KEY]
+    python3 ~/.codex/switch_provider_codex.py --repair FILE
 
 config.toml is not purely user authored. Codex writes into it: project trust
 entries, the features table, the notice table. So this script never replaces
