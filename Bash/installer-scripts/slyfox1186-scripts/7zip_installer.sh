@@ -117,10 +117,10 @@ install_dependencies() {
     log "Installing dependencies..."
     case "$OS" in
         linux)
-            family=$(linux_package_family) || fail "Unsupported Linux distribution: $DISTRO. Install tar, wget and xz, then run this script again."
+            family="$(linux_package_family)" || fail "Unsupported Linux distribution: $DISTRO. Install tar, wget and xz, then run this script again."
             case "$family" in
                 apt)
-                    { sudo apt-get update && sudo apt-get install -y tar wget xz-utils; } || fail "Failed to install dependencies with apt-get."
+                    { sudo apt update && sudo apt -y install tar wget xz-utils; } || fail "Failed to install dependencies with apt."
                     ;;
                 rpm)
                     if command -v dnf &>/dev/null; then
@@ -217,8 +217,8 @@ detect_os_distro
 command -v wget &>/dev/null || install_dependencies
 
 # Fetch and parse the 7-zip download page
-log "Fetching 7-Zip download page..."
-download_page=$(wget -qO- "https://www.7-zip.org/download.html") || fail "Failed to fetch 7-Zip download page"
+log "Fetching 7-Zip Download Page..."
+download_page=$(wget --show-progress -cqO- "https://www.7-zip.org/download.html") || fail "Failed to fetch 7-Zip download page"
 
 # Extract the stable release once because it is both the default and the safe
 # fallback when --beta is requested but no beta is currently published.
@@ -228,7 +228,7 @@ stable_version=$(printf '%s\n' "$download_page" | sed -n 's/.*Download 7-Zip \([
 # a published beta but falls back to stable so the command remains useful while
 # 7-Zip has no active beta release.
 if [[ "$use_beta" == true ]]; then
-    beta_version=$(printf '%s\n' "$download_page" | sed -n 's/.*Download 7-Zip \([0-9][0-9.]*\) beta (.*for Windows.*/\1/p' | head -n1)
+    beta_version="$(printf '%s\n' "$download_page" | sed -n 's/.*Download 7-Zip \([0-9][0-9.]*\) beta (.*for Windows.*/\1/p' | head -n1)"
     if [[ -n "$beta_version" ]]; then
         version="$beta_version"
         release_channel="beta"
@@ -288,7 +288,7 @@ command -v tar &>/dev/null || install_dependencies
 # Detect architecture and set download url based on the operating system
 case "$OS" in
     linux)
-        arch=$(uname -m)
+        arch="$(uname -m)"
         case "$arch" in
             x86_64) arch_suffix="x64" ;;
             i386|i686) arch_suffix="x86" ;;
@@ -305,9 +305,7 @@ case "$OS" in
         ;;
     macos)
         version_for_url="${version//./}"
-        if [[ -n "$version_suffix" ]]; then
-            version_for_url="${version_for_url}${version_suffix}"
-        fi
+        [[ -n "$version_suffix" ]] && version_for_url="${version_for_url}${version_suffix}"
         url="https://www.7-zip.org/a/7z${version_for_url}-mac.tar.xz"
         ;;
     *) fail "Unsupported operating system: $OS" ;;
@@ -359,7 +357,7 @@ case "$OS" in
         sudo cp -f "$download_files_dir/7zz" "$install_dir/7z" || fail "The script was unable to copy the static file '7zz' to '$install_dir/7z'" 
         ;;
 esac
-sudo chmod 755 "$install_dir/7z"
+[[ -x "$install_dir/7z" ]] && sudo chmod 755 "$install_dir/7z"
 
 log_update "7-Zip installation completed successfully."
 
