@@ -1,80 +1,336 @@
 #!/usr/bin/env bash
+# Turn on nano's syntax and interface colors system-wide for every nano on PATH.
+#
+# All color settings live in /etc/nanorc. A nano built from source with only
+# --prefix reads $prefix/etc/nanorc instead and silently ignores /etc/nanorc,
+# so this script links that path to /etc/nanorc. It also installs a pinned,
+# checksum-verified release of galenguyer/nano-syntax-highlighting for the
+# languages nano lacks, and removes the per-file syntax includes that older
+# versions of this script appended to ~/.nanorc (they override /etc/nanorc).
+#
+# Run it as your normal user; it calls sudo only for system files.
+# Safe to run again: anything already correct is left untouched.
 
-# Execute like this: ./add-colors-to-nano.sh
-# Pass --force to re-download extra configs
+set -Eeuo pipefail
+trap 'printf "Failed at line %s.\n" "$LINENO" >&2' ERR
 
-# Built-in nano configs from /usr/share/nano/
-configs=(
-    asm.nanorc autoconf.nanorc awk.nanorc c.nanorc changelog.nanorc cmake.nanorc
-    css.nanorc default.nanorc elisp.nanorc email.nanorc go.nanorc groff.nanorc
-    guile.nanorc html.nanorc java.nanorc javascript.nanorc json.nanorc lua.nanorc
-    makefile.nanorc man.nanorc markdown.nanorc nanohelp.nanorc nanorc.nanorc
-    nftables.nanorc objc.nanorc ocaml.nanorc patch.nanorc perl.nanorc php.nanorc
-    po.nanorc python.nanorc ruby.nanorc rust.nanorc sh.nanorc sql.nanorc tcl.nanorc
-    tex.nanorc texinfo.nanorc xml.nanorc yaml.nanorc
-)
+# To move to a newer release, update the tag and the sha256 of its tarball.
+syntax_tag="2026.11.01"
+syntax_sha256="8b12b151e3f7550835b539c1bff33c30484a311df85adb6173fed1c43099da1c"
+syntax_url="https://github.com/galenguyer/nano-syntax-highlighting/archive/refs/tags/$syntax_tag.tar.gz"
+syntax_dir="/usr/local/share/nano-syntax-highlighting"
+system_rc="/etc/nanorc"
+user_rc="$HOME/.nanorc"
+user_agent='Mozilla/5.0 (X11; Linux x86_64; rv:160.0) Gecko/20100101 Firefox/160.0'
 
-# Extra nanorc sources: "base_url filename1 filename2 ..."
-extra_sources=(
-    "https://raw.githubusercontent.com/galenguyer/nano-syntax-highlighting/master
-        Brewfile.nanorc Dockerfile.nanorc Rnw.nanorc apacheconf.nanorc arduino.nanorc
-        asciidoc.nanorc asm.nanorc awk.nanorc batch.nanorc beancount.nanorc
-        brainfuck.nanorc c.nanorc clojure.nanorc cmake.nanorc coffeescript.nanorc
-        colortest.nanorc conf.nanorc conky.nanorc creole.nanorc csh.nanorc
-        csharp.nanorc css.nanorc csv.nanorc cython.nanorc d.nanorc dot.nanorc
-        dotenv.nanorc elixir.nanorc email.nanorc erb.nanorc etc-hosts.nanorc
-        expect.nanorc fish.nanorc fortran.nanorc fsharp.nanorc gemini.nanorc
-        genie.nanorc gentoo.nanorc git.nanorc gitcommit.nanorc glsl.nanorc
-        go.nanorc godot.nanorc gophermap.nanorc gradle.nanorc groff.nanorc
-        haml.nanorc haskell.nanorc hcl.nanorc html.j2.nanorc html.nanorc
-        i3.nanorc ical.nanorc ini.nanorc inputrc.nanorc jade.nanorc java.nanorc
-        jrnl.nanorc js.nanorc json.nanorc jsx.nanorc julia.nanorc keymap.nanorc
-        kickstart.nanorc kotlin.nanorc ledger.nanorc lisp.nanorc lua.nanorc
-        m3u.nanorc makefile.nanorc man.nanorc markdown.nanorc moonscript.nanorc
-        mpdconf.nanorc mutt.nanorc nanorc.nanorc nginx.nanorc nmap.nanorc
-        ocaml.nanorc octave.nanorc patch.nanorc peg.nanorc perl.nanorc perl6.nanorc
-        php.nanorc pkg-config.nanorc pkgbuild.nanorc po.nanorc pov.nanorc
-        powershell.nanorc privoxy.nanorc prolog.nanorc properties.nanorc pug.nanorc
-        puppet.nanorc python.nanorc reST.nanorc rego.nanorc rpmspec.nanorc
-        ruby.nanorc rust.nanorc scala.nanorc sed.nanorc seed7.nanorc sh.nanorc
-        sieve.nanorc sls.nanorc solidity.nanorc sparql.nanorc sql.nanorc
-        subrip.nanorc svn.nanorc swift.nanorc systemd.nanorc tcl.nanorc tex.nanorc
-        toml.nanorc ts.nanorc twig.nanorc v.nanorc vala.nanorc verilog.nanorc
-        vhdl.nanorc vi.nanorc x11basic.nanorc xml.nanorc xresources.nanorc
-        yaml.nanorc yum.nanorc zeek.nanorc zig.nanorc zsh.nanorc zshrc.nanorc"
-)
+# When two syntaxes claim the same file, the one included last wins: the extra
+# set only fills gaps, nano's own syntaxes override it, and local files win.
+include_dirs=("$syntax_dir" /usr/share/nano /usr/share/nano/extra /usr/local/share/nano)
 
-# Download extra nanorc files
-[[ ! -d "$HOME/.nano" ]] && mkdir -p "$HOME/.nano"
-for source in "${extra_sources[@]}"; do
-    # shellcheck disable=SC2206
-    words=($source)
-    base_url="${words[0]}"
-    for filename in "${words[@]:1}"; do
-        dest="$HOME/.nano/$filename"
-        if [[ ! -f "$dest" ]] || [[ "$1" == "--force" ]]; then
-            curl -fsSL "$base_url/$filename" -o "$dest" \
-                && echo "Downloaded $filename" \
-                || echo "Failed to download $filename"
-        fi
-    done
-done
+check_only=false
+reinstall=false
+pending=0
+work_dir=""
 
-# Add includes to ~/.nanorc
-[[ ! -f "$HOME/.nanorc" ]] && touch "$HOME/.nanorc"
+usage() {
+    cat <<EOF
+Usage: ${0##*/} [--check] [--reinstall]
 
-for config in "${configs[@]}"; do
-    if ! grep -qF "include /usr/share/nano/$config" "$HOME/.nanorc"; then
-        echo "include /usr/share/nano/$config" >> "$HOME/.nanorc"
+Turn on nano syntax and interface colors for every nano on PATH.
+
+  --check      Report what would change without changing anything.
+               Exits 1 when changes are needed.
+  --reinstall  Download and reinstall the syntax files even if the pinned
+               release ($syntax_tag) is already installed.
+  -h, --help   Show this help.
+EOF
+}
+
+log() { printf '%s\n' "$*"; }
+warn() { printf 'Warning: %s\n' "$*" >&2; }
+die() { printf 'Error: %s\n' "$*" >&2; exit 1; }
+
+cleanup() {
+    if [[ -n $work_dir ]]; then
+        rm -rf -- "$work_dir"
     fi
-done
+}
+trap cleanup EXIT
 
-for source in "${extra_sources[@]}"; do
-    # shellcheck disable=SC2206
-    words=($source)
-    for filename in "${words[@]:1}"; do
-        if ! grep -qF "include $HOME/.nano/$filename" "$HOME/.nanorc"; then
-            echo "include $HOME/.nano/$filename" >> "$HOME/.nanorc"
+run_root() {
+    if [[ $EUID -eq 0 ]]; then
+        "$@"
+    else
+        sudo "$@"
+    fi
+}
+
+# Record a needed change; in --check mode, report it instead of making it.
+needs_change() {
+    pending=$((pending + 1))
+    if [[ $check_only == true ]]; then
+        log "Would: $*"
+        return 1
+    fi
+    log "Doing: $*"
+}
+
+# A source build compiles its config directory into the binary. Distro builds
+# use /etc, so only a binary containing "$prefix/etc" reads somewhere else.
+link_system_rc_for_each_nano() {
+    local bin real prefix sysconfdir rc found=false
+    local -A seen=()
+
+    while IFS= read -r bin; do
+        found=true
+        real=$(readlink -f -- "$bin")
+        [[ -z ${seen[$real]+set} ]] || continue
+        seen[$real]=1
+
+        prefix=${real%/bin/*}
+        sysconfdir=/etc
+        if [[ $prefix != "$real" ]] && grep -qaF -- "$prefix/etc" "$real"; then
+            sysconfdir="$prefix/etc"
+        fi
+
+        if [[ $sysconfdir == /etc ]]; then
+            log "OK: $real reads $system_rc"
+            continue
+        fi
+
+        rc="$sysconfdir/nanorc"
+        if [[ -L $rc && $(readlink -f -- "$rc") == "$(readlink -f -- "$system_rc")" ]]; then
+            log "OK: $real reads $rc, which links to $system_rc"
+        elif [[ -e $rc || -L $rc ]]; then
+            warn "$real reads $rc, which is not $system_rc; left unchanged. Merge it by hand or replace it with a link."
+        elif needs_change "link $rc to $system_rc so $real uses the system colors"; then
+            run_root mkdir -p -- "$sysconfdir"
+            run_root ln -s -- "$system_rc" "$rc"
+        fi
+    done < <(type -ap nano)
+
+    [[ $found == true ]] || die "nano is not installed or not on PATH."
+}
+
+install_syntax_files() {
+    local archive actual staged tool
+    local -a files
+
+    if [[ $reinstall == false && -f $syntax_dir/VERSION ]] &&
+        grep -qxF "galenguyer/nano-syntax-highlighting tag $syntax_tag" "$syntax_dir/VERSION"; then
+        log "OK: extra syntax files $syntax_tag are installed in $syntax_dir"
+        return
+    fi
+    needs_change "install extra syntax files $syntax_tag into $syntax_dir" || return 0
+
+    for tool in curl tar sha256sum; do
+        command -v "$tool" >/dev/null || die "$tool is required to download the syntax files."
+    done
+
+    work_dir=$(mktemp -d)
+    archive="$work_dir/syntax.tar.gz"
+    curl -fsSL --proto '=https' --proto-redir '=https' --retry 3 --connect-timeout 15 \
+        --user-agent "$user_agent" -o "$archive" "$syntax_url" ||
+        die "Could not download $syntax_url"
+
+    actual=$(sha256sum -- "$archive")
+    actual=${actual%% *}
+    [[ $actual == "$syntax_sha256" ]] ||
+        die "Checksum mismatch for $syntax_url (expected $syntax_sha256, got $actual)."
+
+    mkdir -- "$work_dir/src"
+    tar -xzf "$archive" -C "$work_dir/src" --strip-components 1 --no-same-owner
+    shopt -s nullglob
+    files=("$work_dir/src"/*.nanorc)
+    shopt -u nullglob
+    [[ ${#files[@]} -gt 0 ]] || die "The downloaded release contains no .nanorc files."
+
+    staged="$work_dir/stage"
+    mkdir -- "$staged"
+    cp -- "${files[@]}" "$staged/"
+    cat > "$staged/VERSION" <<EOF
+galenguyer/nano-syntax-highlighting tag $syntax_tag
+$syntax_url
+sha256 $syntax_sha256
+installed $(date +%F); loaded by $system_rc below nano's built-in syntaxes
+EOF
+
+    # Build the new directory beside the old one and swap, so nano never sees
+    # a half-installed set.
+    run_root rm -rf -- "$syntax_dir.new" "$syntax_dir.old"
+    run_root install -d -m 755 -- "$syntax_dir.new"
+    run_root install -m 644 -- "$staged"/* "$syntax_dir.new/"
+    if [[ -d $syntax_dir ]]; then
+        run_root mv -- "$syntax_dir" "$syntax_dir.old"
+    fi
+    run_root mv -- "$syntax_dir.new" "$syntax_dir"
+    run_root rm -rf -- "$syntax_dir.old"
+    log "Installed ${#files[@]} syntax files into $syntax_dir"
+}
+
+is_managed_include() {
+    local line=$1 dir
+    for dir in "${include_dirs[@]}"; do
+        if [[ $line == "include \"$dir/*.nanorc\"" || $line == "include $dir/*.nanorc" ]]; then
+            return 0
         fi
     done
+    return 1
+}
+
+# Rewrite /etc/nanorc so the syntax includes appear once, in precedence order,
+# where the first of them already sits. Every other line is kept as it is.
+update_system_rc() {
+    local line dir placed=false candidate backup
+    local -a lines=() wanted=() result=()
+
+    for dir in "${include_dirs[@]}"; do
+        if [[ $dir == "$syntax_dir" ]] || compgen -G "$dir/*.nanorc" >/dev/null; then
+            wanted+=("include \"$dir/*.nanorc\"")
+        fi
+    done
+
+    if [[ -f $system_rc ]]; then
+        mapfile -t lines < "$system_rc"
+    fi
+
+    for line in "${lines[@]}"; do
+        if is_managed_include "$line"; then
+            if [[ $placed == false ]]; then
+                result+=("${wanted[@]}")
+                placed=true
+            fi
+            continue
+        fi
+        result+=("$line")
+    done
+
+    if [[ $placed == false ]]; then
+        result+=(
+            ""
+            "## Syntax coloring. When two syntaxes claim the same file, the one"
+            "## included last wins. ~/.nanorc must not include syntax files, or it"
+            "## would override these."
+            "${wanted[@]}"
+        )
+    fi
+
+    if ! grep -qE '^[[:space:]]*set[[:space:]]+(titlecolor|statuscolor|keycolor)' <(printf '%s\n' "${lines[@]}"); then
+        result+=(
+            ""
+            "## Paint the interface elements of nano."
+            "set titlecolor bold,white,magenta"
+            "set promptcolor black,yellow"
+            "set statuscolor bold,white,magenta"
+            "set errorcolor bold,white,red"
+            "set spotlightcolor black,orange"
+            "set selectedcolor lightwhite,cyan"
+            "set stripecolor ,yellow"
+            "set scrollercolor magenta"
+            "set numbercolor magenta"
+            "set keycolor lightmagenta"
+            "set functioncolor magenta"
+        )
+    fi
+
+    if [[ -z $work_dir ]]; then
+        work_dir=$(mktemp -d)
+    fi
+    candidate="$work_dir/nanorc"
+    printf '%s\n' "${result[@]}" > "$candidate"
+    # Compare line by line so a missing final newline alone is not a change.
+    printf '%s\n' "${lines[@]}" > "$work_dir/current"
+
+    if [[ -f $system_rc ]] && cmp -s -- "$candidate" "$work_dir/current"; then
+        log "OK: $system_rc has the syntax includes and interface colors"
+        return
+    fi
+
+    if [[ $check_only == true ]]; then
+        needs_change "update $system_rc as follows:" || true
+        if [[ -f $system_rc ]]; then
+            diff -u -- "$system_rc" "$candidate" || true
+        else
+            diff -u -- /dev/null "$candidate" || true
+        fi
+        return
+    fi
+    needs_change "update $system_rc with the syntax includes and interface colors"
+
+    if [[ -f $system_rc ]]; then
+        backup="$system_rc.$(date +%Y%m%d-%H%M%S).bak"
+        run_root cp -p -- "$system_rc" "$backup"
+        log "Backed up the old file to $backup"
+    fi
+    run_root install -m 644 -- "$candidate" "$system_rc"
+}
+
+# Earlier versions of this script appended one include per syntax file to
+# ~/.nanorc. Those load after /etc/nanorc and override it, so remove them.
+clean_user_rc() {
+    local line backup
+    local -a lines=() kept=() removed=() other=()
+
+    if [[ $EUID -eq 0 ]]; then
+        log "Skipped the ~/.nanorc check: run as your own user to check yours."
+        return
+    fi
+    if [[ ! -f $user_rc ]]; then
+        log "OK: no $user_rc"
+        return
+    fi
+
+    mapfile -t lines < "$user_rc"
+    for line in "${lines[@]}"; do
+        if [[ $line =~ ^include\ (/usr/share/nano|$HOME/\.nano)/[^/[:space:]]+\.nanorc$ ]]; then
+            removed+=("$line")
+        else
+            kept+=("$line")
+            if [[ $line =~ ^[[:space:]]*include[[:space:]] ]]; then
+                other+=("$line")
+            fi
+        fi
+    done
+
+    if [[ ${#other[@]} -gt 0 ]]; then
+        warn "$user_rc has includes that override $system_rc; review them by hand:"
+        printf '    %s\n' "${other[@]}" >&2
+    fi
+
+    if [[ ${#removed[@]} -eq 0 ]]; then
+        log "OK: $user_rc has no leftover syntax includes"
+    elif needs_change "remove ${#removed[@]} leftover syntax includes from $user_rc"; then
+        backup=$(mktemp "${TMPDIR:-/tmp}/nanorc-backup.XXXXXX")
+        cp -p -- "$user_rc" "$backup"
+        printf '%s\n' "${kept[@]}" > "$user_rc"
+        log "Backed up the old file to $backup"
+    fi
+}
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --check) check_only=true ;;
+        --reinstall) reinstall=true ;;
+        -h|--help) usage; exit 0 ;;
+        *) usage >&2; die "Unknown option: $1" ;;
+    esac
+    shift
 done
+
+link_system_rc_for_each_nano
+install_syntax_files
+update_system_rc
+clean_user_rc
+
+if [[ $check_only == true ]]; then
+    if [[ $pending -gt 0 ]]; then
+        log "$pending change(s) needed. Run without --check to apply them."
+        exit 1
+    fi
+    log "Everything is already set up."
+elif [[ $pending -gt 0 ]]; then
+    log "Done. Open a new nano session to see the colors."
+else
+    log "Everything was already set up; nothing changed."
+fi
+
