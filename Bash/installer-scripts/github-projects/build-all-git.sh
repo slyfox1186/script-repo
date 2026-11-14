@@ -2,7 +2,7 @@
 
 cwd="$PWD/build-all-git-master"
 
-[[ ! -d "$cwd"/completed ]] && mkdir -p "$cwd"/completed
+[[ ! -d "$cwd/completed" ]] && mkdir -p "$cwd/completed"
 
 exit_function() {
     printf "\n%s\n\n%s\n\n" \
@@ -42,10 +42,11 @@ cleanup() {
     esac
 }
 
-pkgs=(asciidoc autogen autoconf autoconf-archive automake binutils bison
-      build-essential bzip2 ccache cmake curl libc6-dev libintl-perl
-      libpth-dev libtool libtool-bin lzip lzma-dev m4 meson nasm ninja-build
-      texinfo xmlto yasm zlib1g-dev)
+pkgs=(asciidoc autogen autoconf autoconf-archive
+      automake binutils bison build-essential bzip2
+      ccache cmake curl libc6-dev libintl-perl libpth-dev
+      libtool libtool-bin lzip lzma-dev m4 meson nasm
+      ninja-build texinfo xmlto yasm zlib1g-dev)
 
 for pkg in "${pkgs[@]}"
 do
