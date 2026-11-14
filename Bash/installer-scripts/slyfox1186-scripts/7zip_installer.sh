@@ -2,8 +2,9 @@
 # shellcheck disable=SC2000,SC2034,SC2086 source=/dev/null
 
 # Set variables
-readonly script_version="4.3"
+readonly script_version="4.4"
 readonly install_dir="/usr/local/bin"
+readonly download_user_agent="Mozilla/5.0 (X11; Linux x86_64; rv:160.0) Gecko/20100101 Firefox/160.0"
 working=""
 no_cleanup=false
 use_beta=false
@@ -71,7 +72,7 @@ box_out_banner() {
 
 # Function to download the file with retries
 download() {
-    wget --show-progress --timeout=60 --connect-timeout=5 --tries=3 -cqO "$2" "$1" || fail "Failed to download the file. Please try again later."
+    wget --show-progress --timeout=60 --connect-timeout=5 --tries=3 --user-agent="$download_user_agent" -cqO "$2" "$1" || fail "Failed to download the file. Please try again later."
 }
 
 # Function to detect the operating system and distribution
@@ -117,10 +118,10 @@ install_dependencies() {
     log "Installing dependencies..."
     case "$OS" in
         linux)
-            family="$(linux_package_family)" || fail "Unsupported Linux distribution: $DISTRO. Install tar, wget and xz, then run this script again."
+            family=$(linux_package_family) || fail "Unsupported Linux distribution: $DISTRO. Install tar, wget and xz, then run this script again."
             case "$family" in
                 apt)
-                    { sudo apt update && sudo apt -y install tar wget xz-utils; } || fail "Failed to install dependencies with apt."
+                    { sudo apt-get update && sudo apt-get install -y tar wget xz-utils; } || fail "Failed to install dependencies with apt-get."
                     ;;
                 rpm)
                     if command -v dnf &>/dev/null; then
@@ -217,8 +218,8 @@ detect_os_distro
 command -v wget &>/dev/null || install_dependencies
 
 # Fetch and parse the 7-zip download page
-log "Fetching 7-Zip Download Page..."
-download_page=$(wget --show-progress -cqO- "https://www.7-zip.org/download.html") || fail "Failed to fetch 7-Zip download page"
+log "Fetching 7-Zip download page..."
+download_page=$(wget -qO- --user-agent="$download_user_agent" "https://www.7-zip.org/download.html") || fail "Failed to fetch 7-Zip download page"
 
 # Extract the stable release once because it is both the default and the safe
 # fallback when --beta is requested but no beta is currently published.
@@ -228,18 +229,16 @@ stable_version=$(printf '%s\n' "$download_page" | sed -n 's/.*Download 7-Zip \([
 # a published beta but falls back to stable so the command remains useful while
 # 7-Zip has no active beta release.
 if [[ "$use_beta" == true ]]; then
-    beta_version="$(printf '%s\n' "$download_page" | sed -n 's/.*Download 7-Zip \([0-9][0-9.]*\) beta (.*for Windows.*/\1/p' | head -n1)"
+    beta_version=$(printf '%s\n' "$download_page" | sed -n 's/.*Download 7-Zip \([0-9][0-9.]*\) beta (.*for Windows.*/\1/p' | head -n1)
     if [[ -n "$beta_version" ]]; then
         version="$beta_version"
         release_channel="beta"
-        version_suffix="beta"
         log "Found latest beta release: $version"
     else
         [[ -n "$stable_version" ]] || fail "Could not find a beta release or determine the latest stable 7-Zip release."
 
         version="$stable_version"
         release_channel="stable"
-        version_suffix=""
         log "No beta release is currently published; using latest stable release: $version"
     fi
 else
@@ -247,7 +246,6 @@ else
 
     version="$stable_version"
     release_channel="stable"
-    version_suffix=""
     log "Found latest stable release: $version"
 fi
 
@@ -285,10 +283,10 @@ fi
 # tar is only needed after installation has been confirmed.
 command -v tar &>/dev/null || install_dependencies
 
-# Detect architecture and set download url based on the operating system
+# Use the archive published for the selected release instead of assuming its host.
 case "$OS" in
     linux)
-        arch="$(uname -m)"
+        arch=$(uname -m)
         case "$arch" in
             x86_64) arch_suffix="x64" ;;
             i386|i686) arch_suffix="x86" ;;
@@ -296,19 +294,26 @@ case "$OS" in
             arm|armv7*) arch_suffix="arm" ;;
             *) fail "Unrecognized architecture: $arch" ;;
         esac
-        # Construct the URL by removing dots and adding the beta suffix when needed.
-        version_for_url="${version//./}"
-        if [[ -n "$version_suffix" ]]; then
-            version_for_url="${version_for_url}${version_suffix}"
-        fi
-        url="https://www.7-zip.org/a/7z${version_for_url}-linux-$arch_suffix.tar.xz"
+        archive_name="7z${version//./}-linux-$arch_suffix.tar.xz"
         ;;
     macos)
-        version_for_url="${version//./}"
-        [[ -n "$version_suffix" ]] && version_for_url="${version_for_url}${version_suffix}"
-        url="https://www.7-zip.org/a/7z${version_for_url}-mac.tar.xz"
+        arch=$(uname -m)
+        case "$arch" in
+            arm64|aarch64) arch_suffix="mac" ;;
+            x86_64) arch_suffix="mac-x64" ;;
+            *) fail "Unrecognized architecture: $arch" ;;
+        esac
+        archive_name="7z${version//./}-$arch_suffix.tar.xz"
         ;;
     *) fail "Unsupported operating system: $OS" ;;
+esac
+
+archive_link=$(printf '%s\n' "$download_page" | sed -n "s/.*href=\"\([^\"]*${archive_name}\)\".*/\1/p" | head -n1)
+[[ -n "$archive_link" ]] || fail "Could not find the official download link for $archive_name."
+case "$archive_link" in
+    https://*) url="$archive_link" ;;
+    /*) url="https://www.7-zip.org$archive_link" ;;
+    *) url="https://www.7-zip.org/$archive_link" ;;
 esac
 
 log "Download URL: $url"
@@ -357,7 +362,7 @@ case "$OS" in
         sudo cp -f "$download_files_dir/7zz" "$install_dir/7z" || fail "The script was unable to copy the static file '7zz' to '$install_dir/7z'" 
         ;;
 esac
-[[ -x "$install_dir/7z" ]] && sudo chmod 755 "$install_dir/7z"
+sudo chmod 755 "$install_dir/7z"
 
 log_update "7-Zip installation completed successfully."
 
