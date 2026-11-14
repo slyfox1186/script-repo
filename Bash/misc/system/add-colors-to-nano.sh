@@ -33,16 +33,56 @@ pending=0
 work_dir=""
 
 usage() {
+    local name=${0##*/} h="" o="" v="" b="" d="" r=""
+    # Color only a terminal, and honor NO_COLOR (https://no-color.org).
+    # Magenta headings match the title and status bars this script gives nano.
+    if [[ -t 1 && -z ${NO_COLOR:-} && ${TERM:-dumb} != dumb ]]; then
+        h=$'\e[1;35m'
+        o=$'\e[1;36m'
+        v=$'\e[33m'
+        b=$'\e[1m'
+        d=$'\e[2m'
+        r=$'\e[0m'
+    fi
     cat <<EOF
-Usage: ${0##*/} [--check] [--reinstall]
+${b}${name}${r} turns on nano's syntax and interface colors for every
+nano on PATH.
 
-Turn on nano syntax and interface colors for every nano on PATH.
+${h}Usage${r}
+  ${b}${name}${r} [${o}--check${r}] [${o}--reinstall${r}]
 
-  --check      Report what would change without changing anything.
-               Exits 1 when changes are needed.
-  --reinstall  Download and reinstall the syntax files even if the pinned
-               release ($syntax_tag) is already installed.
-  -h, --help   Show this help.
+${h}What it does${r}
+  1. Links ${v}<prefix>/etc/nanorc${r} to ${v}$system_rc${r} for each source-built nano
+     that would otherwise ignore ${v}$system_rc${r}.
+  2. Installs extra syntax files from galenguyer/nano-syntax-highlighting
+     release ${v}$syntax_tag${r}, checksum verified, into
+     ${v}$syntax_dir${r}.
+  3. Adds the syntax includes and interface colors to ${v}$system_rc${r}.
+  4. Removes leftover syntax includes from ${v}~/.nanorc${r} that would override
+     ${v}$system_rc${r}. Skipped when run as root.
+
+  ${v}$system_rc${r} and ${v}~/.nanorc${r} are backed up before they change. Anything
+  already correct is left alone, so the script is safe to run again.
+
+${h}Options${r}
+  ${o}--check${r}       Show what would change, with a diff for ${v}$system_rc${r},
+                and change nothing.
+  ${o}--reinstall${r}   Download and reinstall the syntax files even if release
+                ${v}$syntax_tag${r} is already installed.
+  ${o}-h${r}, ${o}--help${r}    Show this help and exit.
+
+${h}Examples${r}
+  ${d}# Preview the changes${r}
+  ${name} ${o}--check${r}
+
+  ${d}# Apply them${r}
+  ${name}
+
+${h}Exit status${r}
+  ${b}0${r}   Success. With ${o}--check${r}, nothing needs to change.
+  ${b}1${r}   With ${o}--check${r}, changes are needed. Errors also exit non-zero.
+
+Run it as your normal user. It calls sudo only to change system files.
 EOF
 }
 
@@ -312,7 +352,7 @@ while [[ $# -gt 0 ]]; do
         --check) check_only=true ;;
         --reinstall) reinstall=true ;;
         -h|--help) usage; exit 0 ;;
-        *) usage >&2; die "Unknown option: $1" ;;
+        *) die "Unknown option: $1. Run ${0##*/} --help to see the options." ;;
     esac
     shift
 done
@@ -333,4 +373,3 @@ elif [[ $pending -gt 0 ]]; then
 else
     log "Everything was already set up; nothing changed."
 fi
-
