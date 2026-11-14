@@ -4,7 +4,7 @@
 # Set variables
 readonly script_version="4.4"
 readonly install_dir="/usr/local/bin"
-readonly download_user_agent="Mozilla/5.0 (X11; Linux x86_64; rv:160.0) Gecko/20100101 Firefox/160.0"
+readonly user_agent="Mozilla/5.0 (X11; Linux x86_64; rv:160.0) Gecko/20100101 Firefox/160.0"
 working=""
 no_cleanup=false
 use_beta=false
@@ -72,7 +72,7 @@ box_out_banner() {
 
 # Function to download the file with retries
 download() {
-    wget --show-progress --timeout=60 --connect-timeout=5 --tries=3 --user-agent="$download_user_agent" -cqO "$2" "$1" || fail "Failed to download the file. Please try again later."
+    wget --show-progress --timeout=30 --connect-timeout=2 --tries=3 --user-agent="$user_agent" -cqO "$2" "$1" || fail "Failed to download the file. Please try again later."
 }
 
 # Function to detect the operating system and distribution
@@ -121,7 +121,7 @@ install_dependencies() {
             family=$(linux_package_family) || fail "Unsupported Linux distribution: $DISTRO. Install tar, wget and xz, then run this script again."
             case "$family" in
                 apt)
-                    { sudo apt-get update && sudo apt-get install -y tar wget xz-utils; } || fail "Failed to install dependencies with apt-get."
+                    { sudo apt update && sudo apt -y install tar wget xz-utils; } || fail "Failed to install dependencies with apt."
                     ;;
                 rpm)
                     if command -v dnf &>/dev/null; then
@@ -219,7 +219,7 @@ command -v wget &>/dev/null || install_dependencies
 
 # Fetch and parse the 7-zip download page
 log "Fetching 7-Zip download page..."
-download_page=$(wget -qO- --user-agent="$download_user_agent" "https://www.7-zip.org/download.html") || fail "Failed to fetch 7-Zip download page"
+download_page=$(wget --show-progress -cqO- --user-agent="$user_agent" "https://www.7-zip.org/download.html") || fail "Failed to fetch 7-Zip download page"
 
 # Extract the stable release once because it is both the default and the safe
 # fallback when --beta is requested but no beta is currently published.
@@ -252,9 +252,7 @@ fi
 [[ "$version" =~ ^[0-9]+([.][0-9]+)+$ ]] || fail "Invalid 7-Zip version found on download page: $version"
 
 version_label="$version"
-if [[ "$release_channel" == "beta" ]]; then
-    version_label="$version beta"
-fi
+[[ "$release_channel" == "beta" ]] && version_label="$version beta"
 
 # Only report that 7-Zip is already installed when it matches the latest release.
 if [[ -x "$install_dir/7z" ]]; then
@@ -286,7 +284,7 @@ command -v tar &>/dev/null || install_dependencies
 # Use the archive published for the selected release instead of assuming its host.
 case "$OS" in
     linux)
-        arch=$(uname -m)
+        arch="$(uname -m)"
         case "$arch" in
             x86_64) arch_suffix="x64" ;;
             i386|i686) arch_suffix="x86" ;;
@@ -297,7 +295,7 @@ case "$OS" in
         archive_name="7z${version//./}-linux-$arch_suffix.tar.xz"
         ;;
     macos)
-        arch=$(uname -m)
+        arch="$(uname -m)"
         case "$arch" in
             arm64|aarch64) arch_suffix="mac" ;;
             x86_64) arch_suffix="mac-x64" ;;
@@ -330,7 +328,7 @@ cleanup_working_dir() {
     fi
 }
 
-working=$(mktemp -d "${TMPDIR:-/tmp}/7zip-install.XXXXXX") || fail "Failed to create a temporary working directory."
+working="$(mktemp -d "${TMPDIR:-/tmp}/7zip-install.XXXXXX")" || fail "Failed to create a temporary working directory."
 trap cleanup_working_dir EXIT
 trap 'exit 129' HUP
 trap 'exit 130' INT
@@ -362,7 +360,7 @@ case "$OS" in
         sudo cp -f "$download_files_dir/7zz" "$install_dir/7z" || fail "The script was unable to copy the static file '7zz' to '$install_dir/7z'" 
         ;;
 esac
-sudo chmod 755 "$install_dir/7z"
+[[ -x "$install_dir/7z" ]] && sudo chmod 755 "$install_dir/7z"
 
 log_update "7-Zip installation completed successfully."
 
