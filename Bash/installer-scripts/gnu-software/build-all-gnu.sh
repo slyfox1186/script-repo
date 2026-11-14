@@ -7,12 +7,12 @@ trap 'printf "Build failed at line %s. Build files were retained for inspection.
 gnu_curl() {
     command curl -q --fail --location --show-error --retry 3 --retry-delay 2 \
         --connect-timeout 15 --max-time 600 --proto '=https' --proto-redir '=https' \
-        --user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36' "$@"
+        --user-agent 'Mozilla/5.0 (X11; Linux x86_64; rv:160.0) Gecko/20100101 Firefox/160.0' "$@"
 }
 
 gnu_wget() {
     command wget --timeout=30 --tries=3 --https-only \
-        --user-agent='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36' "$@"
+        --user-agent='Mozilla/5.0 (X11; Linux x86_64; rv:160.0) Gecko/20100101 Firefox/160.0' "$@"
 }
 
 gnu_link_dir() {
@@ -44,11 +44,23 @@ gnu_jobs="${JOBS:-$(nproc)}"
 # Updated: 06.22.24
 # Version: 1.4
 
-CYAN='\033[0;36m'
-GREEN='\033[0;32m'
-RED='\033[0;31m'
-YELLOW='\033[0;33m'
-NC='\033[0m'
+if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then
+    CYAN=$'\033[0;36m'
+    GREEN=$'\033[0;32m'
+    RED=$'\033[0;31m'
+    YELLOW=$'\033[0;33m'
+    BOLD=$'\033[1m'
+    DIM=$'\033[2m'
+    NC=$'\033[0m'
+else
+    CYAN=""
+    GREEN=""
+    RED=""
+    YELLOW=""
+    BOLD=""
+    DIM=""
+    NC=""
+fi
 
 # List of available programs
 available_programs=(
@@ -65,18 +77,33 @@ BASH_PKGS="libacl1-dev libattr1-dev liblzma-dev libzstd-dev lzip lzop"
 GAWK_PKGS="libgmp-dev libmpfr-dev libreadline-dev libsigsegv-dev lzip"
 GREP_PKGS="libltdl-dev libsigsegv-dev"
 GZIP_PKGS="libzstd-dev zstd"
-MAKE_PKGS="libdmalloc-dev libsigsegv2"
-NANO_PKGS="libncurses5-dev libpth-dev nasm"
-PKG_CONFIG_PKGS="libglib2.0-dev libpopt-dev"
+MAKE_PKGS="libdmalloc-dev"
+NANO_PKGS="libncurses-dev"
+PKG_CONFIG_PKGS="libglib2.0-dev libpopt-dev patch"
 SED_PKGS="autopoint autotools-dev libaudit-dev librust-polling-dev valgrind"
-TAR_PKGS="libacl1-dev libattr1-dev libbz2-dev liblzma-dev libzstd-dev lzip lzop"
+TAR_PKGS="libacl1-dev libattr1-dev libbz2-dev liblzma-dev libzstd-dev lzip lzop patch"
 PARALLEL_PKGS="autogen binutils bison lzip yasm"
-WGET_PKGS="gfortran libcurl4-openssl-dev libexpat1-dev libgcrypt20-dev libgpgme-dev libssl-dev libunistring-dev"
+WGET_PKGS="libc-ares-dev libidn2-dev libpcre2-dev libpsl-dev libssl-dev libunistring-dev perl uuid-dev"
 WHICH_PKGS="curl gcc make tar"
 
 # Enhanced logging and error handling
 log() {
     echo -e "${GREEN}[INFO]${NC} $1"
+}
+
+show_dependency_progress() {
+    local current="$1" total="$2" package="$3"
+    local width=20 filled percent filled_bar empty_bar
+    [[ -t 1 ]] || return 0
+    filled=$((current * width / total))
+    percent=$((current * 100 / total))
+    printf -v filled_bar '%*s' "$filled" ''
+    printf -v empty_bar '%*s' "$((width - filled))" ''
+    filled_bar="${filled_bar// /#}"
+    empty_bar="${empty_bar// /-}"
+    printf '\r%b[INFO]%b Dependencies [%s%s] %d/%d (%d%%) %-20s\033[K' \
+        "$GREEN" "$NC" "$filled_bar" "$empty_bar" "$current" "$total" "$percent" "$package"
+    ((current < total)) || printf '\n'
 }
 
 fail() {
@@ -86,21 +113,111 @@ fail() {
     exit 1
 }
 
+apply_pkg_config_c23_fix() {
+    local source_dir="$1" source_file="$1/glib/glib/goption.c"
+    [[ -f "$source_file" ]] || fail "Bundled GLib source is missing: $source_file"
+
+    # Backport GNOME GLib 9e320e1c43a4770ed1532248fe5416eb0c618120 for C23.
+    if grep -Fq 'gboolean bool;' "$source_file"; then
+        patch -d "$source_dir" -p1 <<'PATCH' || fail "Failed to apply the GLib C23 compatibility fix. Line: $LINENO"
+--- a/glib/glib/goption.c
++++ b/glib/glib/goption.c
+@@ -166,7 +166,7 @@ typedef struct
+   gpointer arg_data;
+   union
+   {
+-    gboolean bool;
++    gboolean boolean;
+     gint integer;
+     gchar *str;
+     gchar **array;
+@@ -1600,7 +1600,7 @@ free_changes_list (GOptionContext *context,
+           switch (change->arg_type)
+             {
+             case G_OPTION_ARG_NONE:
+-              *(gboolean *)change->arg_data = change->prev.bool;
++              *(gboolean *)change->arg_data = change->prev.boolean;
+               break;
+             case G_OPTION_ARG_INT:
+               *(gint *)change->arg_data = change->prev.integer;
+PATCH
+    fi
+
+    grep -Fq 'gboolean boolean;' "$source_file" || fail "The GLib C23 declaration fix was not applied."
+    grep -Fq 'change->prev.boolean;' "$source_file" || fail "The GLib C23 field-access fix was not applied."
+    ! grep -Fq 'gboolean bool;' "$source_file" || fail "The obsolete GLib bool declaration remains."
+    ! grep -Fq 'change->prev.bool;' "$source_file" || fail "The obsolete GLib bool field access remains."
+}
+
+apply_tar_libiconv_fix() {
+    [[ "$version" == "1.35" ]] || return 0
+    local source_dir="$1" makefile_am makefile_in
+    makefile_am="$source_dir/src/Makefile.am"
+    makefile_in="$source_dir/src/Makefile.in"
+    [[ -f "$makefile_am" && -f "$makefile_in" ]] || fail "The tar build makefiles are missing."
+
+    if grep -Fq '$(LIBINTL) $(LIBICONV)' "$makefile_am" &&
+       grep -Fq '$(LIBINTL) $(LIBICONV)' "$makefile_in"; then
+        return 0
+    fi
+
+    # Backport GNU tar 8632df398b2f548465ebe68b8f494c0d6f8d913d.
+    patch -d "$source_dir" -p1 <<'PATCH' || fail "Failed to apply the upstream libiconv link fix. Line: $LINENO"
+--- a/src/Makefile.am
++++ b/src/Makefile.am
+@@ -55 +55,2 @@
+- $(LIB_SELINUX) $(LIB_SETLOCALE_NULL)
++ $(LIB_SELINUX) $(LIB_SETLOCALE_NULL) \
++ $(LIBINTL) $(LIBICONV)
+--- a/src/Makefile.in
++++ b/src/Makefile.in
+@@ -1796 +1796,2 @@
+- $(LIB_SELINUX) $(LIB_SETLOCALE_NULL)
++ $(LIB_SELINUX) $(LIB_SETLOCALE_NULL) \
++ $(LIBINTL) $(LIBICONV)
+PATCH
+
+    grep -Fq '$(LIBINTL) $(LIBICONV)' "$makefile_am" || fail "The upstream libiconv fix was not applied to Makefile.am."
+    grep -Fq '$(LIBINTL) $(LIBICONV)' "$makefile_in" || fail "The upstream libiconv fix was not applied to Makefile.in."
+}
+
+print_program_grid() {
+    local i
+    for ((i = 0; i < ${#available_programs[@]}; i += 4)); do
+        printf '    %b%-18s %-18s %-18s %s%b\n' \
+            "$GREEN" \
+            "${available_programs[i]:-}" \
+            "${available_programs[i + 1]:-}" \
+            "${available_programs[i + 2]:-}" \
+            "${available_programs[i + 3]:-}" \
+            "$NC"
+    done
+}
+
 show_usage() {
-    echo -e "${YELLOW}Usage:${NC} $0 [OPTIONS]"
-    echo
-    echo -e "${YELLOW}Description:${NC} Build various GNU programs from source code."
-    echo
-    echo -e "${YELLOW}Options:${NC}"
-    echo "  -h, --help           Show this help message and exit"
-    echo "  -p, --programs       Specify the programs to build (comma-separated, or 'all' for all programs)"
-    echo
-    echo -e "${YELLOW}Available Programs:${NC}"
-    printf "%s\n" "${available_programs[@]}"
-    echo
-    echo -e "${YELLOW}Examples:${NC}"
-    echo "  $0 -p all"
-    echo "  $0 -p bash,make,grep"
+    printf '\n%b%s%b\n' "${BOLD}${CYAN}" 'GNU SOFTWARE BUILD MANAGER' "$NC"
+    printf '%b%s%b\n' "$DIM" 'Build and install GNU tools from official source releases.' "$NC"
+
+    printf '\n%bUSAGE%b\n' "${BOLD}${CYAN}" "$NC"
+    printf '  %b%s%b %b[OPTIONS]%b\n' "$GREEN" "${0##*/}" "$NC" "$YELLOW" "$NC"
+
+    printf '\n%bOPTIONS%b\n' "${BOLD}${CYAN}" "$NC"
+    printf '  %b-h, --help%b           Show this help menu and exit.\n' "$GREEN" "$NC"
+    printf '  %b-p, --programs LIST%b  Build the comma-separated programs in LIST.\n' "$GREEN" "$NC"
+    printf '                       Use %ball%b to select every available program.\n' "$YELLOW" "$NC"
+
+    printf '\n%bPROGRAMS (%d)%b\n' "${BOLD}${CYAN}" "${#available_programs[@]}" "$NC"
+    print_program_grid
+
+    printf '\n%bEXAMPLES%b\n' "${BOLD}${CYAN}" "$NC"
+    printf '  %b%s -p all%b\n' "$GREEN" "${0##*/}" "$NC"
+    printf '      Build every available program.\n'
+    printf '  %b%s -p bash,make,grep%b\n' "$GREEN" "${0##*/}" "$NC"
+    printf '      Build only Bash, Make, and Grep.\n'
+    printf '  %b%s%b\n' "$GREEN" "${0##*/}" "$NC"
+    printf '      Choose programs interactively.\n'
+
+    printf '\n%bColor is disabled for redirected output and when NO_COLOR is set.%b\n' "$DIM" "$NC"
 }
 
 # Parse command-line options
@@ -133,11 +250,11 @@ fi
 
 # Display available programs and prompt for programs if not specified via arguments
 if [[ -z "$programs" ]]; then
-    echo "Available Programs: ${available_programs[*]}"
-    echo "You can also choose 'all' to install all available programs."
-    echo
-    read -rp "Enter the programs to build (comma-separated): " programs || exit 1
-    clear
+    printf '\n%bAvailable programs (%d):%b\n' "${BOLD}${CYAN}" "${#available_programs[@]}" "$NC"
+    print_program_grid
+    printf "\nEnter the programs to build (comma-separated), or %b'all'%b: " "$YELLOW" "$NC"
+    read -r programs || exit 1
+    [[ ! -t 1 ]] || clear
 fi
 
 # Function to check and install required packages
@@ -197,6 +314,7 @@ required_packages() {
     # Remove duplicate packages and sort alphabetically
     extra="${pkgs[*]}"
     read -r -a additions <<< "$extra"
+    local total current=0
     pkgs=()
     for pkg in "${additions[@]}"; do
         [[ -z ${seen[$pkg]:-} ]] || continue
@@ -204,16 +322,23 @@ required_packages() {
         pkgs+=("$pkg")
     done
 
+    total="${#pkgs[@]}"
     local -a available_pkgs=()
     for pkg in "${pkgs[@]}"; do
+        current=$((current + 1))
+        show_dependency_progress "$current" "$total" "$pkg"
         if apt-cache show "$pkg" &> /dev/null; then
             available_pkgs+=("$pkg")
         else
+            [[ ! -t 1 ]] || printf '\r\033[K'
             log "Package $pkg is not available in the apt database and will be skipped."
         fi
     done
 
+    log "Dependency scan complete: $total packages checked; ${#available_pkgs[@]} available for installation."
+
     if [[ "${#available_pkgs[@]}" -gt 0 ]]; then
+        log "Refreshing APT metadata and installing available build dependencies."
         sudo apt update
         sudo apt install -y "${available_pkgs[@]}"
     fi
@@ -291,26 +416,30 @@ configure_build() {
             ./configure --prefix="$install_dir" --enable-ltdl-install || fail "Failed to execute: configure. Line: $LINENO"
             ;;
         make)
-            ./configure --prefix="$install_dir" --disable-nls --enable-year2038 --with-dmalloc --with-libsigsegv-prefix=/usr || fail "Failed to execute: configure. Line: $LINENO"
+            ./configure --prefix="$install_dir" --enable-option-checking=fatal --disable-nls \
+                        --enable-year2038 --with-dmalloc || fail "Failed to execute: configure. Line: $LINENO"
             ;;
         nano)
             ./configure --prefix="$install_dir" --enable-utf8 || fail "Failed to execute: configure. Line: $LINENO"
             ;;
         pkg-config)
-            ./configure --prefix="$install_dir" --with-internal-glib --disable-nls || fail "Failed to execute: configure. Line: $LINENO"
+            apply_pkg_config_c23_fix "$cwd/$archive_name"
+            ./configure CPPFLAGS="-isystem /usr/include${CPPFLAGS:+ $CPPFLAGS}" \
+                        --prefix="$install_dir" --with-internal-glib --disable-nls || fail "Failed to execute: configure. Line: $LINENO"
             ;;
         sed)
             ./configure --prefix="$install_dir" --enable-threads=posix --disable-nls || fail "Failed to execute: configure. Line: $LINENO"
             ;;
         tar)
+            apply_tar_libiconv_fix "$cwd/$archive_name"
             ./configure --prefix="$install_dir" --disable-nls --disable-gcc-warnings --with-bzip2="$(command -v bzip2)" \
                         --with-lzip="$(command -v lzip)" --with-lzma="$(command -v lzma)" --with-xz="$(command -v xz)" \
                         --with-zstd="$(command -v zstd)" --with-lzop="$(command -v lzop)" --with-gzip="$(command -v gzip)" || fail "Failed to execute: configure. Line: $LINENO"
             ;;
         wget)
-
-            ./configure --prefix="$install_dir" --with-ssl=openssl --with-libssl-prefix="$cwd" --with-metalink \
-                        --with-libunistring-prefix=/usr --with-libcares --without-ipv6 --disable-nls || fail "Failed to execute: configure. Line: $LINENO"
+            ./configure --prefix="$install_dir" --enable-option-checking=fatal --with-ssl=openssl \
+                        --without-metalink --with-cares --with-libunistring-prefix=/usr \
+                        --disable-nls || fail "Failed to execute: configure. Line: $LINENO"
             ;;
         which)
             autoconf || fail "Failed to execute: autoconf. Line: $LINENO"
@@ -349,9 +478,10 @@ cleanup() {
 }
 
 build_program() {
-    local prog_name version
+    local prog_name version previous_dir
     prog_name="$1"
     version="$2"
+    previous_dir="$PWD"
 
     echo
     log "Building $prog_name"
@@ -368,6 +498,7 @@ build_program() {
     compile_and_install "$version"
     ld_linker_path
     create_soft_links
+    cd "$previous_dir" || fail "Failed to return to $previous_dir. Line: $LINENO"
     cleanup
 }
 
@@ -386,6 +517,12 @@ for prog in "${progs[@]}"; do
     [[ "$valid" == true ]] || fail "Unknown program: $prog. Use --help to list supported programs."
 done
 
+if [[ "$programs" == "all" ]]; then
+    log "Selected all ${#progs[@]} programs."
+else
+    log "Selected programs: ${progs[*]}"
+fi
+log "Checking build dependencies."
 required_packages "${progs[@]}"
 
 for prog in "${progs[@]}"; do

@@ -35,7 +35,10 @@ portable=false keep_build=false force=false dry_run=false assume_yes=false debug
 use_lto=true use_hardening=true verify=true install_deps=true
 
 # Working state
-state_dir="" work_dir="" probe_dir="" user_path="$PATH"
+state_dir="" work_dir="" probe_dir="" partial_dir="" user_path="$PATH"
+# Where versions before 5.0 installed. A variable so the tests can point it
+# at a scratch directory.
+legacy_prefix="/usr/local"
 made_temp_base=false created_build_base=false needs_root=false
 CC="" CXX="" cc_base="" cc_suffix="" tool_prefix=""
 cppflags="" cxxflags="" ldflags="" lto_flags=""
@@ -560,10 +563,11 @@ safe_entry() {
     [[ "$1" != */ || "$1" == "$install_dir/go/" || "$1" == "$install_dir/lib/build-tools/"*/ ]]
 }
 
-# remove_entries PATH... deletes manifest entries, then any directories that
-# were left empty by it
+# remove_entries PATH... deletes manifest entries, then any directories inside
+# the prefix that were left empty by it. "rmdir -p" is not used because it
+# would keep climbing past the prefix and remove an empty /opt above /opt/tools.
 remove_entries() {
-    local entry
+    local entry dir
     local -a files=() dirs=()
     for entry in "$@"; do
         safe_entry "$entry" || { warn "Ignoring unexpected manifest entry: $entry"; continue; }
@@ -575,7 +579,11 @@ remove_entries() {
         dirs+=("$(dirname "${entry%/}")")
     done
     (( ${#files[@]} == 0 )) || printf '%s\0' "${files[@]}" | xargs -0 rm -f --
-    (( ${#dirs[@]} == 0 )) || printf '%s\0' "${dirs[@]}" | sort -zu | xargs -0 rmdir -p --ignore-fail-on-non-empty -- 2>/dev/null || true
+    (( ${#dirs[@]} == 0 )) || while IFS= read -r -d '' dir; do
+        while [[ "$dir" == "$install_dir/"* ]] && rmdir -- "$dir" 2>/dev/null; do
+            dir="${dir%/*}"
+        done
+    done < <(printf '%s\0' "${dirs[@]}" | sort -zur)
 }
 
 # commit_manifest TOOL records the paths collected in the manifest array and
@@ -775,17 +783,25 @@ install_cmake() {
     commit_manifest cmake
 }
 
+# A fresh virtual environment each time, made with the system Python, so
+# nothing is left over from the previous version. It is built beside the
+# current one, which keeps working until the new one has passed its version
+# check; commit_manifest then removes the old one. A venv cannot be renamed
+# after it is made, because its scripts hold its absolute path, so it keeps
+# the unique name mktemp gives it.
 install_meson() {
-    local ver="$1" venv="$install_dir/lib/build-tools/meson"
-    # A fresh virtual environment each time, made with the system Python, so
-    # nothing is left over from the previous version
-    rm -rf -- "$venv"
-    mkdir -p "$install_dir/bin" "${venv%/*}"
+    local ver="$1" base="$install_dir/lib/build-tools" venv
+    mkdir -p "$install_dir/bin" "$base"
+    venv="$(mktemp -d "$base/meson-$ver.XXXXXX")"
+    partial_dir="$venv"
+    # mktemp creates the directory as 0700, which would hide Meson from other users
+    chmod 0755 "$venv"
     run_task "Create the virtual environment" "$work_dir/meson.log" /usr/bin/python3 -m venv "$venv"
     run_task "pip install meson==$ver" "$work_dir/meson.log" \
         "$venv/bin/python" -m pip install --disable-pip-version-check --no-input "meson==$ver"
     [[ "$("$venv/bin/meson" --version)" == "$ver" ]] || fail "The new meson reports version $("$venv/bin/meson" --version), expected $ver."
     ln -sfn "$venv/bin/meson" "$install_dir/bin/meson"
+    partial_dir=""
     manifest=("$install_dir/bin/meson" "$venv/")
     commit_manifest meson
 }
@@ -856,12 +872,14 @@ path_report() {
 }
 
 # Earlier versions of this script installed into /usr/local/programs with
-# symlinks, put Meson into the system Python with pip, and wrote a GOROOT
-# block into ~/.bashrc. The block is removed here because it points Go at a
-# directory that no longer holds the current install. The rest is reported
-# and left for the user to remove.
+# symlinks, put Meson into the system Python with "sudo pip install", and
+# wrote a GOROOT block into ~/.bashrc. The block is removed here because it
+# points Go at a directory that no longer holds the current install. The rest
+# is reported and left for the user to remove. On Debian and Ubuntu that pip
+# install could land under /usr/local/local instead of /usr/local, because the
+# distribution's Python adds its own "local" to an install prefix.
 legacy_cleanup() {
-    local home bashrc tmp path
+    local home bashrc tmp path legacy="$legacy_prefix"
     local -a found=()
     home="$(getent passwd "${SUDO_USER:-$(id -un)}" | cut -d: -f6)"
     bashrc="${home:-$HOME}/.bashrc"
@@ -878,19 +896,34 @@ legacy_cleanup() {
         log "or run this in the current one:  unset GOROOT"
     fi
 
-    for path in /usr/local/programs/cmake-* /usr/local/programs/ninja-* /usr/local/programs/golang-*; do
+    # A pattern that matches nothing stays as literal text and fails the -e test
+    for path in "$legacy"/programs/cmake-* "$legacy"/programs/ninja-* "$legacy"/programs/golang-* \
+                "$legacy"/local/bin/meson "$legacy"/{,local/}share/man/man1/meson.1 \
+                "$legacy"/{,local/}share/polkit-1/actions/com.mesonbuild.install.policy \
+                "$legacy"/{,local/}lib/python3*/dist-packages/{meson-*.dist-info,meson-*.egg,mesonbuild}; do
         [[ -e "$path" ]] && found+=("$path")
+    done
+    # An egg install also listed itself in easy-install.pth. The file goes too,
+    # but only when Meson's eggs are all it lists.
+    for path in "$legacy"/{,local/}lib/python3*/dist-packages/easy-install.pth; do
+        [[ -f "$path" ]] && grep -q '^\./meson-.*\.egg$' "$path" \
+            && ! grep -qvE '^(\./meson-.*\.egg)?$' "$path" && found+=("$path")
     done
     if (( ${#found[@]} > 0 )); then
         step "Leftovers from the old script"
-        warn "These directories are no longer used. To remove them:"
+        warn "These paths are no longer used. To remove them, and then the folders"
+        warn "that leaves empty:"
         warn "    sudo rm -rf ${found[*]}"
+        # Deepest first. rmdir never removes a folder that still has files in it.
+        warn "    sudo rmdir -p --ignore-fail-on-non-empty $(for path in "${found[@]}"; do dirname "$path"; done | sort -ru | paste -sd' ')"
     fi
     return 0
 }
 
 cleanup() {
     [[ -n "$probe_dir" ]] && rm -rf -- "$probe_dir"
+    # An install that failed before it was committed leaves nothing in the prefix
+    [[ -n "$partial_dir" ]] && rm -rf -- "$partial_dir"
     [[ "$keep_build" == true || -z "$work_dir" ]] && return 0
     # Leave the directory first, since it may be the one being removed
     cd / 2>/dev/null || true
@@ -989,4 +1022,6 @@ main() {
     fi
 }
 
-main "$@"
+# Run unless sourced, which the tests do to reach the functions. Read from a
+# pipe, BASH_SOURCE is empty and the script runs.
+[[ "${BASH_SOURCE[0]:-$0}" != "$0" ]] || main "$@"

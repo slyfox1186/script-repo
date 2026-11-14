@@ -40,7 +40,7 @@ case "$name" in
     apt|apt-get|dnf|pacman) exit 90 ;;
     dpkg-query) [[ ${MISSING_ALL:-0} != 1 ]] || exit 1; printf 'install ok installed'; exit 0 ;;
     dpkg) exit 0 ;;
-    apt-cache) exit 0 ;;
+    apt-cache) [[ ${UNAVAILABLE_PKG:-} != "$2" ]] || exit 100; exit 0 ;;
     curl|wget)
         [[ ${FAIL_DOWNLOAD:-0} != 1 ]] || exit 22
         output=''
@@ -57,7 +57,10 @@ case "$name" in
             : > "$output"
         else
             program=${url%/}; program=${program##*/}
-            printf '<a href="%s-999.12.34.tar.xz">archive</a>\n' "$program"
+            [[ $program != releases ]] || program=pkg-config
+            extension=tar.xz
+            [[ $program != pkg-config ]] || extension=tar.gz
+            printf '<a href="%s-%s.%s">archive</a>\n' "$program" "${MOCK_VERSION:-999.12.34}" "$extension"
         fi
         ;;
     tar)
@@ -75,6 +78,34 @@ exit "${FAIL_CONFIGURE:-0}"
 CONFIGURE
         chmod +x "$dest/configure"
         : > "$dest/configure.ac"
+        mkdir -p "$dest/src"
+        cat > "$dest/src/Makefile.am" <<'TAR_MAKEFILE'
+AM_CFLAGS = $(WARN_CFLAGS) $(WERROR_CFLAGS)
+
+tar_LDADD = $(LIBS) ../lib/libtar.a ../gnu/libgnu.a\
+ $(LIB_ACL) $(LIB_CLOCK_GETTIME) $(LIB_EACCESS)\
+ $(LIB_GETRANDOM) $(LIB_HARD_LOCALE) $(FILE_HAS_ACL_LIB) $(LIB_MBRTOWC)\
+ $(LIB_SELINUX) $(LIB_SETLOCALE_NULL)
+
+all: all-am
+
+TAR_MAKEFILE
+        cp "$dest/src/Makefile.am" "$dest/src/Makefile.in"
+        mkdir -p "$dest/glib/glib"
+        cat > "$dest/glib/glib/goption.c" <<'GOPTION'
+    gboolean bool;
+    *(gboolean *)change->arg_data = change->prev.bool;
+GOPTION
+        ;;
+    patch)
+        source_dir=$2
+        cat >> "$TEST_LOG"
+        if [[ -f "$source_dir/glib/glib/goption.c" ]]; then
+            sed -i -e 's/gboolean bool;/gboolean boolean;/'                 -e 's/change->prev\.bool;/change->prev.boolean;/'                 "$source_dir/glib/glib/goption.c"
+        fi
+        if [[ -f "$source_dir/src/Makefile.am" ]]; then
+            sed -i -e 's|^ \$(LIB_SELINUX) \$(LIB_SETLOCALE_NULL)$| $(LIB_SELINUX) $(LIB_SETLOCALE_NULL) \\\n $(LIBINTL) $(LIBICONV)|'                 "$source_dir/src/Makefile.am" "$source_dir/src/Makefile.in"
+        fi
         ;;
     make|ninja)
         [[ ${FAIL_BUILD:-0} != 1 ]] || exit 2
@@ -100,7 +131,7 @@ MOCK
 chmod +x "$sandbox/bin/mock"
 for name in sudo apt apt-get dnf pacman dpkg-query dpkg apt-cache curl wget tar \
             make ninja cmake meson git find gcc ln ldconfig autoreconf autoconf \
-            autoupdate clear libtool gpgv; do
+            autoupdate clear libtool gpgv patch; do
     ln -s mock "$sandbox/bin/$name"
 done
 cat > "$sandbox/configure" <<'CONFIGURE'
@@ -156,6 +187,117 @@ invalid_program() {
 }
 check invalid_program
 
+build_all_download_policy() {
+    local user_agent='Mozilla/5.0 (X11; Linux x86_64; rv:160.0) Gecko/20100101 Firefox/160.0'
+    run_script build-all-gnu.sh -p autoconf &&
+        grep -qF "<--user-agent> <$user_agent>" "$TEST_LOG" &&
+        grep -qF "<--user-agent=$user_agent>" "$TEST_LOG"
+}
+check build_all_download_policy
+
+build_all_interactive_all() {
+    : > "$TEST_LOG"
+    (cd "$sandbox/run" && printf 'all\n' | timeout 10 bash "$scripts/build-all-gnu.sh")         > "$sandbox/output" 2>&1 &&
+        grep -qF 'Selected all 16 programs.' "$sandbox/output" &&
+        grep -qF 'Checking build dependencies.' "$sandbox/output" &&
+        grep -qF '[INFO] Building autoconf' "$sandbox/output" &&
+        grep -qF '[INFO] Building which' "$sandbox/output" &&
+        ! grep -q $'\r' "$sandbox/output"
+}
+check build_all_interactive_all
+
+build_all_dependency_progress() {
+    : > "$TEST_LOG"
+    (cd "$sandbox/run" && printf 'all\n' | NO_COLOR=1 UNAVAILABLE_PKG=wget timeout 15 \
+        script -q -c "bash '$scripts/build-all-gnu.sh'" /dev/null) \
+        > "$sandbox/output" 2>&1 || return 1
+    grep -qF $'\r[INFO] Dependencies [#' "$sandbox/output" || return 1
+    grep -qF '(100%)' "$sandbox/output" || return 1
+    grep -qF 'Dependency scan complete:' "$sandbox/output" || return 1
+    grep -qF $'\r\033[K[INFO] Package wget is not available' "$sandbox/output" || return 1
+    ! grep -qF 'getcwd: cannot access' "$sandbox/output"
+}
+check build_all_dependency_progress
+
+build_all_help_layout() {
+    run_script build-all-gnu.sh --help &&
+        grep -qF 'GNU SOFTWARE BUILD MANAGER' "$sandbox/output" &&
+        grep -qF 'USAGE' "$sandbox/output" &&
+        grep -qF 'OPTIONS' "$sandbox/output" &&
+        grep -qF 'PROGRAMS (16)' "$sandbox/output" &&
+        grep -qF 'EXAMPLES' "$sandbox/output" &&
+        grep -qE 'autoconf +autoconf-archive +bash +gawk' "$sandbox/output" &&
+        ! grep -q $'\033' "$sandbox/output"
+}
+check build_all_help_layout
+
+build_all_pkg_config_system_iconv() {
+    run_script build-all-gnu.sh -p pkg-config &&
+        grep -qF -- 'CPPFLAGS=-isystem /usr/include' "$TEST_LOG" &&
+        grep -qF -- 'gboolean boolean;' "$TEST_LOG" &&
+        grep -qF -- 'change->prev.boolean;' "$TEST_LOG"
+}
+check build_all_pkg_config_system_iconv
+
+standalone_pkg_config_system_iconv() {
+    run_script build-pkg-config.sh &&
+        grep -qF -- 'CPPFLAGS=-isystem /usr/include' "$TEST_LOG" &&
+        grep -qF -- 'gboolean boolean;' "$TEST_LOG" &&
+        grep -qF -- 'change->prev.boolean;' "$TEST_LOG"
+}
+check standalone_pkg_config_system_iconv
+
+arm_pkg_config_system_iconv() {
+    run_script build-pkg-config-arm.sh &&
+        grep -qF -- 'CPPFLAGS=-isystem /usr/include' "$TEST_LOG" &&
+        grep -qF -- 'gboolean boolean;' "$TEST_LOG" &&
+        grep -qF -- 'change->prev.boolean;' "$TEST_LOG"
+}
+check arm_pkg_config_system_iconv
+
+build_all_wget_configuration() {
+    run_script build-all-gnu.sh -p wget &&
+        grep -q '^sudo <apt> <install>' "$TEST_LOG" &&
+        grep -qF '<libc-ares-dev>' "$TEST_LOG" &&
+        grep -qF '<libpsl-dev>' "$TEST_LOG" &&
+        grep -qF '<libidn2-dev>' "$TEST_LOG" &&
+        grep -qF '<libpcre2-dev>' "$TEST_LOG" &&
+        grep -qF '<uuid-dev>' "$TEST_LOG" &&
+        grep -qF -- '--enable-option-checking=fatal' "$TEST_LOG" &&
+        grep -qF -- '--with-cares' "$TEST_LOG" &&
+        grep -qF -- '--without-metalink' "$TEST_LOG" &&
+        ! grep -qF -- '--with-libcares' "$TEST_LOG" &&
+        ! grep -qF -- '--with-metalink' "$TEST_LOG" &&
+        ! grep -qF -- '--without-ipv6' "$TEST_LOG" &&
+        ! grep -qF -- '--with-libssl-prefix=' "$TEST_LOG"
+}
+check build_all_wget_configuration
+
+build_all_development_dependencies() {
+    run_script build-all-gnu.sh -p nano,make &&
+        grep -qF '<libncurses-dev>' "$TEST_LOG" &&
+        grep -qF '<libdmalloc-dev>' "$TEST_LOG" &&
+        grep -qF -- '--enable-option-checking=fatal' "$TEST_LOG" &&
+        ! grep -qF '<libncurses5-dev>' "$TEST_LOG" &&
+        ! grep -qF '<libsigsegv2>' "$TEST_LOG" &&
+        ! grep -qF '<libsigsegv-dev>' "$TEST_LOG" &&
+        ! grep -qF -- '--with-libsigsegv-prefix' "$TEST_LOG"
+}
+check build_all_development_dependencies
+
+build_all_failure_stops_install() {
+    local stage=$1
+    : > "$TEST_LOG"
+    if env "$stage=1" bash -c 'cd "$1"; timeout 5 bash "$2" -p autoconf </dev/null' \
+        bash "$sandbox/run" "$scripts/build-all-gnu.sh" > "$sandbox/output" 2>&1; then
+        return 1
+    fi
+    ! grep -q '^sudo <make> <install>' "$TEST_LOG"
+}
+for stage in FAIL_DOWNLOAD FAIL_EXTRACT FAIL_CONFIGURE FAIL_BUILD; do
+    check build_all_failure_stops_install "$stage"
+done
+
 extract_function() {
     awk -v name="$2" '
         $0 ~ "^" name "\\(\\) \\{" {printing=1}
@@ -163,6 +305,59 @@ extract_function() {
         printing && /^}/ {exit}
     ' "$1"
 }
+
+tar_upstream_libiconv_backport() {
+    local script=$1
+    extract_function "$script" apply_tar_libiconv_fix > "$sandbox/tar-iconv-fix.sh"
+    mkdir -p "$sandbox/tar-source/src"
+    cat > "$sandbox/tar-source/src/Makefile.am" <<'TAR_MAKEFILE'
+AM_CFLAGS = $(WARN_CFLAGS) $(WERROR_CFLAGS)
+
+tar_LDADD = $(LIBS) ../lib/libtar.a ../gnu/libgnu.a\
+ $(LIB_ACL) $(LIB_CLOCK_GETTIME) $(LIB_EACCESS)\
+ $(LIB_GETRANDOM) $(LIB_HARD_LOCALE) $(FILE_HAS_ACL_LIB) $(LIB_MBRTOWC)\
+ $(LIB_SELINUX) $(LIB_SETLOCALE_NULL)
+
+all: all-am
+
+TAR_MAKEFILE
+    cp "$sandbox/tar-source/src/Makefile.am" "$sandbox/tar-source/src/Makefile.in"
+    PATH=/usr/bin:/bin bash -c '
+        set -euo pipefail
+        fail() { printf "%s\n" "$1" >&2; exit 1; }
+        version=1.35
+        source "$1"
+        apply_tar_libiconv_fix "$2"
+        apply_tar_libiconv_fix "$2"
+        grep -Fq "\$(LIBINTL) \$(LIBICONV)" "$2/src/Makefile.am"
+        grep -Fq "\$(LIBINTL) \$(LIBICONV)" "$2/src/Makefile.in"
+    ' bash "$sandbox/tar-iconv-fix.sh" "$sandbox/tar-source"
+}
+check tar_upstream_libiconv_backport "$scripts/build-tar.sh"
+check tar_upstream_libiconv_backport "$scripts/build-all-gnu.sh"
+
+tar_backport_precedes_configure() {
+    MOCK_VERSION=1.35 run_script "$1" "${@:2}" &&
+        grep -qF '$(LIBINTL) $(LIBICONV)' "$TEST_LOG" &&
+        awk '/^patch/{patch_line=NR} /^configure/{if (patch_line && NR > patch_line) found=1} END{exit !found}' "$TEST_LOG"
+}
+check tar_backport_precedes_configure build-tar.sh -v 1.35
+check tar_backport_precedes_configure build-all-gnu.sh -p tar
+
+texinfo_uses_fixed_upstream_release() {
+    run_script build-texinfo.sh &&
+        grep -qF '<https://ftp.gnu.org/gnu/texinfo/texinfo-7.3.tar.xz>' "$TEST_LOG"
+}
+check texinfo_uses_fixed_upstream_release
+
+browser_user_agents_are_current() {
+    local expected='Mozilla/5.0 (X11; Linux x86_64; rv:160.0) Gecko/20100101 Firefox/160.0'
+    local line
+    while IFS= read -r line; do
+        [[ "$line" == *"$expected"* ]] || { printf 'Outdated user agent: %s\n' "$line" >&2; return 1; }
+    done < <(grep -H 'Mozilla/5\.0' "$scripts"/*.sh)
+}
+check browser_user_agents_are_current
 
 gcc_dependencies() {
     : > "$TEST_LOG"
@@ -249,6 +444,34 @@ for name in bash gawk findutils grep gzip nano readline sed tar binutils coreuti
             libiconv libiconv-gettext all-gnu pkg-config; do
     check link_publication "build-$name.sh"
 done
+
+gawk_finds_installed_extensions() {
+    awk '
+        /^    if ! compgen -G / {printing=1}
+        printing {print}
+        printing && /^    fi$/ {exit}
+    ' "$scripts/build-gawk.sh" > "$sandbox/gawk-linker-check.sh"
+    mkdir -p "$sandbox/gawk-prefix/gawk-5.4.1/lib/gawk"
+    touch "$sandbox/gawk-prefix/gawk-5.4.1/lib/gawk/readfile.so"
+    bash -c '
+        set -euo pipefail
+        install_dir=$1
+        archive_name=gawk-5.4.1
+        linker_configured=0
+        warn() { printf "%s\n" "$*" >&2; }
+        ld_linker_path() { linker_configured=1; }
+        source "$2"
+        [[ $linker_configured -eq 1 ]]
+    ' bash "$sandbox/gawk-prefix" "$sandbox/gawk-linker-check.sh" \
+        > "$sandbox/output" 2>&1
+}
+check gawk_finds_installed_extensions
+
+nano_reads_system_nanorc() {
+    run_script build-nano.sh &&
+        grep -Eq '^configure <.*--sysconfdir=/etc( |>)' "$TEST_LOG"
+}
+check nano_reads_system_nanorc
 
 invalid_compiler() {
     ! run_script "$1" --compiler '../escape' && ! grep -Eq '^(sudo|curl|wget|make)' "$TEST_LOG"

@@ -7,12 +7,12 @@ trap 'printf "Build failed at line %s. Build files were retained for inspection.
 gnu_curl() {
     command curl -q --fail --location --show-error --retry 3 --retry-delay 2 \
         --connect-timeout 15 --max-time 600 --proto '=https' --proto-redir '=https' \
-        --user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36' "$@"
+        --user-agent 'Mozilla/5.0 (X11; Linux x86_64; rv:160.0) Gecko/20100101 Firefox/160.0' "$@"
 }
 
 gnu_wget() {
     command wget --timeout=30 --tries=3 --https-only \
-        --user-agent='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36' "$@"
+        --user-agent='Mozilla/5.0 (X11; Linux x86_64; rv:160.0) Gecko/20100101 Firefox/160.0' "$@"
 }
 
 gnu_link_dir() {
@@ -102,7 +102,7 @@ required_packages() {
     pkgs=(
         autoconf automake build-essential gettext libacl1-dev
         libattr1-dev libbz2-dev libintl-perl liblzma-dev libtool
-        lzip lzop libzstd-dev xz-utils zlib1g-dev
+        lzip lzop patch libzstd-dev xz-utils zlib1g-dev
     )
 
     missing_pkgs=()
@@ -141,6 +141,38 @@ download_archive() {
 
 extract_archive() {
     tar -Jxf "$cwd/$tar_file" -C "$cwd/$archive_name" --strip-components 1 || fail "Failed to extract: $cwd/$tar_file"
+}
+
+apply_tar_libiconv_fix() {
+    [[ "$version" == "1.35" ]] || return 0
+    local source_dir="$1" makefile_am makefile_in
+    makefile_am="$source_dir/src/Makefile.am"
+    makefile_in="$source_dir/src/Makefile.in"
+    [[ -f "$makefile_am" && -f "$makefile_in" ]] || fail "The tar build makefiles are missing."
+
+    if grep -Fq '$(LIBINTL) $(LIBICONV)' "$makefile_am" &&
+       grep -Fq '$(LIBINTL) $(LIBICONV)' "$makefile_in"; then
+        return 0
+    fi
+
+    # Backport GNU tar 8632df398b2f548465ebe68b8f494c0d6f8d913d.
+    patch -d "$source_dir" -p1 <<'PATCH' || fail "Failed to apply the upstream libiconv link fix. Line: $LINENO"
+--- a/src/Makefile.am
++++ b/src/Makefile.am
+@@ -55 +55,2 @@
+- $(LIB_SELINUX) $(LIB_SETLOCALE_NULL)
++ $(LIB_SELINUX) $(LIB_SETLOCALE_NULL) \
++ $(LIBINTL) $(LIBICONV)
+--- a/src/Makefile.in
++++ b/src/Makefile.in
+@@ -1796 +1796,2 @@
+- $(LIB_SELINUX) $(LIB_SETLOCALE_NULL)
++ $(LIB_SELINUX) $(LIB_SETLOCALE_NULL) \
++ $(LIBINTL) $(LIBICONV)
+PATCH
+
+    grep -Fq '$(LIBINTL) $(LIBICONV)' "$makefile_am" || fail "The upstream libiconv fix was not applied to Makefile.am."
+    grep -Fq '$(LIBINTL) $(LIBICONV)' "$makefile_in" || fail "The upstream libiconv fix was not applied to Makefile.in."
 }
 
 configure_build() {
@@ -251,6 +283,7 @@ main_menu() {
     set_compiler_flags
     download_archive
     extract_archive
+    apply_tar_libiconv_fix "$cwd/$archive_name"
     configure_build
     compile_build
     install_build

@@ -7,7 +7,7 @@ trap 'printf "Build failed at line %s. Build files were retained for inspection.
 gnu_curl() {
     command curl -q --fail --location --show-error --retry 3 --retry-delay 2 \
         --connect-timeout 15 --max-time 600 --proto '=https' --proto-redir '=https' \
-        --user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36' "$@"
+        --user-agent 'Mozilla/5.0 (X11; Linux x86_64; rv:160.0) Gecko/20100101 Firefox/160.0' "$@"
 }
 
 gnu_new_workdir() {
@@ -51,6 +51,42 @@ fail() {
     echo -e "${RED}[ERROR] Bash:${NC} $1"
     echo "To report a bug create an issue at: https://github.com/slyfox1186/script-repo/issues"
     exit 1
+}
+
+apply_pkg_config_c23_fix() {
+    local source_dir="$1" source_file="$1/glib/glib/goption.c"
+    [[ -f "$source_file" ]] || fail "Bundled GLib source is missing: $source_file"
+
+    # Backport GNOME GLib 9e320e1c43a4770ed1532248fe5416eb0c618120 for C23.
+    if grep -Fq 'gboolean bool;' "$source_file"; then
+        patch -d "$source_dir" -p1 <<'PATCH' || fail "Failed to apply the GLib C23 compatibility fix. Line: $LINENO"
+--- a/glib/glib/goption.c
++++ b/glib/glib/goption.c
+@@ -166,7 +166,7 @@ typedef struct
+   gpointer arg_data;
+   union
+   {
+-    gboolean bool;
++    gboolean boolean;
+     gint integer;
+     gchar *str;
+     gchar **array;
+@@ -1600,7 +1600,7 @@ free_changes_list (GOptionContext *context,
+           switch (change->arg_type)
+             {
+             case G_OPTION_ARG_NONE:
+-              *(gboolean *)change->arg_data = change->prev.bool;
++              *(gboolean *)change->arg_data = change->prev.boolean;
+               break;
+             case G_OPTION_ARG_INT:
+               *(gint *)change->arg_data = change->prev.integer;
+PATCH
+    fi
+
+    grep -Fq 'gboolean boolean;' "$source_file" || fail "The GLib C23 declaration fix was not applied."
+    grep -Fq 'change->prev.boolean;' "$source_file" || fail "The GLib C23 field-access fix was not applied."
+    ! grep -Fq 'gboolean bool;' "$source_file" || fail "The obsolete GLib bool declaration remains."
+    ! grep -Fq 'change->prev.bool;' "$source_file" || fail "The obsolete GLib bool field access remains."
 }
 
 # Check if running as root or with sudo
@@ -101,7 +137,7 @@ cleanup() {
 pkgs=(autoconf autoconf-archive autogen automake build-essential ca-certificates ccache clang curl \
       libaria2-0 libaria2-0-dev libc-ares-dev libdmalloc-dev libgcrypt20-dev libgmp-dev libgnutls28-dev \
       libgpg-error-dev libjemalloc-dev libmbedtls-dev libnghttp2-dev librust-openssl-dev libsqlite3-dev \
-      libssh2-1-dev libssh-dev libssl-dev libxml2-dev pkg-config zlib1g-dev)
+      libssh2-1-dev libssh-dev libssl-dev libxml2-dev patch pkg-config zlib1g-dev)
 
 missing_pkgs=()
 for pkg in "${pkgs[@]}"; do
@@ -129,9 +165,12 @@ if ! tar -zxf "$cwd/$archive_name" -C "$cwd/$archive_dir" --strip-components 1; 
     fail "Failed to extract: $cwd/$archive_name"
 fi
 
+apply_pkg_config_c23_fix "$cwd/$archive_dir"
+
 # Build program from source
 cd "$cwd/$archive_dir/build" || fail "Failed to change directory to: $cwd/$archive_dir/build"
-../configure --prefix="$install_dir" \
+../configure CPPFLAGS="-isystem /usr/include${CPPFLAGS:+ $CPPFLAGS}" \
+             --prefix="$install_dir" \
              --enable-indirect-deps \
              --with-internal-glib \
              --with-pc-path="$PKG_CONFIG_PATH" \

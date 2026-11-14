@@ -7,7 +7,7 @@ trap 'printf "Build failed at line %s. Build files were retained for inspection.
 gnu_curl() {
     command curl -q --fail --location --show-error --retry 3 --retry-delay 2 \
         --connect-timeout 15 --max-time 600 --proto '=https' --proto-redir '=https' \
-        --user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36' "$@"
+        --user-agent 'Mozilla/5.0 (X11; Linux x86_64; rv:160.0) Gecko/20100101 Firefox/160.0' "$@"
 }
 
 gnu_new_workdir() {
@@ -171,7 +171,7 @@ check_dependencies
 # Download the archive file
 log "Downloading archive file..."
 archive_name=$(basename "$archive_url")
-gnu_curl -A "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36" -Lso "$cwd/$archive_name" "$archive_url"
+gnu_curl -A "Mozilla/5.0 (X11; Linux x86_64; rv:160.0) Gecko/20100101 Firefox/160.0" -Lso "$cwd/$archive_name" "$archive_url"
 
 # Extract archive files
 log "Extracting archive files..."

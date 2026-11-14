@@ -7,12 +7,12 @@ trap 'printf "Build failed at line %s. Build files were retained for inspection.
 gnu_curl() {
     command curl -q --fail --location --show-error --retry 3 --retry-delay 2 \
         --connect-timeout 15 --max-time 600 --proto '=https' --proto-redir '=https' \
-        --user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36' "$@"
+        --user-agent 'Mozilla/5.0 (X11; Linux x86_64; rv:160.0) Gecko/20100101 Firefox/160.0' "$@"
 }
 
 gnu_wget() {
     command wget --timeout=30 --tries=3 --https-only \
-        --user-agent='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36' "$@"
+        --user-agent='Mozilla/5.0 (X11; Linux x86_64; rv:160.0) Gecko/20100101 Firefox/160.0' "$@"
 }
 
 gnu_link_dir() {
@@ -144,7 +144,8 @@ configure_build() {
     cd "$cwd/$archive_name" || fail "Failed to cd into $cwd/$archive_name. Line: $LINENO"
 
     cd build || exit 1
-    ../configure --prefix="$install_dir/$archive_name" --enable-threads=posix --disable-nls --enable-utf8 --enable-year2038 \
+    # Without --sysconfdir, nano reads $prefix/etc/nanorc and ignores /etc/nanorc, losing system colors and syntax files.
+    ../configure --prefix="$install_dir/$archive_name" --sysconfdir=/etc --enable-threads=posix --disable-nls --enable-utf8 --enable-year2038 \
                  --with-libpth-prefix=/usr --with-libiconv-prefix=/usr --with-libintl-prefix=/usr
 }
 

@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
 # Keep these helpers local so a downloaded installer remains standalone.
-set -Ee -o pipefail
+set -Eeo pipefail
 trap 'printf "Build failed at line %s. Build files were retained for inspection.\n" "$LINENO" >&2; exit 1' ERR
 
 gnu_curl() {
     command curl -q --fail --location --show-error --retry 3 --retry-delay 2 \
         --connect-timeout 15 --max-time 600 --proto '=https' --proto-redir '=https' \
-        --user-agent 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36' "$@"
+        --user-agent 'Mozilla/5.0 (X11; Linux x86_64; rv:160.0) Gecko/20100101 Firefox/160.0' "$@"
 }
 
 gnu_new_workdir() {
@@ -32,7 +32,7 @@ NC='\033[0m'
 
 # Set variables
 script_ver="1.3"
-archive_dir="texinfo-7.1"
+archive_dir="texinfo-7.3"
 archive_url="https://ftp.gnu.org/gnu/texinfo/$archive_dir.tar.xz"
 archive_name="$archive_dir.tar.${archive_url##*.}"
 cwd="$PWD/texinfo-build-script"
